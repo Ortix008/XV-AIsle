@@ -42,6 +42,20 @@ function fromRow(row: CatalogRow): CatalogItem {
   };
 }
 
+export function listPendingCatalog() {
+  const rows = getDb()
+    .prepare(
+      `SELECT catalog.id, catalog.account_id, catalog.sku, catalog.title, catalog.cost_cents,
+              catalog.shipping_cents, catalog.origin, catalog.approved, accounts.name AS supplier_name
+       FROM supplier_catalog catalog
+       JOIN accounts ON accounts.id = catalog.account_id
+       WHERE catalog.approved = 0
+       ORDER BY catalog.created_at`,
+    )
+    .all() as CatalogRow[];
+  return rows.map(fromRow);
+}
+
 export function listApprovedCatalog() {
   const rows = getDb()
     .prepare(

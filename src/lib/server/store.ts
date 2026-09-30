@@ -223,11 +223,22 @@ function allocateOrderNumber() {
   const db = getDb();
   db.exec("BEGIN IMMEDIATE");
   try {
-    db.prepare("INSERT INTO order_seq (id, next_number) VALUES (1, 1001) ON CONFLICT(id) DO NOTHING").run();
-    const row = db.prepare("SELECT next_number FROM order_seq WHERE id = 1").get() as { next_number: number };
-    db.prepare("UPDATE order_seq SET next_number = ? WHERE id = 1").run(row.next_number + 1);
+    const seedRow = db
+      .prepare(
+        `SELECT COALESCE(MAX(CAST(SUBSTR(number, 4) AS INTEGER)), 1000) + 1 AS next_number
+         FROM orders
+         WHERE number GLOB 'XV-[0-9]*'`,
+      )
+      .get() as { next_number: number | bigint };
+    const seed = Number(seedRow?.next_number);
+    const start = Number.isInteger(seed) && seed >= 1001 ? seed : 1001;
+    db.prepare("INSERT INTO order_seq (id, next_number) VALUES (1, ?) ON CONFLICT(id) DO NOTHING").run(start);
+    db.prepare("UPDATE order_seq SET next_number = ? WHERE id = 1 AND next_number < ?").run(start, start);
+    const row = db.prepare("SELECT next_number FROM order_seq WHERE id = 1").get() as { next_number: number | bigint };
+    const next = Number(row.next_number);
+    db.prepare("UPDATE order_seq SET next_number = ? WHERE id = 1").run(next + 1);
     db.exec("COMMIT");
-    return row.next_number;
+    return next;
   } catch (error) {
     db.exec("ROLLBACK");
     throw error;

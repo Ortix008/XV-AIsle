@@ -741,6 +741,30 @@ async function main() {
   assert(numbers.length >= 2, "orders exist");
   assert(new Set(numbers.map((row) => row.number)).size === numbers.length, "order numbers are unique");
   assert(numbers.every((row) => /^XV-\d+$/.test(row.number)), "order numbers are allocated");
+  const highest = db
+    .prepare(
+      "SELECT COALESCE(MAX(CAST(SUBSTR(number, 4) AS INTEGER)), 1000) AS n FROM orders WHERE number GLOB 'XV-[0-9]*'",
+    )
+    .get() as { n: number | bigint };
+  db.prepare("DELETE FROM order_seq").run();
+  const reseeded = createPendingOrder({
+    productId: "pan",
+    qty: 1,
+    ship: {
+      name: "Sequence Buyer",
+      email: "sequence@example.com",
+      line1: "100 Example Street",
+      city: "Sample City",
+      region: "ST",
+      postal: "00000",
+      country: "US",
+    },
+  });
+  if ("error" in reseeded) throw new Error(reseeded.error);
+  assert(
+    reseeded.order.number === `XV-${Number(highest.n) + 1}`,
+    "a new order continues after the highest existing number",
+  );
 
   const stuckId = order.order.id;
   db.prepare(

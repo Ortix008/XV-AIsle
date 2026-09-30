@@ -150,6 +150,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
         >
           Floors
         </Link>
+        <PendingCatalogLink pathname={pathname} mobile />
         <NavLinks pathname={pathname} mobile />
       </nav>
       <div className="flex min-h-0 flex-1">
@@ -188,6 +189,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
             >
               Floors
             </Link>
+            <PendingCatalogLink pathname={pathname} />
           </div>
           <p className="px-5 pt-4 pb-1 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground">
             SI Team
@@ -211,6 +213,26 @@ export function DeskShell({ children }: { children: ReactNode }) {
         </main>
       </div>
     </div>
+  );
+}
+
+function PendingCatalogLink({ pathname, mobile = false }: { pathname: string; mobile?: boolean }) {
+  const { account } = useAccount();
+  if (account?.role !== "admin" || !account.emailVerified || account.totpEnabled !== true) return null;
+  const active = pathname === "/catalog";
+  return (
+    <Link
+      href="/catalog"
+      className={cn(
+        "whitespace-nowrap text-sm",
+        mobile ? "border-b-2 px-3 py-1.5" : "block border-l-2 px-3 py-2",
+        active
+          ? "border-foreground font-medium text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground",
+      )}
+    >
+      Pending catalog
+    </Link>
   );
 }
 
