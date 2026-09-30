@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConnectPayout } from "@/components/connect-payout";
 import { PayMembership } from "@/components/pay-membership";
-import { PayoutForm } from "@/components/payout-form";
 import { MEMBER_PRICE, TRIAL_DAYS } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
 
@@ -82,9 +82,9 @@ export function MembershipView() {
             </Button>
           </>
         )}
-        <PayoutForm />
+        <ConnectPayout />
         <p className="text-xs text-pretty text-muted-foreground">
-          The account is kept on the server. Card numbers are not stored.
+          The account is kept on the server. Bank details stay at Stripe.
         </p>
       </div>
     </div>

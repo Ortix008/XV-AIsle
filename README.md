@@ -2,7 +2,9 @@
 
 [xvaisle.com](https://xvaisle.com) is a dropshipping marketplace. Companies with extra inventory list it. People resell that stock for extra income and never hold the box. A neighborhood shop or a national floor ships the order. You keep the sale, the supplier keeps the fulfillment, and XV-AIsle keeps the market.
 
-An account is required for the seller desk. The first 30 days are free. After that, membership is $10 a month through Stripe. Shoppers can browse the public store without an account.
+An account is required for the seller desk. The first 30 days are free. After that, membership is $10 a month through Stripe, billed to the platform account. Shoppers can browse the public store without an account. Publishing a listing takes an active membership and a finished Stripe payout setup.
+
+The operator is the account named by `ADMIN_EMAIL`. That is the only admin. A new account is a buyer until they choose reseller or supplier.
 
 The SI Team finds a product, writes the page, watches the order, and drafts the post. You still say yes before anything goes out. The team runs on the catalog in this app. It does not log into X, TikTok, Instagram, a supplier site, or an ad account. Saying yes copies text. You paste it yourself.
 
@@ -53,8 +55,23 @@ Still manual or sample data:
 - Posts and retailer notes are copied by hand. Nothing is sent to X or to Walmart, Amazon, Target, or the other floors.
 - The product book is a fixed catalog with fictional warehouses. It is not a live feed.
 - The starter store is two pages, a quarter sheet pan and a stainless bench scraper.
-- Profit payouts are recorded as a mask. Nothing sends money to a card, bank, or wallet.
 - Small shops are names you type in.
+
+## How money moves
+
+Shoppers pay the platform Stripe account. Membership is the same account, $10 a month.
+
+A product sale is one charge. The platform keeps 8–12% (`PLATFORM_FEE_BPS`, default 10%, clamped to that range, with an optional per-listing rate inside the range). The supplier is owed their unit cost times quantity, plus shipping once if the listing sets it. The reseller is owed whatever is left. A listing that would pay the reseller less than zero cannot be published or checked out.
+
+Nothing is transferred when the card payment succeeds. The app writes a pending ledger row for the reseller and a pending ledger row for the supplier. When an admin marks the order delivered, or the supplier posts a signed callback to `/api/supplier/delivered`, the app creates one Stripe transfer per party. Each transfer uses the original charge as `source_transaction`, so it waits until those funds are available. The platform does not add `application_fee_amount`. Stripe’s processing fee is paid by the platform out of the retained cut. If the cut is smaller than Stripe’s fee, the platform balance covers the difference.
+
+Resellers and suppliers add a bank account in Stripe’s hosted Express onboarding. This app does not collect card numbers, bank numbers, or crypto addresses. Connected accounts are Accounts v2 recipients: Express dashboard, the platform collects fees, and the platform is liable for losses. Publishing checks that `stripe_transfers` is active. That is the current replacement for the old `payouts_enabled` flag. Recipient accounts are not card merchants, so `charges_enabled` stays off and is not required.
+
+Stripe does not offer escrow. A US platform may hold funds before transfer for up to 2 years (other countries are shorter; this store ships in the US). Orders still waiting on a transfer inside the last 14 days of that window are flagged. After the window, the app will not transfer; refund the charge instead.
+
+Default Radar rules stay in place. The charge outcome’s risk level is stored. Transfers do not run while a review or dispute is open, or when risk is elevated or highest, until an admin approves. A refund reverses transfers in proportion, or cancels a share that has not been sent yet. A lost dispute cancels what is still pending. A won dispute sends the reversed share back.
+
+Use a test key. Live keys are refused unless `STRIPE_ALLOW_LIVE=1`.
 
 ## Run
 
@@ -81,12 +98,26 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | `APP_URL` | Stripe success and cancel URLs. Compose sets `https://xvaisle.com`. |
 | `TRUST_PROXY` | Set to `1` behind Caddy so rate limits use the visitor address. |
 | `DATABASE_PATH` | SQLite file. Compose sets `/data/xvaisle.sqlite`. |
-| `STRIPE_SECRET_KEY` | Membership and store checkout. A test key is enough until you charge for real. |
-| `STRIPE_WEBHOOK_SECRET` | Signing secret for `https://xvaisle.com/api/billing/webhook` and `checkout.session.completed`. |
+| `STRIPE_SECRET_KEY` | Platform secret or restricted key. Test mode unless `STRIPE_ALLOW_LIVE=1`. |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret for `https://xvaisle.com/api/billing/webhook`. |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | Signing secret for `https://xvaisle.com/api/connect/webhook`. |
+| `STRIPE_API_VERSION` | Optional `Stripe-Version` header. Default `2026-07-29.dahlia`. |
+| `STRIPE_MEMBERSHIP_PRICE_ID` | Optional $10/month price. Otherwise Checkout uses `price_data`. |
+| `PLATFORM_FEE_BPS` | Platform cut in basis points. Default `1000`, clamped to `800`–`1200`. |
+| `STRIPE_ALLOW_LIVE` | Set to `1` only to permit a live key. |
+| `STRIPE_CARD_CHECKOUT_ONLY` | Set to `1` to disable Link and US bank on the platform payment configuration at boot. |
 | `SUPPLIER_API_URL` | Where a paid order is posted, once a shipper exists. |
 | `SUPPLIER_API_KEY` | Bearer token for that post. |
-| `STORE_RETURNS` | Return line shown before someone saves one at `/shop/safety`. |
-| `STORE_OPERATOR_EMAIL` | Account that receives the two starter products. |
+| `SUPPLIER_CALLBACK_SECRET` | HMAC secret for `POST /api/supplier/delivered`. |
+| `STORE_RETURNS` | Return line shown before the operator saves one at `/shop/safety`. |
+| `STORE_OPERATOR_EMAIL` | Account that receives the two starter products. Empty means nobody does. |
+| `ADMIN_EMAIL` | The only admin. Return address, buyer notes, and delivery live here. |
+
+`/api/billing/webhook` needs `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`, `review.opened`, and `review.closed`.
+
+`/api/connect/webhook` needs `account.updated` and `account.application.deauthorized`. Listen to events on connected accounts.
+
+A restricted test key is a better fit than a secret key. It needs Checkout, subscriptions, charges, payment intents, transfers and reversals, Accounts v2, account links, and Express login links.
 
 `npx tsx scripts/deploy-ready.ts` lists what is still empty. It does not print secret values.
 

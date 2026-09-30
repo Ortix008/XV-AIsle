@@ -1,20 +1,16 @@
 import { cookies } from "next/headers";
 import { accountFromToken } from "@/lib/server/accounts";
-import { getDb } from "@/lib/server/db";
-import { addInquiry, listInquiries } from "@/lib/server/inquiries";
+import { addInquiry, inquiriesFor } from "@/lib/server/inquiries";
 import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 
 export async function GET() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const account = accountFromToken(token);
-  if (!account) return Response.json({ error: "Sign in first." }, { status: 401 });
-  const ownsListing = getDb().prepare("SELECT 1 AS ok FROM listings WHERE account_id = ? LIMIT 1").get(account.id) as
-    | { ok: number }
-    | undefined;
-  if (!ownsListing) return Response.json({ inquiries: [] });
+  const result = inquiriesFor(account);
+  if ("error" in result) return Response.json({ error: result.error }, { status: result.status });
   return Response.json({
-    inquiries: listInquiries().map((note) => ({
+    inquiries: result.inquiries.map((note) => ({
       id: note.id,
       name: note.name,
       email: note.email,

@@ -22,7 +22,11 @@ export default async function ShopSafetyPage() {
           <p>
             The market name is <span className="font-medium text-foreground">{STORE_HOST}</span>. This copy is posted at{" "}
             <span className="font-medium text-foreground">{origin}/shop</span>. The card is entered on Stripe. XVAIsle
-            does not keep the card number.
+            does not keep the card number. The charge lands on the market’s Stripe account. After the order is
+            delivered, Stripe pays the reseller and the supplier. The market keeps 8–12 percent, and Stripe’s card fee
+            comes out of that share. The charge lands on the market’s Stripe account. After the order is
+            delivered, Stripe pays the reseller and the supplier. The market keeps 8–12 percent, and Stripe’s card fee
+            comes out of that share.
           </p>
           <p>
             Shipping is inside the US. The product page says how many days the named shipper takes after payment.
@@ -60,7 +64,7 @@ export default async function ShopSafetyPage() {
             Write the seller
           </Link>
         </p>
-        {account ? <ReturnsForm initial={returns} /> : null}
+        {account?.role === "admin" ? <ReturnsForm initial={returns} /> : null}
       </article>
     </ShopFrame>
   );

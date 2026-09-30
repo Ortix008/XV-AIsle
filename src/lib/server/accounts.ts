@@ -1,13 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { isAccountRole, type AccountRole } from "../account";
 import { getDb } from "./db";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password";
-import {
-  checkBank,
-  checkCard,
-  checkWallet,
-  type PayoutMethod,
-  type PayoutOnFile,
-} from "../payout";
 
 const MONTH = 30 * 24 * 60 * 60 * 1000;
 
@@ -17,6 +11,8 @@ export type PublicAccount = {
   email: string;
   createdAt: number;
   memberSince: number | null;
+  role: AccountRole;
+  membershipStatus: string | null;
 };
 
 type AccountRow = {
@@ -29,10 +25,29 @@ type AccountRow = {
   member_since: number | null;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  role?: string | null;
+  membership_status?: string | null;
 };
 
 function tokenHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function adminEmail() {
+  return process.env.ADMIN_EMAIL?.trim().toLowerCase() ?? "";
+}
+
+function roleFor(row: AccountRow): AccountRole {
+  const admin = adminEmail();
+  if (admin && row.email === admin) {
+    if (row.role !== "admin") getDb().prepare("UPDATE accounts SET role = 'admin' WHERE id = ?").run(row.id);
+    return "admin";
+  }
+  if (row.role === "admin" || !isAccountRole(row.role)) {
+    getDb().prepare("UPDATE accounts SET role = 'buyer' WHERE id = ?").run(row.id);
+    return "buyer";
+  }
+  return row.role;
 }
 
 function publicAccount(row: AccountRow): PublicAccount {
@@ -42,7 +57,13 @@ function publicAccount(row: AccountRow): PublicAccount {
     email: row.email,
     createdAt: row.created_at,
     memberSince: row.member_since,
+    role: roleFor(row),
+    membershipStatus: row.membership_status ?? null,
   };
+}
+
+function initialRole(email: string): AccountRole {
+  return adminEmail() && email === adminEmail() ? "admin" : "buyer";
 }
 
 export function signUp(input: { name: string; email: string; password: string }) {
@@ -68,11 +89,22 @@ export function signUp(input: { name: string; email: string; password: string })
     member_since: null,
     stripe_customer_id: null,
     stripe_subscription_id: null,
+    role: initialRole(email),
+    membership_status: null,
   };
   db.prepare(
-    `INSERT INTO accounts (id, name, email, password_hash, password_salt, created_at, member_since, stripe_customer_id, stripe_subscription_id)
-     VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL)`,
-  ).run(account.id, account.name, account.email, account.password_hash, account.password_salt, account.created_at);
+    `INSERT INTO accounts (
+       id, name, email, password_hash, password_salt, created_at, member_since, stripe_customer_id, stripe_subscription_id, role
+     ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?)`,
+  ).run(
+    account.id,
+    account.name,
+    account.email,
+    account.password_hash,
+    account.password_salt,
+    account.created_at,
+    account.role,
+  );
   return { account: publicAccount(account), token: openSession(account.id) };
 }
 
@@ -117,52 +149,19 @@ export function endSession(token: string | undefined | null) {
   getDb().prepare("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash(token));
 }
 
-export function readPayout(accountId: string): PayoutOnFile | null {
-  const row = getDb()
-    .prepare("SELECT method, last4 FROM payouts WHERE account_id = ?")
-    .get(accountId) as { method: PayoutMethod; last4: string } | undefined;
-  if (!row) return null;
-  if (row.method !== "card" && row.method !== "bank" && row.method !== "bitcoin" && row.method !== "dogecoin") {
-    return null;
-  }
-  return { method: row.method, last4: row.last4 };
+export function getAccount(accountId: string) {
+  const row = getDb().prepare("SELECT * FROM accounts WHERE id = ?").get(accountId) as AccountRow | undefined;
+  return row ? publicAccount(row) : null;
 }
 
-export function savePayout(
-  accountId: string,
-  input: {
-    method: PayoutMethod;
-    name?: string;
-    number?: string;
-    expiry?: string;
-    routing?: string;
-    account?: string;
-    address?: string;
-  },
-) {
-  let last4 = "";
-  if (input.method === "card") {
-    const problem = checkCard({ name: input.name ?? "", number: input.number ?? "", expiry: input.expiry ?? "" });
-    if (problem) return { error: problem };
-    const digits = (input.number ?? "").replace(/\D/g, "");
-    last4 = digits.slice(-4);
-  } else if (input.method === "bank") {
-    const problem = checkBank({ routing: input.routing ?? "", account: input.account ?? "" });
-    if (problem) return { error: problem };
-    const digits = (input.account ?? "").replace(/\D/g, "");
-    last4 = digits.slice(-4);
-  } else {
-    const problem = checkWallet(input.method, input.address ?? "");
-    if (problem) return { error: problem };
-    last4 = "0000";
+export function setOwnRole(accountId: string, role: "reseller" | "supplier") {
+  const row = getDb().prepare("SELECT * FROM accounts WHERE id = ?").get(accountId) as AccountRow | undefined;
+  if (!row) return { error: "That account is not on file." as const };
+  if (adminEmail() && row.email === adminEmail()) {
+    return { error: "The operator role comes from the server configuration." as const };
   }
-  getDb()
-    .prepare(
-      `INSERT INTO payouts (account_id, method, last4, wallet) VALUES (?, ?, ?, NULL)
-       ON CONFLICT(account_id) DO UPDATE SET method = excluded.method, last4 = excluded.last4, wallet = NULL`,
-    )
-    .run(accountId, input.method, last4);
-  return { payout: { method: input.method, last4 } satisfies PayoutOnFile };
+  getDb().prepare("UPDATE accounts SET role = ? WHERE id = ?").run(role, accountId);
+  return { account: getAccount(accountId)! };
 }
 
 export function markMember(accountId: string, stripeCustomerId: string | null, stripeSubscriptionId: string | null) {
@@ -171,18 +170,54 @@ export function markMember(accountId: string, stripeCustomerId: string | null, s
       `UPDATE accounts
        SET member_since = COALESCE(member_since, ?),
            stripe_customer_id = COALESCE(?, stripe_customer_id),
-           stripe_subscription_id = COALESCE(?, stripe_subscription_id)
+           stripe_subscription_id = COALESCE(?, stripe_subscription_id),
+           membership_status = 'active'
        WHERE id = ?`,
     )
     .run(Date.now(), stripeCustomerId, stripeSubscriptionId, accountId);
+}
+
+export function setMembershipInactive(
+  accountId: string,
+  status: "past_due" | "canceled",
+  stripeCustomerId: string | null,
+  stripeSubscriptionId: string | null,
+) {
+  getDb()
+    .prepare(
+      `UPDATE accounts
+       SET member_since = NULL,
+           membership_status = ?,
+           stripe_customer_id = COALESCE(?, stripe_customer_id),
+           stripe_subscription_id = COALESCE(?, stripe_subscription_id)
+       WHERE id = ?`,
+    )
+    .run(status, stripeCustomerId, stripeSubscriptionId, accountId);
 }
 
 export function clearMembership(accountId: string) {
   const row = getDb()
     .prepare("SELECT stripe_subscription_id FROM accounts WHERE id = ?")
     .get(accountId) as { stripe_subscription_id: string | null } | undefined;
-  getDb().prepare("UPDATE accounts SET member_since = NULL WHERE id = ?").run(accountId);
+  getDb().prepare("UPDATE accounts SET member_since = NULL, membership_status = 'canceled' WHERE id = ?").run(accountId);
   return row?.stripe_subscription_id ?? null;
+}
+
+export function accountIdByStripe(ids: { customerId?: string | null; subscriptionId?: string | null }) {
+  const db = getDb();
+  if (ids.subscriptionId) {
+    const row = db.prepare("SELECT id FROM accounts WHERE stripe_subscription_id = ?").get(ids.subscriptionId) as
+      | { id: string }
+      | undefined;
+    if (row) return row.id;
+  }
+  if (ids.customerId) {
+    const row = db.prepare("SELECT id FROM accounts WHERE stripe_customer_id = ?").get(ids.customerId) as
+      | { id: string }
+      | undefined;
+    if (row) return row.id;
+  }
+  return null;
 }
 
 export function billingConfigured() {

@@ -114,6 +114,10 @@ function ListingEditor({
   const [smallShops, setSmallShops] = useState<{ id: string; name: string; city: string; madeInUsa: boolean }[]>([]);
   const [smallId, setSmallId] = useState("");
   const [madeInUsa, setMadeInUsa] = useState(false);
+  const [supplierAccountId, setSupplierAccountId] = useState("");
+  const [supplierCostCents, setSupplierCostCents] = useState("");
+  const [supplierShippingCents, setSupplierShippingCents] = useState("");
+  const [feeBps, setFeeBps] = useState("");
   useEffect(() => {
     fetch("/api/floors")
       .then(async (response) => {
@@ -141,6 +145,12 @@ function ListingEditor({
   const landed = landedCost(supplier);
   const stack = costStack(price.retail, landed);
   const stale = (supplierId ?? supplier.id) !== listing.supplierId && supplierId != null;
+  const moneyFields = {
+    supplierAccountId,
+    supplierCostCents: supplierCostCents.trim() ? Number(supplierCostCents) : Math.round(landed * 100),
+    supplierShippingCents: supplierShippingCents.trim() ? Number(supplierShippingCents) : 0,
+    ...(feeBps.trim() ? { feeBps: Number(feeBps) } : {}),
+  };
   const activeSupplier = supplierId
     ? product.suppliers.find((item) => item.id === supplierId)
     : null;
@@ -183,6 +193,7 @@ function ListingEditor({
                   published: true,
                   madeInUsa: madeInUsa || smallShop?.madeInUsa === true,
                   shelf,
+                  ...moneyFields,
                 }).then((message) => {
                   setStorePending(false);
                   if (message) {
@@ -216,6 +227,7 @@ function ListingEditor({
                   published: false,
                   madeInUsa: madeInUsa || smallShop?.madeInUsa === true,
                   shelf,
+                  ...moneyFields,
                 }).then((message) => {
                   setStorePending(false);
                   if (message) {
@@ -231,6 +243,36 @@ function ListingEditor({
           )}
         </div>
       </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Input
+          value={supplierAccountId}
+          onChange={(event) => setSupplierAccountId(event.target.value)}
+          placeholder="Supplier account id"
+          autoComplete="off"
+        />
+        <Input
+          value={supplierCostCents}
+          onChange={(event) => setSupplierCostCents(event.target.value)}
+          inputMode="numeric"
+          placeholder={`Supplier unit cost in cents (${Math.round(landed * 100)})`}
+        />
+        <Input
+          value={supplierShippingCents}
+          onChange={(event) => setSupplierShippingCents(event.target.value)}
+          inputMode="numeric"
+          placeholder="Supplier shipping cents, once per order"
+        />
+        <Input
+          value={feeBps}
+          onChange={(event) => setFeeBps(event.target.value)}
+          inputMode="numeric"
+          placeholder="Platform fee basis points, 800–1200"
+        />
+      </div>
+      <p className="text-xs text-pretty text-muted-foreground">
+        Leave the fee blank for the platform default. The supplier account id is on that person’s membership page.
+        Publishing needs an active membership and a finished Stripe payout setup.
+      </p>
       {storeError ? <p className="text-sm text-late">{storeError}</p> : null}
       {listing.status === "ready" ? (
         <p className="text-sm">

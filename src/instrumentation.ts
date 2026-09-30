@@ -7,9 +7,11 @@ export async function register() {
   } catch (error) {
     console.error("Starter shelf did not publish.", error);
   }
-  try {
-    await preferCardCheckout();
-  } catch (error) {
-    console.error("Card checkout preference did not update.", error);
+  if (process.env.STRIPE_CARD_CHECKOUT_ONLY === "1") {
+    try {
+      await preferCardCheckout();
+    } catch (error) {
+      console.error("Card checkout preference did not update.", error);
+    }
   }
 }

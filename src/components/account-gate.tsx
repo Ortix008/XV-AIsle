@@ -8,8 +8,8 @@ import { DepartmentGrid } from "@/components/department-grid";
 import { welcomeHero, welcomeReach, welcomeTeam } from "@/lib/art";
 import { bots } from "@/lib/bots";
 import { MEMBER_PRICE } from "@/lib/account";
+import { ConnectPayout } from "@/components/connect-payout";
 import { PayMembership } from "@/components/pay-membership";
-import { PayoutForm } from "@/components/payout-form";
 import { useAccount } from "@/lib/account-store";
 
 const pulse = [
@@ -264,7 +264,7 @@ export function ClosedScreen() {
           from here. If you do not continue, the account stays on file and the SI Team stops.
         </p>
         <PayMembership />
-        <PayoutForm />
+        <ConnectPayout />
         <button
           type="button"
           className="w-fit text-sm text-muted-foreground underline-offset-4 hover:underline"

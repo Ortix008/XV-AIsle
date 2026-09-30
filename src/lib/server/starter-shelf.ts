@@ -49,19 +49,10 @@ const starters: Starter[] = [
 ];
 
 function shelfOperatorId() {
-  const db = getDb();
   const preferred = process.env.STORE_OPERATOR_EMAIL?.trim().toLowerCase();
-  if (preferred) {
-    const row = db.prepare("SELECT id FROM accounts WHERE email = ?").get(preferred) as { id: string } | undefined;
-    return row?.id ?? null;
-  }
-  const rows = db.prepare("SELECT id, email FROM accounts ORDER BY created_at").all() as {
-    id: string;
-    email: string;
-  }[];
-  const real = rows.filter((row) => !row.email.endsWith("@example.com"));
-  if (real.length === 1) return real[0].id;
-  return null;
+  if (!preferred) return null;
+  const row = getDb().prepare("SELECT id FROM accounts WHERE email = ?").get(preferred) as { id: string } | undefined;
+  return row?.id ?? null;
 }
 
 function priceCents(item: Starter) {

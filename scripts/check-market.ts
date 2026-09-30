@@ -8,7 +8,7 @@ delete process.env.SUPPLIER_API_KEY;
 
 async function main() {
 const { closeDb, getDb } = await import("../src/lib/server/db");
-const { savePayout, signIn, signUp } = await import("../src/lib/server/accounts");
+const { signIn, signUp } = await import("../src/lib/server/accounts");
 const { createPendingOrder, fulfillPaidOrder, publishListing } = await import("../src/lib/server/store");
 const { requestShipment } = await import("../src/lib/server/supplier");
 const { verifyStripeSignature } = await import("../src/lib/server/stripe");
@@ -19,18 +19,6 @@ const wrong = signIn({ email: "seller@example.com", password: "nope-nope" });
 if (!("error" in wrong)) throw new Error("wrong password should fail");
 const again = signIn({ email: "seller@example.com", password: "market-test" });
 if ("error" in again) throw new Error(again.error);
-
-const card = "4242424242424242";
-const payout = savePayout(joined.account.id, {
-  method: "card",
-  name: "Example Seller",
-  number: card,
-  expiry: "12/30",
-});
-if ("error" in payout) throw new Error(payout.error);
-if (payout.payout.last4 !== "4242") throw new Error("expected last4");
-const stored = JSON.stringify(getDb().prepare("SELECT * FROM payouts").all());
-if (stored.includes(card)) throw new Error("full card number was stored");
 
 const published = publishListing(joined.account.id, {
   productId: "sheet-pan",
@@ -43,6 +31,8 @@ const published = publishListing(joined.account.id, {
   supplierOrigin: "Elizabeth, NJ",
   shipDaysMin: 2,
   shipDaysMax: 4,
+  supplierAccountId: joined.account.id,
+  supplierCostCents: 500,
 });
 if ("error" in published) throw new Error(published.error);
 
@@ -60,6 +50,7 @@ const pending = createPendingOrder({
   },
 });
 if ("error" in pending) throw new Error(pending.error);
+getDb().prepare("UPDATE orders SET status = 'paid' WHERE id = ?").run(pending.order.id);
 const queued = await fulfillPaidOrder(pending.order.id);
 if (queued?.status !== "queued") throw new Error(`expected queued, got ${queued?.status}`);
 
@@ -92,7 +83,7 @@ const accepted = await requestShipment(
   },
 );
 if (accepted.status !== "accepted" || accepted.ref !== "SUP-19") throw new Error("supplier should accept");
-if (!sentBody.includes("LN-PAN-Q") || sentBody.includes(card)) throw new Error("shipment body was wrong");
+if (!sentBody.includes("LN-PAN-Q")) throw new Error("shipment body was wrong");
 
 const header = "t=1,v1=dead";
 if (verifyStripeSignature("{}", header, "secret")) throw new Error("bad signature should fail");
@@ -213,7 +204,7 @@ const stolen = publishListing(other.account.id, {
   shipDaysMax: 4,
 });
 if (!("error" in stolen)) throw new Error("another account should not replace a page");
-const { settleCheckoutSession } = await import("../src/lib/server/store");
+const { settleCheckoutSession } = await import("../src/lib/server/ledger");
 const underpaid = await settleCheckoutSession({
   id: "cs_test_underpaid",
   url: null,
@@ -227,12 +218,18 @@ const underpaid = await settleCheckoutSession({
 if (!("error" in underpaid)) throw new Error("underpaid session should not fulfill");
 const { ensureStarterShelf } = await import("../src/lib/server/starter-shelf");
 const { saveReturnsAddress, readReturnsAddress } = await import("../src/lib/server/settings");
+delete process.env.STORE_OPERATOR_EMAIL;
 ensureStarterShelf();
 if (getDb().prepare("SELECT product_id FROM listings WHERE product_id = 'bench-scraper'").get()) {
   throw new Error("example accounts should not receive the starter shelf");
 }
 const operator = signUp({ name: "Store Operator", email: "operator@xvaisle.test", password: "market-test" });
 if ("error" in operator) throw new Error(operator.error);
+ensureStarterShelf();
+if (getDb().prepare("SELECT product_id FROM listings WHERE product_id = 'bench-scraper'").get()) {
+  throw new Error("the first real account must not become the operator");
+}
+process.env.STORE_OPERATOR_EMAIL = "operator@xvaisle.test";
 ensureStarterShelf();
 const scraper = getDb().prepare("SELECT account_id, price_cents FROM listings WHERE product_id = 'bench-scraper'").get() as
   | { account_id: string; price_cents: number }

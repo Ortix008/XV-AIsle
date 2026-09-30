@@ -21,6 +21,7 @@ async function main() {
   loadEnvFile(".env.local");
   loadEnvFile(".env");
   const { preferCardCheckout } = await import("../src/lib/server/card-checkout");
+  const { isLiveKey } = await import("../src/lib/server/stripe");
   const { ensureStarterShelf } = await import("../src/lib/server/starter-shelf");
   const { readReturnsAddress } = await import("../src/lib/server/settings");
   const { closeDb, getDb } = await import("../src/lib/server/db");
@@ -37,12 +38,36 @@ async function main() {
   const supplierKey = process.env.SUPPLIER_API_KEY?.trim() ?? "";
   const database = process.env.DATABASE_PATH?.trim() || "data/xvaisle.sqlite";
   const returns = readReturnsAddress();
-  const mode = stripe.startsWith("sk_live_") ? "live" : stripe.startsWith("sk_test_") ? "test" : "missing";
+  const mode = !stripe ? "missing" : isLiveKey(stripe) ? "live" : "test";
+  const liveAllowed = process.env.STRIPE_ALLOW_LIVE === "1";
 
   console.log("XVAIsle deploy checklist");
   line(appUrl.startsWith("https://xvaisle.com"), `APP_URL is ${appUrl || "unset"}. Public address is https://xvaisle.com`);
-  line(mode === "live", `Stripe key is ${mode}. Live checkout needs an sk_live_ key in STRIPE_SECRET_KEY`);
-  line(Boolean(webhook), webhook ? "STRIPE_WEBHOOK_SECRET is set" : "STRIPE_WEBHOOK_SECRET is empty. Add the signing secret from the Stripe webhook");
+  line(
+    mode === "test" || (mode === "live" && liveAllowed),
+    `Stripe key is ${mode}. Test keys are the default. A live key also needs STRIPE_ALLOW_LIVE=1`,
+  );
+  line(Boolean(webhook), webhook ? "STRIPE_WEBHOOK_SECRET is set" : "STRIPE_WEBHOOK_SECRET is empty. Add the signing secret from /api/billing/webhook");
+  line(
+    Boolean(process.env.STRIPE_CONNECT_WEBHOOK_SECRET?.trim()),
+    process.env.STRIPE_CONNECT_WEBHOOK_SECRET?.trim()
+      ? "STRIPE_CONNECT_WEBHOOK_SECRET is set"
+      : "STRIPE_CONNECT_WEBHOOK_SECRET is empty. Add the signing secret from /api/connect/webhook",
+  );
+  line(Boolean(process.env.ADMIN_EMAIL?.trim()), process.env.ADMIN_EMAIL?.trim() ? "ADMIN_EMAIL is set" : "ADMIN_EMAIL is empty");
+  line(
+    Boolean(process.env.STORE_OPERATOR_EMAIL?.trim()),
+    process.env.STORE_OPERATOR_EMAIL?.trim()
+      ? "STORE_OPERATOR_EMAIL is set"
+      : "STORE_OPERATOR_EMAIL is empty. Starter pages stay unpublished",
+  );
+  line(
+    Boolean(process.env.SUPPLIER_CALLBACK_SECRET?.trim()),
+    process.env.SUPPLIER_CALLBACK_SECRET?.trim()
+      ? "SUPPLIER_CALLBACK_SECRET is set"
+      : "SUPPLIER_CALLBACK_SECRET is empty. Only an admin can mark delivery",
+  );
+  line(process.env.STRIPE_ALLOW_LIVE !== "1", "STRIPE_ALLOW_LIVE is off, so live keys are refused");
   line(Boolean(supplierUrl && supplierKey), supplierUrl && supplierKey ? "Supplier URL and key are both set" : "Supplier URL and key are empty. Paid orders stay queued");
   line(Boolean(returns), returns ? "Return address is saved" : "Return address is empty. Save it on /shop/safety");
   line(shelf.some((item) => item.product_id === "bench-scraper") && shelf.some((item) => item.product_id === "sheet-pan"), `Store pages: ${shelf.map((item) => item.title).join(", ") || "none yet"}`);
@@ -50,9 +75,11 @@ async function main() {
   if (process.env.TRUST_PROXY === "1") line(true, "TRUST_PROXY=1, so sign-in limits use the last forwarding hop");
   else line(true, "TRUST_PROXY is unset. Leave it unset until a reverse proxy appends the visitor address");
 
-  if (stripe) {
+  if (process.env.STRIPE_CARD_CHECKOUT_ONLY === "1" && stripe) {
     const card = await preferCardCheckout();
     line(card.ok, card.ok ? "Link and US bank display are off on this Stripe key" : card.reason);
+  } else {
+    line(true, "STRIPE_CARD_CHECKOUT_ONLY is unset, so boot does not change Stripe payment methods");
   }
 
   closeDb();
