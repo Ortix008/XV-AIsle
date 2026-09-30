@@ -1,0 +1,32 @@
+# Public store. Caddy gets the HTTPS certificate after xvaisle.com points here.
+services:
+  store:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_URL: https://xvaisle.com
+      TRUST_PROXY: "1"
+      DATABASE_PATH: /data/xvaisle.sqlite
+    volumes:
+      - xvaisle-data:/data
+    expose:
+      - "4317"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - store
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  xvaisle-data:
+  caddy-data:
+  caddy-config:
