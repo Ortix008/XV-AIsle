@@ -30,9 +30,6 @@ export function ShopFrame({ children }: { children: ReactNode }) {
         <Link href="/shop/small" className="whitespace-nowrap">
           Small business
         </Link>
-        <Link href="/shop/x" className="whitespace-nowrap">
-          From X
-        </Link>
       </nav>
       {children}
     </div>

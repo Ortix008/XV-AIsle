@@ -148,6 +148,11 @@ export function getDb() {
       id INTEGER PRIMARY KEY CHECK (id = 1),
       next_number INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS login_challenges (
+      token_hash TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS ledger_transfers (
       id TEXT PRIMARY KEY,
       ledger_id TEXT NOT NULL,
@@ -164,6 +169,10 @@ export function getDb() {
   addColumn(next, "accounts", "role", "TEXT NOT NULL DEFAULT 'buyer'");
   addColumn(next, "accounts", "membership_status", "TEXT");
   addColumn(next, "accounts", "email_verified", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "accounts", "failed_logins", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "accounts", "locked_until", "INTEGER");
+  addColumn(next, "accounts", "totp_secret", "TEXT");
+  addColumn(next, "accounts", "totp_enabled", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "listings", "made_in_usa", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "listings", "shelf", "TEXT NOT NULL DEFAULT 'national'");
   addColumn(next, "listings", "supplier_account_id", "TEXT");

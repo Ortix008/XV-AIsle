@@ -23,10 +23,6 @@ export default function ShopPage() {
           Small business
         </Link>
         <span className="text-muted-foreground"> · </span>
-        <Link href="/shop/x" className="underline underline-offset-4">
-          From X
-        </Link>
-        <span className="text-muted-foreground"> · </span>
         <Link href="/shop/safety" className="underline underline-offset-4">
           How buying works
         </Link>

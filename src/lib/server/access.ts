@@ -6,12 +6,26 @@ export type Actor = {
   memberSince: number | null;
   membershipStatus: string | null;
   emailVerified: boolean;
+  totpEnabled: boolean;
 };
 
 export function verifiedAdmin(account: Actor | null) {
   if (!account) return { status: 401 as const, error: "Sign in first." };
   if (account.role !== "admin" || !account.emailVerified) {
     return { status: 403 as const, error: "Only a verified operator can do that." };
+  }
+  return null;
+}
+
+/** Admin actions that approve a product or release a payout. */
+export function adminWithTotp(account: Actor | null) {
+  const admin = verifiedAdmin(account);
+  if (admin) return admin;
+  if (!account?.totpEnabled) {
+    return {
+      status: 403 as const,
+      error: "Turn on an authenticator app before you approve a product or release a payout.",
+    };
   }
   return null;
 }

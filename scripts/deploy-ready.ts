@@ -78,7 +78,15 @@ async function main() {
   line(process.env.STRIPE_ALLOW_LIVE !== "1", "STRIPE_ALLOW_LIVE is off, so live keys are refused");
   line(Boolean(supplierUrl && supplierKey), supplierUrl && supplierKey ? "Supplier URL and key are both set" : "Supplier URL and key are empty. Paid orders stay queued");
   line(Boolean(returns), returns ? "Return address is saved" : "Return address is empty. Save it on /shop/safety");
-  line(shelf.some((item) => item.product_id === "bench-scraper") && shelf.some((item) => item.product_id === "sheet-pan"), `Store pages: ${shelf.map((item) => item.title).join(", ") || "none yet"}`);
+  const demo = process.env.DEMO_SEED === "1";
+  const samples =
+    shelf.some((item) => item.product_id === "bench-scraper") && shelf.some((item) => item.product_id === "sheet-pan");
+  line(
+    demo ? samples : !samples,
+    demo
+      ? `DEMO_SEED=1. Sample pages: ${shelf.map((item) => item.title).join(", ") || "none yet"}`
+      : "DEMO_SEED is off. Sample products stay out of the public shop",
+  );
   line(database.startsWith("/") || database.startsWith("/data"), `Database path is ${database}. Use a disk path such as /data/xvaisle.sqlite`);
   if (process.env.TRUST_PROXY === "1") line(true, "TRUST_PROXY=1, so sign-in limits use the last forwarding hop");
   else line(true, "TRUST_PROXY is unset. Leave it unset until a reverse proxy appends the visitor address");

@@ -98,7 +98,7 @@ function TeamSection() {
 }
 
 export function JoinScreen() {
-  const { signUp, signIn } = useAccount();
+  const { signUp, signIn, totpChallenge, submitTotp } = useAccount();
   const [mode, setMode] = useState<"join" | "sign-in">("join");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -106,6 +106,7 @@ export function JoinScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [code, setCode] = useState("");
   const [beat, setBeat] = useState(0);
 
   const mismatchMessage = "Those passwords do not match.";
@@ -122,8 +123,9 @@ export function JoinScreen() {
       return;
     }
     setPending(true);
-    const message =
-      mode === "join"
+    const message = totpChallenge
+      ? await submitTotp(code)
+      : mode === "join"
         ? await signUp({ name, email, password, confirmPassword })
         : await signIn({ email, password });
     setError(message);
@@ -175,8 +177,8 @@ export function JoinScreen() {
               </p>
               <h1 className="mt-2 max-w-3xl text-balance text-[1.85rem] leading-tight font-semibold tracking-tight text-white sm:text-4xl">
                 {mode === "join"
-                  ? "Sell big-brand overstock. No inventory. No trust fund needed."
-                  : "The market is where you left it."}
+                  ? "Sell approved products without holding inventory. Buyers pay on xvaisle.com."
+                  : "Welcome back."}
               </h1>
             </div>
           </div>
@@ -188,7 +190,20 @@ export function JoinScreen() {
                 : `Sign in and the market opens again. The first month is free. After that, membership is $${MEMBER_PRICE} a month.`}
             </p>
             <form onSubmit={onSubmit} className="mt-6 flex max-w-sm flex-col gap-3">
-              {mode === "join" ? (
+              {totpChallenge ? (
+                <label className="flex flex-col gap-1 text-base">
+                  Authenticator code
+                  <Input
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    required
+                    className="h-11 md:text-base"
+                  />
+                  <span className="text-base text-[#2c3036]">Enter the 6-digit code from your authenticator app.</span>
+                </label>
+              ) : mode === "join" ? (
                 <label className="flex flex-col gap-1 text-base">
                   Your name
                   <Input
@@ -201,6 +216,8 @@ export function JoinScreen() {
                   />
                 </label>
               ) : null}
+              {totpChallenge ? null : (
+              <>
               <label className="flex flex-col gap-1 text-base">
                 Email
                 <Input
@@ -238,13 +255,15 @@ export function JoinScreen() {
                   ) : null}
                 </div>
               ) : null}
+              </>
+              )}
               {error && error !== confirmError && !staleMismatch ? (
                 <p className="text-base text-late" role="alert">
                   {error}
                 </p>
               ) : null}
-              <Button type="submit" disabled={pending} className="mt-1 w-fit">
-                {mode === "join" ? "Join the market" : "Sign in"}
+              <Button type="submit" disabled={pending} className="mt-1 h-11 w-fit">
+                {totpChallenge ? "Confirm code" : mode === "join" ? "Create an account" : "Sign in"}
               </Button>
               <button
                 type="button"

@@ -230,6 +230,12 @@ if (getDb().prepare("SELECT product_id FROM listings WHERE product_id = 'bench-s
   throw new Error("the first real account must not become the operator");
 }
 process.env.STORE_OPERATOR_EMAIL = "operator@xvaisle.test";
+delete process.env.DEMO_SEED;
+ensureStarterShelf();
+if (getDb().prepare("SELECT product_id FROM listings WHERE product_id = 'bench-scraper' AND published = 1").get()) {
+  throw new Error("sample products stay out of the shop unless DEMO_SEED=1");
+}
+process.env.DEMO_SEED = "1";
 ensureStarterShelf();
 const scraper = getDb().prepare("SELECT account_id, price_cents FROM listings WHERE product_id = 'bench-scraper'").get() as
   | { account_id: string; price_cents: number }
@@ -241,6 +247,12 @@ const panOwner = getDb().prepare("SELECT account_id FROM listings WHERE product_
   account_id: string;
 };
 if (panOwner.account_id !== joined.account.id) throw new Error("existing sheet pan should stay with its owner");
+delete process.env.DEMO_SEED;
+ensureStarterShelf();
+const hidden = getDb()
+  .prepare("SELECT published FROM listings WHERE product_id = 'bench-scraper'")
+  .get() as { published: number } | undefined;
+if (hidden?.published !== 0) throw new Error("turning DEMO_SEED off unpublishes sample products");
 const savedReturns = saveReturnsAddress("100 Example Street, Sample City, ST 00000");
 if ("error" in savedReturns || readReturnsAddress() !== "100 Example Street, Sample City, ST 00000") {
   throw new Error("return address should save");

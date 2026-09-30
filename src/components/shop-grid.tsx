@@ -15,6 +15,7 @@ export type ShopCard = {
   shipDaysMax: number;
   madeInUsa?: boolean;
   shelf?: string;
+  sample?: boolean;
 };
 
 export function ShopGrid({
@@ -56,6 +57,7 @@ export function ShopGrid({
                 ) : null}
               </div>
               <p className="mt-2 text-sm font-medium">{listing.title}</p>
+              {listing.sample ? <p className="text-xs font-medium">Sample</p> : null}
               {listing.madeInUsa ? <p className="text-xs font-medium">Made in the USA</p> : null}
               {listing.shelf === "small" ? <p className="text-xs text-muted-foreground">Small business</p> : null}
               <p className="text-sm text-muted-foreground">

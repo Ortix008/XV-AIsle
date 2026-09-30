@@ -212,12 +212,13 @@ async function main() {
   assert(membershipCalls[0]?.idempotency !== membershipCalls[1]?.idempotency, "membership keys are not the calendar day");
 
   const { closeDb, getDb } = await import("../src/lib/server/db");
-  const { getAccount, seedAdmin, sendAccountVerification, setOwnRole, signIn, signUp, verifyEmailToken } = await import(
+  const { confirmTotp, getAccount, seedAdmin, sendAccountVerification, setOwnRole, signIn, signUp, startTotp, verifyEmailToken } = await import(
     "../src/lib/server/accounts"
   );
   const { hasActiveMembership } = await import("../src/lib/account");
   const { publishForAccount } = await import("../src/lib/server/publish");
-  const { createCatalogItem } = await import("../src/lib/server/catalog");
+  const { createCatalogItem, reviewCatalogItem } = await import("../src/lib/server/catalog");
+  const { totpCode } = await import("../src/lib/server/totp");
   const { createPendingOrder, publishListing } = await import("../src/lib/server/store");
   const { acceptStripeEvent } = await import("../src/lib/server/stripe-events");
   const { saveReturnsFor } = await import("../src/lib/server/settings");
@@ -291,6 +292,18 @@ async function main() {
     origin: "Elizabeth, NJ",
   });
   if ("error" in catalog || "error" in expensive) throw new Error("catalog");
+  assert(catalog.item.approved === false, "a supplier submission waits for review");
+  const noTotp = reviewCatalogItem(operator, catalog.item.id, true);
+  assert("error" in noTotp && noTotp.status === 403, "an admin without an authenticator cannot approve a product");
+  const started = startTotp(operator.id);
+  if ("error" in started) throw new Error(started.error);
+  const totpOn = confirmTotp(operator.id, totpCode(started.secret));
+  if ("error" in totpOn) throw new Error(totpOn.error);
+  const admin = getAccount(operator.id);
+  if (!admin?.totpEnabled) throw new Error("authenticator did not turn on");
+  const approvedCatalog = reviewCatalogItem(admin, catalog.item.id, true);
+  const approvedExpensive = reviewCatalogItem(admin, expensive.item.id, true);
+  assert(!("error" in approvedCatalog) && !("error" in approvedExpensive), "an admin with an authenticator can approve products");
   const page = {
     productId: "pan",
     sku: "PAN-1",
@@ -596,7 +609,7 @@ async function main() {
   if ("error" in riskConfirm) throw new Error(riskConfirm.error);
   const held = calls.filter((call) => call.url.includes("/v1/transfers") && !call.url.includes("reversals")).length;
   assert(held === beforeRiskTransfers, "elevated risk does not transfer");
-  const approved = await approveFor(operator, risky.order.id);
+  const approved = await approveFor(getAccount(operator.id), risky.order.id);
   assert(!("error" in approved), "admin can approve");
   const released = calls.filter((call) => call.url.includes("/v1/transfers") && !call.url.includes("reversals")).length;
   assert(released === held + 2, "approval releases the two shares");
@@ -779,7 +792,7 @@ async function main() {
   await releaseMatured(Date.now() + 8 * 24 * 60 * 60 * 1000);
   const duringDispute = calls.filter((call) => call.url.includes("/v1/transfers") && !call.url.includes("reversals")).length;
   assert(duringDispute === beforeWindow, "a buyer dispute freezes the payout");
-  const reviewed = await approveFor(operator, windowOrder.order.id);
+  const reviewed = await approveFor(getAccount(operator.id), windowOrder.order.id);
   assert(!("error" in reviewed), "an admin can review a buyer dispute");
   const afterReview = calls.filter((call) => call.url.includes("/v1/transfers") && !call.url.includes("reversals")).length;
   assert(afterReview === duringDispute + 2, "admin review releases the frozen payout");
@@ -839,7 +852,10 @@ async function main() {
   assert(afterPromote.member_since === keptSince, "promotion keeps membership");
   assert(afterPromote.stripe_customer_id === "cus_keep", "promotion keeps the Stripe customer");
   const stillSignsIn = signIn({ email: "second-owner@xvaisle.test", password: "market-test" });
-  assert(!("error" in stillSignsIn) && stillSignsIn.account.role === "admin", "the old password still signs in");
+  assert(
+    "account" in stillSignsIn && stillSignsIn.account?.role === "admin",
+    "the old password still signs in",
+  );
   assert(getAccount(operator.id)?.role === "admin", "promoting a second owner does not demote the first");
   const blocked = seedAdmin({ email: "stranger@xvaisle.test", password: "market-test" });
   assert("error" in blocked, "ADMIN_EMAILS allowlist refuses other emails");
@@ -886,6 +902,14 @@ async function main() {
   assert(!existsSync("src/app/api/account/payout/route.ts"), "raw payout collection is gone");
   const accounts = await import("../src/lib/server/accounts");
   assert(!("savePayout" in accounts), "the server does not accept payout numbers");
+  const lock = signUp({ name: "Lock", email: "lock@xvaisle.test", password: "market-test" });
+  if ("error" in lock) throw new Error(lock.error);
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const miss = signIn({ email: "lock@xvaisle.test", password: "wrong-pass" });
+    assert("error" in miss, "a wrong password fails");
+  }
+  const locked = signIn({ email: "lock@xvaisle.test", password: "market-test" });
+  assert("error" in locked, "five failed sign-ins lock the account");
 
   global.fetch = originalFetch;
   setStripeFetch(null);

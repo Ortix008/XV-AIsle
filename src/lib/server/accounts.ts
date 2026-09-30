@@ -3,6 +3,7 @@ import { isAccountRole, type AccountRole } from "../account";
 import { getDb } from "./db";
 import { sendVerificationLink } from "./mail";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password";
+import { authSecretReady, decryptSecret, encryptSecret, generateTotpSecret, verifyTotp } from "./totp";
 
 const MONTH = 30 * 24 * 60 * 60 * 1000;
 
@@ -15,6 +16,7 @@ export type PublicAccount = {
   role: AccountRole;
   membershipStatus: string | null;
   emailVerified: boolean;
+  totpEnabled: boolean;
 };
 
 type AccountRow = {
@@ -30,6 +32,10 @@ type AccountRow = {
   role?: string | null;
   membership_status?: string | null;
   email_verified?: number | null;
+  failed_logins?: number | null;
+  locked_until?: number | null;
+  totp_secret?: string | null;
+  totp_enabled?: number | null;
 };
 
 function tokenHash(token: string) {
@@ -63,6 +69,7 @@ function publicAccount(row: AccountRow): PublicAccount {
     role: roleFor(row),
     membershipStatus: row.membership_status ?? null,
     emailVerified: row.email_verified === 1,
+    totpEnabled: row.totp_enabled === 1,
   };
 }
 
@@ -191,10 +198,13 @@ export function seedAdmin(input: { name?: string; email: string; password?: stri
   return { account: getAccount(id)! };
 }
 
+const LOCK_MS = 15 * 60 * 1000;
+const CHALLENGE_MS = 5 * 60 * 1000;
+
 export function signIn(input: { email: string; password: string }) {
   const email = input.email.trim().toLowerCase();
   if (email.length > 120 || input.password.length > 200) {
-    return { error: "That email or password does not match." as const };
+    return { error: "That email and password do not match." as const };
   }
   const db = getDb();
   const row = db.prepare("SELECT * FROM accounts WHERE email = ?").get(email) as AccountRow | undefined;
@@ -202,10 +212,76 @@ export function signIn(input: { email: string; password: string }) {
     burnPasswordCheck(input.password);
     return { error: "That email and password do not match." as const };
   }
-  if (!verifyPassword(input.password, row.password_salt, row.password_hash)) {
+  const locked = (row.locked_until ?? 0) > Date.now();
+  const passwordOk = verifyPassword(input.password, row.password_salt, row.password_hash);
+  if (!passwordOk || locked) {
+    if (!passwordOk && !locked) {
+      const fails = (row.failed_logins ?? 0) + 1;
+      const until = fails >= 5 ? Date.now() + LOCK_MS : null;
+      db.prepare("UPDATE accounts SET failed_logins = ?, locked_until = ? WHERE id = ?").run(fails, until, row.id);
+    }
     return { error: "That email and password do not match." as const };
   }
+  db.prepare("UPDATE accounts SET failed_logins = 0, locked_until = NULL WHERE id = ?").run(row.id);
+  if (row.totp_enabled === 1) {
+    const challenge = randomBytes(32).toString("hex");
+    db.prepare("DELETE FROM login_challenges WHERE account_id = ?").run(row.id);
+    db.prepare("INSERT INTO login_challenges (token_hash, account_id, expires_at) VALUES (?, ?, ?)").run(
+      tokenHash(challenge),
+      row.id,
+      Date.now() + CHALLENGE_MS,
+    );
+    return { totpRequired: true as const, challenge };
+  }
   return { account: publicAccount(row), token: openSession(row.id) };
+}
+
+export function finishTotpSignIn(challenge: string, code: string) {
+  if (challenge.length < 32 || challenge.length > 200) {
+    return { error: "That sign-in step expired. Enter your password again." as const };
+  }
+  const db = getDb();
+  const row = db
+    .prepare("SELECT account_id, expires_at FROM login_challenges WHERE token_hash = ?")
+    .get(tokenHash(challenge)) as { account_id: string; expires_at: number } | undefined;
+  if (!row || row.expires_at < Date.now()) {
+    return { error: "That sign-in step expired. Enter your password again." as const };
+  }
+  const account = db.prepare("SELECT * FROM accounts WHERE id = ?").get(row.account_id) as AccountRow | undefined;
+  const secret = account?.totp_secret ? decryptSecret(account.totp_secret) : null;
+  if (!account || account.totp_enabled !== 1 || !secret || !verifyTotp(secret, code)) {
+    return { error: "That code did not match. Try the next code from your authenticator app." as const };
+  }
+  db.prepare("DELETE FROM login_challenges WHERE account_id = ?").run(account.id);
+  return { account: publicAccount(account), token: openSession(account.id) };
+}
+
+export function startTotp(accountId: string) {
+  if (!authSecretReady()) return { error: "Set AUTH_SECRET on the server before turning on an authenticator." as const };
+  const row = getDb().prepare("SELECT * FROM accounts WHERE id = ?").get(accountId) as AccountRow | undefined;
+  if (!row) return { error: "That account is not on file." as const };
+  if (row.totp_enabled === 1) return { error: "An authenticator is already on for this account." as const };
+  const secret = generateTotpSecret();
+  const stored = encryptSecret(secret);
+  if (!stored) return { error: "Set AUTH_SECRET on the server before turning on an authenticator." as const };
+  getDb().prepare("UPDATE accounts SET totp_secret = ?, totp_enabled = 0 WHERE id = ?").run(stored, accountId);
+  const label = encodeURIComponent(row.email);
+  return {
+    secret,
+    uri: `otpauth://totp/XVAIsle:${label}?secret=${secret}&issuer=XVAIsle&algorithm=SHA1&digits=6&period=30`,
+  };
+}
+
+export function confirmTotp(accountId: string, code: string) {
+  const row = getDb().prepare("SELECT * FROM accounts WHERE id = ?").get(accountId) as AccountRow | undefined;
+  if (!row?.totp_secret) return { error: "Start authenticator setup first." as const };
+  if (row.totp_enabled === 1) return { account: publicAccount(row) };
+  const secret = decryptSecret(row.totp_secret);
+  if (!secret || !verifyTotp(secret, code)) {
+    return { error: "That code did not match. Check the secret in your app and try the current code." as const };
+  }
+  getDb().prepare("UPDATE accounts SET totp_enabled = 1 WHERE id = ?").run(accountId);
+  return { account: getAccount(accountId)! };
 }
 
 function openSession(accountId: string) {

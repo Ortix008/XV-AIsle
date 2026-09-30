@@ -1,5 +1,5 @@
 import type { Actor } from "./access";
-import { deliverDecision } from "./access";
+import { adminWithTotp, deliverDecision } from "./access";
 import { approvePayout, markDelivered } from "./ledger";
 import { markShipped } from "./store";
 
@@ -20,7 +20,7 @@ export async function deliverFor(
 }
 
 export async function approveFor(account: Actor | null, orderId: string) {
-  const decision = deliverDecision(account);
+  const decision = adminWithTotp(account);
   if (decision) return decision;
   const result = await approvePayout(orderId);
   if ("error" in result) return { status: 400 as const, error: result.error };

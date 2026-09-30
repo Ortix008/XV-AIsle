@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { adminWithTotp } from "./access";
 import type { PublicAccount } from "./accounts";
 import { getAccount } from "./accounts";
 import { getDb } from "./db";
@@ -86,12 +87,34 @@ export function createCatalogItem(
     .prepare(
       `INSERT INTO supplier_catalog (
          id, account_id, sku, title, cost_cents, shipping_cents, origin, approved, created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`,
     )
     .run(id, account.id, sku, title, input.costCents, input.shippingCents, origin, Date.now());
-  const item = getApprovedCatalog(id);
+  const item = getCatalogItem(id);
   if (!item) return { error: "The catalog item was not saved." as const };
   return { item };
+}
+
+export function getCatalogItem(id: string) {
+  const row = getDb()
+    .prepare(
+      `SELECT catalog.id, catalog.account_id, catalog.sku, catalog.title, catalog.cost_cents,
+              catalog.shipping_cents, catalog.origin, catalog.approved, accounts.name AS supplier_name
+       FROM supplier_catalog catalog
+       JOIN accounts ON accounts.id = catalog.account_id
+       WHERE catalog.id = ?`,
+    )
+    .get(id) as CatalogRow | undefined;
+  return row ? fromRow(row) : null;
+}
+
+export function reviewCatalogItem(account: PublicAccount, id: string, approved: boolean) {
+  const decision = adminWithTotp(account);
+  if (decision) return decision;
+  const item = getCatalogItem(id);
+  if (!item) return { status: 404 as const, error: "That product is not in the review queue." };
+  getDb().prepare("UPDATE supplier_catalog SET approved = ? WHERE id = ?").run(approved ? 1 : 0, id);
+  return { status: 200 as const, item: getCatalogItem(id) };
 }
 
 export function setCatalogApproval(account: PublicAccount, id: string, approved: boolean) {

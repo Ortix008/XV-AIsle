@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { accountFromToken } from "@/lib/server/accounts";
 import { publishForAccount } from "@/lib/server/publish";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
-import { ensureStarterShelf } from "@/lib/server/starter-shelf";
+import { ensureStarterShelf, isSampleListing, visibleOnShop } from "@/lib/server/starter-shelf";
 import { listPublished } from "@/lib/server/store";
 
 function publicListing(listing: ReturnType<typeof listPublished>[number]) {
@@ -19,6 +19,7 @@ function publicListing(listing: ReturnType<typeof listPublished>[number]) {
     shipDaysMax: listing.shipDaysMax,
     madeInUsa: listing.madeInUsa,
     shelf: listing.shelf,
+    sample: isSampleListing(listing),
   };
 }
 
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
   const listings = listPublished({
     madeInUsa: madeInUsa || undefined,
     shelf: shelf === "small" || shelf === "national" ? shelf : undefined,
-  });
+  }).filter(visibleOnShop);
   return Response.json({ listings: listings.map(publicListing) });
 }
 

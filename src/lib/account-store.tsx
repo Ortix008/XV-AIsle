@@ -28,7 +28,9 @@ type AccountApi = {
   connect: ConnectState | null;
   billing: boolean;
   signUp: (input: { name: string; email: string; password: string; confirmPassword: string }) => Promise<string | null>;
+  totpChallenge: string | null;
   signIn: (input: { email: string; password: string }) => Promise<string | null>;
+  submitTotp: (code: string) => Promise<string | null>;
   signOut: () => void;
   stopMembership: () => Promise<void>;
   chooseRole: (role: "reseller" | "supplier") => Promise<string | null>;
@@ -47,6 +49,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [connect, setConnect] = useState<ConnectState | null>(null);
   const [billing, setBilling] = useState(false);
+  const [totpChallenge, setTotpChallenge] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const response = await fetch("/api/account");
@@ -107,6 +110,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       daysLeft,
       connect,
       billing,
+      totpChallenge,
       refresh,
       signUp: async ({ name, email, password, confirmPassword }) => {
         const response = await fetch("/api/account/signup", {
@@ -124,7 +128,29 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
         });
+        const data = (await response.json().catch(() => null)) as {
+          error?: string;
+          totpRequired?: boolean;
+          challenge?: string;
+        } | null;
+        if (!response.ok) return data?.error ?? "The account service did not answer.";
+        if (data?.totpRequired && data.challenge) {
+          setTotpChallenge(data.challenge);
+          return null;
+        }
+        setTotpChallenge(null);
+        await refresh();
+        return null;
+      },
+      submitTotp: async (code) => {
+        if (!totpChallenge) return "Enter your password again.";
+        const response = await fetch("/api/account/signin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ challenge: totpChallenge, code }),
+        });
         if (!response.ok) return readError(response);
+        setTotpChallenge(null);
         await refresh();
         return null;
       },
@@ -149,7 +175,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         return null;
       },
     }),
-    [ready, account, status, daysLeft, connect, billing, refresh],
+    [ready, account, status, daysLeft, connect, billing, totpChallenge, refresh],
   );
 
   return <AccountContext.Provider value={api}>{children}</AccountContext.Provider>;

@@ -32,11 +32,11 @@ const catalogProducts: Product[] = [
     keywords: ["sheet pan", "quarter sheet", "wire rack", "weeknight dinner", "line cook"],
     complements: "a bench scraper and a towel that can take heat",
     trend: {
-      platform: "X",
+      platform: "Posts",
       title: "Sheet-pan dinners after a double",
       signal: "Cooks are posting the one-pan meal they make when they get home, not a ten-step recipe.",
       evidence:
-        "X this week: line cooks posting a quarter sheet, a rack, and whatever protein was on the way home. The useful object is the pan, not a gadget.",
+        "line cooks posting a quarter sheet, a rack, and whatever protein was on the way home. The useful object is the pan, not a gadget.",
     },
     mockups: [
       {
@@ -224,11 +224,11 @@ const catalogProducts: Product[] = [
     keywords: ["fridge labels", "deli containers", "meal prep", "kitchen organization"],
     complements: "the quarts you already own",
     trend: {
-      platform: "X",
+      platform: "Posts",
       title: "Label the fridge like a walk-in",
       signal: "Home cooks who work service are posting labeled quarts, not aesthetic pantry shelves.",
       evidence:
-        "X: photos of a home fridge labeled the way a walk-in is labeled. Print-on-demand in Ohio. No reason to boat a sticker.",
+        "photos of a home fridge labeled the way a walk-in is labeled. Print-on-demand in Ohio. No reason to boat a sticker.",
     },
     mockups: [
       {
@@ -416,11 +416,11 @@ const catalogProducts: Product[] = [
     keywords: ["kitchen towels", "side towel", "cotton towel", "line cook"],
     complements: "the sheet pan and the apron",
     trend: {
-      platform: "X",
+      platform: "Posts",
       title: "Side towels at home",
       signal: "The posts that land are a towel on the shoulder, not a matching set in a basket.",
       evidence:
-        "X from cooks who still work a line: the home kitchen fails when the towel is thin. US cotton, two-pack, no monogram.",
+        "From cooks who still work a line: the home kitchen fails when the towel is thin. US cotton, two-pack, no monogram.",
     },
     mockups: [
       {
@@ -512,11 +512,11 @@ const catalogProducts: Product[] = [
     keywords: ["waist apron", "canvas apron", "kitchen clothes", "line cook"],
     complements: "the towels and the sheet pan",
     trend: {
-      platform: "X",
+      platform: "Posts",
       title: "Clothes that survive a pan",
       signal: "Apparel that is moving with cooks is a plain waist apron, not a graphic tee about cooking.",
       evidence:
-        "X: cooks posting what they wear at home after service. Plain canvas, two pockets. Print-on-demand in Ohio so a post on Tuesday can ship this week.",
+        "cooks posting what they wear at home after service. Plain canvas, two pockets. Print-on-demand in Ohio so a post on Tuesday can ship this week.",
     },
     mockups: [
       {
@@ -704,11 +704,11 @@ const catalogProducts: Product[] = [
     keywords: ["kitchen tongs", "locking tongs", "stainless tongs", "grill tongs"],
     complements: "the fish spatula and the sheet pan",
     trend: {
-      platform: "X",
+      platform: "Posts",
       title: "The tong test",
-      signal: "Cooks on X are arguing about tongs again, and the answer that repeats is 12-inch steel with a lock.",
+      signal: "Cooks are arguing about tongs again, and the answer that repeats is 12-inch steel with a lock.",
       evidence:
-        "X threads this week: silicone tips versus steel. The posts that get saved specify a lock and 12 inches. That SKU is in New Jersey.",
+        "silicone tips versus steel. The posts that get saved specify a lock and 12 inches. That SKU is in New Jersey.",
     },
     mockups: [
       {
@@ -896,11 +896,11 @@ const catalogProducts: Product[] = [
     keywords: ["court towel", "pickleball", "sports towel", "microfiber"],
     complements: "a paddle you already own",
     trend: {
-      platform: "X",
+      platform: "Posts",
       title: "Court towels, not more paddles",
       signal: "Adult rec sports posts show the towel on the fence more often than another paddle.",
       evidence:
-        "X and TikTok rec-sports clips: a plain towel on the fence. US microfiber, no joke print, ships this week.",
+        "Rec-sports clips: a plain towel on the fence. US microfiber, no joke print, ships this week.",
     },
     mockups: [
       {
@@ -1280,11 +1280,11 @@ const catalogProducts: Product[] = [
     keywords: ["heavyweight tee", "blank tee", "navy shirt", "cotton tee"],
     complements: "the waist apron, not a graphic drop",
     trend: {
-      platform: "X",
+      platform: "Posts",
       title: "Heavy blanks, not slogan shirts",
       signal: "The apparel posts that keep moving are a heavy blank in a serious color, photographed flat.",
       evidence:
-        "X apparel posts this month: heavyweight navy, no chest hit. Print-on-demand in Ohio so a post does not wait on a container.",
+        "Apparel posts this month: heavyweight navy, no chest hit. Print-on-demand in Ohio so a post does not wait on a container.",
     },
     mockups: [
       {

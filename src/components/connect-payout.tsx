@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isStripeRedirectUrl } from "@/lib/checkout-url";
 import { useAccount } from "@/lib/account-store";
 
 export function ConnectPayout() {
@@ -26,7 +27,7 @@ export function ConnectPayout() {
     setError(null);
     const response = await fetch("/api/connect/onboard", { method: "POST" });
     const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
-    if (!response.ok || !data?.url) {
+    if (!response.ok || !data?.url || !isStripeRedirectUrl(data.url)) {
       setError(data?.error ?? "Stripe did not open payout setup.");
       setPending(null);
       return;
@@ -40,7 +41,7 @@ export function ConnectPayout() {
     const response = await fetch("/api/connect/login", { method: "POST" });
     const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
     setPending(null);
-    if (!response.ok || !data?.url) {
+    if (!response.ok || !data?.url || !isStripeRedirectUrl(data.url)) {
       setError(data?.error ?? "Stripe did not open the dashboard.");
       return;
     }

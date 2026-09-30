@@ -15,6 +15,7 @@ export type Account = {
   role: AccountRole;
   membershipStatus: string | null;
   emailVerified: boolean;
+  totpEnabled?: boolean;
 };
 
 export function isAccountRole(value: string | null | undefined): value is AccountRole {

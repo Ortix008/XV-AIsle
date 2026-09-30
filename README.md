@@ -4,9 +4,9 @@
 
 An account is required for the seller desk. The first 30 days are free. After that, membership is $10 a month through Stripe, billed to the platform account. Shoppers can browse the public store without an account. Publishing a listing takes an active membership and a finished Stripe payout setup.
 
-Signup never creates an admin. The business has two co-owner admins. Each one is promoted by running the seed command once. A new account is a buyer until they choose reseller or supplier. Admin actions require a verified admin. `ADMIN_EMAILS` does not grant admin on signup.
+Signup never creates an admin. The business has two co-owner admins. Each one is promoted by running the seed command once. A new account is a buyer until they choose reseller or supplier. Admin actions require a verified admin. `ADMIN_EMAILS` does not grant admin on signup. An admin must turn on an authenticator app before they can approve a supplier product or release a payout. Sign-in is limited by IP, and five wrong passwords lock that account for 15 minutes.
 
-The SI Team finds a product, writes the page, watches the order, and drafts the post. You still say yes before anything goes out. The team runs on the catalog in this app. It does not log into X, TikTok, Instagram, a supplier site, or an ad account. Saying yes copies text. You paste it yourself.
+Helpers in the app can find a product, write a page, watch an order, and draft a post. You still say yes before anything goes out. They do not log into a social network, a supplier site, or an ad account. Saying yes copies text. You paste it yourself.
 
 | SI Team | Job |
 | --- | --- |
@@ -15,7 +15,7 @@ The SI Team finds a product, writes the page, watches the order, and drafts the 
 | Harbor | Watches orders and writes the reply if something is late or broken. |
 | Cast | Writes the posts that send people to the store. |
 
-X is how people arrive. The store is where they pay.
+Resellers share their shop link anywhere. Buyers pay on xvaisle.com.
 
 ## Stack
 
@@ -41,7 +41,7 @@ Public store:
 - `/shop/[productId]` Product page and card checkout
 - `/shop/usa` Made in the USA
 - `/shop/small` Small-business shelf
-- `/shop/x` Catalog link and a post you can paste on X
+- `/api/store/catalog` A platform-neutral product feed
 - `/shop/contact` Note to the seller
 - `/shop/safety` How buying works: payment, shipping, returns, and the return address
 - `/shop/return` Stripe return landing
@@ -52,9 +52,9 @@ With the keys in `.env.example` left blank, you can install, sign up, and browse
 
 Still manual or sample data:
 
-- Posts and retailer notes are copied by hand. Nothing is sent to X or to Walmart, Amazon, Target, or the other floors.
+- Posts and retailer notes are copied by hand. Nothing is sent to a social network or to a retailer.
 - The product book is a fixed catalog with fictional warehouses. It is not a live feed.
-- The starter store is two pages, a quarter sheet pan and a stainless bench scraper.
+- Sample products (the sheet pan and bench scraper) publish only when `DEMO_SEED=1`. Leave that unset in production.
 - Small shops are names you type in.
 
 ## How money moves
