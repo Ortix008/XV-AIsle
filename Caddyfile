@@ -1,0 +1,7 @@
+www.xvaisle.com {
+	redir https://xvaisle.com{uri} permanent
+}
+
+xvaisle.com {
+	reverse_proxy store:4317
+}
