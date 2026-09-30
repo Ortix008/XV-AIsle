@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAccount } from "@/lib/account-store";
 
 export function ConnectPayout() {
@@ -10,6 +11,12 @@ export function ConnectPayout() {
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+  const [sku, setSku] = useState("");
+  const [title, setTitle] = useState("");
+  const [costCents, setCostCents] = useState("");
+  const [shippingCents, setShippingCents] = useState("");
+  const [origin, setOrigin] = useState("");
   const returned = params.get("connect");
 
   if (!account) return null;
@@ -48,6 +55,46 @@ export function ConnectPayout() {
     if (message) setError(message);
   }
 
+  async function rotateSecret() {
+    setPending("secret");
+    setError(null);
+    const response = await fetch("/api/supplier/secret", { method: "POST" });
+    const data = (await response.json().catch(() => null)) as { secret?: string; error?: string } | null;
+    setPending(null);
+    if (!response.ok || !data?.secret) {
+      setError(data?.error ?? "The delivery secret was not created.");
+      return;
+    }
+    setSecret(data.secret);
+  }
+
+  async function addCatalog(event: React.FormEvent) {
+    event.preventDefault();
+    setPending("catalog");
+    setError(null);
+    const response = await fetch("/api/supplier/catalog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sku,
+        title,
+        costCents: Number(costCents),
+        shippingCents: Number(shippingCents || "0"),
+        origin,
+      }),
+    });
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    setPending(null);
+    if (!response.ok) {
+      setError(data?.error ?? "The catalog item was not saved.");
+      return;
+    }
+    setSku("");
+    setTitle("");
+    setCostCents("");
+    setShippingCents("");
+  }
+
   const ready = connect?.transfersStatus === "active";
 
   return (
@@ -56,8 +103,8 @@ export function ConnectPayout() {
         <h2 className="text-sm font-medium">Your share</h2>
         <p className="mt-1 text-pretty text-sm text-muted-foreground">
           Stripe holds the bank account. This market never asks for a card number, a bank number, or a crypto
-          address. After a paid order is delivered, Stripe sends the reseller share and the supplier share. The
-          platform keeps 8–12%.
+          address. After the buyer confirms delivery, or 7 days pass with no dispute, Stripe sends the reseller
+          share and the supplier share. The platform keeps 8–12%.
         </p>
       </div>
       <p className="text-xs text-muted-foreground">Account id {account.id}</p>
@@ -103,6 +150,40 @@ export function ConnectPayout() {
           >
             Refresh status
           </Button>
+        </div>
+      ) : null}
+      {account.role === "supplier" ? (
+        <div className="flex flex-col gap-2">
+          <Button type="button" variant="outline" disabled={pending !== null} onClick={() => void rotateSecret()}>
+            {pending === "secret" ? "Saving…" : "New delivery secret"}
+          </Button>
+          {secret ? (
+            <p className="break-all text-xs">
+              Copy this secret now. It is stored hashed and will not be shown again. {secret}
+            </p>
+          ) : null}
+          <form className="flex flex-col gap-2" onSubmit={(event) => void addCatalog(event)}>
+            <p className="text-sm">Catalog price</p>
+            <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Title" required />
+            <Input value={sku} onChange={(event) => setSku(event.target.value)} placeholder="SKU" required />
+            <Input
+              value={costCents}
+              onChange={(event) => setCostCents(event.target.value)}
+              inputMode="numeric"
+              placeholder="Unit cost in cents"
+              required
+            />
+            <Input
+              value={shippingCents}
+              onChange={(event) => setShippingCents(event.target.value)}
+              inputMode="numeric"
+              placeholder="Shipping cents, once per order"
+            />
+            <Input value={origin} onChange={(event) => setOrigin(event.target.value)} placeholder="Ships from" required />
+            <Button type="submit" variant="outline" disabled={pending !== null}>
+              {pending === "catalog" ? "Saving…" : "Approve this price"}
+            </Button>
+          </form>
         </div>
       ) : null}
       {error ? <p className="text-sm text-late">{error}</p> : null}

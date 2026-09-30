@@ -76,12 +76,21 @@ function StoreOrders() {
     }[]
   >([]);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<{ id: string; number: string; kind: "nearing" | "refund" }[]>([]);
+  const [carrier, setCarrier] = useState("");
+  const [tracking, setTracking] = useState("");
 
   const load = useCallback(() => {
     fetch("/api/orders")
-      .then((response) => (response.ok ? response.json() : { orders: [] }))
-      .then((data: { orders: typeof orders }) => setOrders(data.orders ?? []))
-      .catch(() => setOrders([]));
+      .then((response) => (response.ok ? response.json() : { orders: [], alerts: [] }))
+      .then((data: { orders: typeof orders; alerts?: typeof alerts }) => {
+        setOrders(data.orders ?? []);
+        setAlerts(data.alerts ?? []);
+      })
+      .catch(() => {
+        setOrders([]);
+        setAlerts([]);
+      });
   }, []);
 
   useEffect(() => {
@@ -90,7 +99,11 @@ function StoreOrders() {
 
   async function act(id: string, action: "deliver" | "release") {
     setActionError(null);
-    const response = await fetch(`/api/orders/${id}/${action}`, { method: "POST" });
+    const response = await fetch(`/api/orders/${id}/${action}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: action === "deliver" ? JSON.stringify({ carrier, tracking }) : "{}",
+    });
     const data = (await response.json().catch(() => null)) as { error?: string } | null;
     if (!response.ok) {
       setActionError(data?.error ?? "That order did not update.");
@@ -103,7 +116,38 @@ function StoreOrders() {
   return (
     <section className="border-b px-4 py-3 sm:px-6">
       <h2 className="text-sm font-medium">From the store</h2>
+      {account?.role === "admin" && alerts.length > 0 ? (
+        <div className="mt-2 border bg-muted/40 px-3 py-2 text-sm">
+          <p className="font-medium">Hold window</p>
+          <ul className="mt-1 space-y-1 text-muted-foreground">
+            {alerts.map((alert) => (
+              <li key={alert.id}>
+                {alert.number}:{" "}
+                {alert.kind === "refund"
+                  ? "Past the 730-day hold. Refund this charge."
+                  : "Inside the last 14 days of the hold. Refund it if it will not transfer in time."}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {actionError ? <p className="mt-2 text-sm text-late">{actionError}</p> : null}
+      {account?.role === "admin" && account.emailVerified ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          <input
+            value={carrier}
+            onChange={(event) => setCarrier(event.target.value)}
+            placeholder="Carrier"
+            className="h-8 border bg-background px-2 text-sm"
+          />
+          <input
+            value={tracking}
+            onChange={(event) => setTracking(event.target.value)}
+            placeholder="Tracking number"
+            className="h-8 border bg-background px-2 text-sm"
+          />
+        </div>
+      ) : null}
       <ul className="mt-2 divide-y">
         {orders.map((order) => (
           <li key={order.id} className="py-2 text-sm">
@@ -115,7 +159,7 @@ function StoreOrders() {
               {order.supplierDetail ? ` · ${order.supplierDetail}` : ""}
             </span>
             {order.payoutNote ? <span className="mt-0.5 block text-muted-foreground">{order.payoutNote}</span> : null}
-            {account?.role === "admin" && order.status !== "pending" ? (
+            {account?.role === "admin" && account.emailVerified && order.status !== "pending" ? (
               <span className="mt-2 flex flex-wrap gap-2">
                 <Button type="button" size="sm" variant="outline" onClick={() => void act(order.id, "deliver")}>
                   Mark delivered

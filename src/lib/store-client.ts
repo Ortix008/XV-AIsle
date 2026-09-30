@@ -12,9 +12,7 @@ export type PublishInput = {
   published: boolean;
   madeInUsa?: boolean;
   shelf?: "national" | "small";
-  supplierAccountId?: string;
-  supplierCostCents?: number;
-  supplierShippingCents?: number;
+  catalogItemId?: string;
   feeBps?: number;
 };
 

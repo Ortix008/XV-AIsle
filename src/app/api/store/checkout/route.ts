@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       amountCents: created.listing.priceCents,
       quantity: created.order.qty,
       customerEmail: created.order.email,
-      successPath: "/shop/return?session_id={CHECKOUT_SESSION_ID}",
+      successPath: `/shop/return?token=${encodeURIComponent(created.receiptToken)}&session_id={CHECKOUT_SESSION_ID}`,
       cancelPath: `/shop/${created.listing.productId}`,
     });
     if (!session.url || !session.id) {

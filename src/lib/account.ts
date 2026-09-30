@@ -14,6 +14,7 @@ export type Account = {
   memberSince: number | null;
   role: AccountRole;
   membershipStatus: string | null;
+  emailVerified: boolean;
 };
 
 export function isAccountRole(value: string | null | undefined): value is AccountRole {
@@ -28,10 +29,16 @@ export function isAccountRole(value: string | null | undefined): value is Accoun
   }
 }
 
-/** Paid membership. A blank status is treated as active for rows saved before statuses existed. */
+/** Paid or trialing membership. A blank status is treated as active for rows saved before statuses existed. */
 export function hasActiveMembership(account: { memberSince: number | null; membershipStatus?: string | null }) {
   if (!account.memberSince) return false;
-  if (account.membershipStatus && account.membershipStatus !== "active") return false;
+  if (
+    account.membershipStatus &&
+    account.membershipStatus !== "active" &&
+    account.membershipStatus !== "trialing"
+  ) {
+    return false;
+  }
   return true;
 }
 

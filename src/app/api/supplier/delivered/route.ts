@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Too many delivery notes. Wait a few minutes." }, { status: 429 });
   }
   const raw = await request.text();
-  const result = await acceptSupplierDelivery(raw, request.headers.get("x-supplier-signature"));
+  const result = await acceptSupplierDelivery(raw, request.headers.get("x-supplier-secret"));
   if ("error" in result) return Response.json({ error: result.error }, { status: result.status });
   return Response.json({ order: result.order });
 }

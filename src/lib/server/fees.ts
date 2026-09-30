@@ -6,6 +6,9 @@
  * Hold window: Stripe does not provide escrow. A US platform may hold funds before transfer or
  * payout for up to 2 years (other countries 90 days, Thailand 10 days). This store ships in the
  * US, so the deadline is 730 days from payment. See Stripe's holding-funds guidance.
+ *
+ * TODO: if the platform country is not the US, replace US_TRANSFER_HOLD_MS. Many countries
+ * allow 90 days, and Thailand allows 10 days. Do not reuse 730 days outside the US.
  */
 
 export const FEE_BPS_MIN = 800;
@@ -13,6 +16,8 @@ export const FEE_BPS_MAX = 1200;
 export const FEE_BPS_DEFAULT = 1000;
 export const US_TRANSFER_HOLD_MS = 730 * 24 * 60 * 60 * 1000;
 export const TRANSFER_HOLD_WARNING_MS = 14 * 24 * 60 * 60 * 1000;
+export const BUYER_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+export const FULFILL_TIMEOUT_MS = 15 * 60 * 1000;
 
 export type Split = {
   grossCents: number;

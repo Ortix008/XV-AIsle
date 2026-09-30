@@ -29,12 +29,6 @@ export function getDb() {
       account_id TEXT NOT NULL,
       expires_at INTEGER NOT NULL
     );
-    CREATE TABLE IF NOT EXISTS payouts (
-      account_id TEXT PRIMARY KEY,
-      method TEXT NOT NULL,
-      last4 TEXT NOT NULL,
-      wallet TEXT
-    );
     CREATE TABLE IF NOT EXISTS listings (
       product_id TEXT PRIMARY KEY,
       account_id TEXT NOT NULL,
@@ -129,9 +123,47 @@ export function getDb() {
       status TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS email_verifications (
+      token_hash TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS supplier_secrets (
+      account_id TEXT PRIMARY KEY,
+      secret_hash TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS supplier_catalog (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      sku TEXT NOT NULL,
+      title TEXT NOT NULL,
+      cost_cents INTEGER NOT NULL,
+      shipping_cents INTEGER NOT NULL,
+      origin TEXT NOT NULL,
+      approved INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS order_seq (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      next_number INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS ledger_transfers (
+      id TEXT PRIMARY KEY,
+      ledger_id TEXT NOT NULL,
+      order_id TEXT NOT NULL,
+      party TEXT NOT NULL,
+      transfer_id TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
   `);
+  // New databases get buyer as the default. Rows that already have a role are not rewritten.
+  // Promote each owner with admin:create. Boot does not demote reseller, supplier, or admin.
   addColumn(next, "accounts", "role", "TEXT NOT NULL DEFAULT 'buyer'");
   addColumn(next, "accounts", "membership_status", "TEXT");
+  addColumn(next, "accounts", "email_verified", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "listings", "made_in_usa", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "listings", "shelf", "TEXT NOT NULL DEFAULT 'national'");
   addColumn(next, "listings", "supplier_account_id", "TEXT");
@@ -154,6 +186,18 @@ export function getDb() {
   addColumn(next, "orders", "review_closed", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "orders", "dispute_open", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "orders", "paid_at", "INTEGER");
+  addColumn(next, "orders", "carrier", "TEXT");
+  addColumn(next, "orders", "tracking_number", "TEXT");
+  addColumn(next, "orders", "shipped_at", "INTEGER");
+  addColumn(next, "orders", "buyer_confirmed_at", "INTEGER");
+  addColumn(next, "orders", "buyer_dispute_open", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "orders", "buyer_dispute_resolved", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "orders", "buyer_dispute_note", "TEXT");
+  addColumn(next, "orders", "receipt_token_hash", "TEXT");
+  addColumn(next, "orders", "fulfilling_started_at", "INTEGER");
+  addColumn(next, "orders", "fulfillment_attempts", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "orders", "fulfillment_flag", "TEXT");
+  addColumn(next, "orders", "refund_required", "INTEGER NOT NULL DEFAULT 0");
   db = next;
   return next;
 }

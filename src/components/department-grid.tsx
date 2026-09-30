@@ -27,7 +27,7 @@ export function DepartmentGrid() {
                 sizes="(min-width: 1024px) 20vw, 50vw"
                 className="object-cover"
               />
-              <span className="absolute inset-x-0 bottom-0 bg-black/75 px-3 py-2.5 text-sm font-medium text-white">
+              <span className="absolute inset-x-0 bottom-0 bg-black/75 px-3 py-2.5 text-base font-medium text-white">
                 {dept.title}
               </span>
             </button>

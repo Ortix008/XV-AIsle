@@ -52,9 +52,7 @@ export async function POST(request: Request) {
     published?: boolean;
     madeInUsa?: boolean;
     shelf?: string;
-    supplierAccountId?: string;
-    supplierCostCents?: number;
-    supplierShippingCents?: number;
+    catalogItemId?: string;
     feeBps?: number | null;
   } | null;
   if (!body?.productId) return Response.json({ error: "Name the product." }, { status: 400 });
@@ -72,9 +70,7 @@ export async function POST(request: Request) {
     published: body.published !== false,
     madeInUsa: body.madeInUsa === true,
     shelf: body.shelf === "small" ? "small" : "national",
-    supplierAccountId: body.supplierAccountId,
-    supplierCostCents: body.supplierCostCents,
-    supplierShippingCents: body.supplierShippingCents,
+    catalogItemId: body.catalogItemId,
     feeBps: body.feeBps,
   });
   if (result.status !== 200) return Response.json({ error: result.error }, { status: result.status });

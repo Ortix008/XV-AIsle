@@ -7,6 +7,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { ShopFrame } from "@/components/shop-frame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isStripeCheckoutUrl } from "@/lib/checkout-url";
 import { money } from "@/lib/money";
 
 type Listing = {
@@ -72,7 +73,7 @@ export default function ProductPage() {
       }),
     });
     const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
-    if (!response.ok || !data?.url) {
+    if (!response.ok || !data?.url || !isStripeCheckoutUrl(data.url)) {
       setError(data?.error ?? "Checkout did not open.");
       setPending(false);
       return;
@@ -151,10 +152,10 @@ export default function ProductPage() {
               <Button type="submit" disabled={pending}>
                 {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qty) / 100)}`}
               </Button>
-              <p className="text-xs text-pretty text-muted-foreground">
-                Ships in the US. The card is entered on Stripe. This store does not keep the number.{" "}
+              <p className="text-base text-pretty text-foreground">
+                You pay on xvaisle.com. Stripe handles the card. We never see your card number.{" "}
                 <Link href="/shop/safety" className="underline underline-offset-4">
-                  How an order is handled
+                  How buying works
                 </Link>
                 .
               </p>

@@ -85,7 +85,7 @@ export default function FromXPage() {
         ) : null}
         <p className="mt-8 text-sm">
           <Link href="/shop/safety" className="underline underline-offset-4">
-            Shipping, returns, and contact
+            How buying works
           </Link>
         </p>
       </article>

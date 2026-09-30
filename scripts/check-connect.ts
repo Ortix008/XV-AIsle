@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { createHmac } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { existsSync } from "node:fs";
@@ -6,11 +7,14 @@ import { join } from "node:path";
 
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-connect-")), "market.sqlite");
 delete process.env.ADMIN_EMAIL;
+delete process.env.ADMIN_EMAILS;
 delete process.env.STORE_OPERATOR_EMAIL;
 delete process.env.SUPPLIER_API_URL;
 delete process.env.SUPPLIER_API_KEY;
 delete process.env.PLATFORM_FEE_BPS;
 delete process.env.STRIPE_ALLOW_LIVE;
+delete process.env.SMTP_HOST;
+delete process.env.SUPPLIER_CALLBACK_SECRET;
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -70,6 +74,10 @@ async function main() {
   const { isLiveKey, setStripeFetch, verifyStripeSignature, createCheckoutSession } = await import(
     "../src/lib/server/stripe"
   );
+  const { isStripeCheckoutUrl } = await import("../src/lib/checkout-url");
+  assert(isStripeCheckoutUrl("https://checkout.stripe.com/c/pay/cs_test_a"), "stripe checkout host is allowed");
+  assert(!isStripeCheckoutUrl("https://evil.example/checkout.stripe.com"), "a lookalike host is refused");
+  assert(!isStripeCheckoutUrl("http://checkout.stripe.com/c/pay/cs_test_a"), "checkout must be https");
   assert(isLiveKey(liveKey()), "live key detector");
   assert(!isLiveKey(testKey()), "test key is allowed");
   const goodBody = "{}";
@@ -89,6 +97,8 @@ async function main() {
   let active: { id: string; amountCents: number; accountId: string } | null = null;
   let risk: "normal" | "elevated" = "normal";
   let pay: "paid" | "unpaid" = "paid";
+  let subscriptionStatus = "active";
+  let subscriptionAccountId = "";
 
   function json(payload: unknown, status = 200) {
     return new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } });
@@ -131,6 +141,15 @@ async function main() {
     if (href.includes("/reversals")) return json({ id: "trr_test" });
     if (href.includes("/v1/transfers")) return json({ id: `tr_${calls.length}` });
     if (href.includes("/v2/core/account_links")) return json({ url: "https://connect.stripe.com/setup/s/test" });
+    if (href.includes("/v1/subscriptions/")) {
+      const subscriptionId = decodeURIComponent(href.split("/v1/subscriptions/")[1]?.split("?")[0] ?? "sub");
+      return json({
+        id: subscriptionId,
+        status: subscriptionStatus,
+        customer: "cus_test",
+        metadata: { account_id: subscriptionAccountId },
+      });
+    }
     if (href.includes("/v2/core/accounts")) {
       return json({
         id: "acct_test",
@@ -164,10 +183,41 @@ async function main() {
   assert(refused, "live keys are refused");
   assert(!calls.some((call) => call.url.includes("checkout")), "a refused live key never calls Stripe");
   process.env.STRIPE_SECRET_KEY = testKey();
+  await createCheckoutSession({
+    kind: "membership",
+    accountId: "acct-1",
+    name: "XVAIsle membership",
+    amountCents: 1000,
+    successPath: "/membership",
+    cancelPath: "/membership",
+    attemptId: "attempt-a",
+  });
+  await createCheckoutSession({
+    kind: "membership",
+    accountId: "acct-1",
+    name: "XVAIsle membership",
+    amountCents: 1000,
+    successPath: "/membership",
+    cancelPath: "/membership",
+    attemptId: "attempt-b",
+  });
+  const membershipCalls = calls.filter((call) => call.url.endsWith("/v1/checkout/sessions"));
+  assert(membershipCalls.length >= 2, "membership checkout was sent");
+  assert(
+    decodeURIComponent(membershipCalls[0]?.body ?? "").includes("subscription_data[trial_period_days]=30"),
+    "membership includes a 30 day trial",
+  );
+  assert(membershipCalls[0]?.idempotency?.includes("attempt-a"), "membership idempotency uses the attempt");
+  assert(membershipCalls[1]?.idempotency?.includes("attempt-b"), "a second attempt gets its own key");
+  assert(membershipCalls[0]?.idempotency !== membershipCalls[1]?.idempotency, "membership keys are not the calendar day");
 
   const { closeDb, getDb } = await import("../src/lib/server/db");
-  const { getAccount, setOwnRole, signUp } = await import("../src/lib/server/accounts");
+  const { getAccount, seedAdmin, sendAccountVerification, setOwnRole, signIn, signUp, verifyEmailToken } = await import(
+    "../src/lib/server/accounts"
+  );
+  const { hasActiveMembership } = await import("../src/lib/account");
   const { publishForAccount } = await import("../src/lib/server/publish");
+  const { createCatalogItem } = await import("../src/lib/server/catalog");
   const { createPendingOrder, publishListing } = await import("../src/lib/server/store");
   const { acceptStripeEvent } = await import("../src/lib/server/stripe-events");
   const { saveReturnsFor } = await import("../src/lib/server/settings");
@@ -175,15 +225,30 @@ async function main() {
   const { deliverFor, approveFor } = await import("../src/lib/server/order-actions");
   const { acceptSupplierDelivery } = await import("../src/lib/server/supplier-callback");
   const { beginOnboarding } = await import("../src/lib/server/connect");
-  const { markDelivered } = await import("../src/lib/server/ledger");
+  const { confirmReceipt, disputeReceipt, markDelivered, releaseMatured } = await import("../src/lib/server/ledger");
+  const { flagRefundDeadlines, markShipped, sweepStuckFulfillment } = await import("../src/lib/server/store");
+  const { rotateSupplierSecret } = await import("../src/lib/server/supplier-secret");
 
   const first = signUp({ name: "First Person", email: "first@xvaisle.test", password: "market-test" });
   if ("error" in first) throw new Error(first.error);
   assert(first.account.role === "buyer", "the first account is not the operator");
   process.env.ADMIN_EMAIL = "admin@xvaisle.test";
+  process.env.ADMIN_EMAILS = "admin@xvaisle.test,second-owner@xvaisle.test";
   const adminJoin = signUp({ name: "Operator", email: "admin@xvaisle.test", password: "market-test" });
   if ("error" in adminJoin) throw new Error(adminJoin.error);
-  assert(adminJoin.account.role === "admin", "ADMIN_EMAIL is the operator");
+  assert(adminJoin.account.role === "buyer", "signup with ADMIN_EMAIL is not an admin");
+  assert(adminJoin.account.role === "buyer", "ADMIN_EMAILS does not grant admin on signup");
+  delete process.env.ADMIN_EMAILS;
+  assert(!adminJoin.account.emailVerified, "signup is not verified");
+  const issued = await sendAccountVerification(adminJoin.account.id);
+  if (!("token" in issued) || !issued.token) throw new Error("verification token");
+  const verifiedSignup = verifyEmailToken(issued.token);
+  assert(!("error" in verifiedSignup) && verifiedSignup.account?.emailVerified, "the token verifies the email");
+  const seeded = seedAdmin({ name: "Operator", email: "admin@xvaisle.test", password: "market-test" });
+  if ("error" in seeded) throw new Error(seeded.error);
+  assert(seeded.account.role === "admin" && seeded.account.emailVerified, "the seed script role is a verified admin");
+  const operator = getAccount(seeded.account.id);
+  if (!operator) throw new Error("operator missing");
   const resellerJoin = signUp({ name: "Reseller", email: "reseller@xvaisle.test", password: "market-test" });
   const supplierJoin = signUp({ name: "Supplier", email: "supplier@xvaisle.test", password: "market-test" });
   if ("error" in resellerJoin || "error" in supplierJoin) throw new Error("accounts");
@@ -194,15 +259,38 @@ async function main() {
 
   const deniedReturns = saveReturnsFor(resellerRole.account, "100 Example Street, Sample City, ST 00000");
   assert("error" in deniedReturns && deniedReturns.status === 403, "a reseller cannot change the return address");
-  const savedReturns = saveReturnsFor(adminJoin.account, "100 Example Street, Sample City, ST 00000");
+  const savedReturns = saveReturnsFor(operator, "100 Example Street, Sample City, ST 00000");
   assert(!("error" in savedReturns) && savedReturns.status === 200, "the operator can save the return address");
   const note = addInquiry({ name: "Example Buyer", email: "buyer@example.com", message: "Where is the pan?" });
   if ("error" in note) throw new Error(note.error);
   const hidden = inquiriesFor(resellerRole.account);
   assert("error" in hidden && hidden.status === 403, "buyer notes are not for listing owners");
-  const visible = inquiriesFor(adminJoin.account);
+  const visible = inquiriesFor(operator);
   assert(!("error" in visible) && visible.inquiries.length === 1, "the operator can read buyer notes");
 
+  const deniedCatalog = createCatalogItem(resellerRole.account, {
+    sku: "NO",
+    title: "Not a supplier",
+    costCents: 100,
+    shippingCents: 0,
+    origin: "US",
+  });
+  assert("error" in deniedCatalog, "a reseller cannot set a supplier price");
+  const catalog = createCatalogItem(supplierRole.account, {
+    sku: "PAN-1",
+    title: "Quarter sheet pan",
+    costCents: 500,
+    shippingCents: 0,
+    origin: "Elizabeth, NJ",
+  });
+  const expensive = createCatalogItem(supplierRole.account, {
+    sku: "PAN-X",
+    title: "Expensive pan",
+    costCents: 5000,
+    shippingCents: 0,
+    origin: "Elizabeth, NJ",
+  });
+  if ("error" in catalog || "error" in expensive) throw new Error("catalog");
   const page = {
     productId: "pan",
     sku: "PAN-1",
@@ -210,13 +298,11 @@ async function main() {
     description: "One pan.",
     priceCents: 2695,
     image: "/art/mock-sheet-pan-1.png",
-    supplierName: "Northwharf Goods",
-    supplierOrigin: "Elizabeth, NJ",
+    supplierName: "Ignored",
+    supplierOrigin: "Ignored",
     shipDaysMin: 2,
     shipDaysMax: 4,
-    supplierAccountId: supplierJoin.account.id,
-    supplierCostCents: 500,
-    supplierShippingCents: 0,
+    catalogItemId: catalog.item.id,
   };
   const buyerPublish = publishForAccount(resellerRole.account, page);
   assert(buyerPublish.status === 403, "membership is required to publish");
@@ -240,10 +326,33 @@ async function main() {
        account_id, stripe_account_id, charges_enabled, payouts_enabled, details_submitted, requirements_due, transfers_status, updated_at
      ) VALUES (?, ?, 0, 1, 1, '', 'active', ?)`,
   ).run(supplierJoin.account.id, "acct_supplier", Date.now());
-  const tooHigh = publishForAccount(getAccount(resellerJoin.account.id)!, { ...page, supplierCostCents: 5000 });
+  const tooHigh = publishForAccount(getAccount(resellerJoin.account.id)!, {
+    ...page,
+    productId: "pricey",
+    catalogItemId: expensive.item.id,
+  });
   assert(tooHigh.status === 400, "a listing that pays the reseller less than zero is rejected");
   const listed = publishForAccount(getAccount(resellerJoin.account.id)!, page);
-  assert(listed.status === 200, "a member with payouts can publish");
+  assert(listed.status === 200 && listed.listing?.supplierCostCents === 500, "cost comes from the supplier catalog");
+  assert(listed.listing?.supplierAccountId === supplierJoin.account.id, "the supplier is the catalog owner");
+  getDb().prepare("UPDATE accounts SET role = 'buyer' WHERE id = ?").run(supplierJoin.account.id);
+  const wrongRole = publishForAccount(getAccount(resellerJoin.account.id)!, { ...page, productId: "role-pan" });
+  assert(wrongRole.status === 400, "the supplier account must have the supplier role");
+  getDb().prepare("UPDATE accounts SET role = 'supplier' WHERE id = ?").run(supplierJoin.account.id);
+  const ownId = "cat-own";
+  getDb()
+    .prepare(
+      `INSERT INTO supplier_catalog (
+         id, account_id, sku, title, cost_cents, shipping_cents, origin, approved, created_at
+       ) VALUES (?, ?, 'OWN', 'Own goods', 100, 0, 'US', 1, ?)`,
+    )
+    .run(ownId, resellerJoin.account.id, Date.now());
+  const ownSupply = publishForAccount(getAccount(resellerJoin.account.id)!, {
+    ...page,
+    productId: "own-pan",
+    catalogItemId: ownId,
+  });
+  assert(ownSupply.status === 400, "a reseller cannot be their own supplier");
 
   const order = createPendingOrder({
     productId: "pan",
@@ -313,10 +422,28 @@ async function main() {
   assert(!calls.some((call) => call.url.includes("/v1/transfers")), "no transfer before delivery");
   const forged = await deliverFor(resellerRole.account, order.order.id);
   assert("error" in forged && forged.status === 403, "a reseller cannot mark delivery");
-  const delivered = await deliverFor(adminJoin.account, order.order.id);
+  const unverifiedAdmin = getAccount(first.account.id);
+  if (!unverifiedAdmin) throw new Error("first account");
+  getDb().prepare("UPDATE accounts SET role = 'admin' WHERE id = ?").run(first.account.id);
+  const unverified = getAccount(first.account.id);
+  const blockedAdmin = await deliverFor(unverified, order.order.id);
+  assert("error" in blockedAdmin && blockedAdmin.status === 403, "an unverified admin cannot release or deliver");
+  getDb().prepare("UPDATE accounts SET role = 'buyer' WHERE id = ?").run(first.account.id);
+  const missingTracking = await deliverFor(operator, order.order.id);
+  assert("error" in missingTracking && missingTracking.status === 400, "delivery requires a carrier and tracking number");
+  const shipped = markShipped(order.order.id, "UPS", "1Z999AA10123456784");
+  if ("error" in shipped) throw new Error(shipped.error);
+  const delivered = await deliverFor(operator, order.order.id);
   assert(!("error" in delivered), "the operator can mark delivery");
+  assert(!calls.some((call) => call.url.includes("/v1/transfers")), "delivery does not transfer yet");
+  const confirmed = await confirmReceipt(order.receiptToken);
+  if ("error" in confirmed) throw new Error(confirmed.error);
   const transfers = calls.filter((call) => call.method === "POST" && call.url.includes("/v1/transfers") && !call.url.includes("reversals"));
-  assert(transfers.length === 2, "delivery creates two transfers");
+  assert(transfers.length === 2, "buyer confirmation creates two transfers");
+  assert(
+    transfers.every((call) => /transfer-.+-(reseller|supplier)-\d+$/.test(call.idempotency ?? "")),
+    "transfer idempotency includes the amount",
+  );
   assert(
     transfers.every(
       (call) =>
@@ -360,21 +487,57 @@ async function main() {
   );
   const accountFetches = () => calls.filter((call) => call.url.includes("/v2/core/accounts/")).length;
   const beforeFetch = accountFetches();
-  const updated = await acceptStripeEvent(updatedRaw, sign(updatedRaw, "whsec_connect"), "whsec_connect");
+  const updated = await acceptStripeEvent(updatedRaw, sign(updatedRaw, "whsec_connect"), "whsec_connect", "connect");
   assert(updated.status === 200, "account.updated");
   const supplierRow = db.prepare("SELECT transfers_status, payouts_enabled FROM connected_accounts WHERE stripe_account_id = ?").get(
     "acct_supplier",
   ) as { transfers_status: string; payouts_enabled: number };
   assert(supplierRow.transfers_status === "active" && supplierRow.payouts_enabled === 1, "capability status is stored");
-  await acceptStripeEvent(updatedRaw, sign(updatedRaw, "whsec_connect"), "whsec_connect");
+  await acceptStripeEvent(updatedRaw, sign(updatedRaw, "whsec_connect"), "whsec_connect", "connect");
   assert(accountFetches() === beforeFetch + 1, "account.updated replay does not fetch again");
+  db.prepare("UPDATE connected_accounts SET payouts_enabled = 0, transfers_status = 'pending' WHERE stripe_account_id = ?").run(
+    "acct_supplier",
+  );
+  const v2Raw = JSON.stringify({
+    id: "evt_v2_acct",
+    type: "v2.core.account.updated",
+    related_object: { id: "acct_supplier", type: "v2.core.account" },
+  });
+  const v2 = await acceptStripeEvent(v2Raw, sign(v2Raw, "whsec_connect"), "whsec_connect", "connect");
+  assert(v2.status === 200, "v2 account event is accepted");
+  const v2Row = db.prepare("SELECT transfers_status FROM connected_accounts WHERE stripe_account_id = ?").get("acct_supplier") as {
+    transfers_status: string;
+  };
+  assert(v2Row.transfers_status === "active", "v2 account id is read from related_object.id");
+  const connectRefund = JSON.stringify({
+    id: "evt_connect_refund",
+    type: "charge.refunded",
+    account: "acct_supplier",
+    data: { object: { id: "ch_cs_paid", payment_intent: "pi_cs_paid", amount: 100, amount_refunded: 100 } },
+  });
+  const ignoredRefund = await acceptStripeEvent(connectRefund, sign(connectRefund, "whsec_connect"), "whsec_connect", "connect");
+  assert(
+    ignoredRefund.status === 200 && "ignored" in ignoredRefund.body && ignoredRefund.body.ignored === true,
+    "connect endpoint ignores charge events",
+  );
+  const platformLeak = JSON.stringify({
+    id: "evt_platform_leak",
+    type: "charge.refunded",
+    account: "acct_supplier",
+    data: { object: { id: "ch_cs_paid", payment_intent: "pi_cs_paid", amount: order.order.amountCents, amount_refunded: 1 } },
+  });
+  const ignoredLeak = await acceptStripeEvent(platformLeak, sign(platformLeak, "whsec_billing"), "whsec_billing", "platform");
+  assert(
+    ignoredLeak.status === 200 && "ignored" in ignoredLeak.body && ignoredLeak.body.ignored === true,
+    "a connected-account charge is not applied as a platform event",
+  );
   const goneRaw = JSON.stringify({
     id: "evt_gone",
     type: "account.application.deauthorized",
     account: "acct_supplier",
     data: { object: { id: "ca_test" } },
   });
-  await acceptStripeEvent(goneRaw, sign(goneRaw, "whsec_connect"), "whsec_connect");
+  await acceptStripeEvent(goneRaw, sign(goneRaw, "whsec_connect"), "whsec_connect", "connect");
   const disabled = db.prepare("SELECT transfers_status, payouts_enabled FROM connected_accounts WHERE stripe_account_id = ?").get(
     "acct_supplier",
   ) as { transfers_status: string; payouts_enabled: number };
@@ -400,6 +563,7 @@ async function main() {
     productId: "risk-pan",
     sku: "PAN-R",
     supplierAccountId: supplierJoin.account.id,
+    supplierCostCents: 500,
   });
   if ("error" in riskPage) throw new Error(riskPage.error);
   const risky = createPendingOrder({
@@ -425,10 +589,14 @@ async function main() {
   });
   await acceptStripeEvent(riskRaw, sign(riskRaw, "whsec_billing"), "whsec_billing");
   const beforeRiskTransfers = calls.filter((call) => call.url.includes("/v1/transfers") && !call.url.includes("reversals")).length;
+  const riskShip = markShipped(risky.order.id, "UPS", "1Z999AA10123456785");
+  if ("error" in riskShip) throw new Error(riskShip.error);
   await markDelivered(risky.order.id);
+  const riskConfirm = await confirmReceipt(risky.receiptToken);
+  if ("error" in riskConfirm) throw new Error(riskConfirm.error);
   const held = calls.filter((call) => call.url.includes("/v1/transfers") && !call.url.includes("reversals")).length;
   assert(held === beforeRiskTransfers, "elevated risk does not transfer");
-  const approved = await approveFor(adminJoin.account, risky.order.id);
+  const approved = await approveFor(operator, risky.order.id);
   assert(!("error" in approved), "admin can approve");
   const released = calls.filter((call) => call.url.includes("/v1/transfers") && !call.url.includes("reversals")).length;
   assert(released === held + 2, "approval releases the two shares");
@@ -438,6 +606,7 @@ async function main() {
     productId: "dispute-pan",
     sku: "PAN-D",
     supplierAccountId: supplierJoin.account.id,
+    supplierCostCents: 500,
   });
   if ("error" in disputePage) throw new Error(disputePage.error);
   const disputedOrder = createPendingOrder({
@@ -466,7 +635,11 @@ async function main() {
     data: { object: { id: "cs_dispute" } },
   });
   await acceptStripeEvent(disputePay, sign(disputePay, "whsec_billing"), "whsec_billing");
+  const disputeShip = markShipped(disputedOrder.order.id, "UPS", "1Z999AA10123456786");
+  if ("error" in disputeShip) throw new Error(disputeShip.error);
   await markDelivered(disputedOrder.order.id);
+  const disputeConfirm = await confirmReceipt(disputedOrder.receiptToken);
+  if ("error" in disputeConfirm) throw new Error(disputeConfirm.error);
   const disputeRaw = JSON.stringify({
     id: "evt_dispute",
     type: "charge.dispute.created",
@@ -498,13 +671,217 @@ async function main() {
   await acceptStripeEvent(wonRaw, sign(wonRaw, "whsec_billing"), "whsec_billing");
   const restores = calls.filter((call) => call.idempotency?.includes("restore-")).length;
   assert(restores === beforeRestore + 2, "a won dispute restores the two shares");
+  const history = db
+    .prepare("SELECT transfer_id, kind FROM ledger_transfers WHERE order_id = ?")
+    .all(disputedOrder.order.id) as { transfer_id: string; kind: string }[];
+  const historyIds = new Set(history.map((row) => row.transfer_id));
+  assert(history.filter((row) => row.kind === "transfer").length === 2, "the original transfers stay on record");
+  assert(history.filter((row) => row.kind === "restore").length === 2, "the restored transfers are added");
+  assert(historyIds.size === 4, "a won dispute does not overwrite the transfer id");
 
-  process.env.SUPPLIER_CALLBACK_SECRET = "supplier-secret";
-  const callback = JSON.stringify({ orderId: disputedOrder.order.id, supplierAccountId: supplierJoin.account.id });
-  const wrong = await acceptSupplierDelivery(callback, sign(callback, "nope"));
-  assert(wrong.status === 400, "supplier callback rejects a bad signature");
-  const right = await acceptSupplierDelivery(callback, sign(callback, "supplier-secret"));
-  assert(right.status === 200, "a signed supplier can mark delivery");
+  const rotated = rotateSupplierSecret(supplierJoin.account.id);
+  if ("error" in rotated) throw new Error(rotated.error);
+  const callback = JSON.stringify({
+    orderId: disputedOrder.order.id,
+    supplierAccountId: supplierJoin.account.id,
+    carrier: "UPS",
+    tracking: "1Z999AA10123456787",
+    delivered: true,
+  });
+  const wrong = await acceptSupplierDelivery(callback, "not-the-secret");
+  assert(wrong.status === 403, "supplier callback rejects a bad secret");
+  const right = await acceptSupplierDelivery(callback, rotated.secret);
+  assert(right.status === 200, "a supplier secret can mark shipment");
+  const rotatedAgain = rotateSupplierSecret(supplierJoin.account.id);
+  if ("error" in rotatedAgain) throw new Error(rotatedAgain.error);
+  const staleSecret = await acceptSupplierDelivery(callback, rotated.secret);
+  assert(staleSecret.status === 403, "rotating the secret retires the old one");
+
+  subscriptionAccountId = resellerJoin.account.id;
+  db.prepare("UPDATE accounts SET stripe_subscription_id = ?, member_since = NULL, membership_status = NULL WHERE id = ?").run(
+    "sub_member",
+    resellerJoin.account.id,
+  );
+  subscriptionStatus = "active";
+  const staleSub = JSON.stringify({
+    id: "evt_sub_stale",
+    type: "customer.subscription.updated",
+    data: { object: { id: "sub_member", status: "canceled", customer: "cus_test" } },
+  });
+  await acceptStripeEvent(staleSub, sign(staleSub, "whsec_billing"), "whsec_billing", "platform");
+  const stillActive = db.prepare("SELECT membership_status, member_since FROM accounts WHERE id = ?").get(resellerJoin.account.id) as {
+    membership_status: string;
+    member_since: number | null;
+  };
+  assert(stillActive.membership_status === "active" && stillActive.member_since, "a stale canceled event does not override Stripe");
+  subscriptionStatus = "trialing";
+  const trialSub = JSON.stringify({
+    id: "evt_sub_trial",
+    type: "customer.subscription.updated",
+    data: { object: { id: "sub_member", status: "canceled", customer: "cus_test" } },
+  });
+  await acceptStripeEvent(trialSub, sign(trialSub, "whsec_billing"), "whsec_billing", "platform");
+  const trialing = getAccount(resellerJoin.account.id);
+  assert(trialing?.membershipStatus === "trialing" && hasActiveMembership(trialing), "trialing counts as active");
+
+  const numbers = db.prepare("SELECT number FROM orders ORDER BY created_at").all() as { number: string }[];
+  assert(numbers.length >= 2, "orders exist");
+  assert(new Set(numbers.map((row) => row.number)).size === numbers.length, "order numbers are unique");
+  assert(numbers.every((row) => /^XV-\d+$/.test(row.number)), "order numbers are allocated");
+
+  const stuckId = order.order.id;
+  db.prepare(
+    "UPDATE orders SET status = 'fulfilling', supplier_ref = NULL, fulfilling_started_at = ?, fulfillment_attempts = 0, fulfillment_flag = NULL WHERE id = ?",
+  ).run(Date.now() - 20 * 60 * 1000, stuckId);
+  const shipsBefore = ships;
+  await sweepStuckFulfillment();
+  assert(ships === shipsBefore + 1, "a stuck fulfillment is retried once");
+  db.prepare(
+    "UPDATE orders SET status = 'fulfilling', supplier_ref = 'SUP-1', fulfilling_started_at = ? WHERE id = ?",
+  ).run(Date.now() - 20 * 60 * 1000, stuckId);
+  await sweepStuckFulfillment();
+  const flagged = db.prepare("SELECT fulfillment_flag FROM orders WHERE id = ?").get(stuckId) as { fulfillment_flag: string };
+  assert(flagged.fulfillment_flag === "stuck", "a fulfillment that already shipped is flagged");
+
+  db.prepare("UPDATE orders SET paid_at = ?, refund_required = 0 WHERE id = ?").run(Date.now() - (730 * 24 * 60 * 60 * 1000 + 1000), stuckId);
+  flagRefundDeadlines();
+  const refundFlag = db.prepare("SELECT refund_required FROM orders WHERE id = ?").get(stuckId) as { refund_required: number };
+  assert(refundFlag.refund_required === 1, "orders past the hold window are flagged for refund");
+
+  const windowOrder = createPendingOrder({
+    productId: "pan",
+    qty: 1,
+    ship: {
+      name: "Window Buyer",
+      email: "window@example.com",
+      line1: "100 Example Street",
+      city: "Sample City",
+      region: "ST",
+      postal: "00000",
+      country: "US",
+    },
+  });
+  if ("error" in windowOrder) throw new Error(windowOrder.error);
+  active = { id: windowOrder.order.id, amountCents: windowOrder.order.amountCents, accountId: windowOrder.order.accountId };
+  risk = "normal";
+  const windowPay = JSON.stringify({
+    id: "evt_window",
+    type: "checkout.session.completed",
+    data: { object: { id: "cs_window" } },
+  });
+  await acceptStripeEvent(windowPay, sign(windowPay, "whsec_billing"), "whsec_billing", "platform");
+  const windowShip = markShipped(windowOrder.order.id, "UPS", "1Z999AA10123456788");
+  if ("error" in windowShip) throw new Error(windowShip.error);
+  await markDelivered(windowOrder.order.id);
+  const disputedReceipt = await disputeReceipt(windowOrder.receiptToken, "The box arrived dented.");
+  if ("error" in disputedReceipt) throw new Error(disputedReceipt.error);
+  const beforeWindow = calls.filter((call) => call.url.includes("/v1/transfers") && !call.url.includes("reversals")).length;
+  await releaseMatured(Date.now() + 8 * 24 * 60 * 60 * 1000);
+  const duringDispute = calls.filter((call) => call.url.includes("/v1/transfers") && !call.url.includes("reversals")).length;
+  assert(duringDispute === beforeWindow, "a buyer dispute freezes the payout");
+  const reviewed = await approveFor(operator, windowOrder.order.id);
+  assert(!("error" in reviewed), "an admin can review a buyer dispute");
+  const afterReview = calls.filter((call) => call.url.includes("/v1/transfers") && !call.url.includes("reversals")).length;
+  assert(afterReview === duringDispute + 2, "admin review releases the frozen payout");
+
+  const cli = spawnSync(process.execPath, ["scripts/admin-create.mjs"], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      DATABASE_PATH: process.env.DATABASE_PATH,
+      ADMIN_EMAIL: "cli-admin@xvaisle.test",
+      ADMIN_PASSWORD: "market-test",
+      ADMIN_NAME: "CLI",
+    },
+    encoding: "utf8",
+  });
+  assert(cli.status === 0, cli.stderr || "admin:create failed");
+  assert(!`${cli.stdout}${cli.stderr}`.includes("market-test"), "admin:create does not print the password");
+  const cliRow = db.prepare("SELECT role, email_verified FROM accounts WHERE email = ?").get("cli-admin@xvaisle.test") as {
+    role: string;
+    email_verified: number;
+  };
+  assert(cliRow.role === "admin" && cliRow.email_verified === 1, "admin:create marks the operator verified");
+
+  const second = signUp({ name: "Second Owner", email: "second-owner@xvaisle.test", password: "market-test" });
+  if ("error" in second) throw new Error(second.error);
+  const keptSince = Date.now();
+  db.prepare("UPDATE accounts SET member_since = ?, membership_status = 'active', stripe_customer_id = ? WHERE id = ?").run(
+    keptSince,
+    "cus_keep",
+    second.account.id,
+  );
+  const beforePromote = db.prepare(
+    "SELECT name, password_hash, member_since, stripe_customer_id, role FROM accounts WHERE id = ?",
+  ).get(second.account.id) as {
+    name: string;
+    password_hash: string;
+    member_since: number;
+    stripe_customer_id: string;
+    role: string;
+  };
+  process.env.ADMIN_EMAILS = "second-owner@xvaisle.test,cli-admin@xvaisle.test";
+  const promoted = seedAdmin({ email: "second-owner@xvaisle.test", password: "different-password" });
+  if ("error" in promoted) throw new Error(promoted.error);
+  const afterPromote = db.prepare(
+    "SELECT name, password_hash, member_since, stripe_customer_id, role, email_verified FROM accounts WHERE id = ?",
+  ).get(second.account.id) as {
+    name: string;
+    password_hash: string;
+    member_since: number;
+    stripe_customer_id: string;
+    role: string;
+    email_verified: number;
+  };
+  assert(afterPromote.role === "admin" && afterPromote.email_verified === 1, "an existing account can be promoted");
+  assert(afterPromote.name === beforePromote.name, "promotion keeps the name");
+  assert(afterPromote.password_hash === beforePromote.password_hash, "promotion keeps the password");
+  assert(afterPromote.member_since === keptSince, "promotion keeps membership");
+  assert(afterPromote.stripe_customer_id === "cus_keep", "promotion keeps the Stripe customer");
+  const stillSignsIn = signIn({ email: "second-owner@xvaisle.test", password: "market-test" });
+  assert(!("error" in stillSignsIn) && stillSignsIn.account.role === "admin", "the old password still signs in");
+  assert(getAccount(operator.id)?.role === "admin", "promoting a second owner does not demote the first");
+  const blocked = seedAdmin({ email: "stranger@xvaisle.test", password: "market-test" });
+  assert("error" in blocked, "ADMIN_EMAILS allowlist refuses other emails");
+  delete process.env.ADMIN_EMAILS;
+  const stranger = db.prepare("SELECT role FROM accounts WHERE email = ?").get("stranger@xvaisle.test") as
+    | { role: string }
+    | undefined;
+  assert(!stranger, "a refused allowlist email is not created");
+
+  const promotedCli = spawnSync(process.execPath, ["scripts/admin-create.mjs"], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      DATABASE_PATH: process.env.DATABASE_PATH,
+      ADMIN_EMAIL: "second-owner@xvaisle.test",
+      ADMIN_PASSWORD: "should-not-replace",
+      ADMIN_NAME: "Replaced Name",
+      ADMIN_EMAILS: "second-owner@xvaisle.test",
+    },
+    encoding: "utf8",
+  });
+  assert(promotedCli.status === 0, promotedCli.stderr || "promoting an existing account failed");
+  assert(!`${promotedCli.stdout}${promotedCli.stderr}`.includes("should-not-replace"), "promotion does not print a password");
+  const afterCli = db.prepare("SELECT name, password_hash, role FROM accounts WHERE id = ?").get(second.account.id) as {
+    name: string;
+    password_hash: string;
+    role: string;
+  };
+  assert(afterCli.role === "admin" && afterCli.name === "Second Owner", "the script does not rename an existing account");
+  assert(afterCli.password_hash === beforePromote.password_hash, "the script does not replace an existing password");
+  const refusedCli = spawnSync(process.execPath, ["scripts/admin-create.mjs"], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      DATABASE_PATH: process.env.DATABASE_PATH,
+      ADMIN_EMAIL: "outsider@xvaisle.test",
+      ADMIN_PASSWORD: "market-test",
+      ADMIN_EMAILS: "second-owner@xvaisle.test",
+    },
+    encoding: "utf8",
+  });
+  assert(refusedCli.status !== 0, "admin:create refuses an email outside ADMIN_EMAILS");
 
   assert(!existsSync("src/app/api/account/payout/route.ts"), "raw payout collection is gone");
   const accounts = await import("../src/lib/server/accounts");

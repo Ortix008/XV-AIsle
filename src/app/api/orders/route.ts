@@ -1,14 +1,17 @@
 import { cookies } from "next/headers";
 import { accountFromToken } from "@/lib/server/accounts";
 import { holdState } from "@/lib/server/fees";
-import { payoutHold } from "@/lib/server/ledger";
+import { payoutHold, releaseMatured } from "@/lib/server/ledger";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
-import { ordersVisibleTo } from "@/lib/server/store";
+import { flagRefundDeadlines, listHoldAlerts, ordersVisibleTo, sweepStuckFulfillment } from "@/lib/server/store";
 
 export async function GET() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const account = accountFromToken(token);
   if (!account) return Response.json({ error: "Sign in first." }, { status: 401 });
+  await sweepStuckFulfillment();
+  flagRefundDeadlines();
+  await releaseMatured();
   const orders = ordersVisibleTo(account).map((order) => ({
     id: order.id,
     number: order.number,
@@ -23,7 +26,14 @@ export async function GET() {
     disputeOpen: order.disputeOpen,
     riskApproved: order.riskApproved,
     hold: holdState(order.paidAt),
+    carrier: order.carrier,
+    trackingNumber: order.trackingNumber,
+    buyerConfirmedAt: order.buyerConfirmedAt,
+    buyerDisputeOpen: order.buyerDisputeOpen,
+    refundRequired: order.refundRequired,
+    fulfillmentFlag: order.fulfillmentFlag,
     payoutNote: payoutHold(order),
   }));
-  return Response.json({ orders });
+  const alerts = account.role === "admin" && account.emailVerified ? listHoldAlerts() : [];
+  return Response.json({ orders, alerts });
 }

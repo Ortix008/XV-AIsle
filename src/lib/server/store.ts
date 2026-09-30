@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { platformFeeBps, quoteSplit, splitProblem } from "./fees";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, splitProblem } from "./fees";
 import { changed, getDb } from "./db";
 import { requestShipment } from "./supplier";
 
@@ -61,6 +61,15 @@ export type StoreOrder = {
   reviewOpen: boolean;
   reviewClosed: boolean;
   disputeOpen: boolean;
+  carrier: string | null;
+  trackingNumber: string | null;
+  shippedAt: number | null;
+  buyerConfirmedAt: number | null;
+  buyerDisputeOpen: boolean;
+  buyerDisputeResolved: boolean;
+  buyerDisputeNote: string | null;
+  refundRequired: boolean;
+  fulfillmentFlag: string | null;
 };
 
 type ListingRow = {
@@ -119,6 +128,18 @@ type OrderRow = {
   review_open?: number | null;
   review_closed?: number | null;
   dispute_open?: number | null;
+  carrier?: string | null;
+  tracking_number?: string | null;
+  shipped_at?: number | null;
+  buyer_confirmed_at?: number | null;
+  buyer_dispute_open?: number | null;
+  buyer_dispute_resolved?: number | null;
+  buyer_dispute_note?: string | null;
+  refund_required?: number | null;
+  fulfillment_flag?: string | null;
+  fulfilling_started_at?: number | null;
+  fulfillment_attempts?: number | null;
+  receipt_token_hash?: string | null;
 };
 
 function listingFrom(row: ListingRow): StoreListing {
@@ -182,7 +203,35 @@ function orderFrom(row: OrderRow, listing?: ListingRow): StoreOrder {
     reviewOpen: row.review_open === 1,
     reviewClosed: row.review_closed === 1,
     disputeOpen: row.dispute_open === 1,
+    carrier: row.carrier ?? null,
+    trackingNumber: row.tracking_number ?? null,
+    shippedAt: row.shipped_at ?? null,
+    buyerConfirmedAt: row.buyer_confirmed_at ?? null,
+    buyerDisputeOpen: row.buyer_dispute_open === 1,
+    buyerDisputeResolved: row.buyer_dispute_resolved === 1,
+    buyerDisputeNote: row.buyer_dispute_note ?? null,
+    refundRequired: row.refund_required === 1,
+    fulfillmentFlag: row.fulfillment_flag ?? null,
   };
+}
+
+function receiptHash(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function allocateOrderNumber() {
+  const db = getDb();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.prepare("INSERT INTO order_seq (id, next_number) VALUES (1, 1001) ON CONFLICT(id) DO NOTHING").run();
+    const row = db.prepare("SELECT next_number FROM order_seq WHERE id = 1").get() as { next_number: number };
+    db.prepare("UPDATE order_seq SET next_number = ? WHERE id = 1").run(row.next_number + 1);
+    db.exec("COMMIT");
+    return row.next_number;
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 export function publishListing(
@@ -316,9 +365,9 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   }
   if (ship.postal.trim().length < 4 || ship.postal.length > 12) return { error: "Add the postal code." as const };
   if ((ship.country.trim() || "US").toUpperCase() !== "US") return { error: "This store ships in the US." as const };
-  const count = getDb().prepare("SELECT COUNT(*) AS n FROM orders").get() as { n: number };
   const id = randomUUID();
-  const number = `XV-${1001 + count.n}`;
+  const number = `XV-${allocateOrderNumber()}`;
+  const receiptToken = randomBytes(32).toString("hex");
   const page = listingFrom(listing);
   if (page.feeBps != null && (page.feeBps < 800 || page.feeBps > 1200)) {
     return { error: "The platform fee has to stay between 8% and 12%." as const };
@@ -340,8 +389,9 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
          id, number, product_id, account_id, customer_name, email, qty, amount_cents,
          ship_line1, ship_city, ship_region, ship_postal, ship_country,
          stripe_session_id, status, supplier_ref, supplier_detail, created_at,
-         transfer_group, fee_bps, platform_fee_cents, supplier_amount_cents, reseller_amount_cents, supplier_account_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?)`,
+         transfer_group, fee_bps, platform_fee_cents, supplier_amount_cents, reseller_amount_cents, supplier_account_id,
+         receipt_token_hash
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -364,12 +414,39 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
       split.supplierAmountCents,
       split.resellerAmountCents,
       page.supplierAccountId,
+      receiptHash(receiptToken),
     );
-  return { order: getOrder(id)!, listing: listingFrom(listing) };
+  return { order: getOrder(id)!, listing: listingFrom(listing), receiptToken };
 }
 
 export function attachStripeSession(orderId: string, sessionId: string) {
   getDb().prepare("UPDATE orders SET stripe_session_id = ? WHERE id = ?").run(sessionId, orderId);
+}
+
+export function orderByReceiptToken(token: string) {
+  if (!token || token.length < 32) return null;
+  const row = getDb().prepare("SELECT id FROM orders WHERE receipt_token_hash = ?").get(receiptHash(token)) as
+    | { id: string }
+    | undefined;
+  return row ? getOrder(row.id) : null;
+}
+
+export function markShipped(orderId: string, carrier: string, tracking: string) {
+  const carrierName = carrier.trim();
+  const trackingNumber = tracking.trim();
+  if (carrierName.length < 2 || carrierName.length > 40) return { error: "Name the carrier." as const };
+  if (!/^[A-Za-z0-9-]{4,40}$/.test(trackingNumber)) {
+    return { error: "Add a tracking number made of letters, numbers, and dashes." as const };
+  }
+  const order = getOrder(orderId);
+  if (!order) return { error: "That order is not on file." as const };
+  if (order.status === "pending") return { error: "This order is not paid." as const };
+  getDb()
+    .prepare(
+      "UPDATE orders SET carrier = ?, tracking_number = ?, shipped_at = COALESCE(shipped_at, ?) WHERE id = ?",
+    )
+    .run(carrierName, trackingNumber, Date.now(), orderId);
+  return { order: getOrder(orderId)! };
 }
 
 export function getOrder(id: string) {
@@ -393,7 +470,11 @@ export function ordersForAccount(accountId: string) {
 
 export async function fulfillPaidOrder(orderId: string) {
   const db = getDb();
-  const claim = changed(db.prepare("UPDATE orders SET status = 'fulfilling' WHERE id = ? AND status = 'paid'").run(orderId));
+  const claim = changed(
+    db.prepare(
+      "UPDATE orders SET status = 'fulfilling', fulfilling_started_at = ? WHERE id = ? AND status = 'paid'",
+    ).run(Date.now(), orderId),
+  );
   if (claim !== 1) return getOrder(orderId);
   const row = db.prepare("SELECT * FROM orders WHERE id = ?").get(orderId) as OrderRow | undefined;
   if (!row) return null;
@@ -421,6 +502,62 @@ export async function fulfillPaidOrder(orderId: string) {
       .run(result.status, result.ref, result.detail, orderId),
   );
   return getOrder(orderId);
+}
+
+export async function sweepStuckFulfillment(now = Date.now()) {
+  const cutoff = now - FULFILL_TIMEOUT_MS;
+  const rows = getDb()
+    .prepare(
+      `SELECT id, supplier_ref, fulfillment_attempts
+       FROM orders
+       WHERE status = 'fulfilling' AND fulfilling_started_at IS NOT NULL AND fulfilling_started_at <= ?`,
+    )
+    .all(cutoff) as { id: string; supplier_ref: string | null; fulfillment_attempts: number | null }[];
+  for (const row of rows) {
+    const attempts = row.fulfillment_attempts ?? 0;
+    if (!row.supplier_ref && attempts < 1) {
+      const reset = changed(
+        getDb()
+          .prepare(
+            `UPDATE orders
+             SET status = 'paid', fulfillment_attempts = fulfillment_attempts + 1, fulfillment_flag = 'retried'
+             WHERE id = ? AND status = 'fulfilling'`,
+          )
+          .run(row.id),
+      );
+      if (reset === 1) await fulfillPaidOrder(row.id);
+      continue;
+    }
+    getDb()
+      .prepare("UPDATE orders SET fulfillment_flag = 'stuck' WHERE id = ? AND status = 'fulfilling'")
+      .run(row.id);
+  }
+}
+
+export function flagRefundDeadlines(now = Date.now()) {
+  // TODO: other platform countries use a shorter hold than US_TRANSFER_HOLD_MS.
+  const deadline = now - US_TRANSFER_HOLD_MS;
+  getDb()
+    .prepare(
+      "UPDATE orders SET refund_required = 1 WHERE paid_at IS NOT NULL AND paid_at <= ? AND refund_required = 0",
+    )
+    .run(deadline);
+}
+
+export function listHoldAlerts(now = Date.now()) {
+  flagRefundDeadlines(now);
+  const rows = getDb()
+    .prepare("SELECT id, number, paid_at, refund_required FROM orders WHERE paid_at IS NOT NULL")
+    .all() as { id: string; number: string; paid_at: number; refund_required: number }[];
+  const alerts: { id: string; number: string; kind: "refund" | "nearing" }[] = [];
+  for (const row of rows) {
+    if (row.refund_required === 1) {
+      alerts.push({ id: row.id, number: row.number, kind: "refund" });
+      continue;
+    }
+    if (holdState(row.paid_at, now) === "nearing") alerts.push({ id: row.id, number: row.number, kind: "nearing" });
+  }
+  return alerts;
 }
 
 export function ordersVisibleTo(account: { id: string; role: string }) {

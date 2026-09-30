@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { TRIAL_DAYS } from "../account";
 
 export type CheckoutKind = "membership" | "order";
 
@@ -142,12 +143,13 @@ export async function createCheckoutSession(input: {
   customerEmail?: string;
   successPath: string;
   cancelPath: string;
+  attemptId?: string;
 }) {
   const origin = appOrigin();
   const idempotencyKey =
     input.kind === "order" && input.orderId
       ? `checkout-order-${input.orderId}`
-      : `checkout-membership-${input.accountId}-${new Date().toISOString().slice(0, 10)}`;
+      : `checkout-membership-${input.accountId}-${input.attemptId ?? randomUUID()}`;
   const body = new URLSearchParams();
   body.set("mode", input.kind === "membership" ? "subscription" : "payment");
   body.set("success_url", `${origin}${input.successPath}`);
@@ -178,6 +180,7 @@ export async function createCheckoutSession(input: {
     }
   }
   if (input.kind === "membership") {
+    body.set("subscription_data[trial_period_days]", String(TRIAL_DAYS));
     body.set("subscription_data[metadata][kind]", "membership");
     body.set("subscription_data[metadata][account_id]", input.accountId);
   } else if (input.orderId) {
@@ -226,6 +229,17 @@ export function readPaidCharge(session: StripeSession) {
     riskLevel: charge.outcome?.risk_level ?? null,
     riskType: charge.outcome?.type ?? null,
   };
+}
+
+export type StripeSubscription = {
+  id: string;
+  status?: string;
+  customer?: string | null;
+  metadata?: Record<string, string>;
+};
+
+export async function retrieveSubscription(subscriptionId: string) {
+  return (await stripeGet(`/v1/subscriptions/${encodeURIComponent(subscriptionId)}`)) as StripeSubscription;
 }
 
 export async function cancelSubscription(subscriptionId: string) {

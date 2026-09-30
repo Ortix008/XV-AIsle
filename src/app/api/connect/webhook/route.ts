@@ -6,6 +6,7 @@ export async function POST(request: Request) {
     raw,
     request.headers.get("stripe-signature"),
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET,
+    "connect",
   );
   return Response.json(result.body, { status: result.status });
 }

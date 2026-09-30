@@ -2,8 +2,12 @@
   "name": "xvaisle",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 4317",
+    "admin:create": "node scripts/admin-create.mjs",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-4317}",
     "lint": "eslint",

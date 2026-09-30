@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { MEMBER_PRICE } from "@/lib/account";
 import { accountFromToken } from "@/lib/server/accounts";
@@ -21,6 +22,7 @@ export async function POST() {
       name: "XVAIsle membership",
       amountCents: MEMBER_PRICE * 100,
       customerEmail: account.email,
+      attemptId: randomUUID(),
       successPath: "/membership?checkout=return&session_id={CHECKOUT_SESSION_ID}",
       cancelPath: "/membership",
     });

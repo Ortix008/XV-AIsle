@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { isAccountRole, type AccountRole } from "../account";
 import { getDb } from "./db";
+import { sendVerificationLink } from "./mail";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password";
 
 const MONTH = 30 * 24 * 60 * 60 * 1000;
@@ -13,6 +14,7 @@ export type PublicAccount = {
   memberSince: number | null;
   role: AccountRole;
   membershipStatus: string | null;
+  emailVerified: boolean;
 };
 
 type AccountRow = {
@@ -27,27 +29,28 @@ type AccountRow = {
   stripe_subscription_id: string | null;
   role?: string | null;
   membership_status?: string | null;
+  email_verified?: number | null;
 };
 
 function tokenHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-function adminEmail() {
-  return process.env.ADMIN_EMAIL?.trim().toLowerCase() ?? "";
+function roleFor(row: AccountRow): AccountRole {
+  if (isAccountRole(row.role)) return row.role;
+  getDb().prepare("UPDATE accounts SET role = 'buyer' WHERE id = ?").run(row.id);
+  return "buyer";
 }
 
-function roleFor(row: AccountRow): AccountRole {
-  const admin = adminEmail();
-  if (admin && row.email === admin) {
-    if (row.role !== "admin") getDb().prepare("UPDATE accounts SET role = 'admin' WHERE id = ?").run(row.id);
-    return "admin";
-  }
-  if (row.role === "admin" || !isAccountRole(row.role)) {
-    getDb().prepare("UPDATE accounts SET role = 'buyer' WHERE id = ?").run(row.id);
-    return "buyer";
-  }
-  return row.role;
+/** Emails the seed script may promote. Empty means the script is not limited. Signup never reads this. */
+export function adminAllowlist() {
+  const raw = process.env.ADMIN_EMAILS?.trim();
+  if (!raw) return null;
+  const emails = raw
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter((email) => email.length > 0);
+  return new Set(emails);
 }
 
 function publicAccount(row: AccountRow): PublicAccount {
@@ -59,11 +62,8 @@ function publicAccount(row: AccountRow): PublicAccount {
     memberSince: row.member_since,
     role: roleFor(row),
     membershipStatus: row.membership_status ?? null,
+    emailVerified: row.email_verified === 1,
   };
-}
-
-function initialRole(email: string): AccountRole {
-  return adminEmail() && email === adminEmail() ? "admin" : "buyer";
 }
 
 export function signUp(input: { name: string; email: string; password: string }) {
@@ -89,13 +89,14 @@ export function signUp(input: { name: string; email: string; password: string })
     member_since: null,
     stripe_customer_id: null,
     stripe_subscription_id: null,
-    role: initialRole(email),
+    role: "buyer",
     membership_status: null,
+    email_verified: 0,
   };
   db.prepare(
     `INSERT INTO accounts (
-       id, name, email, password_hash, password_salt, created_at, member_since, stripe_customer_id, stripe_subscription_id, role
-     ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?)`,
+       id, name, email, password_hash, password_salt, created_at, member_since, stripe_customer_id, stripe_subscription_id, role, email_verified
+     ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 'buyer', 0)`,
   ).run(
     account.id,
     account.name,
@@ -103,9 +104,91 @@ export function signUp(input: { name: string; email: string; password: string })
     account.password_hash,
     account.password_salt,
     account.created_at,
-    account.role,
   );
+  void sendAccountVerification(account.id).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : "Verification email failed.";
+    console.error(message);
+  });
   return { account: publicAccount(account), token: openSession(account.id) };
+}
+
+const VERIFY_MS = 24 * 60 * 60 * 1000;
+
+let verificationChain: Promise<unknown> = Promise.resolve();
+
+export function sendAccountVerification(accountId: string) {
+  const run = verificationChain.then(() => issueVerification(accountId));
+  verificationChain = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+async function issueVerification(accountId: string) {
+  const row = getDb().prepare("SELECT id, email, email_verified FROM accounts WHERE id = ?").get(accountId) as
+    | { id: string; email: string; email_verified: number | null }
+    | undefined;
+  if (!row) return { error: "That account is not on file." as const };
+  if (row.email_verified === 1) return { already: true as const };
+  const token = randomBytes(32).toString("hex");
+  const expires = Date.now() + VERIFY_MS;
+  getDb().prepare("DELETE FROM email_verifications WHERE account_id = ?").run(row.id);
+  getDb()
+    .prepare("INSERT INTO email_verifications (token_hash, account_id, expires_at) VALUES (?, ?, ?)")
+    .run(tokenHash(token), row.id, expires);
+  const origin = (process.env.APP_URL ?? "http://127.0.0.1:4317").replace(/\/$/, "");
+  const link = `${origin}/api/account/verify?token=${token}`;
+  await sendVerificationLink({ to: row.email, link });
+  return { sent: true as const, token };
+}
+
+export function verifyEmailToken(token: string | null | undefined) {
+  if (!token || token.length < 32 || token.length > 200) return { error: "That link is not valid." as const };
+  const db = getDb();
+  const row = db
+    .prepare("SELECT account_id, expires_at FROM email_verifications WHERE token_hash = ?")
+    .get(tokenHash(token)) as { account_id: string; expires_at: number } | undefined;
+  if (!row || row.expires_at < Date.now()) return { error: "That link is not valid." as const };
+  db.prepare("UPDATE accounts SET email_verified = 1 WHERE id = ?").run(row.account_id);
+  db.prepare("DELETE FROM email_verifications WHERE account_id = ?").run(row.account_id);
+  return { account: getAccount(row.account_id) };
+}
+
+/**
+ * Creates a verified admin, or promotes an existing account matched by email.
+ * Promotion sets role and email_verified only. Name, password, membership, and Stripe ids stay.
+ * ADMIN_EMAILS, when set, is an allowlist for this function. Signup does not grant admin from it.
+ */
+export function seedAdmin(input: { name?: string; email: string; password?: string }) {
+  const email = input.email.trim().toLowerCase();
+  if (email.length > 120 || !email.includes("@") || !email.includes(".")) {
+    return { error: "That email does not look right." as const };
+  }
+  const allowed = adminAllowlist();
+  if (allowed && !allowed.has(email)) {
+    return { error: "That email is not on the admin allowlist." as const };
+  }
+  const db = getDb();
+  const existing = db.prepare("SELECT id FROM accounts WHERE email = ?").get(email) as { id: string } | undefined;
+  if (existing) {
+    db.prepare("UPDATE accounts SET role = 'admin', email_verified = 1 WHERE id = ?").run(existing.id);
+    return { account: getAccount(existing.id)! };
+  }
+  const name = (input.name?.trim() || "Operator").slice(0, 80);
+  const password = input.password ?? "";
+  if (name.length < 2) return { error: "Add a name." as const };
+  if (password.length < 8 || password.length > 200) {
+    return { error: "Use a password of 8 to 200 characters." as const };
+  }
+  const { salt, hash } = hashPassword(password);
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO accounts (
+       id, name, email, password_hash, password_salt, created_at, member_since, stripe_customer_id, stripe_subscription_id, role, email_verified
+     ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 'admin', 1)`,
+  ).run(id, name, email, hash, salt, Date.now());
+  return { account: getAccount(id)! };
 }
 
 export function signIn(input: { email: string; password: string }) {
@@ -157,24 +240,29 @@ export function getAccount(accountId: string) {
 export function setOwnRole(accountId: string, role: "reseller" | "supplier") {
   const row = getDb().prepare("SELECT * FROM accounts WHERE id = ?").get(accountId) as AccountRow | undefined;
   if (!row) return { error: "That account is not on file." as const };
-  if (adminEmail() && row.email === adminEmail()) {
-    return { error: "The operator role comes from the server configuration." as const };
+  if (row.role === "admin") {
+    return { error: "The operator role is set on the server." as const };
   }
   getDb().prepare("UPDATE accounts SET role = ? WHERE id = ?").run(role, accountId);
   return { account: getAccount(accountId)! };
 }
 
-export function markMember(accountId: string, stripeCustomerId: string | null, stripeSubscriptionId: string | null) {
+export function markMember(
+  accountId: string,
+  stripeCustomerId: string | null,
+  stripeSubscriptionId: string | null,
+  status: "active" | "trialing" = "active",
+) {
   getDb()
     .prepare(
       `UPDATE accounts
        SET member_since = COALESCE(member_since, ?),
            stripe_customer_id = COALESCE(?, stripe_customer_id),
            stripe_subscription_id = COALESCE(?, stripe_subscription_id),
-           membership_status = 'active'
+           membership_status = ?
        WHERE id = ?`,
     )
-    .run(Date.now(), stripeCustomerId, stripeSubscriptionId, accountId);
+    .run(Date.now(), stripeCustomerId, stripeSubscriptionId, status, accountId);
 }
 
 export function setMembershipInactive(

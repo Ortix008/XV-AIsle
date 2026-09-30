@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { MEMBER_PRICE } from "../account";
-import { holdState } from "./fees";
+import { BUYER_WINDOW_MS, holdState } from "./fees";
 import { markMember } from "./accounts";
 import { connectReady, getConnected } from "./connect";
 import { changed, getDb } from "./db";
-import { fulfillPaidOrder, getOrder, type StoreOrder } from "./store";
+import { fulfillPaidOrder, getOrder, orderByReceiptToken, type StoreOrder } from "./store";
 import {
   createTransfer,
   readPaidCharge,
@@ -48,7 +48,14 @@ export function payoutHold(order: StoreOrder) {
   if (order.reviewOpen) return "Stripe Radar is reviewing this payment.";
   const hold = holdState(order.paidAt);
   if (hold === "expired") return "This payment is past Stripe's hold window. Refund it instead of transferring.";
+  if (order.buyerDisputeOpen && !order.buyerDisputeResolved) {
+    return "The buyer disputed this delivery. An admin has to review it before a payout.";
+  }
   if (!order.deliveredAt) return "Payout waits until the order is delivered.";
+  if (!order.shippedAt || !order.trackingNumber) return "Payout waits until the supplier adds a carrier and tracking number.";
+  if (!order.buyerConfirmedAt && !order.buyerDisputeResolved && Date.now() < order.deliveredAt + BUYER_WINDOW_MS) {
+    return "Payout waits until the buyer confirms receipt, or until 7 days after delivery with no dispute.";
+  }
   if (order.reviewClosed && !order.riskApproved) {
     return "Radar closed a review. An admin has to approve the payout.";
   }
@@ -97,7 +104,11 @@ function blockReason(order: StoreOrder) {
   if (order.disputeOpen) return "dispute" as const;
   if (order.reviewOpen) return "review" as const;
   if (!order.deliveredAt) return "not_delivered" as const;
-  if (holdState(order.paidAt) === "expired") return "expired" as const;
+  if (holdState(order.paidAt) === "expired" || order.refundRequired) return "expired" as const;
+  if (order.buyerDisputeOpen && !order.buyerDisputeResolved) return "buyer_dispute" as const;
+  if (!order.buyerConfirmedAt && !order.buyerDisputeResolved && Date.now() < order.deliveredAt + BUYER_WINDOW_MS) {
+    return "window" as const;
+  }
   if (order.reviewClosed && !order.riskApproved) return "review_closed" as const;
   if ((order.riskLevel === "elevated" || order.riskLevel === "highest") && !order.riskApproved) return "risk" as const;
   if (!order.riskLevel && !order.riskApproved) return "risk_unknown" as const;
@@ -105,20 +116,39 @@ function blockReason(order: StoreOrder) {
   return null;
 }
 
+function recordTransfer(row: LedgerRow, transferId: string, amountCents: number, kind: "transfer" | "restore") {
+  getDb()
+    .prepare(
+      `INSERT INTO ledger_transfers (
+         id, ledger_id, order_id, party, transfer_id, amount_cents, kind, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(randomUUID(), row.id, row.order_id, row.party, transferId, amountCents, kind, Date.now());
+}
+
 export async function releaseTransfers(orderId: string) {
   let order = getOrder(orderId);
   if (!order) return { error: "That order is not on file." as const };
   if (order.paidAt) order = await rememberRisk(order);
   const blocked = blockReason(order);
-  if (blocked === "not_delivered" || blocked === "dispute" || blocked === "review" || blocked === "expired") {
-    return { transferred: 0, blocked };
-  }
-  if (blocked === "review_closed" || blocked === "risk" || blocked === "risk_unknown" || blocked === "no_charge") {
-    return { transferred: 0, blocked };
-  }
-  if (blocked) {
-    const _never: never = blocked;
-    return { transferred: 0, blocked: _never };
+  switch (blocked) {
+    case null:
+      break;
+    case "dispute":
+    case "review":
+    case "not_delivered":
+    case "expired":
+    case "buyer_dispute":
+    case "window":
+    case "review_closed":
+    case "risk":
+    case "risk_unknown":
+    case "no_charge":
+      return { transferred: 0, blocked };
+    default: {
+      const _never: never = blocked;
+      return { transferred: 0, blocked: _never };
+    }
   }
   let transferred = 0;
   for (const row of rowsFor(orderId)) {
@@ -137,7 +167,7 @@ export async function releaseTransfers(orderId: string) {
       destination: connected.stripeAccountId,
       chargeId: order.chargeId!,
       transferGroup: order.transferGroup || `order_${order.id}`,
-      idempotencyKey: `transfer-${order.id}-${row.party}`,
+      idempotencyKey: `transfer-${order.id}-${row.party}-${remaining}`,
       orderId: order.id,
       party: row.party,
       accountId: row.account_id,
@@ -148,25 +178,32 @@ export async function releaseTransfers(orderId: string) {
         .prepare("UPDATE ledger SET status = 'transferred', transfer_id = ? WHERE id = ? AND status = 'pending'")
         .run(transfer.id, row.id),
     );
-    if (saved === 1) transferred += 1;
+    if (saved === 1) {
+      recordTransfer(row, transfer.id, remaining, "transfer");
+      transferred += 1;
+    }
   }
   return { transferred, blocked: null };
 }
 
 export async function settleCheckoutSession(session: StripeSession) {
-  if (session.payment_status !== "paid") return { error: "Payment is not complete." as const };
   const kind = session.metadata?.kind;
   if (kind === "membership") {
+    const settled =
+      session.payment_status === "paid" || session.payment_status === "no_payment_required";
+    if (!settled) return { error: "Payment is not complete." as const };
     const accountId = session.metadata.account_id;
     if (!accountId) return { error: "Checkout is missing the account." as const };
-    if (session.amount_total !== MEMBER_PRICE * 100) {
+    const trial = session.amount_total === 0;
+    if (!trial && session.amount_total !== MEMBER_PRICE * 100) {
       return { error: "The paid amount does not match membership." as const };
     }
     const customer = typeof session.customer === "string" ? session.customer : null;
     const subscription = typeof session.subscription === "string" ? session.subscription : null;
-    markMember(accountId, customer, subscription);
+    markMember(accountId, customer, subscription, trial ? "trialing" : "active");
     return { kind: "membership" as const };
   }
+  if (session.payment_status !== "paid") return { error: "Payment is not complete." as const };
   if (kind === "order") {
     const orderId = session.metadata.order_id;
     if (!orderId) return { error: "Checkout is missing the order." as const };
@@ -212,16 +249,25 @@ export async function markDelivered(orderId: string) {
   const order = getOrder(orderId);
   if (!order) return { error: "That order is not on file." as const };
   if (order.status === "pending") return { error: "This order is not paid." as const };
+  if (!order.carrier || !order.trackingNumber) {
+    return { error: "Add a carrier and tracking number before marking this delivered." as const };
+  }
   getDb().prepare("UPDATE orders SET delivered_at = COALESCE(delivered_at, ?) WHERE id = ?").run(Date.now(), orderId);
-  const released = await releaseTransfers(orderId);
-  return { order: getOrder(orderId), released };
+  return { order: getOrder(orderId), released: { transferred: 0, blocked: "window" as const } };
 }
 
 export async function approvePayout(orderId: string) {
   const order = getOrder(orderId);
   if (!order) return { error: "That order is not on file." as const };
   if (order.status === "pending") return { error: "This order is not paid." as const };
-  getDb().prepare("UPDATE orders SET risk_approved = 1 WHERE id = ?").run(orderId);
+  getDb()
+    .prepare(
+      `UPDATE orders
+       SET risk_approved = 1,
+           buyer_dispute_resolved = CASE WHEN buyer_dispute_open = 1 THEN 1 ELSE buyer_dispute_resolved END
+       WHERE id = ?`,
+    )
+    .run(orderId);
   const released = await releaseTransfers(orderId);
   return { order: getOrder(orderId), released };
 }
@@ -313,12 +359,13 @@ export async function applyDisputeClosed(input: {
       destination: connected.stripeAccountId,
       chargeId: current.chargeId,
       transferGroup: current.transferGroup || `order_${current.id}`,
-      idempotencyKey: `restore-${current.id}-${row.party}-${input.disputeId}`,
+      idempotencyKey: `restore-${current.id}-${row.party}-${input.disputeId}-${row.reversed_cents}`,
       orderId: current.id,
       party: row.party,
       accountId: row.account_id,
     });
     if (!transfer.id) throw new Error("Stripe did not return a transfer id.");
+    recordTransfer(row, transfer.id, row.reversed_cents, "restore");
     getDb()
       .prepare(
         "UPDATE ledger SET status = 'transferred', transfer_id = ?, reversed_cents = 0, reversal_reason = NULL WHERE id = ?",
@@ -357,6 +404,64 @@ function findOrder(chargeId: string | null, paymentIntentId: string | null) {
     if (row) return getOrder(row.id);
   }
   return null;
+}
+
+export async function confirmReceipt(token: string) {
+  const order = orderByReceiptToken(token);
+  if (!order) return { error: "That receipt link does not match an order." as const };
+  if (!order.deliveredAt) return { error: "This order is not marked delivered yet." as const };
+  if (order.buyerDisputeOpen && !order.buyerDisputeResolved) {
+    return { error: "This delivery is in dispute. An operator has to review it." as const };
+  }
+  getDb()
+    .prepare("UPDATE orders SET buyer_confirmed_at = COALESCE(buyer_confirmed_at, ?) WHERE id = ?")
+    .run(Date.now(), order.id);
+  const released = await releaseTransfers(order.id);
+  return { order: getOrder(order.id), released };
+}
+
+export async function disputeReceipt(token: string, note: string) {
+  const order = orderByReceiptToken(token);
+  if (!order) return { error: "That receipt link does not match an order." as const };
+  if (!order.deliveredAt) return { error: "You can dispute a delivery after it is marked delivered." as const };
+  if (order.buyerConfirmedAt) return { error: "This order was already confirmed." as const };
+  if (Date.now() > order.deliveredAt + BUYER_WINDOW_MS) {
+    return { error: "The 7-day window for this delivery has closed." as const };
+  }
+  const text = note.trim();
+  if (text.length < 4 || text.length > 500) return { error: "Write a short note about the problem." as const };
+  getDb()
+    .prepare(
+      `UPDATE orders
+       SET buyer_dispute_open = 1, buyer_dispute_resolved = 0, buyer_dispute_note = ?
+       WHERE id = ?`,
+    )
+    .run(text, order.id);
+  return { order: getOrder(order.id) };
+}
+
+export async function releaseMatured(now = Date.now()) {
+  const cutoff = now - BUYER_WINDOW_MS;
+  const rows = getDb()
+    .prepare(
+      `SELECT id FROM orders
+       WHERE delivered_at IS NOT NULL
+         AND delivered_at <= ?
+         AND buyer_confirmed_at IS NULL
+         AND buyer_dispute_open = 0`,
+    )
+    .all(cutoff) as { id: string }[];
+  let transferred = 0;
+  for (const row of rows) {
+    try {
+      const result = await releaseTransfers(row.id);
+      transferred += result.transferred ?? 0;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Matured payout did not transfer.";
+      console.error(message);
+    }
+  }
+  return { transferred };
 }
 
 export function setReview(chargeId: string | null, paymentIntentId: string | null, open: boolean) {

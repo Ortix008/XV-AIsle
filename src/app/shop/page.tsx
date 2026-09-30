@@ -28,7 +28,7 @@ export default function ShopPage() {
         </Link>
         <span className="text-muted-foreground"> · </span>
         <Link href="/shop/safety" className="underline underline-offset-4">
-          How an order is handled
+          How buying works
         </Link>
       </p>
     </ShopFrame>

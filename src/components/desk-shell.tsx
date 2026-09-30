@@ -1,14 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { ClosedScreen, JoinScreen } from "@/components/account-gate";
+import { botIcon } from "@/components/bot-mark";
 import { Switch } from "@/components/ui/switch";
 import { canKeepBotsRunning, MEMBER_PRICE } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
-import { welcomeTeam } from "@/lib/art";
 import { botById, bots } from "@/lib/bots";
 import { useDesk } from "@/lib/desk-store";
 import { cn } from "cn";
@@ -231,6 +230,7 @@ function NavLinks({
         const active = pathname === bot.href;
         const count = reviewCount(bot.id, state);
         const running = state.bots[bot.id].running;
+        const Icon = botIcon(bot.id);
         return (
           <Link
             key={bot.id}
@@ -250,7 +250,7 @@ function NavLinks({
               />
             ) : (
               <span className="relative">
-                <Image src={welcomeTeam[bot.id]} alt="" width={24} height={24} className="size-6 object-cover" />
+                <Icon aria-hidden className="size-6" />
                 <span
                   className={cn(
                     "absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full ring-2 ring-card",

@@ -1,4 +1,3 @@
-import { MEMBER_PRICE } from "../account";
 import { accountIdByStripe, markMember, setMembershipInactive } from "./accounts";
 import { disableConnected, refreshConnected } from "./connect";
 import { changed, getDb } from "./db";
@@ -9,9 +8,9 @@ import {
   setReview,
   settleCheckoutSession,
 } from "./ledger";
-import { retrieveCheckoutSession, verifyStripeSignature } from "./stripe";
+import { retrieveCheckoutSession, retrieveSubscription, verifyStripeSignature, type StripeSubscription } from "./stripe";
 
-const HANDLED = [
+const PLATFORM_EVENTS = [
   "checkout.session.completed",
   "checkout.session.async_payment_succeeded",
   "customer.subscription.created",
@@ -24,10 +23,13 @@ const HANDLED = [
   "charge.dispute.closed",
   "review.opened",
   "review.closed",
-  "account.updated",
-  "v2.core.account.updated",
-  "account.application.deauthorized",
 ] as const;
+
+const CONNECT_EVENTS = ["account.updated", "v2.core.account.updated", "account.application.deauthorized"] as const;
+
+const HANDLED = [...PLATFORM_EVENTS, ...CONNECT_EVENTS] as const;
+
+export type StripeEventScope = "platform" | "connect";
 
 type HandledEvent = (typeof HANDLED)[number];
 
@@ -124,9 +126,11 @@ function applySubscription(record: Record<string, unknown>) {
   }
   switch (status) {
     case "active":
-      markMember(accountId, customerId, subscriptionId);
+      markMember(accountId, customerId, subscriptionId, "active");
       return;
     case "trialing":
+      markMember(accountId, customerId, subscriptionId, "trialing");
+      return;
     case "past_due":
     case "unpaid":
     case "paused":
@@ -145,6 +149,23 @@ function applySubscription(record: Record<string, unknown>) {
   }
 }
 
+function subscriptionRecord(subscription: StripeSubscription): Record<string, unknown> {
+  return {
+    id: subscription.id,
+    status: subscription.status ?? "",
+    customer: subscription.customer ?? null,
+    metadata: subscription.metadata ?? {},
+  };
+}
+
+function connectedAccountId(event: Record<string, unknown>) {
+  return text(asRecord(event.related_object), "id") ?? text(eventObject(event), "id") ?? text(event, "account");
+}
+
+async function applyLiveSubscription(subscriptionId: string) {
+  applySubscription(subscriptionRecord(await retrieveSubscription(subscriptionId)));
+}
+
 async function dispatch(type: HandledEvent, event: Record<string, unknown>) {
   switch (type) {
     case "checkout.session.completed":
@@ -157,10 +178,9 @@ async function dispatch(type: HandledEvent, event: Record<string, unknown>) {
     case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
-      const subscription = eventObject(event);
-      if (!subscription) return;
-      if (type === "customer.subscription.deleted") subscription.status = "canceled";
-      applySubscription(subscription);
+      const subscriptionId = text(eventObject(event), "id");
+      if (!subscriptionId) return;
+      await applyLiveSubscription(subscriptionId);
       return;
     }
     case "invoice.paid":
@@ -170,19 +190,7 @@ async function dispatch(type: HandledEvent, event: Record<string, unknown>) {
       const subscriptionId =
         text(invoice, "subscription") ?? text(asRecord(asRecord(invoice.parent)?.subscription_details), "subscription");
       if (!subscriptionId) return;
-      const accountId =
-        metadata(invoice, "account_id") ??
-        metadata(asRecord(invoice.subscription_details), "account_id") ??
-        metadata(asRecord(asRecord(invoice.parent)?.subscription_details), "account_id") ??
-        accountIdByStripe({ customerId: text(invoice, "customer"), subscriptionId });
-      if (!accountId) return;
-      if (type === "invoice.payment_failed") {
-        setMembershipInactive(accountId, "past_due", text(invoice, "customer"), subscriptionId);
-        return;
-      }
-      const paid = whole(invoice, "amount_paid");
-      if (paid !== MEMBER_PRICE * 100) return;
-      markMember(accountId, text(invoice, "customer"), subscriptionId);
+      await applyLiveSubscription(subscriptionId);
       return;
     }
     case "charge.refunded": {
@@ -228,13 +236,13 @@ async function dispatch(type: HandledEvent, event: Record<string, unknown>) {
     }
     case "account.updated":
     case "v2.core.account.updated": {
-      const accountId = text(eventObject(event), "id") ?? text(event, "account");
+      const accountId = connectedAccountId(event);
       if (!accountId) return;
       await refreshConnected(accountId);
       return;
     }
     case "account.application.deauthorized": {
-      const accountId = text(event, "account") ?? text(eventObject(event), "account");
+      const accountId = text(event, "account") ?? connectedAccountId(event);
       if (!accountId) return;
       disableConnected(accountId);
       return;
@@ -246,7 +254,12 @@ async function dispatch(type: HandledEvent, event: Record<string, unknown>) {
   }
 }
 
-export async function acceptStripeEvent(raw: string, header: string | null, secret: string | undefined) {
+export async function acceptStripeEvent(
+  raw: string,
+  header: string | null,
+  secret: string | undefined,
+  scope: StripeEventScope = "platform",
+) {
   if (!secret) return { status: 503 as const, body: { error: "Stripe webhook secret is not set." } };
   if (!verifyStripeSignature(raw, header, secret)) {
     return { status: 400 as const, body: { error: "Stripe signature did not match." } };
@@ -262,7 +275,13 @@ export async function acceptStripeEvent(raw: string, header: string | null, secr
   const type = text(event, "type");
   if (!event || !id || !type) return { status: 400 as const, body: { error: "Stripe event was incomplete." } };
   if (beginEvent(id, type) === "duplicate") return { status: 200 as const, body: { received: true, duplicate: true } };
+  const allowed = scope === "connect" ? CONNECT_EVENTS : PLATFORM_EVENTS;
+  const onConnectedAccount = typeof event.account === "string" && event.account.length > 0;
   try {
+    if (!(allowed as readonly string[]).includes(type) || (scope === "platform" && onConnectedAccount)) {
+      finishEvent(id);
+      return { status: 200 as const, body: { received: true, ignored: true } };
+    }
     if (isHandled(type)) await dispatch(type, event);
     finishEvent(id);
     return { status: 200 as const, body: { received: true } };

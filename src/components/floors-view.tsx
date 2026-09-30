@@ -10,7 +10,6 @@ type FloorRow = {
   id: string;
   name: string;
   holds: string;
-  reachUrl: string;
   status: FloorStatus;
   contact: string;
 };
@@ -71,7 +70,7 @@ export function FloorsView() {
       <PageHeader
         kicker="Reach"
         title="The biggest US floors, asked to carry goods made here"
-        lede="Walmart, Amazon, Costco, and the other large US companies are not connected. Copy a note that asks them to ship goods made in the USA, open their public page, and mark where the conversation is."
+        lede="Buyers pay only on xvaisle.com. Copy a note that shares your shop link, and mark where the conversation is. This desk does not open another seller portal."
       />
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
         <p className="max-w-2xl text-sm text-pretty text-muted-foreground">
@@ -95,9 +94,8 @@ export function FloorsView() {
                 <h2 className="text-base font-semibold tracking-tight">{floor.name}</h2>
                 <p className="mt-1 max-w-xl text-sm text-pretty text-muted-foreground">{floor.holds}</p>
                 <p className="mt-2 text-sm">
-                  <a href={floor.reachUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
-                    Their public seller page
-                  </a>
+                  Shop link{" "}
+                  <span className="font-medium text-foreground">{storefrontUrl(origin || "http://127.0.0.1:4317")}</span>
                 </p>
                 <label className="mt-3 flex max-w-sm flex-col gap-1 text-sm">
                   Contact email, if you have one

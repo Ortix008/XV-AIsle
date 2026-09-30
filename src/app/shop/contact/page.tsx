@@ -38,8 +38,8 @@ export default function ContactPage() {
       <article className="mx-auto max-w-xl px-4 py-8 sm:px-6">
         <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">Store</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Write the seller</h1>
-        <p className="mt-2 text-sm text-pretty text-muted-foreground">
-          Use this for a question, a return, or a late box. The note stays on the market desk. It is not posted on X.
+        <p className="mt-2 text-base text-pretty text-foreground">
+          Use this for a question, a return, or a late box. The note goes to the seller.
         </p>
         {sent ? (
           <p className="mt-6 text-sm">The seller has the note.</p>
@@ -65,7 +65,7 @@ export default function ContactPage() {
         )}
         <p className="mt-8 text-sm">
           <Link href="/shop/safety" className="underline underline-offset-4">
-            How an order is handled
+            How buying works
           </Link>
         </p>
       </article>

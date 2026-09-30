@@ -114,9 +114,10 @@ function ListingEditor({
   const [smallShops, setSmallShops] = useState<{ id: string; name: string; city: string; madeInUsa: boolean }[]>([]);
   const [smallId, setSmallId] = useState("");
   const [madeInUsa, setMadeInUsa] = useState(false);
-  const [supplierAccountId, setSupplierAccountId] = useState("");
-  const [supplierCostCents, setSupplierCostCents] = useState("");
-  const [supplierShippingCents, setSupplierShippingCents] = useState("");
+  const [catalog, setCatalog] = useState<
+    { id: string; title: string; sku: string; costCents: number; shippingCents: number; supplierName: string }[]
+  >([]);
+  const [catalogItemId, setCatalogItemId] = useState("");
   const [feeBps, setFeeBps] = useState("");
   useEffect(() => {
     fetch("/api/floors")
@@ -126,6 +127,13 @@ function ListingEditor({
         setShipFloors((data.floors ?? []).filter((floor) => floor.status === "shipping"));
       })
       .catch(() => setShipFloors([]));
+    fetch("/api/supplier/catalog")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = (await response.json()) as { items?: typeof catalog };
+        setCatalog(data.items ?? []);
+      })
+      .catch(() => setCatalog([]));
     fetch("/api/shops/small")
       .then(async (response) => {
         if (!response.ok) return;
@@ -146,9 +154,7 @@ function ListingEditor({
   const stack = costStack(price.retail, landed);
   const stale = (supplierId ?? supplier.id) !== listing.supplierId && supplierId != null;
   const moneyFields = {
-    supplierAccountId,
-    supplierCostCents: supplierCostCents.trim() ? Number(supplierCostCents) : Math.round(landed * 100),
-    supplierShippingCents: supplierShippingCents.trim() ? Number(supplierShippingCents) : 0,
+    catalogItemId,
     ...(feeBps.trim() ? { feeBps: Number(feeBps) } : {}),
   };
   const activeSupplier = supplierId
@@ -244,24 +250,21 @@ function ListingEditor({
         </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
-        <Input
-          value={supplierAccountId}
-          onChange={(event) => setSupplierAccountId(event.target.value)}
-          placeholder="Supplier account id"
-          autoComplete="off"
-        />
-        <Input
-          value={supplierCostCents}
-          onChange={(event) => setSupplierCostCents(event.target.value)}
-          inputMode="numeric"
-          placeholder={`Supplier unit cost in cents (${Math.round(landed * 100)})`}
-        />
-        <Input
-          value={supplierShippingCents}
-          onChange={(event) => setSupplierShippingCents(event.target.value)}
-          inputMode="numeric"
-          placeholder="Supplier shipping cents, once per order"
-        />
+        <label className="flex flex-col gap-1 text-sm">
+          Supplier catalog item
+          <select
+            value={catalogItemId}
+            onChange={(event) => setCatalogItemId(event.target.value)}
+            className="h-9 border bg-background px-2"
+          >
+            <option value="">Choose an approved item</option>
+            {catalog.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.supplierName} · {item.title} · {item.costCents}¢ + {item.shippingCents}¢ ship
+              </option>
+            ))}
+          </select>
+        </label>
         <Input
           value={feeBps}
           onChange={(event) => setFeeBps(event.target.value)}
@@ -270,8 +273,9 @@ function ListingEditor({
         />
       </div>
       <p className="text-xs text-pretty text-muted-foreground">
-        Leave the fee blank for the platform default. The supplier account id is on that person’s membership page.
-        Publishing needs an active membership and a finished Stripe payout setup.
+        Cost and shipping come from the supplier’s catalog. A reseller cannot set them, and cannot list their own
+        supply. Leave the fee blank for the platform default. Publishing needs an active membership and a finished
+        Stripe payout setup.
       </p>
       {storeError ? <p className="text-sm text-late">{storeError}</p> : null}
       {listing.status === "ready" ? (

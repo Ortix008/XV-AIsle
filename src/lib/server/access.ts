@@ -5,21 +5,26 @@ export type Actor = {
   role: AccountRole;
   memberSince: number | null;
   membershipStatus: string | null;
+  emailVerified: boolean;
 };
 
-export function settingsWriteDecision(account: Actor | null) {
+export function verifiedAdmin(account: Actor | null) {
   if (!account) return { status: 401 as const, error: "Sign in first." };
-  if (account.role !== "admin") {
-    return { status: 403 as const, error: "Only the operator can change the return address." };
+  if (account.role !== "admin" || !account.emailVerified) {
+    return { status: 403 as const, error: "Only a verified operator can do that." };
   }
   return null;
 }
 
+export function settingsWriteDecision(account: Actor | null) {
+  const admin = verifiedAdmin(account);
+  if (admin) return admin;
+  return null;
+}
+
 export function inquiryReadDecision(account: Actor | null) {
-  if (!account) return { status: 401 as const, error: "Sign in first." };
-  if (account.role !== "admin") {
-    return { status: 403 as const, error: "Only the operator can read buyer notes." };
-  }
+  const admin = verifiedAdmin(account);
+  if (admin) return admin;
   return null;
 }
 
@@ -37,9 +42,7 @@ export function publishDenial(account: Actor, connectReady: boolean) {
 }
 
 export function deliverDecision(account: Actor | null) {
-  if (!account) return { status: 401 as const, error: "Sign in first." };
-  if (account.role !== "admin") {
-    return { status: 403 as const, error: "Only the operator can mark an order delivered." };
-  }
+  const admin = verifiedAdmin(account);
+  if (admin) return admin;
   return null;
 }

@@ -27,7 +27,7 @@ type AccountApi = {
   daysLeft: number;
   connect: ConnectState | null;
   billing: boolean;
-  signUp: (input: { name: string; email: string; password: string }) => Promise<string | null>;
+  signUp: (input: { name: string; email: string; password: string; confirmPassword: string }) => Promise<string | null>;
   signIn: (input: { email: string; password: string }) => Promise<string | null>;
   signOut: () => void;
   stopMembership: () => Promise<void>;
@@ -108,11 +108,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       connect,
       billing,
       refresh,
-      signUp: async ({ name, email, password }) => {
+      signUp: async ({ name, email, password, confirmPassword }) => {
         const response = await fetch("/api/account/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password }),
+          body: JSON.stringify({ name, email, password, confirmPassword }),
         });
         if (!response.ok) return readError(response);
         await refresh();

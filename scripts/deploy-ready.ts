@@ -54,19 +54,27 @@ async function main() {
       ? "STRIPE_CONNECT_WEBHOOK_SECRET is set"
       : "STRIPE_CONNECT_WEBHOOK_SECRET is empty. Add the signing secret from /api/connect/webhook",
   );
-  line(Boolean(process.env.ADMIN_EMAIL?.trim()), process.env.ADMIN_EMAIL?.trim() ? "ADMIN_EMAIL is set" : "ADMIN_EMAIL is empty");
+  line(
+    Boolean(process.env.ADMIN_EMAIL?.trim() || process.env.ADMIN_EMAILS?.trim()),
+    process.env.ADMIN_EMAILS?.trim()
+      ? "ADMIN_EMAILS allowlist is set. Run admin:create once per owner. Signup does not grant admin"
+      : process.env.ADMIN_EMAIL?.trim()
+        ? "ADMIN_EMAIL is set for one seed run. Run admin:create again for the other owner"
+        : "ADMIN_EMAIL is empty. Run admin:create once for each owner",
+  );
+  line(
+    Boolean(process.env.SMTP_HOST?.trim() && process.env.MAIL_FROM?.trim()),
+    process.env.SMTP_HOST?.trim()
+      ? "SMTP_HOST is set. Verification mail uses MAIL_FROM"
+      : "SMTP_HOST is empty. Verification links are written to the server log",
+  );
   line(
     Boolean(process.env.STORE_OPERATOR_EMAIL?.trim()),
     process.env.STORE_OPERATOR_EMAIL?.trim()
       ? "STORE_OPERATOR_EMAIL is set"
       : "STORE_OPERATOR_EMAIL is empty. Starter pages stay unpublished",
   );
-  line(
-    Boolean(process.env.SUPPLIER_CALLBACK_SECRET?.trim()),
-    process.env.SUPPLIER_CALLBACK_SECRET?.trim()
-      ? "SUPPLIER_CALLBACK_SECRET is set"
-      : "SUPPLIER_CALLBACK_SECRET is empty. Only an admin can mark delivery",
-  );
+  line(true, "Supplier delivery secrets are per account. Rotate one after choosing supplier");
   line(process.env.STRIPE_ALLOW_LIVE !== "1", "STRIPE_ALLOW_LIVE is off, so live keys are refused");
   line(Boolean(supplierUrl && supplierKey), supplierUrl && supplierKey ? "Supplier URL and key are both set" : "Supplier URL and key are empty. Paid orders stay queued");
   line(Boolean(returns), returns ? "Return address is saved" : "Return address is empty. Save it on /shop/safety");
