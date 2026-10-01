@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "XVAIsle",
+  title: "XV-AIsle",
   description:
-    "The first US trend market that keeps it. The SI Team finds the product, writes the page, watches the order, and writes the post. You still say yes.",
+    "Sell approved products without holding the box. Buyers pay on xvaisle.com. The first 30 days are free, then $10 a month.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -24,6 +24,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              '(function(){try{var q=new URLSearchParams(location.search).get("theme");var s=localStorage.getItem("xvaisle-theme");var saved=(q==="light"||q==="dark")?q:(s==="light"||s==="dark"?s:"");var t=saved||(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=t;}catch(e){}})();',
+          }}
+        />
+      </head>
       <body className="min-h-full bg-background text-foreground">{children}</body>
     </html>
   );

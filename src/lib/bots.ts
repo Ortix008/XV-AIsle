@@ -14,7 +14,7 @@ export const bots: {
     href: "/scout",
     title: "Find the product",
     does: "Finds the product",
-    job: "Looks at what people are already posting and picks a supplier in the US.",
+    job: "Finds a product people already want and a supplier in the US.",
   },
   {
     id: "listings",
@@ -38,7 +38,7 @@ export const bots: {
     href: "/marketing",
     title: "Write the posts",
     does: "Writes the posts",
-    job: "The social marketer. Writes the posts that send people to the store.",
+    job: "Drafts a post you can copy. You share your shop link anywhere.",
   },
 ];
 

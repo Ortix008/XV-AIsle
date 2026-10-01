@@ -76,7 +76,7 @@ export function ListingsView() {
               ) : (
                 <EmptyNote
                   title="No draft yet."
-                  body="Run one Draft pass, or write this product now. The words use the supplier you picked in Signal."
+                  body="Ask Draft to write this product, or write it now. The words use the supplier you picked in Signal."
                   action={
                     <Button type="button" onClick={() => rebuildListing(selectedId)}>
                       Draft this listing

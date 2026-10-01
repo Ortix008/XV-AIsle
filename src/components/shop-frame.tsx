@@ -1,15 +1,13 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BrandMark } from "@/components/brand-mark";
 
 export function ShopFrame({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <header className="flex h-14 items-center justify-between bg-[#111] px-4 text-white">
         <Link href="/shop" className="flex items-center">
-          <span className="grid h-7 w-8 place-items-center bg-live text-[11px] font-semibold tracking-tight text-[#111]">
-            XV
-          </span>
-          <span className="ml-2.5 text-sm font-semibold tracking-[0.22em]">AISLE</span>
+          <BrandMark />
         </Link>
         <div className="flex items-center gap-4">
           <Link href="/shop/safety" className="text-sm text-white/90 hover:text-white">

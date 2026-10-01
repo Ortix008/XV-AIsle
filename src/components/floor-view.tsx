@@ -8,7 +8,7 @@ import { AiBadge, botIcon } from "@/components/bot-mark";
 import { DepartmentGrid } from "@/components/department-grid";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { getProduct } from "@/lib/catalog";
+import { getProduct, trendSourceLabel } from "@/lib/catalog";
 import { MEMBER_PRICE } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
 import { parties, welcomeHero, welcomeReach } from "@/lib/art";
@@ -51,7 +51,7 @@ export function FloorView() {
       selectId: item.productId,
       kicker: "Signal",
       title: product.titleLead,
-      detail: `${product.trend.platform} · ${product.trend.title}`,
+      detail: `${trendSourceLabel(product.trend.platform)} · ${product.trend.title}`,
     });
   }
   for (const item of approved) {
@@ -155,12 +155,12 @@ export function FloorView() {
         <div>
           <p className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground">
             You sell what people already want. A supplier in the US ships it. You never hold the box.
-            The SI Team finds the product, writes the page, watches the order, and writes the social
-            posts. You still say yes before anything goes out.
+            The SI Team finds the product, writes the page, watches the order, and drafts a post.
+            You still say yes before anything goes out. Share your shop link anywhere. Buyers pay on xvaisle.com.
           </p>
           {status === "trial" ? (
             <p className="mt-3 max-w-2xl text-pretty text-sm">
-              This month is free. Run a pass when you want the SI Team to work. Leaving them on is $
+              The first 30 days are free. Ask the SI Team to work when you are ready. After that, leaving them on is $
               {MEMBER_PRICE} a month.
             </p>
           ) : null}
@@ -310,7 +310,7 @@ export function FloorView() {
         <section className="border-t pt-4">
           <h2 className="text-sm font-medium">What they just did</h2>
           {state.log.length === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">Nothing yet. Leave the SI Team on, or run one pass.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Nothing yet. Leave the SI Team on, or ask them to look.</p>
           ) : (
             <ul className="mt-2 space-y-1.5">
               {state.log.slice(0, 8).map((line) => (
@@ -327,7 +327,7 @@ export function FloorView() {
           <div className="mt-6 flex items-center gap-3">
             {confirmReset ? (
               <>
-                <p className="text-sm">This clears what you approved on this browser.</p>
+                <p className="text-sm">This clears the decisions saved on this desk.</p>
                 <Button type="button" variant="destructive" size="sm" onClick={() => reset()}>
                   Confirm reset
                 </Button>

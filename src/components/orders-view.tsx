@@ -239,7 +239,7 @@ export function OrdersView() {
           {rows.length === 0 ? (
             <EmptyNote
               title="Nothing in this filter."
-              body="Open orders with a future ETA stay quiet. A pass flags the ones that missed."
+              body="Open orders with a future ETA stay quiet. Harbor flags the ones that missed."
             />
           ) : (
             <>

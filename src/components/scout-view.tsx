@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { BotControls } from "@/components/desk-shell";
 import { EmptyNote, MarginFigure, MockupFrame, Money, PageHeader, Tone } from "@/components/bits";
 import { Button } from "@/components/ui/button";
-import { getProduct } from "@/lib/catalog";
+import { getProduct, trendSourceLabel } from "@/lib/catalog";
 import { prettyDate, todayISO } from "@/lib/dates";
 import { useDesk } from "@/lib/desk-store";
 import { assess, assumptionLine, laneLabel, speedLabel } from "@/lib/engine";
@@ -62,7 +62,7 @@ export function ScoutView() {
       <PageHeader
         kicker="Signal"
         title="Find the product"
-        lede="Kitchen gadgets and organizers, clothes, sports, home storage, and simple party extras. No fresh food. Signal picks a US warehouse or a print shop. A three-week boat stays on the list so you can see it, and it is not the pick. Signal does not log into social accounts."
+        lede="Signal looks for a product people already want and a supplier in the US. Kitchen tools, clothes, sports, home, and simple party extras. Not fresh food. A slow boat can stay on the list so you can see it. It is not the pick."
         actions={<BotControls id="scout" />}
       />
       <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] lg:overflow-hidden">
@@ -87,7 +87,7 @@ export function ScoutView() {
           </div>
           {state.queue.length > 0 ? (
             <p className="px-4 pb-3 text-pretty text-xs text-muted-foreground sm:px-6">
-              Waiting on the next pass:{" "}
+              Still to look at:{" "}
               {state.queue
                 .map((id) => {
                   const queued = getProduct(id);
@@ -102,7 +102,7 @@ export function ScoutView() {
               body={
                 activeFilter === "review"
                   ? "Leave Signal on and the next product shows up here."
-                  : "Try another filter, or run one more pass."
+                  : "Try another filter, or ask Signal to look again."
               }
             />
           ) : (
@@ -129,7 +129,7 @@ export function ScoutView() {
                           ) : null}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {laneLabel(product.lane)} · {product.trend.platform} · {product.sku}
+                          {laneLabel(product.lane)} · {trendSourceLabel(product.trend.platform)} · {product.sku}
                         </span>
                         <span className="flex flex-wrap items-center gap-3 text-sm">
                           <Money value={view.chosen.list} />
@@ -178,7 +178,7 @@ export function ScoutView() {
                             </span>
                           </button>
                         </td>
-                        <td className="px-3 py-2.5 text-muted-foreground">{product.trend.platform}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{trendSourceLabel(product.trend.platform)}</td>
                         <td className="px-3 py-2.5">
                           <Money value={view.chosen.list} />
                         </td>
@@ -207,7 +207,7 @@ export function ScoutView() {
               onStatus={(status) => setShortlistStatus(selected.productId, status)}
             />
           ) : (
-            <EmptyNote title="No products yet." body="Run one Signal pass to bring in the next product." />
+            <EmptyNote title="No products yet." body="Ask Signal for the next product." />
           )}
         </div>
       </div>
@@ -242,7 +242,7 @@ function Dossier({
     <article id="signal-dossier" className="flex flex-col gap-6 px-4 py-5 sm:px-6">
       <div>
         <p className="text-xs text-muted-foreground">
-          {laneLabel(product.lane)} · {product.trend.platform} · {product.trend.title}
+          {laneLabel(product.lane)} · {trendSourceLabel(product.trend.platform)} · {product.trend.title}
         </p>
         <h2 className="text-balance text-lg font-semibold tracking-tight">{product.name}</h2>
         <p className="mt-2 text-pretty text-sm">{product.trend.evidence}</p>

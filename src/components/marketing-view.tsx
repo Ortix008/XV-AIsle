@@ -23,7 +23,7 @@ export function MarketingView() {
       <PageHeader
         kicker="Cast"
         title="Social posts"
-        lede="Cast is the social marketer. The posts send people to the store. Saying yes does not publish them."
+        lede="Cast drafts posts you can copy. Share your shop link anywhere. Saying yes does not publish them."
         actions={<BotControls id="marketing" />}
       />
       {ready.length === 0 ? (
@@ -68,7 +68,7 @@ export function MarketingView() {
             ) : selectedId ? (
               <EmptyNote
                 title="No posts yet."
-                body="Run one Cast pass, or write this product’s posts now. The words use the page you marked ready, including how fast it ships."
+                body="Ask Cast to write the posts, or write them now. The words use the page you marked ready, including how fast it ships."
                 action={
                   <Button type="button" onClick={() => writeCampaign(selectedId)}>
                     Write posts

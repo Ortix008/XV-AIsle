@@ -1,5 +1,19 @@
 import { stocked } from "./stock";
-import type { Product, SupplierQuote } from "./types";
+import type { Platform, Product, SupplierQuote } from "./types";
+
+/** What a shopper-facing line may say. The stored platform value stays an identifier. */
+export function trendSourceLabel(platform: Platform): string {
+  switch (platform) {
+    case "Posts":
+    case "TikTok":
+    case "Instagram":
+      return "Posts";
+    default: {
+      const neverPlatform: never = platform;
+      return neverPlatform;
+    }
+  }
+}
 
 function quote(
   productId: string,
@@ -132,7 +146,7 @@ const catalogProducts: Product[] = [
       title: "Bench scraper, not a 12-piece set",
       signal: "Prep clips keep cutting to one steel scraper. The sets are the thing people regret.",
       evidence:
-        "TikTok prep videos this month use a single bench scraper for dough and veg. The supplier book has a US blank, not a 20-piece import set.",
+        "Prep videos this month use a single bench scraper for dough and veg. The supplier book has a US blank, not a 20-piece import set.",
     },
     mockups: [
       {
@@ -324,7 +338,7 @@ const catalogProducts: Product[] = [
       title: "Stop getting hit by the pan",
       signal: "Home-cook safety clips are a screen on a skillet, not a gag gift oven mitt.",
       evidence:
-        "TikTok: bacon and chicken-thigh clips where the screen is the whole point. US mesh is in stock. The import version sheds wires.",
+        "Clips of bacon and chicken thighs, where the screen is the whole point. US mesh is in stock. The import version sheds wires.",
     },
     mockups: [
       {
@@ -612,7 +626,7 @@ const catalogProducts: Product[] = [
       title: "One spatula, not a crock of them",
       signal: "Utensil videos that hold are a single steel fish spatula. The 40-piece holders are the punchline.",
       evidence:
-        "TikTok utensil audits keep one tool: a slotted fish spatula. US stainless is in Elizabeth. The coated import peels.",
+        "Utensil roundups keep one tool: a slotted fish spatula. US stainless is in Elizabeth. The coated import peels.",
     },
     mockups: [
       {
@@ -804,7 +818,7 @@ const catalogProducts: Product[] = [
       title: "Garlic press, again",
       signal: "The views are real. The fast quote cannot hold a price anyone will pay.",
       evidence:
-        "TikTok views on the press are high this week. US landed cost blows the $18 ceiling. The cheap quote is a three-week boat. Pass.",
+        "People are watching the press this week. US landed cost blows the $18 ceiling. The cheap quote is a three-week boat. Pass.",
     },
     mockups: [
       {
@@ -996,7 +1010,7 @@ const catalogProducts: Product[] = [
       title: "Cord clips under the cabinet",
       signal: "Utility clips are outrunning the acrylic organizer bins in home-setup videos.",
       evidence:
-        "TikTok desk and kitchen resets: adhesive clips along a cabinet lip. US pack of 20. Not a 200-piece import kit.",
+        "Desk and kitchen resets: adhesive clips along a cabinet lip. US pack of 20. Not a 200-piece import kit.",
     },
     mockups: [
       {
@@ -1092,7 +1106,7 @@ const catalogProducts: Product[] = [
       title: "The lemon at the end",
       signal: "Finish-the-dish clips end on a handheld press, not a countertop juicer.",
       evidence:
-        "Instagram cooking clips close on a lemon over the pan. A handheld steel press from US stock. Skip the electric juicer.",
+        "Cooking clips close on a lemon over the pan. A handheld steel press from US stock. Skip the electric juicer.",
     },
     mockups: [
       {
@@ -1188,7 +1202,7 @@ const catalogProducts: Product[] = [
       title: "The carry-home, not the tablescape",
       signal: "Event posts show a plain box next to a handmade favor. The box is the gap. The handmade piece is not ours.",
       evidence:
-        "Instagram event saves: a custom cookie or a small candle in a plain white box. We sell the box. We do not sell the candle, the bow, or the sign.",
+        "Event posts save a custom cookie or a small candle in a plain white box. We sell the box. We do not sell the candle, the bow, or the sign.",
     },
     mockups: [
       {
