@@ -114,6 +114,11 @@ function ListingEditor({
   const [smallShops, setSmallShops] = useState<{ id: string; name: string; city: string; madeInUsa: boolean }[]>([]);
   const [smallId, setSmallId] = useState("");
   const [madeInUsa, setMadeInUsa] = useState(false);
+  const [catalog, setCatalog] = useState<
+    { id: string; title: string; sku: string; costCents: number; shippingCents: number; supplierName: string }[]
+  >([]);
+  const [catalogItemId, setCatalogItemId] = useState("");
+  const [feeBps, setFeeBps] = useState("");
   useEffect(() => {
     fetch("/api/floors")
       .then(async (response) => {
@@ -122,6 +127,13 @@ function ListingEditor({
         setShipFloors((data.floors ?? []).filter((floor) => floor.status === "shipping"));
       })
       .catch(() => setShipFloors([]));
+    fetch("/api/supplier/catalog")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = (await response.json()) as { items?: typeof catalog };
+        setCatalog(data.items ?? []);
+      })
+      .catch(() => setCatalog([]));
     fetch("/api/shops/small")
       .then(async (response) => {
         if (!response.ok) return;
@@ -141,6 +153,10 @@ function ListingEditor({
   const landed = landedCost(supplier);
   const stack = costStack(price.retail, landed);
   const stale = (supplierId ?? supplier.id) !== listing.supplierId && supplierId != null;
+  const moneyFields = {
+    catalogItemId,
+    ...(feeBps.trim() ? { feeBps: Number(feeBps) } : {}),
+  };
   const activeSupplier = supplierId
     ? product.suppliers.find((item) => item.id === supplierId)
     : null;
@@ -183,6 +199,7 @@ function ListingEditor({
                   published: true,
                   madeInUsa: madeInUsa || smallShop?.madeInUsa === true,
                   shelf,
+                  ...moneyFields,
                 }).then((message) => {
                   setStorePending(false);
                   if (message) {
@@ -216,6 +233,7 @@ function ListingEditor({
                   published: false,
                   madeInUsa: madeInUsa || smallShop?.madeInUsa === true,
                   shelf,
+                  ...moneyFields,
                 }).then((message) => {
                   setStorePending(false);
                   if (message) {
@@ -231,6 +249,34 @@ function ListingEditor({
           )}
         </div>
       </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Supplier catalog item
+          <select
+            value={catalogItemId}
+            onChange={(event) => setCatalogItemId(event.target.value)}
+            className="h-9 border bg-background px-2"
+          >
+            <option value="">Choose an approved item</option>
+            {catalog.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.supplierName} · {item.title} · {item.costCents}¢ + {item.shippingCents}¢ ship
+              </option>
+            ))}
+          </select>
+        </label>
+        <Input
+          value={feeBps}
+          onChange={(event) => setFeeBps(event.target.value)}
+          inputMode="numeric"
+          placeholder="Platform fee basis points, 800–1200"
+        />
+      </div>
+      <p className="text-xs text-pretty text-muted-foreground">
+        Cost and shipping come from the supplier’s catalog. A reseller cannot set them, and cannot list their own
+        supply. Leave the fee blank for the platform default. Publishing needs an active membership and a finished
+        Stripe payout setup.
+      </p>
       {storeError ? <p className="text-sm text-late">{storeError}</p> : null}
       {listing.status === "ready" ? (
         <p className="text-sm">

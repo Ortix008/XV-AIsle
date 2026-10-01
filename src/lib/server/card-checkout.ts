@@ -10,7 +10,10 @@ type PaymentConfig = {
   us_bank_account?: { display_preference?: { preference?: string } };
 };
 
-/** Turn off Link and US bank on the default Stripe payment configuration. */
+/**
+ * Turn off Link and US bank on the default Stripe payment configuration.
+ * Opt-in only: this mutates the platform Stripe account, so it runs when STRIPE_CARD_CHECKOUT_ONLY=1.
+ */
 export async function preferCardCheckout() {
   const key = secret();
   if (!key) return { ok: false as const, reason: "Stripe is not configured." };

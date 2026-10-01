@@ -7,8 +7,16 @@ export async function POST(request: Request) {
   if (!allowAttempt(clientBucket(request, "signup"), 5, 15 * 60 * 1000)) {
     return NextResponse.json({ error: "Too many tries. Wait a few minutes and try again." }, { status: 429 });
   }
-  const body = (await request.json().catch(() => null)) as { name?: string; email?: string; password?: string } | null;
+  const body = (await request.json().catch(() => null)) as {
+    name?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  } | null;
   if (!body) return NextResponse.json({ error: "Send a name, email, and password." }, { status: 400 });
+  if ((body.confirmPassword ?? "") !== (body.password ?? "")) {
+    return NextResponse.json({ error: "Those passwords do not match." }, { status: 400 });
+  }
   const result = signUp({
     name: body.name ?? "",
     email: body.email ?? "",

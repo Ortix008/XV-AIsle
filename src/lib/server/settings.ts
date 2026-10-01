@@ -1,3 +1,5 @@
+import type { Actor } from "./access";
+import { settingsWriteDecision } from "./access";
 import { getDb } from "./db";
 
 const RETURNS_KEY = "returns_address";
@@ -25,4 +27,12 @@ export function saveReturnsAddress(value: string) {
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
   ).run(RETURNS_KEY, address);
   return { address };
+}
+
+export function saveReturnsFor(account: Actor | null, returns: string) {
+  const decision = settingsWriteDecision(account);
+  if (decision) return decision;
+  const saved = saveReturnsAddress(returns);
+  if ("error" in saved) return { status: 400 as const, error: saved.error };
+  return { status: 200 as const, returns: saved.address };
 }

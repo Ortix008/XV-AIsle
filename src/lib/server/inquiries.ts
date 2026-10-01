@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import type { Actor } from "./access";
+import { inquiryReadDecision } from "./access";
 import { getDb } from "./db";
 
 export function addInquiry(input: { name: string; email: string; message: string }) {
@@ -20,4 +22,10 @@ export function listInquiries() {
   return getDb()
     .prepare("SELECT id, name, email, message, created_at FROM inquiries ORDER BY created_at DESC LIMIT 40")
     .all() as { id: string; name: string; email: string; message: string; created_at: number }[];
+}
+
+export function inquiriesFor(account: Actor | null) {
+  const decision = inquiryReadDecision(account);
+  if (decision) return decision;
+  return { status: 200 as const, inquiries: listInquiries() };
 }

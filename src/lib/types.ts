@@ -1,4 +1,4 @@
-export type Platform = "X" | "TikTok" | "Instagram";
+export type Platform = "Posts" | "TikTok" | "Instagram";
 
 export type ShipSpeed = "us" | "pod" | "import";
 

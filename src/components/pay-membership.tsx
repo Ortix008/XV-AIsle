@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MEMBER_PRICE } from "@/lib/account";
+import { isStripeCheckoutUrl } from "@/lib/checkout-url";
 import { useAccount } from "@/lib/account-store";
 
 export function PayMembership() {
@@ -15,7 +16,7 @@ export function PayMembership() {
     setError(null);
     const response = await fetch("/api/billing/checkout", { method: "POST" });
     const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
-    if (!response.ok || !data?.url) {
+    if (!response.ok || !data?.url || !isStripeCheckoutUrl(data.url)) {
       setError(data?.error ?? "Checkout did not open.");
       setPending(false);
       return;

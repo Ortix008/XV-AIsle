@@ -5,7 +5,6 @@ export type FloorReach = {
   id: string;
   name: string;
   holds: string;
-  reachUrl: string;
   status: FloorStatus;
   contact: string;
 };
@@ -26,7 +25,6 @@ export function listFloorReach(accountId: string): FloorReach[] {
       id: floor.id,
       name: floor.name,
       holds: floor.holds,
-      reachUrl: floor.reachUrl,
       status,
       contact: row?.contact ?? "",
     };

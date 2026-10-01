@@ -4,13 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AiBadge, botIcon } from "@/components/bot-mark";
 import { DepartmentGrid } from "@/components/department-grid";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { getProduct } from "@/lib/catalog";
 import { MEMBER_PRICE } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
-import { parties, welcomeHero, welcomeReach, welcomeTeam } from "@/lib/art";
+import { parties, welcomeHero, welcomeReach } from "@/lib/art";
 import { bots } from "@/lib/bots";
 import { useDesk } from "@/lib/desk-store";
 import { prettyDate } from "@/lib/dates";
@@ -22,7 +23,6 @@ type Decision = {
   key: SelectionKey;
   selectId: string;
   kicker: string;
-  art: string;
   title: string;
   detail: string;
 };
@@ -50,7 +50,6 @@ export function FloorView() {
       key: "scout",
       selectId: item.productId,
       kicker: "Signal",
-      art: welcomeTeam.scout,
       title: product.titleLead,
       detail: `${product.trend.platform} · ${product.trend.title}`,
     });
@@ -64,7 +63,6 @@ export function FloorView() {
       key: "listing",
       selectId: item.productId,
       kicker: "Draft",
-      art: welcomeTeam.listings,
       title: `Write a page for ${product.titleLead}`,
       detail: "You said yes. The page is not written yet.",
     });
@@ -78,7 +76,6 @@ export function FloorView() {
       key: "listing",
       selectId: listing.productId,
       kicker: "Draft",
-      art: welcomeTeam.listings,
       title: `Read the page for ${product.titleLead}`,
       detail: "Read it, then mark it ready.",
     });
@@ -91,7 +88,6 @@ export function FloorView() {
       key: "order",
       selectId: order.id,
       kicker: "Harbor",
-      art: welcomeTeam.orders,
       title: `${order.number} · ${order.customer}`,
       detail:
         order.flag === "quality"
@@ -108,7 +104,6 @@ export function FloorView() {
       key: "marketing",
       selectId: listing.productId,
       kicker: "Cast",
-      art: welcomeTeam.marketing,
       title: `Write a post for ${product.titleLead}`,
       detail: "The page is ready. The post is not written yet.",
     });
@@ -123,7 +118,6 @@ export function FloorView() {
       key: "marketing",
       selectId: campaign.productId,
       kicker: "Cast",
-      art: welcomeTeam.marketing,
       title: product.titleLead,
       detail: pending === 1 ? "1 post is waiting for you." : `${pending} posts are waiting for you.`,
     });
@@ -257,8 +251,7 @@ export function FloorView() {
                         router.push(decision.href);
                       }}
                     >
-                      <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Image src={decision.art} alt="" width={32} height={32} className="size-8 object-cover" />
+                      <span className="flex items-center gap-2 text-base text-[#2c3036]">
                         {decision.kicker}
                       </span>
                       <span className="text-sm font-medium">{decision.title}</span>
@@ -271,25 +264,26 @@ export function FloorView() {
           </section>
 
           <section>
-            <h2 className="text-sm font-medium">SI Team</h2>
+            <h2 className="text-xl font-semibold tracking-tight">SI Team</h2>
+            <p className="mt-2 text-base leading-relaxed text-[#2c3036]">
+              These are AI tools, not people. You still say yes before anything goes out.
+            </p>
             <ul className="mt-2 divide-y border-y">
               {bots.map((bot) => {
                 const running = state.bots[bot.id].running;
+                const Icon = botIcon(bot.id);
                 return (
                   <li key={bot.id} className="flex items-start gap-3 py-3">
-                    <Image
-                      src={welcomeTeam[bot.id]}
-                      alt=""
-                      width={56}
-                      height={56}
-                      className="size-14 shrink-0 object-cover"
-                    />
+                    <span className="grid size-12 shrink-0 place-items-center border border-[#1a1a1a] bg-[#f4f5f7]">
+                      <Icon aria-hidden className="size-6" />
+                    </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">
+                      <p className="flex flex-wrap items-center gap-2 text-base font-medium">
                         {bot.name}
-                        <span className="font-normal text-muted-foreground"> · {bot.does}</span>
+                        <AiBadge />
                       </p>
-                      <p className="text-pretty text-xs text-muted-foreground">{bot.job}</p>
+                      <p className="text-base leading-relaxed text-[#1a1a1a]">{bot.does}</p>
+                      <p className="text-base leading-relaxed text-[#2c3036]">{bot.job}</p>
                     </div>
                     {status === "member" ? (
                       <label className="flex shrink-0 items-center gap-2 pt-0.5 text-xs">

@@ -2,12 +2,16 @@
   "name": "xvaisle",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 4317",
+    "admin:create": "node scripts/admin-create.mjs",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-4317}",
     "lint": "eslint",
-    "check": "tsx scripts/check-account.ts && tsx scripts/check-desk.ts && tsx scripts/check-security.ts && tsx scripts/check-market.ts"
+    "check": "tsx scripts/check-account.ts && tsx scripts/check-desk.ts && tsx scripts/check-security.ts && tsx scripts/check-market.ts && tsx scripts/check-connect.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

@@ -32,4 +32,4 @@ Put new configuration names in `.env.example` with empty values, and describe th
 
 ## Pull requests
 
-Branch from `main`, keep the change focused, and say what you tried. `npm run check` covers accounts, the desk, security, and the market. Match the TypeScript and React style already in `src/`.
+Branch from `main`, keep the change focused, and say what you tried. `npm run check` covers accounts, the desk, security, the market, and Connect payouts. Match the TypeScript and React style already in `src/`.

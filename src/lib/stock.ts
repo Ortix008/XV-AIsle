@@ -91,7 +91,7 @@ function article(input: StockInput): Product {
     keywords: input.titleLead.toLowerCase().split(/\s+/),
     complements: "the other articles already in this section",
     trend: {
-      platform: "X",
+      platform: "Posts",
       title: input.titleLead,
       signal: "The section keeps selling this kind of article, so the floor holds more than one.",
       evidence: "US stock is on hand. Rotate it forward when the one on the floor has had its turn.",

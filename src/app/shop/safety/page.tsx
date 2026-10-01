@@ -2,65 +2,71 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { ReturnsForm } from "@/components/returns-form";
 import { ShopFrame } from "@/components/shop-frame";
-import { STORE_HOST } from "@/lib/domain";
 import { accountFromToken } from "@/lib/server/accounts";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { readReturnsAddress } from "@/lib/server/settings";
-import { appOrigin } from "@/lib/server/stripe";
 
 export default async function ShopSafetyPage() {
-  const origin = appOrigin();
   const returns = readReturnsAddress();
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const account = accountFromToken(token);
   return (
     <ShopFrame>
       <article className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-        <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">Store</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">How an order is handled</h1>
-        <div className="mt-6 space-y-4 text-sm leading-relaxed text-pretty text-muted-foreground">
-          <p>
-            The market name is <span className="font-medium text-foreground">{STORE_HOST}</span>. This copy is posted at{" "}
-            <span className="font-medium text-foreground">{origin}/shop</span>. The card is entered on Stripe. XVAIsle
-            does not keep the card number.
-          </p>
-          <p>
-            Shipping is inside the US. The product page says how many days the named shipper takes after payment.
-            Quantity on one order is 1 to 5. The name, email, and ship-to address are kept so the box and the receipt
-            can find you.
-          </p>
-          <p>
-            A return can be asked for within 30 days of delivery. Write the seller and name the order. The shipper’s
-            own return window still applies.
-            {returns ? (
-              <>
-                {" "}
-                Send the box to <span className="font-medium text-foreground">{returns}</span>.
-              </>
-            ) : (
-              <> The seller replies with the address for the box.</>
-            )}
-          </p>
-          <p>
-            The company named on a product page is the floor the seller says will ship that item. Amazon, Walmart, and
-            the other national floors are not logged in here. A name on a page means that seller chose them as the
-            shipper.
-          </p>
-          <p>
-            A post on X can open a product page here. Payment, shipping, and returns stay on this store. X does not take
-            the card.
-          </p>
-          <p>
-            Sign-in tries and checkout tries are limited. The session cookie is httpOnly. Pictures on the store come
-            from this market.
-          </p>
-        </div>
-        <p className="mt-8 text-sm">
-          <Link href="/shop/contact" className="underline underline-offset-4">
-            Write the seller
-          </Link>
+        <h1 className="text-3xl font-semibold tracking-tight">How buying works</h1>
+        <p className="mt-3 text-base leading-relaxed text-foreground">
+          You pick a product, pay on this site, and the supplier ships it to you.
         </p>
-        {account ? <ReturnsForm initial={returns} /> : null}
+        <div className="mt-8 space-y-8">
+          <section>
+            <h2 className="text-lg font-semibold">Secure payment</h2>
+            <p className="mt-2 text-base leading-relaxed text-foreground">
+              You pay on xvaisle.com. Stripe handles the card. We never see your card number.
+            </p>
+          </section>
+          <section>
+            <h2 className="text-lg font-semibold">Shipping</h2>
+            <p className="mt-2 text-base leading-relaxed text-foreground">
+              We ship inside the US only. Each product page shows how long shipping takes. The box ships directly from
+              the supplier.
+            </p>
+          </section>
+          <section>
+            <h2 className="text-lg font-semibold">Returns</h2>
+            <p className="mt-2 text-base leading-relaxed text-foreground">
+              You can start a return within 30 days of delivery. Contact the seller and include your order number.
+              {returns ? (
+                <>
+                  {" "}
+                  Send the box to <span className="font-medium">{returns}</span>.
+                </>
+              ) : (
+                <> The seller will reply with the address for the box.</>
+              )}
+            </p>
+          </section>
+          <section>
+            <h2 className="text-lg font-semibold">Your info</h2>
+            <p className="mt-2 text-base leading-relaxed text-foreground">
+              We use your name, email, and shipping address only to ship the order and send your receipt.{" "}
+              <Link href="/shop/privacy" className="underline underline-offset-4">
+                Privacy
+              </Link>
+            </p>
+          </section>
+          <section>
+            <h2 className="text-lg font-semibold">Questions</h2>
+            <p className="mt-2 text-base leading-relaxed text-foreground">
+              Something late, missing, or not what you expected? Contact the seller.
+            </p>
+            <p className="mt-3 text-base">
+              <Link href="/shop/contact" className="underline underline-offset-4">
+                Contact the seller
+              </Link>
+            </p>
+          </section>
+        </div>
+        {account?.role === "admin" ? <ReturnsForm initial={returns} /> : null}
       </article>
     </ShopFrame>
   );

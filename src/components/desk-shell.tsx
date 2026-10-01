@@ -1,14 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { ClosedScreen, JoinScreen } from "@/components/account-gate";
+import { botIcon } from "@/components/bot-mark";
 import { Switch } from "@/components/ui/switch";
 import { canKeepBotsRunning, MEMBER_PRICE } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
-import { welcomeTeam } from "@/lib/art";
 import { botById, bots } from "@/lib/bots";
 import { useDesk } from "@/lib/desk-store";
 import { cn } from "cn";
@@ -151,6 +150,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
         >
           Floors
         </Link>
+        <PendingCatalogLink pathname={pathname} mobile />
         <NavLinks pathname={pathname} mobile />
       </nav>
       <div className="flex min-h-0 flex-1">
@@ -189,6 +189,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
             >
               Floors
             </Link>
+            <PendingCatalogLink pathname={pathname} />
           </div>
           <p className="px-5 pt-4 pb-1 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground">
             SI Team
@@ -215,6 +216,26 @@ export function DeskShell({ children }: { children: ReactNode }) {
   );
 }
 
+function PendingCatalogLink({ pathname, mobile = false }: { pathname: string; mobile?: boolean }) {
+  const { account } = useAccount();
+  if (account?.role !== "admin" || !account.emailVerified || account.totpEnabled !== true) return null;
+  const active = pathname === "/catalog";
+  return (
+    <Link
+      href="/catalog"
+      className={cn(
+        "whitespace-nowrap text-sm",
+        mobile ? "border-b-2 px-3 py-1.5" : "block border-l-2 px-3 py-2",
+        active
+          ? "border-foreground font-medium text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground",
+      )}
+    >
+      Pending catalog
+    </Link>
+  );
+}
+
 function NavLinks({
   pathname,
   showCounts = false,
@@ -231,6 +252,7 @@ function NavLinks({
         const active = pathname === bot.href;
         const count = reviewCount(bot.id, state);
         const running = state.bots[bot.id].running;
+        const Icon = botIcon(bot.id);
         return (
           <Link
             key={bot.id}
@@ -250,7 +272,7 @@ function NavLinks({
               />
             ) : (
               <span className="relative">
-                <Image src={welcomeTeam[bot.id]} alt="" width={24} height={24} className="size-6 object-cover" />
+                <Icon aria-hidden className="size-6" />
                 <span
                   className={cn(
                     "absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full ring-2 ring-card",

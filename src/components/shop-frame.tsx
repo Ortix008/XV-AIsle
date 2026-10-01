@@ -12,8 +12,8 @@ export function ShopFrame({ children }: { children: ReactNode }) {
           <span className="ml-2.5 text-sm font-semibold tracking-[0.22em]">AISLE</span>
         </Link>
         <div className="flex items-center gap-4">
-          <Link href="/shop/safety" className="text-xs text-white/80 hover:text-white">
-            Order safety
+          <Link href="/shop/safety" className="text-sm text-white/90 hover:text-white">
+            How buying works
           </Link>
           <Link href="/" className="text-xs text-white/80 hover:text-white">
             Market desk
@@ -29,9 +29,6 @@ export function ShopFrame({ children }: { children: ReactNode }) {
         </Link>
         <Link href="/shop/small" className="whitespace-nowrap">
           Small business
-        </Link>
-        <Link href="/shop/x" className="whitespace-nowrap">
-          From X
         </Link>
       </nav>
       {children}

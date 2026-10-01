@@ -1,5 +1,6 @@
 import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
-import { attachStripeSession, createPendingOrder, getOrder, settleCheckoutSession } from "@/lib/server/store";
+import { settleCheckoutSession } from "@/lib/server/ledger";
+import { attachStripeSession, createPendingOrder, getOrder } from "@/lib/server/store";
 import { createCheckoutSession, retrieveCheckoutSession, stripeConfigured } from "@/lib/server/stripe";
 
 export async function GET(request: Request) {
@@ -62,11 +63,12 @@ export async function POST(request: Request) {
       kind: "order",
       accountId: created.order.accountId,
       orderId: created.order.id,
+      transferGroup: created.order.transferGroup ?? undefined,
       name: created.listing.title,
       amountCents: created.listing.priceCents,
       quantity: created.order.qty,
       customerEmail: created.order.email,
-      successPath: "/shop/return?session_id={CHECKOUT_SESSION_ID}",
+      successPath: `/shop/return?token=${encodeURIComponent(created.receiptToken)}&session_id={CHECKOUT_SESSION_ID}`,
       cancelPath: `/shop/${created.listing.productId}`,
     });
     if (!session.url || !session.id) {

@@ -1,9 +1,7 @@
-import { randomUUID } from "node:crypto";
-import { getDb } from "./db";
-import { markMember } from "./accounts";
-import { MEMBER_PRICE } from "../account";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, splitProblem } from "./fees";
+import { changed, getDb } from "./db";
 import { requestShipment } from "./supplier";
-import type { StripeSession } from "./stripe";
 
 export type StoreListing = {
   productId: string;
@@ -20,6 +18,10 @@ export type StoreListing = {
   published: boolean;
   madeInUsa: boolean;
   shelf: "national" | "small";
+  supplierAccountId: string | null;
+  supplierCostCents: number;
+  supplierShippingCents: number;
+  feeBps: number | null;
 };
 
 export type StoreOrder = {
@@ -43,6 +45,31 @@ export type StoreOrder = {
   createdAt: number;
   title?: string;
   sku?: string;
+  paymentIntentId: string | null;
+  chargeId: string | null;
+  transferGroup: string | null;
+  feeBps: number | null;
+  platformFeeCents: number | null;
+  supplierAmountCents: number | null;
+  resellerAmountCents: number | null;
+  supplierAccountId: string | null;
+  deliveredAt: number | null;
+  paidAt: number | null;
+  riskLevel: string | null;
+  riskType: string | null;
+  riskApproved: boolean;
+  reviewOpen: boolean;
+  reviewClosed: boolean;
+  disputeOpen: boolean;
+  carrier: string | null;
+  trackingNumber: string | null;
+  shippedAt: number | null;
+  buyerConfirmedAt: number | null;
+  buyerDisputeOpen: boolean;
+  buyerDisputeResolved: boolean;
+  buyerDisputeNote: string | null;
+  refundRequired: boolean;
+  fulfillmentFlag: string | null;
 };
 
 type ListingRow = {
@@ -60,6 +87,10 @@ type ListingRow = {
   published: number;
   made_in_usa?: number;
   shelf?: string;
+  supplier_account_id?: string | null;
+  supplier_cost_cents?: number | null;
+  supplier_shipping_cents?: number | null;
+  fee_bps?: number | null;
 };
 
 type OrderRow = {
@@ -81,6 +112,34 @@ type OrderRow = {
   supplier_ref: string | null;
   supplier_detail: string | null;
   created_at: number;
+  payment_intent_id?: string | null;
+  charge_id?: string | null;
+  transfer_group?: string | null;
+  fee_bps?: number | null;
+  platform_fee_cents?: number | null;
+  supplier_amount_cents?: number | null;
+  reseller_amount_cents?: number | null;
+  supplier_account_id?: string | null;
+  delivered_at?: number | null;
+  paid_at?: number | null;
+  risk_level?: string | null;
+  risk_type?: string | null;
+  risk_approved?: number | null;
+  review_open?: number | null;
+  review_closed?: number | null;
+  dispute_open?: number | null;
+  carrier?: string | null;
+  tracking_number?: string | null;
+  shipped_at?: number | null;
+  buyer_confirmed_at?: number | null;
+  buyer_dispute_open?: number | null;
+  buyer_dispute_resolved?: number | null;
+  buyer_dispute_note?: string | null;
+  refund_required?: number | null;
+  fulfillment_flag?: string | null;
+  fulfilling_started_at?: number | null;
+  fulfillment_attempts?: number | null;
+  receipt_token_hash?: string | null;
 };
 
 function listingFrom(row: ListingRow): StoreListing {
@@ -99,6 +158,10 @@ function listingFrom(row: ListingRow): StoreListing {
     published: row.published === 1,
     madeInUsa: row.made_in_usa === 1,
     shelf: row.shelf === "small" ? "small" : "national",
+    supplierAccountId: row.supplier_account_id ?? null,
+    supplierCostCents: row.supplier_cost_cents ?? 0,
+    supplierShippingCents: row.supplier_shipping_cents ?? 0,
+    feeBps: row.fee_bps ?? null,
   };
 }
 
@@ -124,15 +187,77 @@ function orderFrom(row: OrderRow, listing?: ListingRow): StoreOrder {
     createdAt: row.created_at,
     title: listing?.title,
     sku: listing?.sku,
+    paymentIntentId: row.payment_intent_id ?? null,
+    chargeId: row.charge_id ?? null,
+    transferGroup: row.transfer_group ?? null,
+    feeBps: row.fee_bps ?? null,
+    platformFeeCents: row.platform_fee_cents ?? null,
+    supplierAmountCents: row.supplier_amount_cents ?? null,
+    resellerAmountCents: row.reseller_amount_cents ?? null,
+    supplierAccountId: row.supplier_account_id ?? null,
+    deliveredAt: row.delivered_at ?? null,
+    paidAt: row.paid_at ?? null,
+    riskLevel: row.risk_level ?? null,
+    riskType: row.risk_type ?? null,
+    riskApproved: row.risk_approved === 1,
+    reviewOpen: row.review_open === 1,
+    reviewClosed: row.review_closed === 1,
+    disputeOpen: row.dispute_open === 1,
+    carrier: row.carrier ?? null,
+    trackingNumber: row.tracking_number ?? null,
+    shippedAt: row.shipped_at ?? null,
+    buyerConfirmedAt: row.buyer_confirmed_at ?? null,
+    buyerDisputeOpen: row.buyer_dispute_open === 1,
+    buyerDisputeResolved: row.buyer_dispute_resolved === 1,
+    buyerDisputeNote: row.buyer_dispute_note ?? null,
+    refundRequired: row.refund_required === 1,
+    fulfillmentFlag: row.fulfillment_flag ?? null,
   };
+}
+
+function receiptHash(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function allocateOrderNumber() {
+  const db = getDb();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const seedRow = db
+      .prepare(
+        `SELECT COALESCE(MAX(CAST(SUBSTR(number, 4) AS INTEGER)), 1000) + 1 AS next_number
+         FROM orders
+         WHERE number GLOB 'XV-[0-9]*'`,
+      )
+      .get() as { next_number: number | bigint };
+    const seed = Number(seedRow?.next_number);
+    const start = Number.isInteger(seed) && seed >= 1001 ? seed : 1001;
+    db.prepare("INSERT INTO order_seq (id, next_number) VALUES (1, ?) ON CONFLICT(id) DO NOTHING").run(start);
+    db.prepare("UPDATE order_seq SET next_number = ? WHERE id = 1 AND next_number < ?").run(start, start);
+    const row = db.prepare("SELECT next_number FROM order_seq WHERE id = 1").get() as { next_number: number | bigint };
+    const next = Number(row.next_number);
+    db.prepare("UPDATE order_seq SET next_number = ? WHERE id = 1").run(next + 1);
+    db.exec("COMMIT");
+    return next;
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 export function publishListing(
   accountId: string,
-  input: Omit<StoreListing, "accountId" | "published" | "madeInUsa" | "shelf"> & {
+  input: Omit<
+    StoreListing,
+    "accountId" | "published" | "madeInUsa" | "shelf" | "supplierAccountId" | "supplierCostCents" | "supplierShippingCents" | "feeBps"
+  > & {
     published?: boolean;
     madeInUsa?: boolean;
     shelf?: "national" | "small";
+    supplierAccountId?: string | null;
+    supplierCostCents?: number;
+    supplierShippingCents?: number;
+    feeBps?: number | null;
   },
 ) {
   if (!input.title.trim() || !input.sku.trim()) return { error: "The page needs a title." as const };
@@ -156,8 +281,8 @@ export function publishListing(
       `INSERT INTO listings (
          product_id, account_id, sku, title, description, price_cents, image,
          supplier_name, supplier_origin, ship_days_min, ship_days_max, published,
-         made_in_usa, shelf
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         made_in_usa, shelf, supplier_account_id, supplier_cost_cents, supplier_shipping_cents, fee_bps
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(product_id) DO UPDATE SET
          account_id = excluded.account_id,
          sku = excluded.sku,
@@ -171,7 +296,11 @@ export function publishListing(
          ship_days_max = excluded.ship_days_max,
          published = excluded.published,
          made_in_usa = excluded.made_in_usa,
-         shelf = excluded.shelf`,
+         shelf = excluded.shelf,
+         supplier_account_id = excluded.supplier_account_id,
+         supplier_cost_cents = excluded.supplier_cost_cents,
+         supplier_shipping_cents = excluded.supplier_shipping_cents,
+         fee_bps = excluded.fee_bps`,
     )
     .run(
       input.productId,
@@ -188,6 +317,10 @@ export function publishListing(
       input.published === false ? 0 : 1,
       input.madeInUsa ? 1 : 0,
       shelf,
+      input.supplierAccountId?.trim() || null,
+      input.supplierCostCents ?? 0,
+      input.supplierShippingCents ?? 0,
+      input.feeBps ?? null,
     );
   return { listing: getListing(input.productId) };
 }
@@ -243,18 +376,33 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   }
   if (ship.postal.trim().length < 4 || ship.postal.length > 12) return { error: "Add the postal code." as const };
   if ((ship.country.trim() || "US").toUpperCase() !== "US") return { error: "This store ships in the US." as const };
-  const count = getDb().prepare("SELECT COUNT(*) AS n FROM orders").get() as { n: number };
   const id = randomUUID();
-  const number = `XV-${1001 + count.n}`;
-  const amount = listing.price_cents * qty;
+  const number = `XV-${allocateOrderNumber()}`;
+  const receiptToken = randomBytes(32).toString("hex");
+  const page = listingFrom(listing);
+  if (page.feeBps != null && (page.feeBps < 800 || page.feeBps > 1200)) {
+    return { error: "The platform fee has to stay between 8% and 12%." as const };
+  }
+  const feeBps = page.feeBps == null ? platformFeeBps() : page.feeBps;
+  const split = quoteSplit({
+    priceCents: page.priceCents,
+    qty,
+    supplierCostCents: page.supplierCostCents,
+    supplierShippingCents: page.supplierShippingCents,
+    feeBps,
+  });
+  const problem = splitProblem(split, page.supplierAccountId);
+  if (problem) return { error: problem };
   const created = Date.now();
   getDb()
     .prepare(
       `INSERT INTO orders (
          id, number, product_id, account_id, customer_name, email, qty, amount_cents,
          ship_line1, ship_city, ship_region, ship_postal, ship_country,
-         stripe_session_id, status, supplier_ref, supplier_detail, created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?)`,
+         stripe_session_id, status, supplier_ref, supplier_detail, created_at,
+         transfer_group, fee_bps, platform_fee_cents, supplier_amount_cents, reseller_amount_cents, supplier_account_id,
+         receipt_token_hash
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -264,19 +412,52 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
       ship.name.trim(),
       ship.email.trim().toLowerCase(),
       qty,
-      amount,
+      split.grossCents,
       ship.line1.trim(),
       ship.city.trim(),
       ship.region.trim(),
       ship.postal.trim(),
       (ship.country.trim() || "US").toUpperCase(),
       created,
+      `order_${id}`,
+      split.feeBps,
+      split.platformFeeCents,
+      split.supplierAmountCents,
+      split.resellerAmountCents,
+      page.supplierAccountId,
+      receiptHash(receiptToken),
     );
-  return { order: getOrder(id)!, listing: listingFrom(listing) };
+  return { order: getOrder(id)!, listing: listingFrom(listing), receiptToken };
 }
 
 export function attachStripeSession(orderId: string, sessionId: string) {
   getDb().prepare("UPDATE orders SET stripe_session_id = ? WHERE id = ?").run(sessionId, orderId);
+}
+
+export function orderByReceiptToken(token: string) {
+  if (!token || token.length < 32) return null;
+  const row = getDb().prepare("SELECT id FROM orders WHERE receipt_token_hash = ?").get(receiptHash(token)) as
+    | { id: string }
+    | undefined;
+  return row ? getOrder(row.id) : null;
+}
+
+export function markShipped(orderId: string, carrier: string, tracking: string) {
+  const carrierName = carrier.trim();
+  const trackingNumber = tracking.trim();
+  if (carrierName.length < 2 || carrierName.length > 40) return { error: "Name the carrier." as const };
+  if (!/^[A-Za-z0-9-]{4,40}$/.test(trackingNumber)) {
+    return { error: "Add a tracking number made of letters, numbers, and dashes." as const };
+  }
+  const order = getOrder(orderId);
+  if (!order) return { error: "That order is not on file." as const };
+  if (order.status === "pending") return { error: "This order is not paid." as const };
+  getDb()
+    .prepare(
+      "UPDATE orders SET carrier = ?, tracking_number = ?, shipped_at = COALESCE(shipped_at, ?) WHERE id = ?",
+    )
+    .run(carrierName, trackingNumber, Date.now(), orderId);
+  return { order: getOrder(orderId)! };
 }
 
 export function getOrder(id: string) {
@@ -299,12 +480,16 @@ export function ordersForAccount(accountId: string) {
 }
 
 export async function fulfillPaidOrder(orderId: string) {
-  const row = getDb().prepare("SELECT * FROM orders WHERE id = ?").get(orderId) as OrderRow | undefined;
+  const db = getDb();
+  const claim = changed(
+    db.prepare(
+      "UPDATE orders SET status = 'fulfilling', fulfilling_started_at = ? WHERE id = ? AND status = 'paid'",
+    ).run(Date.now(), orderId),
+  );
+  if (claim !== 1) return getOrder(orderId);
+  const row = db.prepare("SELECT * FROM orders WHERE id = ?").get(orderId) as OrderRow | undefined;
   if (!row) return null;
-  if (row.status === "queued" || row.status === "accepted" || row.status === "supplier_error") {
-    return getOrder(orderId);
-  }
-  const listing = getDb().prepare("SELECT * FROM listings WHERE product_id = ?").get(row.product_id) as ListingRow | undefined;
+  const listing = db.prepare("SELECT * FROM listings WHERE product_id = ?").get(row.product_id) as ListingRow | undefined;
   const result = await requestShipment({
     orderId: row.id,
     number: row.number,
@@ -322,38 +507,82 @@ export async function fulfillPaidOrder(orderId: string) {
       country: row.ship_country,
     },
   });
-  getDb()
-    .prepare("UPDATE orders SET status = ?, supplier_ref = ?, supplier_detail = ? WHERE id = ?")
-    .run(result.status, result.ref, result.detail, orderId);
+  changed(
+    db
+      .prepare("UPDATE orders SET status = ?, supplier_ref = ?, supplier_detail = ? WHERE id = ? AND status = 'fulfilling'")
+      .run(result.status, result.ref, result.detail, orderId),
+  );
   return getOrder(orderId);
 }
 
-export async function settleCheckoutSession(session: StripeSession) {
-  const paid = session.payment_status === "paid" || session.status === "complete";
-  if (!paid) return { error: "Payment is not complete." as const };
-  const kind = session.metadata?.kind;
-  if (kind === "membership") {
-    const accountId = session.metadata.account_id;
-    if (!accountId) return { error: "Checkout is missing the account." as const };
-    if (session.amount_total !== MEMBER_PRICE * 100) {
-      return { error: "The paid amount does not match membership." as const };
+export async function sweepStuckFulfillment(now = Date.now()) {
+  const cutoff = now - FULFILL_TIMEOUT_MS;
+  const rows = getDb()
+    .prepare(
+      `SELECT id, supplier_ref, fulfillment_attempts
+       FROM orders
+       WHERE status = 'fulfilling' AND fulfilling_started_at IS NOT NULL AND fulfilling_started_at <= ?`,
+    )
+    .all(cutoff) as { id: string; supplier_ref: string | null; fulfillment_attempts: number | null }[];
+  for (const row of rows) {
+    const attempts = row.fulfillment_attempts ?? 0;
+    if (!row.supplier_ref && attempts < 1) {
+      const reset = changed(
+        getDb()
+          .prepare(
+            `UPDATE orders
+             SET status = 'paid', fulfillment_attempts = fulfillment_attempts + 1, fulfillment_flag = 'retried'
+             WHERE id = ? AND status = 'fulfilling'`,
+          )
+          .run(row.id),
+      );
+      if (reset === 1) await fulfillPaidOrder(row.id);
+      continue;
     }
-    markMember(accountId, session.customer, session.subscription);
-    return { kind: "membership" as const };
+    getDb()
+      .prepare("UPDATE orders SET fulfillment_flag = 'stuck' WHERE id = ? AND status = 'fulfilling'")
+      .run(row.id);
   }
-  if (kind === "order") {
-    const orderId = session.metadata.order_id;
-    if (!orderId) return { error: "Checkout is missing the order." as const };
-    const current = getOrder(orderId);
-    if (!current) return { error: "That order is not on file." as const };
-    if (session.amount_total !== current.amountCents) {
-      return { error: "The paid amount does not match this order." as const };
+}
+
+export function flagRefundDeadlines(now = Date.now()) {
+  // TODO: other platform countries use a shorter hold than US_TRANSFER_HOLD_MS.
+  const deadline = now - US_TRANSFER_HOLD_MS;
+  getDb()
+    .prepare(
+      "UPDATE orders SET refund_required = 1 WHERE paid_at IS NOT NULL AND paid_at <= ? AND refund_required = 0",
+    )
+    .run(deadline);
+}
+
+export function listHoldAlerts(now = Date.now()) {
+  flagRefundDeadlines(now);
+  const rows = getDb()
+    .prepare("SELECT id, number, paid_at, refund_required FROM orders WHERE paid_at IS NOT NULL")
+    .all() as { id: string; number: string; paid_at: number; refund_required: number }[];
+  const alerts: { id: string; number: string; kind: "refund" | "nearing" }[] = [];
+  for (const row of rows) {
+    if (row.refund_required === 1) {
+      alerts.push({ id: row.id, number: row.number, kind: "refund" });
+      continue;
     }
-    if (session.id) {
-      getDb().prepare("UPDATE orders SET stripe_session_id = ? WHERE id = ? AND stripe_session_id IS NULL").run(session.id, orderId);
-    }
-    const order = await fulfillPaidOrder(orderId);
-    return { kind: "order" as const, order };
+    if (holdState(row.paid_at, now) === "nearing") alerts.push({ id: row.id, number: row.number, kind: "nearing" });
   }
-  return { error: "Checkout did not say what it was paying for." as const };
+  return alerts;
+}
+
+export function ordersVisibleTo(account: { id: string; role: string }) {
+  const db = getDb();
+  const rows =
+    account.role === "admin"
+      ? (db.prepare("SELECT * FROM orders ORDER BY created_at DESC").all() as OrderRow[])
+      : (db
+          .prepare(
+            "SELECT * FROM orders WHERE account_id = ? OR supplier_account_id = ? ORDER BY created_at DESC",
+          )
+          .all(account.id, account.id) as OrderRow[]);
+  return rows.map((row) => {
+    const listing = db.prepare("SELECT * FROM listings WHERE product_id = ?").get(row.product_id) as ListingRow | undefined;
+    return orderFrom(row, listing);
+  });
 }

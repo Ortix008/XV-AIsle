@@ -2,6 +2,23 @@ import { charm, landedCost, suggestRetail, TARGET_MARGIN } from "../money";
 import { getDb } from "./db";
 import { getListing, publishListing } from "./store";
 
+const SAMPLE_IDS = new Set(["sheet-pan", "bench-scraper"]);
+
+export function demoSeedEnabled() {
+  return process.env.DEMO_SEED === "1";
+}
+
+export function isSampleListing(listing: { productId: string; supplierName: string }) {
+  return SAMPLE_IDS.has(listing.productId) && listing.supplierName === "Northwharf Goods";
+}
+
+/** Sample rows stay out of the public shop unless DEMO_SEED=1. */
+export function visibleOnShop(listing: { productId: string; supplierName: string; published: boolean }) {
+  if (!listing.published) return false;
+  if (isSampleListing(listing) && !demoSeedEnabled()) return false;
+  return true;
+}
+
 type Starter = {
   productId: string;
   sku: string;
@@ -49,19 +66,10 @@ const starters: Starter[] = [
 ];
 
 function shelfOperatorId() {
-  const db = getDb();
   const preferred = process.env.STORE_OPERATOR_EMAIL?.trim().toLowerCase();
-  if (preferred) {
-    const row = db.prepare("SELECT id FROM accounts WHERE email = ?").get(preferred) as { id: string } | undefined;
-    return row?.id ?? null;
-  }
-  const rows = db.prepare("SELECT id, email FROM accounts ORDER BY created_at").all() as {
-    id: string;
-    email: string;
-  }[];
-  const real = rows.filter((row) => !row.email.endsWith("@example.com"));
-  if (real.length === 1) return real[0].id;
-  return null;
+  if (!preferred) return null;
+  const row = getDb().prepare("SELECT id FROM accounts WHERE email = ?").get(preferred) as { id: string } | undefined;
+  return row?.id ?? null;
 }
 
 function priceCents(item: Starter) {
@@ -69,8 +77,16 @@ function priceCents(item: Starter) {
   return Math.round(charm(suggestRetail(landed, TARGET_MARGIN)) * 100);
 }
 
-/** Publish the two US-warehouse pages when one real account owns the store. */
+/** Publish the two sample pages only when DEMO_SEED=1 and an operator account exists. */
 export function ensureStarterShelf() {
+  if (!demoSeedEnabled()) {
+    getDb()
+      .prepare(
+        "UPDATE listings SET published = 0 WHERE product_id IN ('sheet-pan', 'bench-scraper') AND supplier_name = 'Northwharf Goods'",
+      )
+      .run();
+    return;
+  }
   const accountId = shelfOperatorId();
   if (!accountId) return;
   for (const item of starters) {

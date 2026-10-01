@@ -12,6 +12,8 @@ export type PublishInput = {
   published: boolean;
   madeInUsa?: boolean;
   shelf?: "national" | "small";
+  catalogItemId?: string;
+  feeBps?: number;
 };
 
 export async function publishListing(input: PublishInput) {

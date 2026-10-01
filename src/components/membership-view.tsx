@@ -1,12 +1,88 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConnectPayout } from "@/components/connect-payout";
 import { PayMembership } from "@/components/pay-membership";
-import { PayoutForm } from "@/components/payout-form";
+import { Input } from "@/components/ui/input";
 import { MEMBER_PRICE, TRIAL_DAYS } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
+
+function AuthenticatorSetup({ enabled, onChanged }: { enabled: boolean; onChanged: () => Promise<void> }) {
+  const [secret, setSecret] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function start() {
+    setPending(true);
+    setError(null);
+    const response = await fetch("/api/account/totp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "start" }),
+    });
+    const data = (await response.json().catch(() => null)) as { secret?: string; error?: string } | null;
+    setPending(false);
+    if (!response.ok || !data?.secret) {
+      setError(data?.error ?? "Setup did not start. Try again.");
+      return;
+    }
+    setSecret(data.secret);
+  }
+
+  async function confirm(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    const response = await fetch("/api/account/totp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "confirm", code }),
+    });
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    setPending(false);
+    if (!response.ok) {
+      setError(data?.error ?? "That code did not match. Try the current code from your app.");
+      return;
+    }
+    setSecret(null);
+    await onChanged();
+  }
+
+  return (
+    <section className="border bg-card p-4">
+      <h2 className="text-base font-medium">Authenticator app</h2>
+      {enabled ? (
+        <p className="mt-2 text-sm leading-relaxed">
+          This account asks for a code when you sign in. Admins need this before they can approve a product or release a payout.
+        </p>
+      ) : (
+        <>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Optional for most accounts. If you are an admin, turn this on before you approve a product or release a payout.
+            Add the secret to any authenticator app, then enter the 6-digit code.
+          </p>
+          {secret ? (
+            <form onSubmit={confirm} className="mt-3 flex flex-col gap-2">
+              <p className="break-all font-mono text-sm">{secret}</p>
+              <Input value={code} onChange={(event) => setCode(event.target.value)} inputMode="numeric" required className="h-11" />
+              <Button type="submit" disabled={pending} className="h-11 w-fit">
+                {pending ? "Checking…" : "Turn on"}
+              </Button>
+            </form>
+          ) : (
+            <Button type="button" variant="outline" className="mt-3 h-11" disabled={pending} onClick={() => void start()}>
+              Set up authenticator
+            </Button>
+          )}
+        </>
+      )}
+      {error ? <p className="mt-2 text-sm text-late">{error}</p> : null}
+    </section>
+  );
+}
 
 export function MembershipView() {
   const { account, status, daysLeft, stopMembership, refresh } = useAccount();
@@ -82,9 +158,10 @@ export function MembershipView() {
             </Button>
           </>
         )}
-        <PayoutForm />
+        <AuthenticatorSetup enabled={account.totpEnabled === true} onChanged={refresh} />
+        <ConnectPayout />
         <p className="text-xs text-pretty text-muted-foreground">
-          The account is kept on the server. Card numbers are not stored.
+          The account is kept on the server. Bank details stay at Stripe.
         </p>
       </div>
     </div>

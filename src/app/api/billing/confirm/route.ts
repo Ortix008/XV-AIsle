@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { accountFromToken } from "@/lib/server/accounts";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
-import { settleCheckoutSession } from "@/lib/server/store";
+import { settleCheckoutSession } from "@/lib/server/ledger";
 import { retrieveCheckoutSession, stripeConfigured } from "@/lib/server/stripe";
 
 export async function POST(request: Request) {
