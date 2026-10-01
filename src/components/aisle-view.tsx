@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { BrandMark } from "@/components/brand-mark";
 import { placeProduct, type Aisle } from "@/lib/aisles";
 import { getProduct } from "@/lib/catalog";
 import { useDesk } from "@/lib/desk-store";
@@ -115,9 +116,7 @@ export function AisleView({ aisle, onClose }: { aisle: Aisle; onClose: () => voi
         >
           Close
         </button>
-        <span className="grid h-7 w-8 place-items-center bg-live text-[11px] font-semibold tracking-tight text-[#111]">
-          XV
-        </span>
+        <BrandMark wordmark={false} />
         <h2 className="min-w-0 truncate text-sm font-semibold tracking-[0.18em]">{aisle.title}</h2>
         <p className="ml-auto flex items-center gap-2 text-xs text-white/70">
           <span className="size-1.5 rounded-full bg-live" aria-hidden />

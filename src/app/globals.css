@@ -149,6 +149,106 @@
   background-color: #111;
 }
 
+.home {
+  --background: #070a08;
+  --foreground: #f3f6f2;
+  --card: #101510;
+  --card-foreground: #f3f6f2;
+  --popover: #101510;
+  --popover-foreground: #f3f6f2;
+  --primary: #3dff8a;
+  --primary-foreground: #052112;
+  --secondary: #17211b;
+  --secondary-foreground: #f3f6f2;
+  --muted: #151c18;
+  --muted-foreground: #a3b5aa;
+  --accent: #17261e;
+  --accent-foreground: #f3f6f2;
+  --border: rgb(61 255 138 / 18%);
+  --input: #2c3b33;
+  --ring: #3dff8a;
+  --live: #3dff8a;
+  --scene-bg: #070a08;
+  --scene-line: rgb(61 255 138 / 62%);
+  --scene-line-dim: rgb(61 255 138 / 20%);
+  --scene-glow: #3dff8a;
+  --scene-cube: #121815;
+  --scene-face: #1b2820;
+  --scene-product: #07110c;
+  --ink-soft: #c5d4cb;
+  background:
+    radial-gradient(1100px 480px at 78% -8%, rgb(61 255 138 / 16%), transparent 58%),
+    var(--background);
+  color: var(--foreground);
+}
+
+html[data-theme="light"] .home {
+  --background: #f3f6f3;
+  --foreground: #142019;
+  --card: #ffffff;
+  --card-foreground: #142019;
+  --popover: #ffffff;
+  --popover-foreground: #142019;
+  --primary: #0c6b45;
+  --primary-foreground: #ffffff;
+  --secondary: #e6efe9;
+  --secondary-foreground: #142019;
+  --muted: #e6efe9;
+  --muted-foreground: #3e5248;
+  --accent: #e6efe9;
+  --accent-foreground: #142019;
+  --border: #d3e2da;
+  --input: #c5d5cc;
+  --ring: #0c6b45;
+  --live: #0c6b45;
+  --scene-bg: #e5f2ea;
+  --scene-line: rgb(12 107 69 / 55%);
+  --scene-line-dim: rgb(12 107 69 / 18%);
+  --scene-glow: #0c6b45;
+  --scene-cube: #10241a;
+  --scene-face: #1a3d2c;
+  --scene-product: #0c1c14;
+  --ink-soft: #3e5248;
+  background:
+    radial-gradient(900px 420px at 80% -10%, rgb(12 107 69 / 14%), transparent 60%),
+    var(--background);
+}
+
+.home-icon-moon {
+  display: none;
+}
+
+html[data-theme="light"] .home-icon-sun {
+  display: none;
+}
+
+html[data-theme="light"] .home-icon-moon {
+  display: block;
+}
+
+.home-header {
+  background: rgb(7 10 8 / 82%);
+  color: white;
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+}
+
+html[data-theme="light"] .home-header {
+  background: rgb(243 246 243 / 86%);
+  color: #142019;
+}
+
+.home-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 28%);
+}
+
+html[data-theme="light"] .home-panel {
+  box-shadow: 0 18px 50px rgb(20 40 30 / 8%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html:focus-within {
     scroll-behavior: auto;

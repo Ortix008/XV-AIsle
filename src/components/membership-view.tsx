@@ -129,7 +129,7 @@ export function MembershipView() {
           <>
             <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
               {daysLeft === 1 ? "1 day left" : `${daysLeft} days left`} of the {TRIAL_DAYS}-day
-              month. You can use the market and run a pass when you sit down. The SI Team will not
+              month. You can use the market and ask the SI Team to work when you sit down. The SI Team will not
               stay on until you keep the account.
             </p>
             <p className="text-sm">

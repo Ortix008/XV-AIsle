@@ -7,7 +7,7 @@ export default function Error({ reset }: { error: Error & { digest?: string }; r
         <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">Market</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">Something interrupted this page.</h1>
         <p className="mt-2 text-sm text-pretty text-muted-foreground">
-          The account in this browser is still here. Try the page again.
+          Your account is still signed in on the server. Try the page again.
         </p>
         <button
           type="button"

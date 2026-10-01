@@ -425,7 +425,7 @@ export function buildCampaign(product: Product, listing: Listing): Campaign {
         "",
         `${money(retail)}. In the box: ${product.box} Ships in ${window} from ${origin}.`,
         "",
-        "The post is the door. The store is the checkout. Paste the listing link under this. Do not promise a faster ship window than the quote.",
+        "Share your shop link anywhere. Buyers pay on the store. Paste the listing link under this. Do not promise a faster ship window than the quote.",
       ].join("\n"),
     },
     {
@@ -519,7 +519,7 @@ function scoutPass(state: DeskState, today: string): DeskState {
         pipeline: [item, ...state.pipeline],
       },
       "scout",
-      `Filed ${product.titleLead} from ${product.trend.platform}. ${speedLabel(view.chosen.supplier.speed)} via ${view.chosen.supplier.name} at ${money(view.chosen.list)}, ${pct(view.chosen.margin)} net.`,
+      `Filed ${product.titleLead}. ${speedLabel(view.chosen.supplier.speed)} via ${view.chosen.supplier.name} at ${money(view.chosen.list)}, ${pct(view.chosen.margin)} net.`,
     );
   }
 

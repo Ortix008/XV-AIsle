@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { ClosedScreen, JoinScreen } from "@/components/account-gate";
+import { BrandMark } from "@/components/brand-mark";
 import { botIcon } from "@/components/bot-mark";
 import { Switch } from "@/components/ui/switch";
 import { canKeepBotsRunning, MEMBER_PRICE } from "@/lib/account";
@@ -77,10 +78,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
       </a>
       <header className="flex h-14 shrink-0 items-center justify-between gap-3 bg-[#111] px-4 text-white">
         <Link href="/" className="flex min-w-0 items-center gap-2.5">
-          <span className="grid h-7 w-8 shrink-0 place-items-center bg-live text-[11px] font-semibold tracking-tight text-[#111]">
-            XV
-          </span>
-          <span className="text-sm font-semibold tracking-[0.22em]">AISLE</span>
+          <BrandMark />
         </Link>
         <div className="flex items-center gap-4">
           <p className="hidden text-xs text-white/55 md:block">The first US trend market</p>
@@ -112,7 +110,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
               {latest.text}
             </>
           ) : (
-            "The SI Team is quiet. Run a pass when you want them to work."
+            "The SI Team is quiet. Ask them to work when you are ready."
           )}
         </p>
       </div>
@@ -315,7 +313,7 @@ export function BotControls({ id }: { id: (typeof bots)[number]["id"] }) {
         onClick={() => runPass(id)}
         className="text-sm font-medium underline-offset-4 hover:underline"
       >
-        Run one pass
+        Work once
       </button>
       {member ? (
         <label className="flex items-center gap-2 text-sm">
