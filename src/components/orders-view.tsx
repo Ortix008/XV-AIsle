@@ -217,10 +217,23 @@ export function OrdersView() {
         lede="Tells you if an order is late or something arrived broken, and writes the reply. Saying yes here does not send it."
         actions={<BotControls id="orders" />}
       />
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)] lg:overflow-hidden">
+      <div
+        className={
+          state.orders.length === 0
+            ? undefined
+            : "grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)] lg:overflow-hidden"
+        }
+      >
         <div className="min-w-0 border-b lg:overflow-y-auto lg:border-r lg:border-b-0">
           <StoreOrders />
           <ShopperNotes />
+          {state.orders.length === 0 ? (
+            <EmptyNote
+              title="No orders yet."
+              body="Paid orders from xvaisle.com appear under From the store."
+            />
+          ) : (
+          <>
           <div className="flex flex-wrap gap-1 px-4 py-3 sm:px-6">
             {filters.map((item) => (
               <button
@@ -313,10 +326,14 @@ export function OrdersView() {
             </div>
             </>
           )}
+          </>
+          )}
         </div>
+        {state.orders.length === 0 ? null : (
         <div className="min-w-0 lg:overflow-y-auto">
           {selected ? <OrderDossier order={selected} onCheck={() => runPass("orders")} /> : null}
         </div>
+        )}
       </div>
     </div>
   );

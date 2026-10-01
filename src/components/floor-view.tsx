@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AiBadge, botIcon } from "@/components/bot-mark";
 import { DepartmentGrid } from "@/components/department-grid";
+import { GettingStarted } from "@/components/getting-started";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { getProduct, trendSourceLabel } from "@/lib/catalog";
@@ -152,6 +153,7 @@ export function FloorView() {
         </div>
       </div>
       <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-6 sm:px-6">
+        <GettingStarted />
         <div>
           <p className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground">
             You sell what people already want. A supplier in the US ships it. You never hold the box.
@@ -228,7 +230,8 @@ export function FloorView() {
             ))}
           </ol>
           <p className="mt-2 text-xs text-muted-foreground">
-            {state.queue.length} products still in the pile. Started {prettyDate(state.seededOn)}.
+            {state.queue.length > 0 ? `${state.queue.length} products still in the pile. ` : null}
+            Started {prettyDate(state.startedOn)}.
           </p>
         </section>
 
@@ -237,7 +240,7 @@ export function FloorView() {
             <h2 className="text-sm font-medium">Waiting on you</h2>
             {decisions.length === 0 ? (
               <p className="mt-3 text-sm text-muted-foreground">
-                Nothing is waiting. Leave Signal on if you want the next product.
+                Nothing is waiting on you yet.
               </p>
             ) : (
               <ul className="mt-2 divide-y border-y">
@@ -327,7 +330,7 @@ export function FloorView() {
           <div className="mt-6 flex items-center gap-3">
             {confirmReset ? (
               <>
-                <p className="text-sm">This clears the decisions saved on this desk.</p>
+                <p className="text-sm">This empties the desk on this browser.</p>
                 <Button type="button" variant="destructive" size="sm" onClick={() => reset()}>
                   Confirm reset
                 </Button>

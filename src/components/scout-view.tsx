@@ -57,6 +57,8 @@ export function ScoutView() {
     rows[0] ??
     state.pipeline[0];
 
+  const deskEmpty = state.pipeline.length === 0 && state.queue.length === 0;
+
   return (
     <div className="flex flex-col lg:h-full">
       <PageHeader
@@ -65,6 +67,12 @@ export function ScoutView() {
         lede="Signal looks for a product people already want and a supplier in the US. Kitchen tools, clothes, sports, home, and simple party extras. Not fresh food. A slow boat can stay on the list so you can see it. It is not the pick."
         actions={<BotControls id="scout" />}
       />
+      {deskEmpty ? (
+        <EmptyNote
+          title="No products yet."
+          body="When a supplier's approved items are connected, Signal will list them here."
+        />
+      ) : (
       <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] lg:overflow-hidden">
         <div className="min-w-0 border-b lg:overflow-y-auto lg:border-r lg:border-b-0">
           <div className="flex flex-wrap items-center gap-1 px-4 py-3 sm:px-6">
@@ -211,6 +219,7 @@ export function ScoutView() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
