@@ -20,6 +20,60 @@ function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
 
+function runReset(email: string, first: string, second: string) {
+  const py = String.raw`
+import os, pty, select, subprocess, sys, time
+master, slave = pty.openpty()
+proc = subprocess.Popen(
+    [os.environ["NODE"], "--experimental-strip-types", "scripts/admin-reset-password.ts"],
+    stdin=slave, stdout=slave, stderr=subprocess.STDOUT, env=os.environ, close_fds=True,
+)
+os.close(slave)
+buf = b""
+def pull(timeout):
+    global buf
+    end = time.time() + timeout
+    while time.time() < end:
+        ready, _, _ = select.select([master], [], [], 0.2)
+        if ready:
+            try:
+                buf += os.read(master, 4096)
+            except OSError:
+                return
+        if proc.poll() is not None and not ready:
+            return
+def wait_for(token):
+    end = time.time() + 15
+    while token not in buf:
+        if time.time() > end or proc.poll() is not None:
+            return False
+        pull(0.5)
+    return True
+if wait_for(b"New password:"):
+    os.write(master, os.environ["PW1"].encode() + b"\n")
+if wait_for(b"Repeat password:"):
+    os.write(master, os.environ["PW2"].encode() + b"\n")
+pull(20)
+proc.wait(timeout=5)
+sys.stdout.buffer.write(buf)
+sys.exit(proc.returncode if proc.returncode is not None else 1)
+`;
+  const result = spawnSync("python3", ["-c", py], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      DATABASE_PATH: process.env.DATABASE_PATH,
+      ADMIN_EMAIL: email,
+      ADMIN_PASSWORD: "should-not-be-used",
+      NODE: process.execPath,
+      PW1: first,
+      PW2: second,
+    },
+    encoding: "utf8",
+  });
+  return { status: result.status ?? 1, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
+}
+
 function sign(body: string, secret: string, timestamp = Math.floor(Date.now() / 1000)) {
   const v1 = createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex");
   return `t=${timestamp},v1=${v1}`;
@@ -213,7 +267,7 @@ async function main() {
   assert(membershipCalls[0]?.idempotency !== membershipCalls[1]?.idempotency, "membership keys are not the calendar day");
 
   const { closeDb, getDb } = await import("../src/lib/server/db");
-  const { confirmTotp, getAccount, seedAdmin, sendAccountVerification, setOwnRole, signIn, signUp, startTotp, verifyEmailToken } = await import(
+  const { accountFromToken, confirmTotp, getAccount, seedAdmin, sendAccountVerification, setOwnRole, signIn, signUp, startTotp, verifyEmailToken } = await import(
     "../src/lib/server/accounts"
   );
   const { hasActiveMembership } = await import("../src/lib/account");
@@ -969,6 +1023,64 @@ async function main() {
     "lock@xvaisle.test",
   ) as { failed_logins: number; locked_until: number | null };
   assert(resetCount.failed_logins === 1 && resetCount.locked_until == null, "expiry clears the counter before the next miss");
+
+  const opened = signIn({ email: "lock@xvaisle.test", password: "market-test" });
+  assert("token" in opened, "the right password works after the lock expires");
+  db.prepare("UPDATE accounts SET failed_logins = 5, locked_until = ? WHERE email = ?").run(
+    Date.now() + 2 * 60 * 1000,
+    "lock@xvaisle.test",
+  );
+  db.prepare("INSERT INTO login_challenges (token_hash, account_id, expires_at) VALUES (?, ?, ?)").run(
+    "lock-challenge",
+    lock.account.id,
+    Date.now() + 60_000,
+  );
+  const lockedStatus = spawnSync(process.execPath, ["--experimental-strip-types", "scripts/admin-status.ts"], {
+    cwd: process.cwd(),
+    env: { ...process.env, DATABASE_PATH: process.env.DATABASE_PATH, ADMIN_EMAIL: "lock@xvaisle.test" },
+    encoding: "utf8",
+  });
+  assert(lockedStatus.status === 0 && lockedStatus.stdout.includes("locked: yes"), lockedStatus.stderr || "status missed the lock");
+  assert(lockedStatus.stdout.includes("locked_minutes: 2"), "status prints the minutes left");
+  assert(lockedStatus.stdout.includes("failed_logins: 5"), "status prints the failed count");
+  assert(!lockedStatus.stdout.includes(held.password_hash), "status does not print a hash");
+  const mismatch = runReset("lock@xvaisle.test", "reset-pass-1", "reset-pass-2");
+  assert(mismatch.status !== 0, mismatch.out || "a reset should refuse two different passwords");
+  const unchanged = db.prepare("SELECT password_hash FROM accounts WHERE email = ?").get("lock@xvaisle.test") as {
+    password_hash: string;
+  };
+  assert(unchanged.password_hash === held.password_hash, "a refused reset leaves the password in place");
+  const reset = runReset("lock@xvaisle.test", "reset-pass-1", "reset-pass-1");
+  assert(reset.status === 0, reset.out || "password reset failed");
+  assert(!reset.out.includes("reset-pass-1"), "the reset command does not print the password");
+  assert(!reset.out.includes(held.password_hash), "the reset command does not print a hash");
+  assert(accountFromToken(opened.token) === null, "a reset signs that account out");
+  const challenges = db.prepare("SELECT COUNT(*) AS n FROM login_challenges WHERE account_id = ?").get(lock.account.id) as {
+    n: number;
+  };
+  assert(challenges.n === 0, "a reset deletes login challenges");
+  const oldPassword = signIn({ email: "lock@xvaisle.test", password: "market-test" });
+  assert("error" in oldPassword, "the old password no longer works");
+  const newPassword = signIn({ email: "lock@xvaisle.test", password: "reset-pass-1" });
+  assert("token" in newPassword, "the new password works");
+  const status = spawnSync(process.execPath, ["--experimental-strip-types", "scripts/admin-status.ts"], {
+    cwd: process.cwd(),
+    env: { ...process.env, DATABASE_PATH: process.env.DATABASE_PATH, ADMIN_EMAIL: " Lock@XVaisle.test " },
+    encoding: "utf8",
+  });
+  assert(status.status === 0, status.stderr || "admin:status failed");
+  assert(status.stdout.includes("account: yes"), "status says the account exists");
+  assert(status.stdout.includes("role: buyer"), "status prints the role");
+  assert(status.stdout.includes("failed_logins: 0"), "status prints the failed-try count");
+  assert(status.stdout.includes("locked: no"), "status prints the lock");
+  assert(status.stdout.includes("locked_minutes: 0"), "status prints zero minutes when unlocked");
+  assert(!status.stdout.includes(held.password_hash), "status does not print a hash");
+  const missing = spawnSync(process.execPath, ["--experimental-strip-types", "scripts/admin-reset-password.ts"], {
+    cwd: process.cwd(),
+    env: { ...process.env, DATABASE_PATH: process.env.DATABASE_PATH, ADMIN_EMAIL: "nobody@xvaisle.test" },
+    encoding: "utf8",
+  });
+  assert(missing.status !== 0 && missing.stderr.includes("No account uses that email."), "reset fails when the email is unknown");
 
   global.fetch = originalFetch;
   setStripeFetch(null);

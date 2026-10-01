@@ -135,8 +135,8 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | `MAIL_FROM` | From address. Required when `SMTP_HOST` is set. |
 | `STORE_RETURNS` | Return line shown before the operator saves one at `/shop/safety`. |
 | `STORE_OPERATOR_EMAIL` | Account that receives the two starter products. Empty means nobody does. |
-| `ADMIN_EMAIL` | Email for one run of the admin seed script. Signup ignores it. |
-| `ADMIN_PASSWORD` | Password for a new admin. Leave empty to type it, or omit it when promoting an account that already exists. |
+| `ADMIN_EMAIL` | Email for one run of `admin:create`, `admin:reset-password`, or `admin:status`. Signup ignores it. |
+| `ADMIN_PASSWORD` | Password for a new admin. Leave empty to type it, or omit it when promoting an account that already exists. The reset command never reads this. |
 | `ADMIN_NAME` | Optional name when the seed script creates a new admin. Ignored when that email already has an account. |
 | `ADMIN_EMAILS` | Optional comma-separated allowlist for the seed script only. Signup ignores it. |
 
@@ -168,6 +168,20 @@ docker compose exec -e ADMIN_EMAIL=second-owner@example.com store node scripts/a
 ```
 
 To limit which emails that command will accept, set `ADMIN_EMAILS=first-owner@example.com,second-owner@example.com` in the server environment before those runs. The list is not an automatic grant. An address on the list stays a buyer until `admin:create` is run for it.
+
+Five wrong passwords lock sign-in for 15 minutes. While the lock is active, sign-in says how many minutes are left and does not check the password. When the lock expires, the failed-try count goes back to zero.
+
+Reset a password inside the container. The command reads `ADMIN_EMAIL` from the environment, then asks for the new password twice without showing what you type. It does not take the password from the environment or from arguments. It clears the lock and signs that account out.
+
+```bash
+docker compose exec -e ADMIN_EMAIL=owner@example.com store npm run admin:reset-password
+```
+
+See whether that account exists, its role, how many failed sign-ins it has, and whether it is locked. This command only reads. It does not print a password or a hash.
+
+```bash
+docker compose exec -e ADMIN_EMAIL=owner@example.com store npm run admin:status
+```
 
 After the certificate is up, sign in as that admin, open `/shop/safety`, and save the return address there. Suppliers rotate a delivery secret from the membership page. Each secret is stored hashed.
 
