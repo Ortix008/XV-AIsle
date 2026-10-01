@@ -20,12 +20,28 @@ export type ConnectState = {
   transfersStatus: string;
 };
 
+export type ReserveRelease = {
+  orderId: string;
+  amountCents: number;
+  releaseAt: number | null;
+  blocked: boolean;
+};
+
+export type ReserveState = {
+  heldCents: number;
+  bps: number;
+  days: number;
+  capCents: number;
+  releases: ReserveRelease[];
+};
+
 type AccountApi = {
   ready: boolean;
   account: Account | null;
   status: PlanStatus | null;
   daysLeft: number;
   connect: ConnectState | null;
+  reserve: ReserveState | null;
   billing: boolean;
   signUp: (input: { name: string; email: string; password: string; confirmPassword: string }) => Promise<string | null>;
   totpChallenge: string | null;
@@ -48,6 +64,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
   const [connect, setConnect] = useState<ConnectState | null>(null);
+  const [reserve, setReserve] = useState<ReserveState | null>(null);
   const [billing, setBilling] = useState(false);
   const [totpChallenge, setTotpChallenge] = useState<string | null>(null);
 
@@ -56,15 +73,18 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     if (!response.ok) {
       setAccount(null);
       setConnect(null);
+      setReserve(null);
       return;
     }
     const data = (await response.json()) as {
       account: Account | null;
       connect: ConnectState | null;
+      reserve?: ReserveState | null;
       billing?: boolean;
     };
     setAccount(data.account);
     setConnect(data.connect);
+    setReserve(data.reserve ?? null);
     setBilling(Boolean(data.billing));
   }, []);
 
@@ -76,16 +96,19 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         if (!response.ok) {
           setAccount(null);
           setConnect(null);
+          setReserve(null);
           return;
         }
         const data = (await response.json()) as {
           account: Account | null;
           connect: ConnectState | null;
+          reserve?: ReserveState | null;
           billing?: boolean;
         };
         if (cancel) return;
         setAccount(data.account);
         setConnect(data.connect);
+        setReserve(data.reserve ?? null);
         setBilling(Boolean(data.billing));
       })
       .catch(() => {
@@ -109,6 +132,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       status,
       daysLeft,
       connect,
+      reserve,
       billing,
       totpChallenge,
       refresh,
@@ -158,6 +182,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         void fetch("/api/account/signout", { method: "POST" }).finally(() => {
           setAccount(null);
           setConnect(null);
+          setReserve(null);
         });
       },
       stopMembership: async () => {
@@ -175,7 +200,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         return null;
       },
     }),
-    [ready, account, status, daysLeft, connect, billing, totpChallenge, refresh],
+    [ready, account, status, daysLeft, connect, reserve, billing, totpChallenge, refresh],
   );
 
   return <AccountContext.Provider value={api}>{children}</AccountContext.Provider>;

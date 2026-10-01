@@ -161,17 +161,15 @@ function ListingEditor({
   const stack = costStack(price.retail, landed);
   const stale = (supplierId ?? supplier.id) !== listing.supplierId && supplierId != null;
   const priceCents = Math.round(price.retail * 100);
-  useEffect(() => {
-    if (!catalogItemId) {
+  function loadQuote(nextCatalogId: string, nextPriceCents: number) {
+    if (!nextCatalogId) {
       setQuote(null);
       return;
     }
-    const controller = new AbortController();
     void fetch("/api/store/listings/quote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ catalogItemId, priceCents }),
-      signal: controller.signal,
+      body: JSON.stringify({ catalogItemId: nextCatalogId, priceCents: nextPriceCents }),
     })
       .then(async (response) => {
         const data = (await response.json().catch(() => null)) as { quote?: NonNullable<typeof quote> } | null;
@@ -181,11 +179,8 @@ function ListingEditor({
         }
         setQuote(data.quote);
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setQuote(null);
-      });
-    return () => controller.abort();
-  }, [catalogItemId, priceCents]);
+      .catch(() => setQuote(null));
+  }
   const moneyFields = {
     catalogItemId,
   };
@@ -286,7 +281,11 @@ function ListingEditor({
           Supplier catalog item
           <select
             value={catalogItemId}
-            onChange={(event) => setCatalogItemId(event.target.value)}
+            onChange={(event) => {
+              const next = event.target.value;
+              setCatalogItemId(next);
+              loadQuote(next, priceCents);
+            }}
             className="h-9 border bg-background px-2"
           >
             <option value="">Choose an approved item</option>
@@ -460,7 +459,10 @@ function ListingEditor({
                         type="radio"
                         name={`price-${listing.productId}`}
                         checked={listing.priceId === option.id}
-                        onChange={() => onChange({ priceId: option.id as PriceId })}
+                        onChange={() => {
+                          onChange({ priceId: option.id as PriceId });
+                          loadQuote(catalogItemId, Math.round(option.retail * 100));
+                        }}
                       />
                       {option.label}
                     </label>

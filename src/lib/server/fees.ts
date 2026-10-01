@@ -34,6 +34,15 @@ export const MIN_RETAIL_DEFAULT = 500;
 export const MIN_RESELLER_NET_MIN = 0;
 export const MIN_RESELLER_NET_MAX = 5000;
 export const MIN_RESELLER_NET_DEFAULT = 50;
+export const RESELLER_RESERVE_BPS_MIN = 0;
+export const RESELLER_RESERVE_BPS_MAX = 10000;
+export const RESELLER_RESERVE_BPS_DEFAULT = 1000;
+export const RESELLER_RESERVE_DAYS_MIN = 1;
+export const RESELLER_RESERVE_DAYS_MAX = 3650;
+export const RESELLER_RESERVE_DAYS_DEFAULT = 120;
+export const RESELLER_RESERVE_CAP_MIN = 0;
+export const RESELLER_RESERVE_CAP_MAX = 100_000_000;
+export const RESELLER_RESERVE_CAP_DEFAULT = 10000;
 export const US_TRANSFER_HOLD_MS = 730 * 24 * 60 * 60 * 1000;
 export const TRANSFER_HOLD_WARNING_MS = 14 * 24 * 60 * 60 * 1000;
 export const BUYER_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -101,6 +110,41 @@ export function minResellerNetCents() {
     MIN_RESELLER_NET_MIN,
     MIN_RESELLER_NET_MAX,
   );
+}
+
+export function resellerReserveBps() {
+  return clampedInt(
+    process.env.RESELLER_RESERVE_BPS,
+    RESELLER_RESERVE_BPS_DEFAULT,
+    RESELLER_RESERVE_BPS_MIN,
+    RESELLER_RESERVE_BPS_MAX,
+  );
+}
+
+export function resellerReserveDays() {
+  return clampedInt(
+    process.env.RESELLER_RESERVE_DAYS,
+    RESELLER_RESERVE_DAYS_DEFAULT,
+    RESELLER_RESERVE_DAYS_MIN,
+    RESELLER_RESERVE_DAYS_MAX,
+  );
+}
+
+export function resellerReserveCapCents() {
+  return clampedInt(
+    process.env.RESELLER_RESERVE_CAP_CENTS,
+    RESELLER_RESERVE_CAP_DEFAULT,
+    RESELLER_RESERVE_CAP_MIN,
+    RESELLER_RESERVE_CAP_MAX,
+  );
+}
+
+/** Portion of this payout kept on the platform, capped by the reseller's remaining room. */
+export function reserveHoldCents(input: { payoutCents: number; heldCents: number; bps: number; capCents: number }) {
+  if (input.payoutCents <= 0 || input.bps <= 0 || input.capCents <= 0) return 0;
+  const room = Math.max(0, input.capCents - Math.max(0, input.heldCents));
+  const desired = Math.round((input.payoutCents * input.bps) / 10000);
+  return Math.min(input.payoutCents, room, Math.max(0, desired));
 }
 
 export function explicitFeeBps(value: number): number | { error: string } {
@@ -224,11 +268,11 @@ export function disputeClawback(input: {
 }
 
 /**
- * Cash left with the platform after Stripe's fee, refunds, a lost dispute, and what
- * supplier and reseller keep. Debt the reseller still owes counts, because it is collected
- * from a later payout rather than absorbed.
+ * Cash on the platform after Stripe's fee, refunds, a lost dispute, and the shares
+ * supplier and reseller still keep. Reseller debt is not included. It is a receivable
+ * until a later payout or reserve actually collects it.
  */
-export function platformNetCents(input: {
+export function platformCashCents(input: {
   grossCents: number;
   stripeFeeCents: number;
   refundedCents: number;
@@ -236,7 +280,6 @@ export function platformNetCents(input: {
   disputeFeeKeptCents: number;
   supplierKeptCents: number;
   resellerKeptCents: number;
-  debtCents: number;
 }) {
   return (
     input.grossCents -
@@ -245,8 +288,7 @@ export function platformNetCents(input: {
     input.disputeKeptCents -
     input.disputeFeeKeptCents -
     input.supplierKeptCents -
-    input.resellerKeptCents +
-    input.debtCents
+    input.resellerKeptCents
   );
 }
 

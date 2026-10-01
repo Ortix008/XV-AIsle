@@ -212,6 +212,9 @@ export function getDb() {
   addColumn(next, "ledger_transfers", "reason", "TEXT");
   addColumn(next, "orders", "stripe_fee_est_cents", "INTEGER");
   addColumn(next, "orders", "stripe_fee_cents", "INTEGER");
+  addColumn(next, "orders", "had_refund", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "orders", "had_dispute", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "ledger", "created_at", "INTEGER");
   db = next;
   return next;
 }

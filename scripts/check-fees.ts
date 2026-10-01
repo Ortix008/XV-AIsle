@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,6 +10,9 @@ delete process.env.STRIPE_FEE_FIXED_CENTS;
 delete process.env.STRIPE_DISPUTE_FEE_CENTS;
 delete process.env.MIN_RETAIL_CENTS;
 delete process.env.MIN_RESELLER_NET_CENTS;
+delete process.env.RESELLER_RESERVE_BPS;
+delete process.env.RESELLER_RESERVE_DAYS;
+delete process.env.RESELLER_RESERVE_CAP_CENTS;
 delete process.env.SUPPLIER_API_URL;
 delete process.env.SUPPLIER_API_KEY;
 delete process.env.STRIPE_ALLOW_LIVE;
@@ -34,6 +38,21 @@ async function main() {
   assert(fees.stripeDisputeFeeCents() === 1500, "dispute fee defaults to $15");
   assert(fees.minRetailCents() === 500, "retail minimum defaults to $5");
   assert(fees.minResellerNetCents() === 50, "reseller minimum defaults to 50 cents");
+  assert(fees.resellerReserveBps() === 1000, "reserve defaults to 10%");
+  assert(fees.resellerReserveDays() === 120, "reserve defaults to 120 days");
+  assert(fees.resellerReserveCapCents() === 10000, "reserve cap defaults to $100");
+  assert(
+    fees.reserveHoldCents({ payoutCents: 10000, heldCents: 0, bps: 1000, capCents: 10000 }) === 1000,
+    "10% of a payout is held",
+  );
+  assert(
+    fees.reserveHoldCents({ payoutCents: 10000, heldCents: 9500, bps: 1000, capCents: 10000 }) === 500,
+    "the hold stops at the remaining cap",
+  );
+  assert(
+    fees.reserveHoldCents({ payoutCents: 10000, heldCents: 10000, bps: 1000, capCents: 10000 }) === 0,
+    "a full cap sends the payout in full",
+  );
   process.env.STRIPE_FEE_BPS = "5000";
   assert(fees.stripeFeeBps() === 1000, "stripe percentage above 10% clamps");
   process.env.STRIPE_FEE_BPS = "nope";
@@ -88,6 +107,25 @@ async function main() {
     assert(split.platformFeeCents === sample.platform, `platform fee at ${sample.price}`);
     assert(split.stripeFeeCents === sample.stripe, `stripe fee at ${sample.price}`);
     assert(split.resellerAmountCents === sample.reseller, `reseller net at ${sample.price}`);
+    const position = (input: {
+      refundedCents: number;
+      disputeKeptCents: number;
+      disputeFeeKeptCents: number;
+      supplierKeptCents: number;
+      resellerKeptCents: number;
+      receivableCents: number;
+    }) => ({
+      cashCents: fees.platformCashCents({
+        grossCents: split.grossCents,
+        stripeFeeCents: split.stripeFeeCents,
+        refundedCents: input.refundedCents,
+        disputeKeptCents: input.disputeKeptCents,
+        disputeFeeKeptCents: input.disputeFeeKeptCents,
+        supplierKeptCents: input.supplierKeptCents,
+        resellerKeptCents: input.resellerKeptCents,
+      }),
+      receivableCents: input.receivableCents,
+    });
     for (const refunded of [sample.price, Math.round(sample.price / 2)]) {
       const claw = fees.refundClawback({
         grossCents: split.grossCents,
@@ -97,17 +135,22 @@ async function main() {
         supplierAmountCents: split.supplierAmountCents,
         resellerAmountCents: split.resellerAmountCents,
       });
-      const net = fees.platformNetCents({
-        grossCents: split.grossCents,
-        stripeFeeCents: split.stripeFeeCents,
+      const report = position({
         refundedCents: refunded,
         disputeKeptCents: 0,
         disputeFeeKeptCents: 0,
         supplierKeptCents: split.supplierAmountCents - claw.supplierReverseCents,
         resellerKeptCents: split.resellerAmountCents - claw.resellerReverseCents,
-        debtCents: claw.debtCents,
+        receivableCents: claw.debtCents,
       });
-      assert(net >= 0, `refund of ${refunded} on ${sample.price} stays non-negative`);
+      if (refunded === sample.price) {
+        assert(report.cashCents === -sample.stripe, `full refund cash at ${sample.price} excludes uncollected debt`);
+        assert(
+          report.receivableCents === sample.platform + sample.stripe,
+          `full refund receivable at ${sample.price} is the uncollected fee`,
+        );
+        assert(report.cashCents !== report.cashCents + report.receivableCents, "cash and receivable are separate");
+      }
     }
     const lost = fees.disputeClawback({
       grossCents: split.grossCents,
@@ -118,28 +161,29 @@ async function main() {
       resellerAmountCents: split.resellerAmountCents,
       disputeFeeCents: 1500,
     });
-    const lostNet = fees.platformNetCents({
-      grossCents: split.grossCents,
-      stripeFeeCents: split.stripeFeeCents,
+    const lostReport = position({
       refundedCents: 0,
       disputeKeptCents: split.grossCents,
       disputeFeeKeptCents: 1500,
       supplierKeptCents: split.supplierAmountCents - lost.supplierReverseCents,
       resellerKeptCents: split.resellerAmountCents - lost.resellerReverseCents,
-      debtCents: lost.debtCents,
+      receivableCents: lost.debtCents,
     });
-    assert(lostNet >= 0, `lost dispute on ${sample.price} stays non-negative`);
-    const wonNet = fees.platformNetCents({
-      grossCents: split.grossCents,
-      stripeFeeCents: split.stripeFeeCents,
+    assert(lostReport.cashCents === -(sample.stripe + 1500), `lost dispute cash at ${sample.price} excludes debt`);
+    assert(
+      lostReport.receivableCents === sample.platform + sample.stripe + 1500,
+      `lost dispute receivable at ${sample.price} is uncollected`,
+    );
+    const wonReport = position({
       refundedCents: 0,
       disputeKeptCents: 0,
       disputeFeeKeptCents: 0,
       supplierKeptCents: split.supplierAmountCents,
       resellerKeptCents: split.resellerAmountCents,
-      debtCents: 0,
+      receivableCents: 0,
     });
-    assert(wonNet === split.platformFeeCents, `won dispute on ${sample.price} keeps the platform fee`);
+    assert(wonReport.cashCents === split.platformFeeCents, `won dispute cash at ${sample.price} is the platform fee`);
+    assert(wonReport.receivableCents === 0, `won dispute at ${sample.price} has no receivable`);
   }
 
   const replaced = fees.splitWithStripeFee(rounded, 80);
@@ -154,8 +198,18 @@ async function main() {
   const { getAccount, setOwnRole, signUp } = await import("../src/lib/server/accounts");
   const { publishForAccount, quoteForAccount } = await import("../src/lib/server/publish");
   const { createPendingOrder, getOrder, listPublished, markShipped } = await import("../src/lib/server/store");
-  const { applyDisputeClosed, applyDisputeOpened, applyRefund, confirmReceipt, markDelivered, resellerDebtCents, settleCheckoutSession } =
-    await import("../src/lib/server/ledger");
+  const {
+    applyDisputeClosed,
+    applyDisputeOpened,
+    applyRefund,
+    confirmReceipt,
+    markDelivered,
+    releaseReserves,
+    resellerDebtCents,
+    resellerReserveSummary,
+    settleCheckoutSession,
+  } = await import("../src/lib/server/ledger");
+  const { acceptStripeEvent } = await import("../src/lib/server/stripe-events");
   const { setStripeFetch } = await import("../src/lib/server/stripe");
 
   const resellerJoin = signUp({ name: "Reseller", email: "reseller-fees@xvaisle.test", password: "market-test" });
@@ -263,6 +317,7 @@ async function main() {
 
   process.env.STRIPE_SECRET_KEY = "sk_test_fees";
   const calls: { url: string; idempotency: string | null; body: string }[] = [];
+  let failReversals = false;
   setStripeFetch(async (url, init) => {
     const headers = new Headers(init?.headers);
     const raw = init?.body;
@@ -271,7 +326,12 @@ async function main() {
     if ((init?.method ?? "GET") === "POST" && !headers.get("Idempotency-Key")) {
       return Response.json({ error: { message: "missing idempotency" } }, { status: 400 });
     }
-    if (String(url).includes("/reversals")) return Response.json({ id: "trr_fee" });
+    if (String(url).includes("/reversals")) {
+      if (failReversals) {
+        return Response.json({ error: { message: "Insufficient funds in Stripe account." } }, { status: 400 });
+      }
+      return Response.json({ id: "trr_fee" });
+    }
     if (String(url).includes("/v1/transfers")) return Response.json({ id: `tr_${calls.length}` });
     return Response.json({ id: "pi_fee", latest_charge: { id: "ch_fee", outcome: { risk_level: "normal", type: "authorized" } } });
   });
@@ -354,7 +414,15 @@ async function main() {
   if ("error" in delivered) throw new Error(delivered.error);
   const confirmed = await confirmReceipt(follow.receiptToken);
   if ("error" in confirmed) throw new Error(confirmed.error);
-  const expectedPay = (getOrder(follow.order.id)?.resellerAmountCents ?? 0) - (270 + 80);
+  const followReseller = getOrder(follow.order.id)?.resellerAmountCents ?? 0;
+  const afterDebt = followReseller - (270 + 80);
+  const followHold = fees.reserveHoldCents({
+    payoutCents: afterDebt,
+    heldCents: 0,
+    bps: fees.resellerReserveBps(),
+    capCents: fees.resellerReserveCapCents(),
+  });
+  const expectedPay = afterDebt - followHold;
   const resellerTransfer = calls.find(
     (call) =>
       call.url.includes("/v1/transfers") && !call.url.includes("reversals") && call.idempotency?.includes("-reseller-"),
@@ -414,7 +482,14 @@ async function main() {
   const disputeDebt = db.prepare("SELECT amount_cents, status FROM ledger WHERE order_id = ? AND party = 'dispute_debt'").get(
     disputed.order.id,
   ) as { amount_cents: number; status: string };
-  assert(disputeDebt.status === "pending" && disputeDebt.amount_cents === 100 + 59 + 1500, "a dispute books the fee the reversal cannot cover");
+  const reserveTowardDebt = db
+    .prepare("SELECT COALESCE(SUM(amount_cents), 0) AS total FROM ledger_transfers WHERE kind = 'reserve_use' AND transfer_id LIKE 'reserve-use|dp_fee|account|%'")
+    .get() as { total: number };
+  assert(disputeDebt.status === "pending", "a dispute leaves the uncovered fee as debt");
+  assert(
+    disputeDebt.amount_cents + Number(reserveTowardDebt.total) === 100 + 59 + 1500,
+    "reserve covers the dispute fee before the remainder becomes debt",
+  );
   const reversal = calls.find((call) => call.url.includes("/reversals") && call.idempotency?.includes("dp_fee"));
   assert(reversal?.idempotency != null && /-\d+$/.test(reversal.idempotency), "a dispute reversal key includes the amount");
   await applyDisputeClosed({
@@ -430,6 +505,10 @@ async function main() {
   }[];
   assert(wonCredit.some((row) => row.reason === "dispute_fee"), "the returned dispute fee is credited to the reseller");
 
+  const stackListing = publishForAccount(reseller, { ...base, productId: "stack-pan", priceCents: 2695 });
+  if (stackListing.status !== 200) throw new Error(stackListing.error ?? "stack listing");
+  const refusedListing = publishForAccount(reseller, { ...base, productId: "refused-pan", priceCents: 1000 });
+  if (refusedListing.status !== 200) throw new Error(refusedListing.error ?? "refused listing");
   const lostOrder = createPendingOrder({ productId: "after-debt", qty: 1, ship });
   if ("error" in lostOrder) throw new Error(lostOrder.error);
   const lostPay = await settleCheckoutSession({
@@ -465,6 +544,372 @@ async function main() {
     amount_cents: number;
   };
   assert(still.status === "pending" && still.amount_cents > 0, "a lost dispute keeps the reseller debt");
+
+  const stacked = createPendingOrder({ productId: "stack-pan", qty: 1, ship });
+  if ("error" in stacked) throw new Error(stacked.error);
+  const stackPay = await settleCheckoutSession({
+    id: "cs_stack",
+    url: null,
+    status: "complete",
+    payment_status: "paid",
+    customer: null,
+    subscription: null,
+    amount_total: stacked.order.amountCents,
+    metadata: { kind: "order", order_id: stacked.order.id, account_id: stacked.order.accountId },
+    payment_intent: {
+      id: "pi_stack",
+      latest_charge: {
+        id: "ch_stack",
+        outcome: { risk_level: "normal", type: "authorized" },
+        balance_transaction: { fee: 5000 },
+      },
+    },
+  });
+  if ("error" in stackPay) throw new Error(stackPay.error);
+  const shortfall = db.prepare("SELECT amount_cents FROM ledger WHERE order_id = ? AND party = 'reseller_debt:stripe_fee'").get(
+    stacked.order.id,
+  ) as { amount_cents: number };
+  assert(shortfall.amount_cents === 2775, "the fee shortfall is its own debt");
+  await applyRefund({
+    chargeId: "ch_stack",
+    paymentIntentId: "pi_stack",
+    amountRefunded: stacked.order.amountCents,
+    gross: stacked.order.amountCents,
+    eventKey: "evt_stack_refund",
+  });
+  await applyRefund({
+    chargeId: "ch_stack",
+    paymentIntentId: "pi_stack",
+    amountRefunded: stacked.order.amountCents,
+    gross: stacked.order.amountCents,
+    eventKey: "evt_stack_refund",
+  });
+  const refundDebt = db.prepare("SELECT amount_cents FROM ledger WHERE order_id = ? AND party = 'reseller_debt'").get(
+    stacked.order.id,
+  ) as { amount_cents: number };
+  assert(refundDebt.amount_cents > 0, "the refund books its own debt");
+  assert(
+    shortfall.amount_cents + refundDebt.amount_cents > Math.max(shortfall.amount_cents, refundDebt.amount_cents),
+    "the refund debt is separate from the shortfall",
+  );
+  await applyDisputeOpened({
+    chargeId: "ch_stack",
+    paymentIntentId: "pi_stack",
+    amount: stacked.order.amountCents,
+    disputeId: "dp_stack",
+  });
+  await applyDisputeOpened({
+    chargeId: "ch_stack",
+    paymentIntentId: "pi_stack",
+    amount: stacked.order.amountCents,
+    disputeId: "dp_stack",
+  });
+  const disputePart = db.prepare("SELECT amount_cents FROM ledger WHERE order_id = ? AND party = 'dispute_debt'").get(
+    stacked.order.id,
+  ) as { amount_cents: number };
+  const stackedSum = shortfall.amount_cents + refundDebt.amount_cents + disputePart.amount_cents;
+  assert(resellerDebtCents(reseller.id) >= stackedSum, "shortfall, refund, and dispute debts add");
+  assert(stackedSum > Math.max(shortfall.amount_cents, refundDebt.amount_cents, disputePart.amount_cents), "the sum is not the max");
+  const stackedAgain = resellerDebtCents(reseller.id);
+  await applyDisputeClosed({
+    chargeId: "ch_stack",
+    paymentIntentId: "pi_stack",
+    status: "lost",
+    disputeId: "dp_stack",
+    amount: stacked.order.amountCents,
+  });
+  assert(resellerDebtCents(reseller.id) === stackedAgain, "replaying the dispute does not book it twice");
+
+  async function payoutOrder(productId: string, sessionId: string, chargeId: string) {
+    const created = createPendingOrder({ productId, qty: 1, ship });
+    if ("error" in created) throw new Error(created.error);
+    const paid = await settleCheckoutSession({
+      id: sessionId,
+      url: null,
+      status: "complete",
+      payment_status: "paid",
+      customer: null,
+      subscription: null,
+      amount_total: created.order.amountCents,
+      metadata: { kind: "order", order_id: created.order.id, account_id: created.order.accountId },
+      payment_intent: {
+        id: `pi_${sessionId}`,
+        latest_charge: { id: chargeId, outcome: { risk_level: "normal", type: "authorized" } },
+      },
+    });
+    if ("error" in paid) throw new Error(paid.error);
+    const shipped = markShipped(created.order.id, "UPS", "1Z999AA10123456786");
+    if ("error" in shipped) throw new Error(shipped.error);
+    const delivered = await markDelivered(created.order.id);
+    if ("error" in delivered) throw new Error(delivered.error);
+    const confirmed = await confirmReceipt(created.receiptToken);
+    if ("error" in confirmed) throw new Error(confirmed.error);
+    return created;
+  }
+
+  const beforeRefuse = calls.length;
+  clearBalances();
+  const refused = await payoutOrder("refused-pan", "cs_refused", "ch_refused");
+  const refusedReseller = getOrder(refused.order.id)?.resellerAmountCents ?? 0;
+  const refusedReserve = db.prepare("SELECT amount_cents FROM ledger WHERE order_id = ? AND party = 'reserve'").get(refused.order.id) as {
+    amount_cents: number;
+  };
+  assert(refusedReserve.amount_cents === Math.round(refusedReseller * 0.1), "the refused order held 10%");
+  failReversals = true;
+  const debtBeforeRefuse = resellerDebtCents(reseller.id);
+  await applyRefund({
+    chargeId: "ch_refused",
+    paymentIntentId: "pi_cs_refused",
+    amountRefunded: refused.order.amountCents,
+    gross: refused.order.amountCents,
+    eventKey: "evt_refused_hook",
+  });
+  const refusedGap = resellerDebtCents(reseller.id) - debtBeforeRefuse;
+  await applyRefund({
+    chargeId: "ch_refused",
+    paymentIntentId: "pi_cs_refused",
+    amountRefunded: refused.order.amountCents,
+    gross: refused.order.amountCents,
+    eventKey: "evt_refused_hook",
+  });
+  assert(resellerDebtCents(reseller.id) - debtBeforeRefuse === refusedGap, "replaying a refused reversal does not add debt");
+  const failRow = db.prepare("SELECT amount_cents, reversal_reason FROM ledger WHERE order_id = ? AND party LIKE 'reseller_debt:fail:%'").get(
+    refused.order.id,
+  ) as { amount_cents: number; reversal_reason: string };
+  assert(failRow.amount_cents > 0 && failRow.reversal_reason === "refund_fee", "a refused reversal is booked as debt");
+  const secret = "whsec_fees";
+  const refundBody = JSON.stringify({
+    id: "evt_refused_hook",
+    type: "charge.refunded",
+    data: {
+      object: {
+        id: "ch_refused",
+        payment_intent: "pi_cs_refused",
+        amount: refused.order.amountCents,
+        amount_refunded: refused.order.amountCents,
+      },
+    },
+  });
+  const stamp = Math.floor(Date.now() / 1000);
+  const signature = `t=${stamp},v1=${createHmac("sha256", secret).update(`${stamp}.${refundBody}`).digest("hex")}`;
+  const hook = await acceptStripeEvent(refundBody, signature, secret);
+  assert(hook.status === 200, "the webhook completes when Stripe refuses the reversal");
+  assert(resellerDebtCents(reseller.id) - debtBeforeRefuse === refusedGap, "the webhook does not add debt after the reversal was booked");
+  const replayHook = await acceptStripeEvent(refundBody, signature, secret);
+  assert(replayHook.status === 200 && "duplicate" in replayHook.body, "the webhook replay is a duplicate");
+  assert(calls.length > beforeRefuse, "the reversal was attempted");
+  failReversals = false;
+
+  function clearBalances() {
+    db.prepare(
+      `UPDATE ledger
+       SET status = 'reversed', reversed_cents = amount_cents
+       WHERE party = 'reseller_debt' OR party = 'dispute_debt' OR party LIKE 'reseller_debt:%' OR party = 'reserve'`,
+    ).run();
+  }
+  clearBalances();
+
+  const seedListing = publishForAccount(reseller, { ...base, productId: "seed-pan", priceCents: 1000 });
+  if (seedListing.status !== 200) throw new Error(seedListing.error ?? "seed listing");
+  const offsetListing = publishForAccount(reseller, { ...base, productId: "offset-pan", priceCents: 10000 });
+  if (offsetListing.status !== 200) throw new Error(offsetListing.error ?? "offset listing");
+  const seed = createPendingOrder({ productId: "seed-pan", qty: 1, ship });
+  if ("error" in seed) throw new Error(seed.error);
+  const seedPay = await settleCheckoutSession({
+    id: "cs_seed",
+    url: null,
+    status: "complete",
+    payment_status: "paid",
+    customer: null,
+    subscription: null,
+    amount_total: seed.order.amountCents,
+    metadata: { kind: "order", order_id: seed.order.id, account_id: seed.order.accountId },
+    payment_intent: {
+      id: "pi_seed",
+      latest_charge: { id: "ch_seed", outcome: { risk_level: "normal", type: "authorized" } },
+    },
+  });
+  if ("error" in seedPay) throw new Error(seedPay.error);
+  await applyRefund({
+    chargeId: "ch_seed",
+    paymentIntentId: "pi_seed",
+    amountRefunded: seed.order.amountCents,
+    gross: seed.order.amountCents,
+    eventKey: "evt_seed",
+  });
+  const olderDebt = db.prepare("SELECT id, amount_cents, reversed_cents FROM ledger WHERE order_id = ? AND party = 'reseller_debt'").get(
+    seed.order.id,
+  ) as { id: string; amount_cents: number; reversed_cents: number };
+  const openBeforeOffset = resellerDebtCents(reseller.id);
+  assert(openBeforeOffset > 0, "older debt is open before the next payout");
+  const offsetOrder = await payoutOrder("offset-pan", "cs_offset", "ch_offset");
+  assert(resellerDebtCents(reseller.id) < openBeforeOffset, "the next payout collects older debt");
+  const offsetRow = db.prepare("SELECT reversed_cents FROM ledger WHERE id = ?").get(olderDebt.id) as { reversed_cents: number };
+  const settledCents = offsetRow.reversed_cents - olderDebt.reversed_cents;
+  assert(settledCents > 0, "part of the older debt was settled from the payout");
+  await applyRefund({
+    chargeId: "ch_offset",
+    paymentIntentId: "pi_cs_offset",
+    amountRefunded: offsetOrder.order.amountCents,
+    gross: offsetOrder.order.amountCents,
+    eventKey: "evt_offset_refund",
+  });
+  const reopened = db.prepare("SELECT status, reversed_cents, amount_cents FROM ledger WHERE id = ?").get(olderDebt.id) as {
+    status: string;
+    reversed_cents: number;
+    amount_cents: number;
+  };
+  assert(reopened.status === "pending" && reopened.reversed_cents === olderDebt.reversed_cents, "refunding the offset payout reopens that debt");
+  const afterReopen = resellerDebtCents(reseller.id);
+  await applyRefund({
+    chargeId: "ch_offset",
+    paymentIntentId: "pi_cs_offset",
+    amountRefunded: offsetOrder.order.amountCents,
+    gross: offsetOrder.order.amountCents,
+    eventKey: "evt_offset_refund",
+  });
+  assert(resellerDebtCents(reseller.id) === afterReopen, "replaying the refund does not reopen the debt twice");
+
+  clearBalances();
+  process.env.RESELLER_RESERVE_CAP_CENTS = "500";
+  const capListing = publishForAccount(reseller, { ...base, productId: "cap-pan", priceCents: 10000 });
+  if (capListing.status !== 200) throw new Error(capListing.error ?? "cap listing");
+  const callsBeforeCap = calls.length;
+  const capped = await payoutOrder("cap-pan", "cs_cap", "ch_cap");
+  const capReserve = db.prepare("SELECT amount_cents FROM ledger WHERE order_id = ? AND party = 'reserve'").get(capped.order.id) as {
+    amount_cents: number;
+  };
+  assert(capReserve.amount_cents === 500, "the hold stops at the $5 test cap");
+  const capTransfer = calls.slice(callsBeforeCap).find((call) => call.idempotency?.includes("-reseller-"));
+  const capReseller = getOrder(capped.order.id)?.resellerAmountCents ?? 0;
+  assert(capTransfer?.body.includes(`amount=${capReseller - 500}`), "the transfer is the payout minus the capped hold");
+  const fullListing = publishForAccount(reseller, { ...base, productId: "full-pan", priceCents: 10000 });
+  if (fullListing.status !== 200) throw new Error(fullListing.error ?? "full listing");
+  const callsBeforeFull = calls.length;
+  const full = await payoutOrder("full-pan", "cs_full", "ch_full");
+  const fullReserve = db.prepare("SELECT id FROM ledger WHERE order_id = ? AND party = 'reserve'").get(full.order.id);
+  assert(!fullReserve, "a reseller already at the cap is paid in full");
+  const fullTransfer = calls.slice(callsBeforeFull).find((call) => call.idempotency?.includes("-reseller-"));
+  const fullReseller = getOrder(full.order.id)?.resellerAmountCents ?? 0;
+  assert(fullTransfer?.body.includes(`amount=${fullReseller}`), "the capped reseller transfer is the full payout");
+  delete process.env.RESELLER_RESERVE_CAP_CENTS;
+  clearBalances();
+
+  const releaseListing = publishForAccount(reseller, { ...base, productId: "release-pan", priceCents: 1000 });
+  if (releaseListing.status !== 200) throw new Error(releaseListing.error ?? "release listing");
+  const releasable = await payoutOrder("release-pan", "cs_release", "ch_release");
+  const heldAt = db.prepare("SELECT created_at, amount_cents FROM ledger WHERE order_id = ? AND party = 'reserve'").get(releasable.order.id) as {
+    created_at: number;
+    amount_cents: number;
+  };
+  const day = 24 * 60 * 60 * 1000;
+  const tooSoon = await releaseReserves(heldAt.created_at + 120 * day - 1);
+  const tooSoonRow = db.prepare("SELECT status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(releasable.order.id) as {
+    status: string;
+  };
+  assert(tooSoon.transferred === 0 && tooSoonRow.status === "pending", "reserve stays put before 120 days");
+  await releaseReserves(heldAt.created_at + 120 * day);
+  const releaseReason = db.prepare("SELECT reason, kind FROM ledger_transfers WHERE order_id = ? AND kind = 'reserve_release'").get(
+    releasable.order.id,
+  ) as { reason: string; kind: string };
+  assert(releaseReason.reason === "reserve_release", "the release is logged with a reason");
+  await releaseReserves(heldAt.created_at + 120 * day);
+  const releaseCount = db.prepare("SELECT COUNT(*) AS total FROM ledger_transfers WHERE order_id = ? AND kind = 'reserve_release'").get(
+    releasable.order.id,
+  ) as { total: number };
+  assert(Number(releaseCount.total) === 1, "replaying the release does not transfer again");
+
+  const blockedListing = publishForAccount(reseller, { ...base, productId: "blocked-pan", priceCents: 1000 });
+  if (blockedListing.status !== 200) throw new Error(blockedListing.error ?? "blocked listing");
+  const disputedListing = publishForAccount(reseller, { ...base, productId: "held-dispute-pan", priceCents: 1000 });
+  if (disputedListing.status !== 200) throw new Error(disputedListing.error ?? "held dispute listing");
+  const blockedReserve = await payoutOrder("blocked-pan", "cs_blocked", "ch_blocked");
+  await applyRefund({
+    chargeId: "ch_blocked",
+    paymentIntentId: "pi_cs_blocked",
+    amountRefunded: 10,
+    gross: blockedReserve.order.amountCents,
+    eventKey: "evt_blocked_partial",
+  });
+  const blockedHeld = db.prepare("SELECT created_at, status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(blockedReserve.order.id) as {
+    created_at: number;
+    status: string;
+  };
+  const blockedRelease = await releaseReserves(blockedHeld.created_at + 121 * 24 * 60 * 60 * 1000);
+  assert(blockedRelease.transferred === 0 && blockedHeld.status === "pending", "a refunded order does not release reserve");
+  const disputedReserve = await payoutOrder("held-dispute-pan", "cs_held_dispute", "ch_held_dispute");
+  await applyDisputeOpened({
+    chargeId: "ch_held_dispute",
+    paymentIntentId: "pi_cs_held_dispute",
+    amount: 10,
+    disputeId: "dp_held",
+  });
+  const disputeHeld = db.prepare("SELECT created_at FROM ledger WHERE order_id = ? AND party = 'reserve' AND status = 'pending'").get(
+    disputedReserve.order.id,
+  ) as { created_at: number } | undefined;
+  if (disputeHeld) {
+    const disputeRelease = await releaseReserves(disputeHeld.created_at + 121 * 24 * 60 * 60 * 1000);
+    assert(disputeRelease.transferred === 0, "a disputed order does not release reserve");
+  } else {
+    const consumed = db.prepare("SELECT status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(disputedReserve.order.id) as {
+      status: string;
+    };
+    assert(consumed.status !== "transferred", "a disputed reserve is not released");
+  }
+
+  clearBalances();
+  const recoveryListing = publishForAccount(reseller, { ...base, productId: "recovery-pan", priceCents: 10000 });
+  if (recoveryListing.status !== 200) throw new Error(recoveryListing.error ?? "recovery listing");
+  const recovery = await payoutOrder("recovery-pan", "cs_recovery", "ch_recovery");
+  const pendingListing = publishForAccount(reseller, { ...base, productId: "pending-pan", priceCents: 1000 });
+  if (pendingListing.status !== 200) throw new Error(pendingListing.error ?? "pending listing");
+  const future = createPendingOrder({ productId: "pending-pan", qty: 1, ship });
+  if ("error" in future) throw new Error(future.error);
+  const futurePay = await settleCheckoutSession({
+    id: "cs_future",
+    url: null,
+    status: "complete",
+    payment_status: "paid",
+    customer: null,
+    subscription: null,
+    amount_total: future.order.amountCents,
+    metadata: { kind: "order", order_id: future.order.id, account_id: future.order.accountId },
+    payment_intent: {
+      id: "pi_future",
+      latest_charge: { id: "ch_future", outcome: { risk_level: "normal", type: "authorized" } },
+    },
+  });
+  if ("error" in futurePay) throw new Error(futurePay.error);
+  const reserveBefore = db.prepare("SELECT amount_cents - reversed_cents AS open FROM ledger WHERE order_id = ? AND party = 'reserve'").get(
+    recovery.order.id,
+  ) as { open: number };
+  const futureBefore = db.prepare("SELECT reversed_cents FROM ledger WHERE order_id = ? AND party = 'reseller'").get(future.order.id) as {
+    reversed_cents: number;
+  };
+  await applyRefund({
+    chargeId: "ch_recovery",
+    paymentIntentId: "pi_cs_recovery",
+    amountRefunded: recovery.order.amountCents,
+    gross: recovery.order.amountCents,
+    eventKey: "evt_recovery",
+  });
+  const reserveAfter = db.prepare("SELECT amount_cents - reversed_cents AS open, status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(
+    recovery.order.id,
+  ) as { open: number; status: string };
+  const futureAfter = db.prepare("SELECT reversed_cents, amount_cents FROM ledger WHERE order_id = ? AND party = 'reseller'").get(
+    future.order.id,
+  ) as { reversed_cents: number; amount_cents: number };
+  assert(reserveBefore.open > 0 && reserveAfter.open < reserveBefore.open, "recovery spends reserve first");
+  assert(futureAfter.reversed_cents > futureBefore.reversed_cents, "recovery then uses a pending payout");
+  const recoveryDebt = db.prepare(
+    "SELECT COALESCE(SUM(amount_cents - reversed_cents), 0) AS debt FROM ledger WHERE order_id = ? AND (party = 'reseller_debt' OR party LIKE 'reseller_debt:%')",
+  ).get(recovery.order.id) as { debt: number };
+  const recoveryReseller = getOrder(recovery.order.id);
+  const feeDebt = (recoveryReseller?.platformFeeCents ?? 0) + (recoveryReseller?.stripeFeeCents ?? 0);
+  assert(Number(recoveryDebt.debt) < feeDebt, "the pending payout reduces what becomes debt");
+  assert(Number(recoveryDebt.debt) > 0, "the uncovered remainder is still debt");
+  const recoveryScreen = resellerReserveSummary(reseller.id);
+  assert(recoveryScreen.heldCents >= 0 && recoveryScreen.days === 120, "the payout screen can read the reserve");
 }
 
 main().catch((error: unknown) => {
