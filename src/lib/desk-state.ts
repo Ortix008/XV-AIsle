@@ -18,7 +18,46 @@ const ORDER_STATUSES: Order["status"][] = ["processing", "in_transit", "delayed"
 const POST_CHANNELS: Post["channel"][] = ["X", "TikTok", "Instagram", "Meta"];
 
 export function deskStorageKey(accountId: string) {
-  return `xvaisle-desk-v3:${accountId}`;
+  return `xv-desk:v4:${accountId}`;
+}
+
+export function emptyDesk(today: string): DeskState {
+  return {
+    version: 4,
+    startedOn: today,
+    bots: {
+      scout: { running: false },
+      listings: { running: false },
+      orders: { running: false },
+      marketing: { running: false },
+    },
+    pipeline: [],
+    queue: [],
+    listings: [],
+    orders: [],
+    campaigns: [],
+    log: [],
+    recheck: 0,
+    selected: {
+      scout: null,
+      listing: null,
+      order: null,
+      marketing: null,
+    },
+    gettingStartedHidden: false,
+  };
+}
+
+export function purgeOldDesks(storage: Storage) {
+  const stale: string[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (!key) continue;
+    if (key === "aisle-desk-v2" || key === "xvaisle-desk-legacy-owner" || key.startsWith("xvaisle-desk-v3:")) {
+      stale.push(key);
+    }
+  }
+  for (const key of stale) storage.removeItem(key);
 }
 
 export function clipText(value: string, max: number) {
@@ -184,7 +223,7 @@ function cleanLog(value: unknown): LogLine | null {
 export function sanitizeDesk(input: unknown, today: string): DeskState | null {
   if (!input || typeof input !== "object") return null;
   const row = input as Partial<DeskState>;
-  if (row.version !== 3 || !Array.isArray(row.pipeline)) return null;
+  if (row.version !== 4 || !Array.isArray(row.pipeline)) return null;
 
   const seen = new Set<string>();
   const pipeline: PipelineItem[] = [];
@@ -227,8 +266,9 @@ export function sanitizeDesk(input: unknown, today: string): DeskState | null {
   }
 
   return {
-    version: 3,
-    seededOn: typeof row.seededOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(row.seededOn) ? row.seededOn : today,
+    version: 4,
+    startedOn: typeof row.startedOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(row.startedOn) ? row.startedOn : today,
+    gettingStartedHidden: row.gettingStartedHidden === true,
     bots,
     pipeline,
     queue,

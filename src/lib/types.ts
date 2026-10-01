@@ -152,8 +152,8 @@ export type LogLine = {
 export type SelectionKey = "scout" | "listing" | "order" | "marketing";
 
 export type DeskState = {
-  version: 3;
-  seededOn: string;
+  version: 4;
+  startedOn: string;
   bots: Record<BotId, { running: boolean }>;
   pipeline: PipelineItem[];
   queue: string[];
@@ -163,4 +163,5 @@ export type DeskState = {
   log: LogLine[];
   recheck: number;
   selected: Record<SelectionKey, string | null>;
+  gettingStartedHidden: boolean;
 };

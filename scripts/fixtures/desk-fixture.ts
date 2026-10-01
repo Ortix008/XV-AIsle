@@ -1,14 +1,14 @@
-import { getProduct } from "./catalog";
-import { addDays } from "./dates";
+import { getProduct } from "../../src/lib/catalog";
+import { addDays } from "../../src/lib/dates";
 import {
   assess,
   buildCampaign,
   buildListing,
   draftDelayReply,
   draftQualityReply,
-} from "./engine";
-import { round2 } from "./money";
-import type { DeskState, Order, PipelineItem } from "./types";
+} from "../../src/lib/engine";
+import { round2 } from "../../src/lib/money";
+import type { DeskState, Order, PipelineItem } from "../../src/lib/types";
 
 function item(
   productId: string,
@@ -32,7 +32,7 @@ function order(
   };
 }
 
-export function buildSeed(today: string): DeskState {
+export function buildDeskFixture(today: string): DeskState {
   const fishListing = buildListing(getProduct("fish-spatula"), today);
   fishListing.status = "ready";
   const tongListing = buildListing(getProduct("tongs"), today);
@@ -161,8 +161,9 @@ export function buildSeed(today: string): DeskState {
   });
 
   return {
-    version: 3,
-    seededOn: today,
+    version: 4,
+    startedOn: today,
+    gettingStartedHidden: false,
     bots: {
       scout: { running: false },
       listings: { running: false },
