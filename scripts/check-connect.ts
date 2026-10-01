@@ -993,10 +993,10 @@ async function main() {
   assert("error" in locked && locked.error.startsWith("Too many tries. Try again in "), "a lock names the wait");
   assert("locked" in locked && locked.locked === true, "a lock is distinct from a bad password");
   assert(!locked.error.includes("do not match"), "a correct password still reports the lock");
-  const held = db.prepare("SELECT failed_logins, locked_until, password_hash FROM accounts WHERE email = ?").get(
+  const lockRow = db.prepare("SELECT failed_logins, locked_until, password_hash FROM accounts WHERE email = ?").get(
     "lock@xvaisle.test",
   ) as { failed_logins: number; locked_until: number | null; password_hash: string };
-  assert(held.failed_logins === 5 && (held.locked_until ?? 0) > Date.now(), "five misses lock the account for a while");
+  assert(lockRow.failed_logins === 5 && (lockRow.locked_until ?? 0) > Date.now(), "five misses lock the account for a while");
   const { POST } = await import("../src/app/api/account/signin/route");
   const lockedResponse = await POST(
     new Request("http://local.test/api/account/signin", {
@@ -1043,17 +1043,17 @@ async function main() {
   assert(lockedStatus.status === 0 && lockedStatus.stdout.includes("locked: yes"), lockedStatus.stderr || "status missed the lock");
   assert(lockedStatus.stdout.includes("locked_minutes: 2"), "status prints the minutes left");
   assert(lockedStatus.stdout.includes("failed_logins: 5"), "status prints the failed count");
-  assert(!lockedStatus.stdout.includes(held.password_hash), "status does not print a hash");
+  assert(!lockedStatus.stdout.includes(lockRow.password_hash), "status does not print a hash");
   const mismatch = runReset("lock@xvaisle.test", "reset-pass-1", "reset-pass-2");
   assert(mismatch.status !== 0, mismatch.out || "a reset should refuse two different passwords");
   const unchanged = db.prepare("SELECT password_hash FROM accounts WHERE email = ?").get("lock@xvaisle.test") as {
     password_hash: string;
   };
-  assert(unchanged.password_hash === held.password_hash, "a refused reset leaves the password in place");
+  assert(unchanged.password_hash === lockRow.password_hash, "a refused reset leaves the password in place");
   const reset = runReset("lock@xvaisle.test", "reset-pass-1", "reset-pass-1");
   assert(reset.status === 0, reset.out || "password reset failed");
   assert(!reset.out.includes("reset-pass-1"), "the reset command does not print the password");
-  assert(!reset.out.includes(held.password_hash), "the reset command does not print a hash");
+  assert(!reset.out.includes(lockRow.password_hash), "the reset command does not print a hash");
   assert(accountFromToken(opened.token) === null, "a reset signs that account out");
   const challenges = db.prepare("SELECT COUNT(*) AS n FROM login_challenges WHERE account_id = ?").get(lock.account.id) as {
     n: number;
@@ -1074,7 +1074,7 @@ async function main() {
   assert(status.stdout.includes("failed_logins: 0"), "status prints the failed-try count");
   assert(status.stdout.includes("locked: no"), "status prints the lock");
   assert(status.stdout.includes("locked_minutes: 0"), "status prints zero minutes when unlocked");
-  assert(!status.stdout.includes(held.password_hash), "status does not print a hash");
+  assert(!status.stdout.includes(lockRow.password_hash), "status does not print a hash");
   const missing = spawnSync(process.execPath, ["--experimental-strip-types", "scripts/admin-reset-password.ts"], {
     cwd: process.cwd(),
     env: { ...process.env, DATABASE_PATH: process.env.DATABASE_PATH, ADMIN_EMAIL: "nobody@xvaisle.test" },
