@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-4317}",
     "lint": "eslint",
-    "check": "tsx scripts/check-account.ts && tsx scripts/check-desk.ts && tsx scripts/check-security.ts && tsx scripts/check-market.ts && tsx scripts/check-connect.ts"
+    "check": "tsx scripts/check-account.ts && tsx scripts/check-desk.ts && tsx scripts/check-security.ts && tsx scripts/check-market.ts && tsx scripts/check-connect.ts && tsx scripts/check-fees.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

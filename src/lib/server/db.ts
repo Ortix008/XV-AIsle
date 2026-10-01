@@ -161,6 +161,7 @@ export function getDb() {
       transfer_id TEXT NOT NULL,
       amount_cents INTEGER NOT NULL,
       kind TEXT NOT NULL,
+      reason TEXT,
       created_at INTEGER NOT NULL
     );
   `);
@@ -179,6 +180,7 @@ export function getDb() {
   addColumn(next, "listings", "supplier_cost_cents", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "listings", "supplier_shipping_cents", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "listings", "fee_bps", "INTEGER");
+  addColumn(next, "listings", "catalog_item_id", "TEXT");
   addColumn(next, "orders", "payment_intent_id", "TEXT");
   addColumn(next, "orders", "charge_id", "TEXT");
   addColumn(next, "orders", "transfer_group", "TEXT");
@@ -207,6 +209,15 @@ export function getDb() {
   addColumn(next, "orders", "fulfillment_attempts", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "orders", "fulfillment_flag", "TEXT");
   addColumn(next, "orders", "refund_required", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "ledger_transfers", "reason", "TEXT");
+  addColumn(next, "orders", "stripe_fee_est_cents", "INTEGER");
+  addColumn(next, "orders", "stripe_fee_cents", "INTEGER");
+  addColumn(next, "orders", "had_refund", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "orders", "had_dispute", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "orders", "refunded_at", "INTEGER");
+  addColumn(next, "orders", "dispute_closed_at", "INTEGER");
+  addColumn(next, "orders", "reserve_release_flag", "TEXT");
+  addColumn(next, "ledger", "created_at", "INTEGER");
   db = next;
   return next;
 }

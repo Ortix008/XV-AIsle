@@ -7,8 +7,17 @@ import { Input } from "@/components/ui/input";
 import { isStripeRedirectUrl } from "@/lib/checkout-url";
 import { useAccount } from "@/lib/account-store";
 
+function reserveMoney(cents: number) {
+  const dollars = cents / 100;
+  return Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`;
+}
+
+function reservePercent(bps: number) {
+  return bps % 100 === 0 ? String(bps / 100) : (bps / 100).toFixed(2);
+}
+
 export function ConnectPayout() {
-  const { account, connect, chooseRole, refresh } = useAccount();
+  const { account, connect, reserve, chooseRole, refresh } = useAccount();
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
@@ -105,9 +114,32 @@ export function ConnectPayout() {
         <p className="mt-1 text-pretty text-sm text-muted-foreground">
           Stripe holds the bank account. This market never asks for a card number, a bank number, or a crypto
           address. After the buyer confirms delivery, or 7 days pass with no dispute, Stripe sends the reseller
-          share and the supplier share. The platform keeps 8–12%.
+          share and the supplier share. The platform keeps 8–12%. We hold {reserve ? reservePercent(reserve.bps) : "10"}%
+          of each payout, up to {reserve ? reserveMoney(reserve.capCents) : "$100"} total, for{" "}
+          {reserve ? reserve.days : 120} days to cover refunds and disputes, then release it to you automatically.
         </p>
       </div>
+      {account.role === "reseller" && reserve ? (
+        <div className="text-sm">
+          <p>Reserve held {reserveMoney(reserve.heldCents)}</p>
+          {reserve.releases.length === 0 ? (
+            <p className="mt-1 text-muted-foreground">No reserve is held right now.</p>
+          ) : (
+            <ul className="mt-1 flex flex-col gap-1 text-muted-foreground">
+              {reserve.releases.map((item) => (
+                <li key={item.orderId}>
+                  {reserveMoney(item.amountCents)}
+                  {item.blocked
+                    ? " stays held while a dispute is open."
+                    : item.releaseAt == null
+                      ? " is held."
+                      : ` releases ${new Date(item.releaseAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
       <p className="text-xs text-muted-foreground">Account id {account.id}</p>
       {returned === "return" ? <p className="text-sm">Stripe sent you back. Payout status is below.</p> : null}
       {returned === "retry" ? (

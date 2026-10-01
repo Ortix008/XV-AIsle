@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, splitProblem } from "./fees";
+import { getApprovedCatalog } from "./catalog";
+import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { changed, getDb } from "./db";
 import { requestShipment } from "./supplier";
 
@@ -22,6 +23,7 @@ export type StoreListing = {
   supplierCostCents: number;
   supplierShippingCents: number;
   feeBps: number | null;
+  catalogItemId: string | null;
 };
 
 export type StoreOrder = {
@@ -50,6 +52,8 @@ export type StoreOrder = {
   transferGroup: string | null;
   feeBps: number | null;
   platformFeeCents: number | null;
+  stripeFeeEstCents: number | null;
+  stripeFeeCents: number | null;
   supplierAmountCents: number | null;
   resellerAmountCents: number | null;
   supplierAccountId: string | null;
@@ -91,6 +95,7 @@ type ListingRow = {
   supplier_cost_cents?: number | null;
   supplier_shipping_cents?: number | null;
   fee_bps?: number | null;
+  catalog_item_id?: string | null;
 };
 
 type OrderRow = {
@@ -117,6 +122,8 @@ type OrderRow = {
   transfer_group?: string | null;
   fee_bps?: number | null;
   platform_fee_cents?: number | null;
+  stripe_fee_est_cents?: number | null;
+  stripe_fee_cents?: number | null;
   supplier_amount_cents?: number | null;
   reseller_amount_cents?: number | null;
   supplier_account_id?: string | null;
@@ -162,6 +169,7 @@ function listingFrom(row: ListingRow): StoreListing {
     supplierCostCents: row.supplier_cost_cents ?? 0,
     supplierShippingCents: row.supplier_shipping_cents ?? 0,
     feeBps: row.fee_bps ?? null,
+    catalogItemId: row.catalog_item_id ?? null,
   };
 }
 
@@ -192,6 +200,8 @@ function orderFrom(row: OrderRow, listing?: ListingRow): StoreOrder {
     transferGroup: row.transfer_group ?? null,
     feeBps: row.fee_bps ?? null,
     platformFeeCents: row.platform_fee_cents ?? null,
+    stripeFeeEstCents: row.stripe_fee_est_cents ?? null,
+    stripeFeeCents: row.stripe_fee_cents ?? null,
     supplierAmountCents: row.supplier_amount_cents ?? null,
     resellerAmountCents: row.reseller_amount_cents ?? null,
     supplierAccountId: row.supplier_account_id ?? null,
@@ -249,7 +259,15 @@ export function publishListing(
   accountId: string,
   input: Omit<
     StoreListing,
-    "accountId" | "published" | "madeInUsa" | "shelf" | "supplierAccountId" | "supplierCostCents" | "supplierShippingCents" | "feeBps"
+    | "accountId"
+    | "published"
+    | "madeInUsa"
+    | "shelf"
+    | "supplierAccountId"
+    | "supplierCostCents"
+    | "supplierShippingCents"
+    | "feeBps"
+    | "catalogItemId"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -258,6 +276,7 @@ export function publishListing(
     supplierCostCents?: number;
     supplierShippingCents?: number;
     feeBps?: number | null;
+    catalogItemId?: string | null;
   },
 ) {
   if (!input.title.trim() || !input.sku.trim()) return { error: "The page needs a title." as const };
@@ -281,8 +300,9 @@ export function publishListing(
       `INSERT INTO listings (
          product_id, account_id, sku, title, description, price_cents, image,
          supplier_name, supplier_origin, ship_days_min, ship_days_max, published,
-         made_in_usa, shelf, supplier_account_id, supplier_cost_cents, supplier_shipping_cents, fee_bps
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         made_in_usa, shelf, supplier_account_id, supplier_cost_cents, supplier_shipping_cents, fee_bps,
+         catalog_item_id
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(product_id) DO UPDATE SET
          account_id = excluded.account_id,
          sku = excluded.sku,
@@ -300,7 +320,8 @@ export function publishListing(
          supplier_account_id = excluded.supplier_account_id,
          supplier_cost_cents = excluded.supplier_cost_cents,
          supplier_shipping_cents = excluded.supplier_shipping_cents,
-         fee_bps = excluded.fee_bps`,
+         fee_bps = excluded.fee_bps,
+         catalog_item_id = excluded.catalog_item_id`,
     )
     .run(
       input.productId,
@@ -321,6 +342,7 @@ export function publishListing(
       input.supplierCostCents ?? 0,
       input.supplierShippingCents ?? 0,
       input.feeBps ?? null,
+      input.catalogItemId ?? null,
     );
   return { listing: getListing(input.productId) };
 }
@@ -341,7 +363,42 @@ export function listPublished(filter?: { madeInUsa?: boolean; shelf?: "national"
   const rows = getDb()
     .prepare(`SELECT * FROM listings WHERE ${clauses.join(" AND ")} ORDER BY title`)
     .all(...params) as ListingRow[];
-  return rows.map(listingFrom);
+  return rows.map(listingFrom).filter((listing) => !listingLoss(listing));
+}
+
+function pauseListing(productId: string) {
+  getDb().prepare("UPDATE listings SET published = 0 WHERE product_id = ?").run(productId);
+}
+
+/** Current supplier cost from the approved catalog when the listing is tied to one. */
+function pricedSplit(listing: StoreListing, qty: number) {
+  let supplierCostCents = listing.supplierCostCents;
+  let supplierShippingCents = listing.supplierShippingCents;
+  if (listing.catalogItemId) {
+    const item = getApprovedCatalog(listing.catalogItemId);
+    if (!item) return { error: "That supplier item is no longer approved." as const };
+    supplierCostCents = item.costCents;
+    supplierShippingCents = item.shippingCents;
+  }
+  const split = quoteSplit({
+    priceCents: listing.priceCents,
+    qty,
+    supplierCostCents,
+    supplierShippingCents,
+    feeBps: platformFeeBps(),
+  });
+  return { split };
+}
+
+export function listingLoss(listing: StoreListing) {
+  if (!listing.supplierAccountId && !listing.catalogItemId) return null;
+  const priced = pricedSplit(listing, 1);
+  if ("error" in priced) return priced.error;
+  return saleBlock({
+    priceCents: listing.priceCents,
+    split: priced.split,
+    supplierAccountId: listing.supplierAccountId,
+  });
 }
 
 export type ShipTo = {
@@ -380,19 +437,21 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   const number = `XV-${allocateOrderNumber()}`;
   const receiptToken = randomBytes(32).toString("hex");
   const page = listingFrom(listing);
-  if (page.feeBps != null && (page.feeBps < 800 || page.feeBps > 1200)) {
-    return { error: "The platform fee has to stay between 8% and 12%." as const };
+  const priced = pricedSplit(page, qty);
+  if ("error" in priced) {
+    pauseListing(page.productId);
+    return { error: priced.error };
   }
-  const feeBps = page.feeBps == null ? platformFeeBps() : page.feeBps;
-  const split = quoteSplit({
+  const problem = saleBlock({
     priceCents: page.priceCents,
-    qty,
-    supplierCostCents: page.supplierCostCents,
-    supplierShippingCents: page.supplierShippingCents,
-    feeBps,
+    split: priced.split,
+    supplierAccountId: page.supplierAccountId,
   });
-  const problem = splitProblem(split, page.supplierAccountId);
-  if (problem) return { error: problem };
+  if (problem) {
+    if (page.supplierAccountId) pauseListing(page.productId);
+    return { error: problem };
+  }
+  const split = priced.split;
   const created = Date.now();
   getDb()
     .prepare(
@@ -401,8 +460,8 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
          ship_line1, ship_city, ship_region, ship_postal, ship_country,
          stripe_session_id, status, supplier_ref, supplier_detail, created_at,
          transfer_group, fee_bps, platform_fee_cents, supplier_amount_cents, reseller_amount_cents, supplier_account_id,
-         receipt_token_hash
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         receipt_token_hash, stripe_fee_est_cents, stripe_fee_cents
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -426,6 +485,8 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
       split.resellerAmountCents,
       page.supplierAccountId,
       receiptHash(receiptToken),
+      split.stripeFeeCents,
+      split.stripeFeeCents,
     );
   return { order: getOrder(id)!, listing: listingFrom(listing), receiptToken };
 }
@@ -560,7 +621,7 @@ export function listHoldAlerts(now = Date.now()) {
   const rows = getDb()
     .prepare("SELECT id, number, paid_at, refund_required FROM orders WHERE paid_at IS NOT NULL")
     .all() as { id: string; number: string; paid_at: number; refund_required: number }[];
-  const alerts: { id: string; number: string; kind: "refund" | "nearing" }[] = [];
+  const alerts: { id: string; number: string; kind: "refund" | "nearing" | "reserve" }[] = [];
   for (const row of rows) {
     if (row.refund_required === 1) {
       alerts.push({ id: row.id, number: row.number, kind: "refund" });
@@ -568,6 +629,10 @@ export function listHoldAlerts(now = Date.now()) {
     }
     if (holdState(row.paid_at, now) === "nearing") alerts.push({ id: row.id, number: row.number, kind: "nearing" });
   }
+  const stuckReserves = getDb()
+    .prepare("SELECT id, number FROM orders WHERE reserve_release_flag = 'connect'")
+    .all() as { id: string; number: string }[];
+  for (const row of stuckReserves) alerts.push({ id: row.id, number: row.number, kind: "reserve" });
   return alerts;
 }
 

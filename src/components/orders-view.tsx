@@ -61,6 +61,21 @@ function ShopperNotes() {
   );
 }
 
+function holdAlertText(kind: "nearing" | "refund" | "reserve") {
+  switch (kind) {
+    case "refund":
+      return "Past the 730-day hold. Refund this charge.";
+    case "nearing":
+      return "Inside the last 14 days of the hold. Refund it if it will not transfer in time.";
+    case "reserve":
+      return "Reserve is ready to release, but the Connect account is disabled.";
+    default: {
+      const _never: never = kind;
+      return _never;
+    }
+  }
+}
+
 function StoreOrders() {
   const { account } = useAccount();
   const [orders, setOrders] = useState<
@@ -76,7 +91,7 @@ function StoreOrders() {
     }[]
   >([]);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [alerts, setAlerts] = useState<{ id: string; number: string; kind: "nearing" | "refund" }[]>([]);
+  const [alerts, setAlerts] = useState<{ id: string; number: string; kind: "nearing" | "refund" | "reserve" }[]>([]);
   const [carrier, setCarrier] = useState("");
   const [tracking, setTracking] = useState("");
 
@@ -122,10 +137,7 @@ function StoreOrders() {
           <ul className="mt-1 space-y-1 text-muted-foreground">
             {alerts.map((alert) => (
               <li key={alert.id}>
-                {alert.number}:{" "}
-                {alert.kind === "refund"
-                  ? "Past the 730-day hold. Refund this charge."
-                  : "Inside the last 14 days of the hold. Refund it if it will not transfer in time."}
+                {alert.number}: {holdAlertText(alert.kind)}
               </li>
             ))}
           </ul>

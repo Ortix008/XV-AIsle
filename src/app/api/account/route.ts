@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { accountFromToken, billingConfigured } from "@/lib/server/accounts";
 import { getConnected } from "@/lib/server/connect";
+import { resellerReserveSummary } from "@/lib/server/ledger";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 
 export async function GET() {
@@ -21,5 +22,6 @@ export async function GET() {
         }
       : null,
     billing: billingConfigured(),
+    reserve: resellerReserveSummary(account.id),
   });
 }
