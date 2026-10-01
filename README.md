@@ -73,7 +73,7 @@ reseller_net = gross - platform_fee - supplier_amount - stripe_fee
 
 A price below `MIN_RETAIL_CENTS` (default $5) or a reseller payout below `MIN_RESELLER_NET_CENTS` (default 50¢) is rejected at publish and again at checkout. If a supplier cost or a fee setting moves a live listing under that line, checkout pauses it. The publish screen shows the server's breakdown: price, supplier cost, platform fee, estimated Stripe fee, and the reseller's estimated payout.
 
-Each reseller payout holds back `RESELLER_RESERVE_BPS` (default 10%) on the platform balance, up to `RESELLER_RESERVE_CAP_CENTS` (default $100) per reseller. Once the cap is full, later payouts transfer in full. The hourly sweep releases each hold after `RESELLER_RESERVE_DAYS` (default 120) when that order had no refund and no dispute. The release is an idempotent transfer logged as `reserve_release`. The payout screen shows the held balance and the release dates.
+Each reseller payout holds back `RESELLER_RESERVE_BPS` (default 10%) on the platform balance, up to `RESELLER_RESERVE_CAP_CENTS` (default $100) per reseller. Once the cap is full, later payouts transfer in full. The hourly sweep releases each hold `RESELLER_RESERVE_DAYS` after the later of the hold and the refund or dispute close (default 120, clamped to 700 so it stays inside Stripe's 730-day US hold). It waits only while a dispute is still open. The release is an idempotent transfer logged as `reserve_release`. If the Connect account cannot receive that transfer, the order is flagged for an admin. The payout screen shows the held balance and the release dates.
 
 Nothing is transferred when the card payment succeeds. The app writes a pending ledger row for the reseller and a pending ledger row for the supplier. The supplier marks the order shipped with their own callback secret, a carrier, and a tracking number. Funds move only after the buyer confirms receipt, or 7 days after delivery with no buyer dispute. A buyer dispute in that window freezes the transfer until a verified admin reviews it. Each transfer uses the original charge as `source_transaction`. The platform does not add `application_fee_amount`. Stripe still collects its processing fee from the platform account (`fees_collector` stays `application`). That fee is not left in the platform's cut: it reduces the reseller's transfer. The platform's net on a sale is its fee.
 
@@ -122,7 +122,7 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | `MIN_RETAIL_CENTS` | Lowest price that can be published or checked out, in cents. Default `500`, clamped to `100`–`100000`. |
 | `MIN_RESELLER_NET_CENTS` | Lowest reseller payout after cost and fees, in cents. Default `50`, clamped to `0`–`5000`. |
 | `RESELLER_RESERVE_BPS` | Share of each reseller payout held on the platform, in basis points. Default `1000`, clamped to `0`–`10000`. |
-| `RESELLER_RESERVE_DAYS` | Days before an untouched hold is released. Default `120`, clamped to `1`–`3650`. |
+| `RESELLER_RESERVE_DAYS` | Days after the hold, or after a refund or dispute closes, before release. Default `120`, clamped to `1`–`700`. |
 | `RESELLER_RESERVE_CAP_CENTS` | Most reserve held for one reseller, in cents. Default `10000`, clamped to `0`–`100000000`. |
 | `STRIPE_ALLOW_LIVE` | Set to `1` only to permit a live key. |
 | `STRIPE_CARD_CHECKOUT_ONLY` | Set to `1` to disable Link and US bank on the platform payment configuration at boot. |

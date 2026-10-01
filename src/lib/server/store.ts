@@ -621,7 +621,7 @@ export function listHoldAlerts(now = Date.now()) {
   const rows = getDb()
     .prepare("SELECT id, number, paid_at, refund_required FROM orders WHERE paid_at IS NOT NULL")
     .all() as { id: string; number: string; paid_at: number; refund_required: number }[];
-  const alerts: { id: string; number: string; kind: "refund" | "nearing" }[] = [];
+  const alerts: { id: string; number: string; kind: "refund" | "nearing" | "reserve" }[] = [];
   for (const row of rows) {
     if (row.refund_required === 1) {
       alerts.push({ id: row.id, number: row.number, kind: "refund" });
@@ -629,6 +629,10 @@ export function listHoldAlerts(now = Date.now()) {
     }
     if (holdState(row.paid_at, now) === "nearing") alerts.push({ id: row.id, number: row.number, kind: "nearing" });
   }
+  const stuckReserves = getDb()
+    .prepare("SELECT id, number FROM orders WHERE reserve_release_flag = 'connect'")
+    .all() as { id: string; number: string }[];
+  for (const row of stuckReserves) alerts.push({ id: row.id, number: row.number, kind: "reserve" });
   return alerts;
 }
 

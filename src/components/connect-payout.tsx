@@ -129,9 +129,11 @@ export function ConnectPayout() {
               {reserve.releases.map((item) => (
                 <li key={item.orderId}>
                   {reserveMoney(item.amountCents)}
-                  {item.blocked || item.releaseAt == null
-                    ? " stays held because this order was refunded or disputed."
-                    : ` releases ${new Date(item.releaseAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`}
+                  {item.blocked
+                    ? " stays held while a dispute is open."
+                    : item.releaseAt == null
+                      ? " is held."
+                      : ` releases ${new Date(item.releaseAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`}
                 </li>
               ))}
             </ul>

@@ -40,6 +40,10 @@ async function main() {
   assert(fees.minResellerNetCents() === 50, "reseller minimum defaults to 50 cents");
   assert(fees.resellerReserveBps() === 1000, "reserve defaults to 10%");
   assert(fees.resellerReserveDays() === 120, "reserve defaults to 120 days");
+  process.env.RESELLER_RESERVE_DAYS = "900";
+  assert(fees.resellerReserveDays() === 700, "reserve days clamp under Stripe's 730-day hold");
+  delete process.env.RESELLER_RESERVE_DAYS;
+  assert(fees.resellerReserveDays() === 120, "reserve days fall back to 120");
   assert(fees.resellerReserveCapCents() === 10000, "reserve cap defaults to $100");
   assert(
     fees.reserveHoldCents({ payoutCents: 10000, heldCents: 0, bps: 1000, capCents: 10000 }) === 1000,
@@ -197,7 +201,7 @@ async function main() {
   const { getDb } = await import("../src/lib/server/db");
   const { getAccount, setOwnRole, signUp } = await import("../src/lib/server/accounts");
   const { publishForAccount, quoteForAccount } = await import("../src/lib/server/publish");
-  const { createPendingOrder, getOrder, listPublished, markShipped } = await import("../src/lib/server/store");
+  const { createPendingOrder, getOrder, listHoldAlerts, listPublished, markShipped } = await import("../src/lib/server/store");
   const {
     applyDisputeClosed,
     applyDisputeOpened,
@@ -205,7 +209,9 @@ async function main() {
     confirmReceipt,
     markDelivered,
     releaseReserves,
+    releaseTransfers,
     resellerDebtCents,
+    resellerReserveHeldCents,
     resellerReserveSummary,
     settleCheckoutSession,
   } = await import("../src/lib/server/ledger");
@@ -821,9 +827,13 @@ async function main() {
 
   const blockedListing = publishForAccount(reseller, { ...base, productId: "blocked-pan", priceCents: 1000 });
   if (blockedListing.status !== 200) throw new Error(blockedListing.error ?? "blocked listing");
-  const disputedListing = publishForAccount(reseller, { ...base, productId: "held-dispute-pan", priceCents: 1000 });
+  const disputedListing = publishForAccount(reseller, { ...base, productId: "held-dispute-pan", priceCents: 20000 });
   if (disputedListing.status !== 200) throw new Error(disputedListing.error ?? "held dispute listing");
   const blockedReserve = await payoutOrder("blocked-pan", "cs_blocked", "ch_blocked");
+  const partialBefore = db.prepare("SELECT amount_cents - reversed_cents AS open FROM ledger WHERE order_id = ? AND party = 'reserve'").get(
+    blockedReserve.order.id,
+  ) as { open: number };
+  db.prepare("UPDATE ledger SET created_at = ? WHERE order_id = ? AND party = 'reserve'").run(Date.now() - 200 * day, blockedReserve.order.id);
   await applyRefund({
     chargeId: "ch_blocked",
     paymentIntentId: "pi_cs_blocked",
@@ -831,31 +841,163 @@ async function main() {
     gross: blockedReserve.order.amountCents,
     eventKey: "evt_blocked_partial",
   });
-  const blockedHeld = db.prepare("SELECT created_at, status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(blockedReserve.order.id) as {
-    created_at: number;
+  const partialLeft = db.prepare("SELECT amount_cents - reversed_cents AS open, status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(
+    blockedReserve.order.id,
+  ) as { open: number; status: string };
+  assert(partialLeft.status === "pending" && partialLeft.open > 0 && partialLeft.open < partialBefore.open, "a partial refund leaves reserve");
+  const refundedAt = db.prepare("SELECT refunded_at FROM orders WHERE id = ?").get(blockedReserve.order.id) as { refunded_at: number };
+  const earlyPartial = await releaseReserves(Date.now());
+  const partialStill = db.prepare("SELECT status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(blockedReserve.order.id) as {
     status: string;
   };
-  const blockedRelease = await releaseReserves(blockedHeld.created_at + 121 * 24 * 60 * 60 * 1000);
-  assert(blockedRelease.transferred === 0 && blockedHeld.status === "pending", "a refunded order does not release reserve");
+  assert(earlyPartial.transferred === 0 && partialStill.status === "pending", "reserve waits from the refund, not the old hold");
+  await releaseReserves(refundedAt.refunded_at + 120 * day - 1);
+  const partialAlmost = db.prepare("SELECT status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(blockedReserve.order.id) as {
+    status: string;
+  };
+  assert(partialAlmost.status === "pending", "leftover reserve stays until 120 days after the refund");
+  await releaseReserves(refundedAt.refunded_at + 120 * day);
+  const partialReleased = db.prepare("SELECT status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(blockedReserve.order.id) as {
+    status: string;
+  };
+  const partialReleaseCount = db.prepare("SELECT COUNT(*) AS total FROM ledger_transfers WHERE order_id = ? AND kind = 'reserve_release'").get(
+    blockedReserve.order.id,
+  ) as { total: number };
+  assert(partialReleased.status === "transferred" && Number(partialReleaseCount.total) === 1, "leftover reserve releases once after the refund window");
+
   const disputedReserve = await payoutOrder("held-dispute-pan", "cs_held_dispute", "ch_held_dispute");
+  db.prepare("UPDATE ledger SET created_at = ? WHERE order_id = ? AND party = 'reserve'").run(Date.now() - 200 * day, disputedReserve.order.id);
   await applyDisputeOpened({
     chargeId: "ch_held_dispute",
     paymentIntentId: "pi_cs_held_dispute",
     amount: 10,
     disputeId: "dp_held",
   });
-  const disputeHeld = db.prepare("SELECT created_at FROM ledger WHERE order_id = ? AND party = 'reserve' AND status = 'pending'").get(
+  const duringDispute = db.prepare("SELECT amount_cents - reversed_cents AS open, status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(
     disputedReserve.order.id,
-  ) as { created_at: number } | undefined;
-  if (disputeHeld) {
-    const disputeRelease = await releaseReserves(disputeHeld.created_at + 121 * 24 * 60 * 60 * 1000);
-    assert(disputeRelease.transferred === 0, "a disputed order does not release reserve");
-  } else {
-    const consumed = db.prepare("SELECT status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(disputedReserve.order.id) as {
+  ) as { open: number; status: string };
+  assert(duringDispute.status === "pending" && duringDispute.open > 0, "an open dispute leaves reserve on the books");
+  await releaseReserves(Date.now() + 400 * day);
+  const disputeStill = db.prepare("SELECT status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(disputedReserve.order.id) as {
+    status: string;
+  };
+  assert(disputeStill.status === "pending", "an open dispute does not release reserve");
+  const heldDuring = resellerReserveHeldCents(reseller.id);
+  await applyDisputeClosed({
+    chargeId: "ch_held_dispute",
+    paymentIntentId: "pi_cs_held_dispute",
+    status: "won",
+    disputeId: "dp_held",
+    amount: 10,
+  });
+  const restored = db.prepare("SELECT amount_cents - reversed_cents AS open, status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(
+    disputedReserve.order.id,
+  ) as { open: number; status: string };
+  assert(restored.status === "pending" && restored.open >= duringDispute.open, "a won dispute puts the reserve back");
+  const closedAt = db.prepare("SELECT dispute_closed_at FROM orders WHERE id = ?").get(disputedReserve.order.id) as {
+    dispute_closed_at: number;
+  };
+  await releaseReserves(closedAt.dispute_closed_at + 120 * day - 1);
+  const restoredStill = db.prepare("SELECT status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(disputedReserve.order.id) as {
+    status: string;
+  };
+  assert(restoredStill.status === "pending", "restored reserve waits 120 days after the dispute closes");
+  await releaseReserves(closedAt.dispute_closed_at + 120 * day);
+  const restoredDone = db.prepare("SELECT status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(disputedReserve.order.id) as {
+    status: string;
+  };
+  assert(restoredDone.status === "transferred", "restored reserve releases after the dispute window");
+  assert(resellerReserveHeldCents(reseller.id) < heldDuring, "a released reserve no longer counts toward the cap");
+
+  clearBalances();
+  process.env.RESELLER_RESERVE_CAP_CENTS = "400";
+  const retryListing = publishForAccount(reseller, { ...base, productId: "retry-pan", priceCents: 10000 });
+  if (retryListing.status !== 200) throw new Error(retryListing.error ?? "retry listing");
+  db.prepare("UPDATE connected_accounts SET payouts_enabled = 0, transfers_status = 'disabled' WHERE stripe_account_id = 'acct_fee_reseller'").run();
+  try {
+    const callsBeforeRetry = calls.length;
+    const retried = await payoutOrder("retry-pan", "cs_retry", "ch_retry");
+    const savedHold = db.prepare("SELECT amount_cents, status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(retried.order.id) as {
+      amount_cents: number;
       status: string;
     };
-    assert(consumed.status !== "transferred", "a disputed reserve is not released");
+    const retryReseller = getOrder(retried.order.id)?.resellerAmountCents ?? 0;
+    assert(savedHold.amount_cents === 400 && savedHold.status === "pending", "the reserve is saved before the transfer");
+    assert(
+      !calls.slice(callsBeforeRetry).some((call) => call.idempotency?.includes("-reseller-")),
+      "a payout does not transfer while Connect is disabled",
+    );
+    db.prepare("UPDATE connected_accounts SET payouts_enabled = 1, transfers_status = 'active' WHERE stripe_account_id = 'acct_fee_reseller'").run();
+    const callsBeforeSecond = calls.length;
+    await releaseTransfers(retried.order.id);
+    const secondTransfer = calls.slice(callsBeforeSecond).find((call) => call.idempotency?.includes("-reseller-"));
+    assert(
+      secondTransfer?.body.includes(`amount=${retryReseller - savedHold.amount_cents}`),
+      "a retry pays the payout minus the saved reserve",
+    );
+    const callsBeforeThird = calls.length;
+    await releaseTransfers(retried.order.id);
+    assert(
+      !calls.slice(callsBeforeThird).some((call) => call.idempotency?.includes("-reseller-")),
+      "a second retry does not pay the reseller again",
+    );
+    db.prepare("UPDATE ledger SET created_at = ? WHERE order_id = ? AND party = 'reserve'").run(Date.now() - 121 * day, retried.order.id);
+    await releaseReserves(Date.now());
+    const retryRelease = calls.filter((call) => call.idempotency?.startsWith(`reserve-release-${retried.order.id}-`));
+    assert(retryRelease.length === 1 && retryRelease[0]?.body.includes("amount=400"), "the saved reserve is released once");
+    const amountOf = (body: string | undefined) => Number(body?.match(/amount=(\d+)/)?.[1] ?? 0);
+    assert(
+      amountOf(secondTransfer?.body) + amountOf(retryRelease[0]?.body) === retryReseller,
+      "the reserve is not paid twice",
+    );
+  } finally {
+    delete process.env.RESELLER_RESERVE_CAP_CENTS;
+    db.prepare("UPDATE connected_accounts SET payouts_enabled = 1, transfers_status = 'active' WHERE stripe_account_id = 'acct_fee_reseller'").run();
   }
+
+  clearBalances();
+  const stuckListing = publishForAccount(reseller, { ...base, productId: "stuck-pan", priceCents: 1000 });
+  if (stuckListing.status !== 200) throw new Error(stuckListing.error ?? "stuck listing");
+  const stuck = await payoutOrder("stuck-pan", "cs_stuck", "ch_stuck");
+  db.prepare("UPDATE ledger SET created_at = ? WHERE order_id = ? AND party = 'reserve'").run(Date.now() - 121 * day, stuck.order.id);
+  db.prepare("UPDATE connected_accounts SET payouts_enabled = 0, transfers_status = 'disabled' WHERE stripe_account_id = 'acct_fee_reseller'").run();
+  const logged: string[] = [];
+  const writeError = console.error;
+  console.error = (...args: unknown[]) => {
+    logged.push(args.map(String).join(" "));
+  };
+  try {
+    await releaseReserves(Date.now());
+    await releaseReserves(Date.now());
+  } finally {
+    console.error = writeError;
+    db.prepare("UPDATE connected_accounts SET payouts_enabled = 1, transfers_status = 'active' WHERE stripe_account_id = 'acct_fee_reseller'").run();
+  }
+  const stuckRow = db.prepare("SELECT status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(stuck.order.id) as { status: string };
+  const stuckFlag = db.prepare("SELECT reserve_release_flag FROM orders WHERE id = ?").get(stuck.order.id) as {
+    reserve_release_flag: string | null;
+  };
+  assert(stuckRow.status === "pending" && stuckFlag.reserve_release_flag === "connect", "a disabled Connect account flags the reserve");
+  assert(
+    logged.filter((line) => line.includes(stuck.order.id) && line.includes("cannot receive a transfer")).length === 1,
+    "the blocked reserve is logged once",
+  );
+  assert(
+    listHoldAlerts().some((alert) => alert.id === stuck.order.id && alert.kind === "reserve"),
+    "admins see a reserve the sweep could not release",
+  );
+  await releaseReserves(Date.now());
+  const stuckAfter = db.prepare("SELECT status FROM ledger WHERE order_id = ? AND party = 'reserve'").get(stuck.order.id) as {
+    status: string;
+  };
+  const flagAfter = db.prepare("SELECT reserve_release_flag FROM orders WHERE id = ?").get(stuck.order.id) as {
+    reserve_release_flag: string | null;
+  };
+  assert(stuckAfter.status === "transferred" && flagAfter.reserve_release_flag == null, "the reserve releases once Connect can receive it");
+  assert(
+    !listHoldAlerts().some((alert) => alert.id === stuck.order.id && alert.kind === "reserve"),
+    "the admin flag clears after the reserve releases",
+  );
 
   clearBalances();
   const recoveryListing = publishForAccount(reseller, { ...base, productId: "recovery-pan", priceCents: 10000 });

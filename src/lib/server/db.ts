@@ -214,6 +214,9 @@ export function getDb() {
   addColumn(next, "orders", "stripe_fee_cents", "INTEGER");
   addColumn(next, "orders", "had_refund", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "orders", "had_dispute", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "orders", "refunded_at", "INTEGER");
+  addColumn(next, "orders", "dispute_closed_at", "INTEGER");
+  addColumn(next, "orders", "reserve_release_flag", "TEXT");
   addColumn(next, "ledger", "created_at", "INTEGER");
   db = next;
   return next;

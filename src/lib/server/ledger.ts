@@ -389,15 +389,23 @@ function holdReserve(order: StoreOrder, accountId: string, amount: number) {
   return amount;
 }
 
-function orderBlockedReserve(orderId: string) {
-  const row = getDb().prepare("SELECT had_refund, had_dispute FROM orders WHERE id = ?").get(orderId) as
-    | { had_refund: number; had_dispute: number }
-    | undefined;
-  return !row || row.had_refund === 1 || row.had_dispute === 1;
+const RESERVE_DAY_MS = 24 * 60 * 60 * 1000;
+
+function reserveClock(orderId: string, heldAt: number | null) {
+  const row = getDb()
+    .prepare("SELECT dispute_open, refunded_at, dispute_closed_at FROM orders WHERE id = ?")
+    .get(orderId) as { dispute_open: number; refunded_at: number | null; dispute_closed_at: number | null } | undefined;
+  if (!row || row.dispute_open === 1) return { releaseAt: null as number | null, openDispute: true };
+  const anchor = Math.max(heldAt ?? 0, row.refunded_at ?? 0, row.dispute_closed_at ?? 0);
+  if (anchor <= 0) return { releaseAt: null, openDispute: false };
+  return { releaseAt: anchor + resellerReserveDays() * RESERVE_DAY_MS, openDispute: false };
 }
 
-function markOrderFlag(orderId: string, flag: "had_refund" | "had_dispute") {
-  getDb().prepare(`UPDATE orders SET ${flag} = 1 WHERE id = ?`).run(orderId);
+function savedReserveCents(orderId: string) {
+  const existing = getDb().prepare("SELECT amount_cents FROM ledger WHERE order_id = ? AND party = 'reserve'").get(orderId) as
+    | { amount_cents: number }
+    | undefined;
+  return existing ? existing.amount_cents : null;
 }
 
 function offsetRemaining(ledgerId: string) {
@@ -548,16 +556,21 @@ export async function releaseTransfers(orderId: string) {
         row.reversed_cents = reversed;
         remaining -= offset;
       }
-      const hold = reserveHoldCents({
-        payoutCents: remaining,
-        heldCents: resellerReserveHeldCents(row.account_id),
-        bps: resellerReserveBps(),
-        capCents: resellerReserveCapCents(),
-      });
-      if (hold > 0) {
-        holdReserve(order, row.account_id, hold);
-        remaining -= hold;
-      }
+      const savedHold = savedReserveCents(order.id);
+      const withheld =
+        savedHold == null
+          ? holdReserve(
+              order,
+              row.account_id,
+              reserveHoldCents({
+                payoutCents: remaining,
+                heldCents: resellerReserveHeldCents(row.account_id),
+                bps: resellerReserveBps(),
+                capCents: resellerReserveCapCents(),
+              }),
+            )
+          : Math.min(remaining, savedHold);
+      remaining -= withheld;
     }
     if (remaining <= 0) {
       getDb().prepare("UPDATE ledger SET status = 'canceled' WHERE id = ? AND status = 'pending'").run(row.id);
@@ -827,7 +840,7 @@ export async function applyRefund(input: {
 }) {
   const order = findOrder(input.chargeId, input.paymentIntentId);
   if (!order || input.gross <= 0) return;
-  markOrderFlag(order.id, "had_refund");
+  getDb().prepare("UPDATE orders SET had_refund = 1, refunded_at = ? WHERE id = ?").run(Date.now(), order.id);
   const claw = refundClawback({
     grossCents: input.gross,
     refundedCents: input.amountRefunded,
@@ -916,7 +929,7 @@ export async function applyDisputeClosed(input: {
 }) {
   const order = findOrder(input.chargeId, input.paymentIntentId);
   if (!order) return;
-  getDb().prepare("UPDATE orders SET dispute_open = 0 WHERE id = ?").run(order.id);
+  getDb().prepare("UPDATE orders SET dispute_open = 0, dispute_closed_at = ? WHERE id = ?").run(Date.now(), order.id);
   if (!disputeKeepsFunds(input.status)) {
     if (input.amount && input.amount > 0) await holdDispute(order, input.amount, input.disputeId);
     return;
@@ -1029,34 +1042,37 @@ export function resellerReserveSummary(accountId: string) {
        ORDER BY COALESCE(created_at, 0), rowid`,
     )
     .all(accountId) as { order_id: string; amount_cents: number; reversed_cents: number; created_at: number | null }[];
-  const days = resellerReserveDays();
   const releases = rows.map((row) => {
-    const blocked = orderBlockedReserve(row.order_id);
-    const releaseAt = !blocked && row.created_at ? row.created_at + days * 24 * 60 * 60 * 1000 : null;
+    const clock = reserveClock(row.order_id, row.created_at);
     return {
       orderId: row.order_id,
       amountCents: row.amount_cents - row.reversed_cents,
-      releaseAt,
-      blocked,
+      releaseAt: clock.releaseAt,
+      blocked: clock.openDispute,
     };
   });
   return {
     heldCents: resellerReserveHeldCents(accountId),
     bps: resellerReserveBps(),
-    days,
+    days: resellerReserveDays(),
     capCents: resellerReserveCapCents(),
     releases,
   };
 }
 
+function noteReserveConnectBlocked(orderId: string, accountId: string) {
+  const current = getDb().prepare("SELECT reserve_release_flag FROM orders WHERE id = ?").get(orderId) as
+    | { reserve_release_flag: string | null }
+    | undefined;
+  if (current?.reserve_release_flag === "connect") return;
+  console.error(`Reserve for order ${orderId} was not released. Connect account ${accountId} cannot receive a transfer.`);
+  getDb().prepare("UPDATE orders SET reserve_release_flag = 'connect' WHERE id = ?").run(orderId);
+}
+
 export async function releaseReserves(now = Date.now()) {
-  const cutoff = now - resellerReserveDays() * 24 * 60 * 60 * 1000;
   const rows = getDb()
-    .prepare(
-      `SELECT * FROM ledger
-       WHERE party = 'reserve' AND status = 'pending' AND created_at IS NOT NULL AND created_at <= ?`,
-    )
-    .all(cutoff) as LedgerRow[];
+    .prepare("SELECT * FROM ledger WHERE party = 'reserve' AND status = 'pending' AND created_at IS NOT NULL")
+    .all() as LedgerRow[];
   let transferred = 0;
   for (const row of rows) {
     const open = row.amount_cents - row.reversed_cents;
@@ -1064,10 +1080,15 @@ export async function releaseReserves(now = Date.now()) {
       getDb().prepare("UPDATE ledger SET status = 'reversed' WHERE id = ? AND status = 'pending'").run(row.id);
       continue;
     }
-    if (orderBlockedReserve(row.order_id)) continue;
+    const clock = reserveClock(row.order_id, row.created_at ?? null);
+    if (clock.openDispute || clock.releaseAt == null || clock.releaseAt > now) continue;
     const order = getOrder(row.order_id);
     const connected = getConnected(row.account_id);
-    if (!order?.chargeId || !connectReady(connected) || !connected) continue;
+    if (!order?.chargeId) continue;
+    if (!connected || !connectReady(connected)) {
+      noteReserveConnectBlocked(row.order_id, row.account_id);
+      continue;
+    }
     try {
       const transfer = await createTransfer({
         amountCents: open,
@@ -1087,6 +1108,7 @@ export async function releaseReserves(now = Date.now()) {
       );
       if (saved === 1) {
         recordTransfer(row, transfer.id, open, "reserve_release", "reserve_release");
+        getDb().prepare("UPDATE orders SET reserve_release_flag = NULL WHERE id = ?").run(row.order_id);
         transferred += 1;
       }
     } catch (error) {

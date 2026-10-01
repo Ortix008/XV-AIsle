@@ -38,7 +38,8 @@ export const RESELLER_RESERVE_BPS_MIN = 0;
 export const RESELLER_RESERVE_BPS_MAX = 10000;
 export const RESELLER_RESERVE_BPS_DEFAULT = 1000;
 export const RESELLER_RESERVE_DAYS_MIN = 1;
-export const RESELLER_RESERVE_DAYS_MAX = 3650;
+// Stripe lets a US platform hold funds for 730 days. Stay under that.
+export const RESELLER_RESERVE_DAYS_MAX = 700;
 export const RESELLER_RESERVE_DAYS_DEFAULT = 120;
 export const RESELLER_RESERVE_CAP_MIN = 0;
 export const RESELLER_RESERVE_CAP_MAX = 100_000_000;
