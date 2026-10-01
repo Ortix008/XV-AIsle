@@ -15,8 +15,9 @@ export function BrandMark({
         alt=""
         width={32}
         height={32}
-        priority
-        className="size-8 shrink-0 rounded-[8px] ring-1 ring-white/25"
+        unoptimized
+        loading="eager"
+        className="size-8 shrink-0 object-contain"
       />
       <span className="sr-only">XV-AIsle</span>
       {wordmark ? (
