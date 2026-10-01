@@ -990,9 +990,12 @@ async function main() {
     assert("error" in miss && miss.error === "That email and password do not match.", "a wrong password fails");
   }
   const locked = signIn({ email: "lock@xvaisle.test", password: "market-test" });
-  assert("error" in locked && locked.error.startsWith("Too many tries. Try again in "), "a lock names the wait");
+  assert(
+    "error" in locked && locked.error?.startsWith("Too many tries. Try again in ") === true,
+    "a lock names the wait",
+  );
   assert("locked" in locked && locked.locked === true, "a lock is distinct from a bad password");
-  assert(!locked.error.includes("do not match"), "a correct password still reports the lock");
+  assert("error" in locked && locked.error?.includes("do not match") !== true, "a correct password still reports the lock");
   const lockRow = db.prepare("SELECT failed_logins, locked_until, password_hash FROM accounts WHERE email = ?").get(
     "lock@xvaisle.test",
   ) as { failed_logins: number; locked_until: number | null; password_hash: string };

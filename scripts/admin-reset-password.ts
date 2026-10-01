@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
 import { stdin, stdout, stderr } from "node:process";
 import { DatabaseSync } from "node:sqlite";
+// Node's type stripper requires the .ts extension. tsc does not allow it.
+// @ts-expect-error TS5097
 import { hashPassword } from "../src/lib/server/password.ts";
 
 const dbPath = process.env.DATABASE_PATH ?? "data/xvaisle.sqlite";
@@ -80,7 +82,7 @@ async function main() {
     .prepare(
       "UPDATE accounts SET password_hash = ?, password_salt = ?, failed_logins = 0, locked_until = NULL WHERE id = ?",
     )
-    .run(hashed.hash, hashed.salt, account.id);
+    .run(hashed.hash, hashed.salt, account.id) as { changes: number };
   if (Number(updated.changes) !== 1) fail("No account uses that email.");
   if (tableExists(db, "sessions")) db.prepare("DELETE FROM sessions WHERE account_id = ?").run(account.id);
   if (tableExists(db, "login_challenges")) {
