@@ -1,6 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { MEMBER_PRICE } from "../account";
-import { BUYER_WINDOW_MS, holdState } from "./fees";
+import {
+  BUYER_WINDOW_MS,
+  disputeClawback,
+  holdState,
+  platformFeeBps,
+  refundClawback,
+  splitWithStripeFee,
+  stripeDisputeFeeCents,
+  type Split,
+} from "./fees";
 import { markMember } from "./accounts";
 import { connectReady, getConnected } from "./connect";
 import { changed, getDb } from "./db";
@@ -116,14 +125,94 @@ function blockReason(order: StoreOrder) {
   return null;
 }
 
-function recordTransfer(row: LedgerRow, transferId: string, amountCents: number, kind: "transfer" | "restore") {
+function recordTransfer(
+  row: { id: string; order_id: string; party: string },
+  transferId: string,
+  amountCents: number,
+  kind: "transfer" | "restore" | "reversal" | "debt" | "debt_offset" | "credit",
+  reason: string | null,
+) {
+  if (amountCents <= 0) return;
   getDb()
     .prepare(
       `INSERT INTO ledger_transfers (
-         id, ledger_id, order_id, party, transfer_id, amount_cents, kind, created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         id, ledger_id, order_id, party, transfer_id, amount_cents, kind, reason, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(randomUUID(), row.id, row.order_id, row.party, transferId, amountCents, kind, Date.now());
+    .run(randomUUID(), row.id, row.order_id, row.party, transferId, amountCents, kind, reason, Date.now());
+}
+
+export function resellerDebtCents(accountId: string) {
+  const row = getDb()
+    .prepare(
+      `SELECT COALESCE(SUM(amount_cents - reversed_cents), 0) AS debt
+       FROM ledger
+       WHERE account_id = ? AND party IN ('reseller_debt', 'dispute_debt') AND status = 'pending'`,
+    )
+    .get(accountId) as { debt: number | bigint } | undefined;
+  return Number(row?.debt ?? 0);
+}
+
+function setDebt(
+  orderId: string,
+  accountId: string,
+  party: "reseller_debt" | "dispute_debt",
+  amount: number,
+  reason: string,
+) {
+  if (amount <= 0) return;
+  const existing = getDb().prepare("SELECT * FROM ledger WHERE order_id = ? AND party = ?").get(orderId, party) as
+    | LedgerRow
+    | undefined;
+  if (!existing) {
+    const id = randomUUID();
+    getDb()
+      .prepare(
+        `INSERT INTO ledger (id, order_id, party, account_id, amount_cents, status, transfer_id, reversed_cents, reversal_reason)
+         VALUES (?, ?, ?, ?, ?, 'pending', NULL, 0, ?)`,
+      )
+      .run(id, orderId, party, accountId, amount, reason);
+    recordTransfer({ id, order_id: orderId, party }, `debt-${id}-${amount}`, amount, "debt", reason);
+    return;
+  }
+  if (amount <= existing.amount_cents) return;
+  const delta = amount - existing.amount_cents;
+  getDb()
+    .prepare("UPDATE ledger SET amount_cents = ?, status = 'pending', reversal_reason = ? WHERE id = ?")
+    .run(amount, reason, existing.id);
+  recordTransfer(existing, `debt-${existing.id}-${amount}`, delta, "debt", reason);
+}
+
+function collectDebt(accountId: string, available: number, source: LedgerRow) {
+  if (available <= 0) return 0;
+  let left = available;
+  const debts = getDb()
+    .prepare(
+      `SELECT * FROM ledger
+       WHERE account_id = ? AND party IN ('reseller_debt', 'dispute_debt') AND status = 'pending'
+       ORDER BY rowid`,
+    )
+    .all(accountId) as LedgerRow[];
+  let taken = 0;
+  for (const debt of debts) {
+    if (left <= 0) break;
+    const open = debt.amount_cents - debt.reversed_cents;
+    if (open <= 0) continue;
+    const bite = Math.min(open, left);
+    const reversed = debt.reversed_cents + bite;
+    const status: LedgerStatus = reversed >= debt.amount_cents ? "reversed" : "pending";
+    getDb().prepare("UPDATE ledger SET reversed_cents = ?, status = ? WHERE id = ?").run(reversed, status, debt.id);
+    recordTransfer(
+      { id: source.id, order_id: source.order_id, party: source.party },
+      `offset-${source.id}-${debt.id}-${reversed}`,
+      bite,
+      "debt_offset",
+      "debt_offset",
+    );
+    left -= bite;
+    taken += bite;
+  }
+  return taken;
 }
 
 export async function releaseTransfers(orderId: string) {
@@ -153,7 +242,18 @@ export async function releaseTransfers(orderId: string) {
   let transferred = 0;
   for (const row of rowsFor(orderId)) {
     if (!isParty(row.party) || row.status !== "pending") continue;
-    const remaining = row.amount_cents - row.reversed_cents;
+    let remaining = row.amount_cents - row.reversed_cents;
+    if (row.party === "reseller" && remaining > 0) {
+      const offset = collectDebt(row.account_id, remaining, row);
+      if (offset > 0) {
+        const reversed = row.reversed_cents + offset;
+        getDb()
+          .prepare("UPDATE ledger SET reversed_cents = ?, reversal_reason = 'debt_offset' WHERE id = ?")
+          .run(reversed, row.id);
+        row.reversed_cents = reversed;
+        remaining -= offset;
+      }
+    }
     if (remaining <= 0) {
       getDb().prepare("UPDATE ledger SET status = 'canceled' WHERE id = ? AND status = 'pending'").run(row.id);
       continue;
@@ -179,7 +279,7 @@ export async function releaseTransfers(orderId: string) {
         .run(transfer.id, row.id),
     );
     if (saved === 1) {
-      recordTransfer(row, transfer.id, remaining, "transfer");
+      recordTransfer(row, transfer.id, remaining, "transfer", null);
       transferred += 1;
     }
   }
@@ -213,6 +313,7 @@ export async function settleCheckoutSession(session: StripeSession) {
       return { error: "The paid amount does not match this order." as const };
     }
     const charge = readPaidCharge(session);
+    const priced = actualResellerShare(current, charge.stripeFeeCents);
     getDb()
       .prepare(
         `UPDATE orders
@@ -223,7 +324,9 @@ export async function settleCheckoutSession(session: StripeSession) {
              transfer_group = COALESCE(transfer_group, ?),
              risk_level = COALESCE(risk_level, ?),
              risk_type = COALESCE(risk_type, ?),
-             paid_at = COALESCE(paid_at, ?)
+             paid_at = COALESCE(paid_at, ?),
+             stripe_fee_cents = ?,
+             reseller_amount_cents = ?
          WHERE id = ? AND status = 'pending'`,
       )
       .run(
@@ -234,8 +337,13 @@ export async function settleCheckoutSession(session: StripeSession) {
         charge.riskLevel,
         charge.riskType,
         Date.now(),
+        priced.stripeFeeCents,
+        priced.resellerAmountCents,
         orderId,
       );
+    if (priced.shortfallCents > 0) {
+      setDebt(orderId, current.accountId, "reseller_debt", priced.shortfallCents, "stripe_fee");
+    }
     const paid = getOrder(orderId);
     if (!paid || paid.status === "pending") return { error: "Payment is not complete." as const };
     writePendingLedger(paid);
@@ -272,25 +380,82 @@ export async function approvePayout(orderId: string) {
   return { order: getOrder(orderId), released };
 }
 
-function share(amount: number, refunded: number, gross: number) {
-  if (gross <= 0 || refunded <= 0) return 0;
-  if (refunded >= gross) return amount;
-  return Math.min(amount, Math.round((amount * refunded) / gross));
+function actualResellerShare(order: StoreOrder, actualFee: number | null) {
+  const estimate = order.stripeFeeCents ?? order.stripeFeeEstCents ?? 0;
+  if (
+    actualFee == null ||
+    order.platformFeeCents == null ||
+    order.supplierAmountCents == null ||
+    order.resellerAmountCents == null
+  ) {
+    return { stripeFeeCents: estimate, resellerAmountCents: order.resellerAmountCents ?? 0, shortfallCents: 0 };
+  }
+  const current: Split = {
+    grossCents: order.amountCents,
+    feeBps: order.feeBps ?? platformFeeBps(),
+    platformFeeCents: order.platformFeeCents,
+    stripeFeeCents: estimate,
+    supplierAmountCents: order.supplierAmountCents,
+    resellerAmountCents: order.resellerAmountCents,
+  };
+  const next = splitWithStripeFee(current, actualFee);
+  if (next.resellerAmountCents < 0) {
+    return { stripeFeeCents: next.stripeFeeCents, resellerAmountCents: 0, shortfallCents: -next.resellerAmountCents };
+  }
+  return { stripeFeeCents: next.stripeFeeCents, resellerAmountCents: next.resellerAmountCents, shortfallCents: 0 };
 }
 
-async function reverseTransferred(row: LedgerRow, targetReverse: number, reason: string, eventKey: string) {
-  const delta = targetReverse - row.reversed_cents;
-  if (delta <= 0 || !row.transfer_id) return;
-  await reverseTransfer({
-    transferId: row.transfer_id,
-    amountCents: delta,
-    idempotencyKey: `reversal-${row.transfer_id}-${eventKey}-${delta}`,
-  });
-  const reversed = row.reversed_cents + delta;
-  const status: LedgerStatus = reversed >= row.amount_cents ? "reversed" : "transferred";
-  getDb()
-    .prepare("UPDATE ledger SET reversed_cents = ?, status = ?, reversal_reason = ? WHERE id = ?")
-    .run(reversed, status, reason, row.id);
+function disputeHoldReason(reason: string | null) {
+  switch (reason) {
+    case "dispute":
+    case "dispute_fee":
+    case "dispute_amount":
+      return true;
+    default:
+      return false;
+  }
+}
+
+async function applyTarget(row: LedgerRow, target: number, reason: string, eventKey: string) {
+  const capped = Math.min(row.amount_cents, Math.max(0, target));
+  const next = Math.max(row.reversed_cents, capped);
+  const delta = next - row.reversed_cents;
+  if (delta <= 0) return;
+  if (row.status === "pending" || (row.status === "canceled" && !row.transfer_id)) {
+    const status: LedgerStatus = next >= row.amount_cents ? "canceled" : "pending";
+    getDb()
+      .prepare("UPDATE ledger SET reversed_cents = ?, status = ?, reversal_reason = ? WHERE id = ?")
+      .run(next, status, reason, row.id);
+    recordTransfer(row, `reversal-pending-${row.id}-${eventKey}-${delta}`, delta, "reversal", reason);
+    return;
+  }
+  if ((row.status === "transferred" || row.status === "reversed") && row.transfer_id) {
+    await reverseTransfer({
+      transferId: row.transfer_id,
+      amountCents: delta,
+      idempotencyKey: `reversal-${row.transfer_id}-${eventKey}-${delta}`,
+    });
+    const status: LedgerStatus = next >= row.amount_cents ? "reversed" : "transferred";
+    getDb()
+      .prepare("UPDATE ledger SET reversed_cents = ?, status = ?, reversal_reason = ? WHERE id = ?")
+      .run(next, status, reason, row.id);
+    recordTransfer(row, `reversal-${row.transfer_id}-${eventKey}-${delta}`, delta, "reversal", reason);
+  }
+}
+
+async function holdForClawback(
+  order: StoreOrder,
+  claw: { supplierReverseCents: number; resellerReverseCents: number },
+  supplierReason: string,
+  resellerReason: string,
+  eventKey: string,
+) {
+  for (const row of rowsFor(order.id)) {
+    if (!isParty(row.party)) continue;
+    const target = row.party === "supplier" ? claw.supplierReverseCents : claw.resellerReverseCents;
+    const reason = row.party === "supplier" ? supplierReason : resellerReason;
+    await applyTarget(row, target, reason, eventKey);
+  }
 }
 
 export async function applyRefund(input: {
@@ -302,19 +467,16 @@ export async function applyRefund(input: {
 }) {
   const order = findOrder(input.chargeId, input.paymentIntentId);
   if (!order || input.gross <= 0) return;
-  for (const row of rowsFor(order.id)) {
-    const target = share(row.amount_cents, input.amountRefunded, input.gross);
-    if (row.status === "pending") {
-      const status: LedgerStatus = target >= row.amount_cents ? "canceled" : "pending";
-      getDb()
-        .prepare("UPDATE ledger SET reversed_cents = ?, status = ?, reversal_reason = ? WHERE id = ? AND status = 'pending'")
-        .run(target, status, "refund", row.id);
-      continue;
-    }
-    if (row.status === "transferred" || row.status === "reversed") {
-      await reverseTransferred(row, target, "refund", input.eventKey);
-    }
-  }
+  const claw = refundClawback({
+    grossCents: input.gross,
+    refundedCents: input.amountRefunded,
+    platformFeeCents: order.platformFeeCents ?? 0,
+    stripeFeeCents: order.stripeFeeCents ?? order.stripeFeeEstCents ?? 0,
+    supplierAmountCents: order.supplierAmountCents ?? 0,
+    resellerAmountCents: order.resellerAmountCents ?? 0,
+  });
+  await holdForClawback(order, claw, "refund", "refund_fee", input.eventKey);
+  setDebt(order.id, order.accountId, "reseller_debt", claw.debtCents, "refund_fee");
 }
 
 export async function applyDisputeOpened(input: {
@@ -326,12 +488,54 @@ export async function applyDisputeOpened(input: {
   const order = findOrder(input.chargeId, input.paymentIntentId);
   if (!order) return;
   getDb().prepare("UPDATE orders SET dispute_open = 1 WHERE id = ?").run(order.id);
-  const gross = order.amountCents;
-  for (const row of rowsFor(order.id)) {
-    if (row.status !== "transferred" && row.status !== "reversed") continue;
-    const target = share(row.amount_cents, input.amount, gross);
-    await reverseTransferred(row, target, "dispute", input.disputeId);
+  await holdDispute(order, input.amount, input.disputeId);
+}
+
+async function holdDispute(order: StoreOrder, disputedCents: number, disputeId: string) {
+  const claw = disputeClawback({
+    grossCents: order.amountCents,
+    disputedCents,
+    platformFeeCents: order.platformFeeCents ?? 0,
+    stripeFeeCents: order.stripeFeeCents ?? order.stripeFeeEstCents ?? 0,
+    supplierAmountCents: order.supplierAmountCents ?? 0,
+    resellerAmountCents: order.resellerAmountCents ?? 0,
+    disputeFeeCents: stripeDisputeFeeCents(),
+  });
+  const resellerReason = claw.feeRecoveredCents > 0 ? "dispute_fee" : "dispute_amount";
+  await holdForClawback(order, claw, "dispute_amount", resellerReason, disputeId);
+  setDebt(order.id, order.accountId, "dispute_debt", claw.debtCents, "dispute_fee");
+}
+
+async function forgiveDisputeDebt(order: StoreOrder, disputeId: string) {
+  const row = getDb().prepare("SELECT * FROM ledger WHERE order_id = ? AND party = 'dispute_debt'").get(order.id) as
+    | LedgerRow
+    | undefined;
+  if (!row) return;
+  const open = row.amount_cents - row.reversed_cents;
+  const feeCredit = Math.min(stripeDisputeFeeCents(), open);
+  const amountCredit = open - feeCredit;
+  recordTransfer(row, `credit-${row.id}-${disputeId}-fee-${feeCredit}`, feeCredit, "credit", "dispute_fee");
+  recordTransfer(row, `credit-${row.id}-${disputeId}-amount-${amountCredit}`, amountCredit, "credit", "dispute_amount");
+  if (row.reversed_cents > 0) {
+    const connected = getConnected(row.account_id);
+    const current = getOrder(order.id);
+    if (connectReady(connected) && connected && current?.chargeId) {
+      const transfer = await createTransfer({
+        amountCents: row.reversed_cents,
+        destination: connected.stripeAccountId,
+        chargeId: current.chargeId,
+        transferGroup: current.transferGroup || `order_${current.id}`,
+        idempotencyKey: `dispute-credit-${current.id}-${disputeId}-${row.reversed_cents}`,
+        orderId: current.id,
+        party: "reseller",
+        accountId: row.account_id,
+      });
+      if (transfer.id) recordTransfer(row, transfer.id, row.reversed_cents, "credit", "dispute_fee");
+    }
   }
+  getDb()
+    .prepare("UPDATE ledger SET amount_cents = 0, reversed_cents = 0, status = 'reversed', reversal_reason = 'dispute_fee' WHERE id = ?")
+    .run(row.id);
 }
 
 export async function applyDisputeClosed(input: {
@@ -339,18 +543,24 @@ export async function applyDisputeClosed(input: {
   paymentIntentId: string | null;
   status: string;
   disputeId: string;
+  amount?: number;
 }) {
   const order = findOrder(input.chargeId, input.paymentIntentId);
   if (!order) return;
   getDb().prepare("UPDATE orders SET dispute_open = 0 WHERE id = ?").run(order.id);
   if (!disputeKeepsFunds(input.status)) {
-    getDb()
-      .prepare("UPDATE ledger SET status = 'canceled', reversal_reason = 'dispute' WHERE order_id = ? AND status = 'pending'")
-      .run(order.id);
+    if (input.amount && input.amount > 0) await holdDispute(order, input.amount, input.disputeId);
     return;
   }
+  await forgiveDisputeDebt(order, input.disputeId);
   for (const row of rowsFor(order.id)) {
-    if (row.reversal_reason !== "dispute" || row.reversed_cents <= 0) continue;
+    if (!disputeHoldReason(row.reversal_reason) || row.reversed_cents <= 0) continue;
+    if (!row.transfer_id) {
+      getDb()
+        .prepare("UPDATE ledger SET status = 'pending', reversed_cents = 0, reversal_reason = NULL WHERE id = ?")
+        .run(row.id);
+      continue;
+    }
     const connected = getConnected(row.account_id);
     const current = getOrder(order.id);
     if (!connectReady(connected) || !connected || !current?.chargeId) continue;
@@ -365,7 +575,7 @@ export async function applyDisputeClosed(input: {
       accountId: row.account_id,
     });
     if (!transfer.id) throw new Error("Stripe did not return a transfer id.");
-    recordTransfer(row, transfer.id, row.reversed_cents, "restore");
+    recordTransfer(row, transfer.id, row.reversed_cents, "restore", "dispute_amount");
     getDb()
       .prepare(
         "UPDATE ledger SET status = 'transferred', transfer_id = ?, reversed_cents = 0, reversal_reason = NULL WHERE id = ?",

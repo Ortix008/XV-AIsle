@@ -61,15 +61,25 @@ Still manual or sample data:
 
 Shoppers pay the platform Stripe account. Membership is the same account, $10 a month, with a 30-day Stripe trial. Buyers pay only on xvaisle.com.
 
-A product sale is one charge. The platform keeps 8–12% (`PLATFORM_FEE_BPS`, default 10%, clamped to that range, with an optional per-listing rate inside the range). The supplier is owed the catalog unit cost times quantity, plus shipping once. The reseller is owed whatever is left. A reseller cannot set that cost, pick an arbitrary supplier, or be the supplier on their own listing. A listing that would pay the reseller less than zero cannot be published or checked out.
+A product sale is one charge. The buyer pays the listed price and no added fee. The platform keeps 8–12% (`PLATFORM_FEE_BPS`, default 10%, clamped to that range). The supplier is owed the catalog unit cost times quantity, plus shipping once. Estimated card processing (`STRIPE_FEE_BPS` and `STRIPE_FEE_FIXED_CENTS`, default 2.9% + 30¢) comes out of the reseller's share. When the charge's balance transaction reports a fee, that actual fee replaces the estimate and the reseller's pending payout is recomputed. The server does this from the stored price, the approved catalog cost, and these settings. A client cannot send a fee, a net, or a split.
 
-Nothing is transferred when the card payment succeeds. The app writes a pending ledger row for the reseller and a pending ledger row for the supplier. The supplier marks the order shipped with their own callback secret, a carrier, and a tracking number. Funds move only after the buyer confirms receipt, or 7 days after delivery with no buyer dispute. A buyer dispute in that window freezes the transfer until a verified admin reviews it. Each transfer uses the original charge as `source_transaction`. The platform does not add `application_fee_amount`. Stripe’s processing fee is paid by the platform out of the retained cut. If the cut is smaller than Stripe’s fee, the platform balance covers the difference.
+```
+gross = price × qty
+platform_fee = round(gross × PLATFORM_FEE_BPS / 10000)
+stripe_fee = round(gross × STRIPE_FEE_BPS / 10000) + STRIPE_FEE_FIXED_CENTS
+supplier_amount = catalog cost × qty + catalog shipping
+reseller_net = gross - platform_fee - supplier_amount - stripe_fee
+```
+
+A price below `MIN_RETAIL_CENTS` (default $5) or a reseller payout below `MIN_RESELLER_NET_CENTS` (default 50¢) is rejected at publish and again at checkout. If a supplier cost or a fee setting moves a live listing under that line, checkout pauses it. The publish screen shows the server's breakdown: price, supplier cost, platform fee, estimated Stripe fee, and the reseller's estimated payout.
+
+Nothing is transferred when the card payment succeeds. The app writes a pending ledger row for the reseller and a pending ledger row for the supplier. The supplier marks the order shipped with their own callback secret, a carrier, and a tracking number. Funds move only after the buyer confirms receipt, or 7 days after delivery with no buyer dispute. A buyer dispute in that window freezes the transfer until a verified admin reviews it. Each transfer uses the original charge as `source_transaction`. The platform does not add `application_fee_amount`. Stripe still collects its processing fee from the platform account (`fees_collector` stays `application`). That fee is not left in the platform's cut: it reduces the reseller's transfer. The platform's net on a sale is its fee.
 
 Resellers and suppliers add a bank account in Stripe’s hosted Express onboarding. This app does not collect card numbers, bank numbers, or crypto addresses. Connected accounts are Accounts v2 recipients: Express dashboard, the platform collects fees, and the platform is liable for losses. Publishing checks that `stripe_transfers` is active. That is the current replacement for the old `payouts_enabled` flag. Recipient accounts are not card merchants, so `charges_enabled` stays off and is not required.
 
 Stripe does not offer escrow. A US platform may hold funds before transfer for up to 2 years. Orders inside the last 14 days of that window show an admin alert on the desk. After the window, the order is flagged for a refund and the app will not transfer. Other countries use a shorter limit; this store ships in the US, and that difference is left as a TODO in the fee code.
 
-Default Radar rules stay in place. The charge outcome’s risk level is stored. Transfers do not run while a review or dispute is open, or when risk is elevated or highest, until an admin approves. A refund reverses transfers in proportion, or cancels a share that has not been sent yet. A lost dispute cancels what is still pending. A won dispute sends the reversed share back.
+Default Radar rules stay in place. The charge outcome’s risk level is stored. Transfers do not run while a review or dispute is open, or when risk is elevated or highest, until an admin approves. Stripe does not return the original processing fee on a refund. The supplier's share is still reversed in proportion to the refund. The reseller's pending payout, or a reversal if it was already sent, also covers the platform fee and the Stripe fee on the refunded portion. A dispute debits `STRIPE_DISPUTE_FEE_CENTS` (default $15) plus that dispute's platform and Stripe shares from the reseller. If the held payout and the reversal cannot cover it, the app records a reseller debt and takes it from the next payout before any new transfer. Publishing stays closed while that debt is open. A won dispute credits the dispute fee back to the reseller. Reversals and debt entries are stored on the ledger with a reason (`refund_fee`, `dispute_fee`, `dispute_amount`, `debt_offset`). Stripe transfer and reversal calls use an idempotency key that includes the amount.
 
 Use a test key. Live keys are refused unless `STRIPE_ALLOW_LIVE=1`.
 
@@ -104,6 +114,11 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | `STRIPE_API_VERSION` | Optional `Stripe-Version` header. Default `2026-07-29.dahlia`. |
 | `STRIPE_MEMBERSHIP_PRICE_ID` | Optional $10/month price. Otherwise Checkout uses `price_data`. |
 | `PLATFORM_FEE_BPS` | Platform cut in basis points. Default `1000`, clamped to `800`–`1200`. |
+| `STRIPE_FEE_BPS` | Estimated Stripe percentage, in basis points, taken from the reseller. Default `290`, clamped to `0`–`1000`. |
+| `STRIPE_FEE_FIXED_CENTS` | Estimated Stripe fixed fee, in cents, taken from the reseller. Default `30`, clamped to `0`–`100`. |
+| `STRIPE_DISPUTE_FEE_CENTS` | Dispute fee, in cents, debited from the reseller. Default `1500`, clamped to `0`–`3500`. |
+| `MIN_RETAIL_CENTS` | Lowest price that can be published or checked out, in cents. Default `500`, clamped to `100`–`100000`. |
+| `MIN_RESELLER_NET_CENTS` | Lowest reseller payout after cost and fees, in cents. Default `50`, clamped to `0`–`5000`. |
 | `STRIPE_ALLOW_LIVE` | Set to `1` only to permit a live key. |
 | `STRIPE_CARD_CHECKOUT_ONLY` | Set to `1` to disable Link and US bank on the platform payment configuration at boot. |
 | `SUPPLIER_API_URL` | Where a paid order is posted, once a shipper exists. |

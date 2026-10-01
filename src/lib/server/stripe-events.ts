@@ -224,6 +224,7 @@ async function dispatch(type: HandledEvent, event: Record<string, unknown>) {
         paymentIntentId: text(dispute, "payment_intent"),
         status: text(dispute, "status") ?? "lost",
         disputeId: text(dispute, "id") ?? text(event, "id") ?? "dispute",
+        amount: whole(dispute, "amount") ?? 0,
       });
       return;
     }

@@ -8,9 +8,15 @@ export type StripeChargeOutcome = {
   type?: string | null;
 };
 
+export type StripeBalanceTransaction = {
+  id?: string;
+  fee?: number;
+};
+
 export type StripeCharge = {
   id?: string;
   outcome?: StripeChargeOutcome | null;
+  balance_transaction?: string | StripeBalanceTransaction | null;
 };
 
 export type StripePaymentIntent = {
@@ -194,25 +200,32 @@ export async function createCheckoutSession(input: {
 
 export async function retrieveCheckoutSession(sessionId: string) {
   const query = new URLSearchParams();
-  query.append("expand[]", "payment_intent.latest_charge");
+  query.append("expand[]", "payment_intent.latest_charge.balance_transaction");
   return (await stripeGet(`/v1/checkout/sessions/${encodeURIComponent(sessionId)}?${query}`)) as StripeSession;
 }
 
 export async function retrievePaymentIntent(paymentIntentId: string) {
   const query = new URLSearchParams();
-  query.append("expand[]", "latest_charge");
+  query.append("expand[]", "latest_charge.balance_transaction");
   return (await stripeGet(
     `/v1/payment_intents/${encodeURIComponent(paymentIntentId)}?${query}`,
   )) as StripePaymentIntent;
 }
 
+function stripeFeeCents(charge: StripeCharge) {
+  const balance = charge.balance_transaction;
+  if (!balance || typeof balance === "string") return null;
+  if (typeof balance.fee !== "number" || !Number.isInteger(balance.fee) || balance.fee < 0) return null;
+  return balance.fee;
+}
+
 export function readPaidCharge(session: StripeSession) {
   const paymentIntent = session.payment_intent;
   if (!paymentIntent) {
-    return { paymentIntentId: null, chargeId: null, riskLevel: null, riskType: null };
+    return { paymentIntentId: null, chargeId: null, riskLevel: null, riskType: null, stripeFeeCents: null };
   }
   if (typeof paymentIntent === "string") {
-    return { paymentIntentId: paymentIntent, chargeId: null, riskLevel: null, riskType: null };
+    return { paymentIntentId: paymentIntent, chargeId: null, riskLevel: null, riskType: null, stripeFeeCents: null };
   }
   const charge = paymentIntent.latest_charge;
   if (!charge || typeof charge === "string") {
@@ -221,6 +234,7 @@ export function readPaidCharge(session: StripeSession) {
       chargeId: typeof charge === "string" ? charge : null,
       riskLevel: null,
       riskType: null,
+      stripeFeeCents: null,
     };
   }
   return {
@@ -228,6 +242,7 @@ export function readPaidCharge(session: StripeSession) {
     chargeId: charge.id ?? null,
     riskLevel: charge.outcome?.risk_level ?? null,
     riskType: charge.outcome?.type ?? null,
+    stripeFeeCents: stripeFeeCents(charge),
   };
 }
 

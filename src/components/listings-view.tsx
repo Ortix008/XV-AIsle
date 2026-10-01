@@ -118,7 +118,14 @@ function ListingEditor({
     { id: string; title: string; sku: string; costCents: number; shippingCents: number; supplierName: string }[]
   >([]);
   const [catalogItemId, setCatalogItemId] = useState("");
-  const [feeBps, setFeeBps] = useState("");
+  const [quote, setQuote] = useState<{
+    priceCents: number;
+    supplierCostCents: number;
+    platformFeeCents: number;
+    stripeFeeCents: number;
+    resellerNetCents: number;
+    error: string | null;
+  } | null>(null);
   useEffect(() => {
     fetch("/api/floors")
       .then(async (response) => {
@@ -153,9 +160,34 @@ function ListingEditor({
   const landed = landedCost(supplier);
   const stack = costStack(price.retail, landed);
   const stale = (supplierId ?? supplier.id) !== listing.supplierId && supplierId != null;
+  const priceCents = Math.round(price.retail * 100);
+  useEffect(() => {
+    if (!catalogItemId) {
+      setQuote(null);
+      return;
+    }
+    const controller = new AbortController();
+    void fetch("/api/store/listings/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ catalogItemId, priceCents }),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { quote?: NonNullable<typeof quote> } | null;
+        if (!response.ok || !data?.quote) {
+          setQuote(null);
+          return;
+        }
+        setQuote(data.quote);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setQuote(null);
+      });
+    return () => controller.abort();
+  }, [catalogItemId, priceCents]);
   const moneyFields = {
     catalogItemId,
-    ...(feeBps.trim() ? { feeBps: Number(feeBps) } : {}),
   };
   const activeSupplier = supplierId
     ? product.suppliers.find((item) => item.id === supplierId)
@@ -190,7 +222,7 @@ function ListingEditor({
                   sku: product.sku,
                   title: listing.titles[listing.titleIndex] ?? product.titleLead,
                   description: [listing.description, ...listing.bullets].filter(Boolean).join("\n"),
-                  priceCents: Math.round(price.retail * 100),
+                  priceCents,
                   image: product.mockups[0]?.src ?? "",
                   supplierName: shipperName,
                   supplierOrigin: shipperOrigin,
@@ -224,7 +256,7 @@ function ListingEditor({
                   sku: product.sku,
                   title: listing.titles[listing.titleIndex] ?? product.titleLead,
                   description: listing.description,
-                  priceCents: Math.round(price.retail * 100),
+                  priceCents,
                   image: product.mockups[0]?.src ?? "",
                   supplierName: shipperName,
                   supplierOrigin: shipperOrigin,
@@ -265,17 +297,21 @@ function ListingEditor({
             ))}
           </select>
         </label>
-        <Input
-          value={feeBps}
-          onChange={(event) => setFeeBps(event.target.value)}
-          inputMode="numeric"
-          placeholder="Platform fee basis points, 800–1200"
-        />
       </div>
+      {quote ? (
+        <dl className="max-w-sm divide-y border-y text-sm">
+          <Row label="Price" value={money(quote.priceCents / 100)} />
+          <Row label="Supplier cost" value={money(quote.supplierCostCents / 100)} />
+          <Row label="Platform fee" value={money(quote.platformFeeCents / 100)} />
+          <Row label="Estimated Stripe fee" value={money(quote.stripeFeeCents / 100)} />
+          <Row label="Your estimated payout" value={money(quote.resellerNetCents / 100)} />
+        </dl>
+      ) : null}
+      {quote?.error ? <p className="text-sm text-late">{quote.error}</p> : null}
       <p className="text-xs text-pretty text-muted-foreground">
-        Cost and shipping come from the supplier’s catalog. A reseller cannot set them, and cannot list their own
-        supply. Leave the fee blank for the platform default. Publishing needs an active membership and a finished
-        Stripe payout setup.
+        Cost, the platform fee, and the Stripe estimate come from the server. A reseller cannot set them, and cannot
+        list their own supply. Publishing needs an active membership, a finished Stripe payout setup, and no open
+        balance.
       </p>
       {storeError ? <p className="text-sm text-late">{storeError}</p> : null}
       {listing.status === "ready" ? (

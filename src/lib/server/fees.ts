@@ -1,7 +1,9 @@
 /**
  * Platform cut for separate charges and transfers.
- * Stripe processing fees are paid by the platform (Accounts v2 fees_collector = application).
- * They are not subtracted again from the reseller or supplier. The retained cut has to cover them.
+ * The buyer pays the listed price. Stripe processing is collected by the platform
+ * (Accounts v2 fees_collector = application) and then taken out of the reseller's share,
+ * so the platform keeps its full fee. The estimate is replaced by the charge's
+ * balance-transaction fee when Stripe returns one.
  *
  * Hold window: Stripe does not provide escrow. A US platform may hold funds before transfer or
  * payout for up to 2 years (other countries 90 days, Thailand 10 days). This store ships in the
@@ -9,11 +11,29 @@
  *
  * TODO: if the platform country is not the US, replace US_TRANSFER_HOLD_MS. Many countries
  * allow 90 days, and Thailand allows 10 days. Do not reuse 730 days outside the US.
+ *
+ * Buyer shipping is not charged as its own line. Gross is the listing price times quantity.
+ * Supplier shipping is added once per order, not once per unit.
  */
 
 export const FEE_BPS_MIN = 800;
 export const FEE_BPS_MAX = 1200;
 export const FEE_BPS_DEFAULT = 1000;
+export const STRIPE_FEE_BPS_MIN = 0;
+export const STRIPE_FEE_BPS_MAX = 1000;
+export const STRIPE_FEE_BPS_DEFAULT = 290;
+export const STRIPE_FEE_FIXED_MIN = 0;
+export const STRIPE_FEE_FIXED_MAX = 100;
+export const STRIPE_FEE_FIXED_DEFAULT = 30;
+export const STRIPE_DISPUTE_FEE_MIN = 0;
+export const STRIPE_DISPUTE_FEE_MAX = 3500;
+export const STRIPE_DISPUTE_FEE_DEFAULT = 1500;
+export const MIN_RETAIL_MIN = 100;
+export const MIN_RETAIL_MAX = 100_000;
+export const MIN_RETAIL_DEFAULT = 500;
+export const MIN_RESELLER_NET_MIN = 0;
+export const MIN_RESELLER_NET_MAX = 5000;
+export const MIN_RESELLER_NET_DEFAULT = 50;
 export const US_TRANSFER_HOLD_MS = 730 * 24 * 60 * 60 * 1000;
 export const TRANSFER_HOLD_WARNING_MS = 14 * 24 * 60 * 60 * 1000;
 export const BUYER_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -23,18 +43,64 @@ export type Split = {
   grossCents: number;
   feeBps: number;
   platformFeeCents: number;
+  stripeFeeCents: number;
   supplierAmountCents: number;
   resellerAmountCents: number;
 };
 
 export type HoldState = "none" | "open" | "nearing" | "expired";
 
+export type Clawback = {
+  supplierReverseCents: number;
+  resellerReverseCents: number;
+  debtCents: number;
+  feeRecoveredCents: number;
+};
+
+function clampedInt(raw: string | undefined, fallback: number, min: number, max: number) {
+  const trimmed = raw?.trim();
+  if (!trimmed) return fallback;
+  const parsed = Number(trimmed);
+  if (!Number.isInteger(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+export function dollars(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 export function platformFeeBps() {
-  const raw = process.env.PLATFORM_FEE_BPS?.trim();
-  if (!raw) return FEE_BPS_DEFAULT;
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed)) return FEE_BPS_DEFAULT;
-  return Math.min(FEE_BPS_MAX, Math.max(FEE_BPS_MIN, parsed));
+  return clampedInt(process.env.PLATFORM_FEE_BPS, FEE_BPS_DEFAULT, FEE_BPS_MIN, FEE_BPS_MAX);
+}
+
+export function stripeFeeBps() {
+  return clampedInt(process.env.STRIPE_FEE_BPS, STRIPE_FEE_BPS_DEFAULT, STRIPE_FEE_BPS_MIN, STRIPE_FEE_BPS_MAX);
+}
+
+export function stripeFeeFixedCents() {
+  return clampedInt(process.env.STRIPE_FEE_FIXED_CENTS, STRIPE_FEE_FIXED_DEFAULT, STRIPE_FEE_FIXED_MIN, STRIPE_FEE_FIXED_MAX);
+}
+
+export function stripeDisputeFeeCents() {
+  return clampedInt(
+    process.env.STRIPE_DISPUTE_FEE_CENTS,
+    STRIPE_DISPUTE_FEE_DEFAULT,
+    STRIPE_DISPUTE_FEE_MIN,
+    STRIPE_DISPUTE_FEE_MAX,
+  );
+}
+
+export function minRetailCents() {
+  return clampedInt(process.env.MIN_RETAIL_CENTS, MIN_RETAIL_DEFAULT, MIN_RETAIL_MIN, MIN_RETAIL_MAX);
+}
+
+export function minResellerNetCents() {
+  return clampedInt(
+    process.env.MIN_RESELLER_NET_CENTS,
+    MIN_RESELLER_NET_DEFAULT,
+    MIN_RESELLER_NET_MIN,
+    MIN_RESELLER_NET_MAX,
+  );
 }
 
 export function explicitFeeBps(value: number): number | { error: string } {
@@ -42,6 +108,10 @@ export function explicitFeeBps(value: number): number | { error: string } {
     return { error: "The platform fee has to stay between 8% and 12%." };
   }
   return value;
+}
+
+export function estimateStripeFee(grossCents: number) {
+  return Math.round((grossCents * stripeFeeBps()) / 10000) + stripeFeeFixedCents();
 }
 
 export function quoteSplit(input: {
@@ -54,16 +124,130 @@ export function quoteSplit(input: {
   const feeBps = input.feeBps ?? platformFeeBps();
   const grossCents = input.priceCents * input.qty;
   const platformFeeCents = Math.round((grossCents * feeBps) / 10000);
+  const stripeFeeCents = estimateStripeFee(grossCents);
   const supplierAmountCents = input.supplierCostCents * input.qty + input.supplierShippingCents;
-  const resellerAmountCents = grossCents - platformFeeCents - supplierAmountCents;
-  return { grossCents, feeBps, platformFeeCents, supplierAmountCents, resellerAmountCents };
+  const resellerAmountCents = grossCents - platformFeeCents - supplierAmountCents - stripeFeeCents;
+  return { grossCents, feeBps, platformFeeCents, stripeFeeCents, supplierAmountCents, resellerAmountCents };
+}
+
+/** Replace the estimate with the fee Stripe reported on the charge. Platform and supplier amounts stay put. */
+export function splitWithStripeFee(split: Split, actualStripeFeeCents: number): Split {
+  if (!Number.isInteger(actualStripeFeeCents) || actualStripeFeeCents < 0) return split;
+  const resellerAmountCents =
+    split.grossCents - split.platformFeeCents - split.supplierAmountCents - actualStripeFeeCents;
+  return { ...split, stripeFeeCents: actualStripeFeeCents, resellerAmountCents };
 }
 
 export function splitProblem(split: Split, supplierAccountId: string | null) {
   if (!supplierAccountId) return "Name the supplier account before this page can sell.";
   if (split.supplierAmountCents < 0) return "Supplier cost cannot be negative.";
-  if (split.resellerAmountCents < 0) return "The price does not cover the supplier and the platform fee.";
+  if (split.resellerAmountCents < 0) {
+    return "The price does not cover the supplier, the platform fee, and the Stripe fee.";
+  }
   return null;
+}
+
+export function saleBlock(input: { priceCents: number; split: Split; supplierAccountId: string | null }) {
+  if (!Number.isInteger(input.priceCents) || input.priceCents < minRetailCents()) {
+    return `Set a price of at least ${dollars(minRetailCents())}.`;
+  }
+  const problem = splitProblem(input.split, input.supplierAccountId);
+  if (problem) return problem;
+  if (input.split.resellerAmountCents < minResellerNetCents()) {
+    return `Your estimated payout has to be at least ${dollars(minResellerNetCents())} after supplier cost and fees.`;
+  }
+  return null;
+}
+
+/** Share of an amount, proportional to `part` of `gross`, capped at the amount. */
+export function proportion(amount: number, part: number, gross: number) {
+  if (gross <= 0 || part <= 0 || amount <= 0) return 0;
+  if (part >= gross) return amount;
+  return Math.min(amount, Math.round((amount * part) / gross));
+}
+
+/**
+ * Supplier recovery stays proportional to the refund.
+ * The reseller also gives back the platform fee and the original Stripe fee on that portion.
+ * Anything the reseller's balance cannot cover becomes debt.
+ */
+export function refundClawback(input: {
+  grossCents: number;
+  refundedCents: number;
+  platformFeeCents: number;
+  stripeFeeCents: number;
+  supplierAmountCents: number;
+  resellerAmountCents: number;
+}): Clawback {
+  const supplierReverseCents = proportion(input.supplierAmountCents, input.refundedCents, input.grossCents);
+  const platformShare = proportion(input.platformFeeCents, input.refundedCents, input.grossCents);
+  const stripeShare = proportion(input.stripeFeeCents, input.refundedCents, input.grossCents);
+  const resellerGoods = proportion(input.resellerAmountCents, input.refundedCents, input.grossCents);
+  const feeRecoveredCents = platformShare + stripeShare;
+  const need = resellerGoods + feeRecoveredCents;
+  const resellerReverseCents = Math.min(Math.max(0, input.resellerAmountCents), need);
+  return {
+    supplierReverseCents,
+    resellerReverseCents,
+    debtCents: need - resellerReverseCents,
+    feeRecoveredCents,
+  };
+}
+
+/** Same as a refund of the disputed amount, plus the flat dispute fee Stripe charges. */
+export function disputeClawback(input: {
+  grossCents: number;
+  disputedCents: number;
+  platformFeeCents: number;
+  stripeFeeCents: number;
+  supplierAmountCents: number;
+  resellerAmountCents: number;
+  disputeFeeCents: number;
+}): Clawback {
+  const base = refundClawback({
+    grossCents: input.grossCents,
+    refundedCents: input.disputedCents,
+    platformFeeCents: input.platformFeeCents,
+    stripeFeeCents: input.stripeFeeCents,
+    supplierAmountCents: input.supplierAmountCents,
+    resellerAmountCents: input.resellerAmountCents,
+  });
+  const disputeFee = Math.max(0, input.disputeFeeCents);
+  const room = Math.max(0, input.resellerAmountCents - base.resellerReverseCents);
+  const fromBalance = Math.min(room, disputeFee);
+  return {
+    supplierReverseCents: base.supplierReverseCents,
+    resellerReverseCents: base.resellerReverseCents + fromBalance,
+    debtCents: base.debtCents + (disputeFee - fromBalance),
+    feeRecoveredCents: base.feeRecoveredCents + disputeFee,
+  };
+}
+
+/**
+ * Cash left with the platform after Stripe's fee, refunds, a lost dispute, and what
+ * supplier and reseller keep. Debt the reseller still owes counts, because it is collected
+ * from a later payout rather than absorbed.
+ */
+export function platformNetCents(input: {
+  grossCents: number;
+  stripeFeeCents: number;
+  refundedCents: number;
+  disputeKeptCents: number;
+  disputeFeeKeptCents: number;
+  supplierKeptCents: number;
+  resellerKeptCents: number;
+  debtCents: number;
+}) {
+  return (
+    input.grossCents -
+    input.stripeFeeCents -
+    input.refundedCents -
+    input.disputeKeptCents -
+    input.disputeFeeKeptCents -
+    input.supplierKeptCents -
+    input.resellerKeptCents +
+    input.debtCents
+  );
 }
 
 export function holdDeadline(paidAt: number) {

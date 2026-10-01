@@ -57,7 +57,8 @@ async function main() {
   assert(split.grossCents === 5390, "gross");
   assert(split.platformFeeCents === 539, "platform fee");
   assert(split.supplierAmountCents === 1100, "supplier amount includes one shipping charge");
-  assert(split.resellerAmountCents === 3751, "reseller amount");
+  assert(split.stripeFeeCents === 186, "stripe estimate is 2.9% plus 30 cents");
+  assert(split.resellerAmountCents === 3565, "reseller amount is after the stripe estimate");
   const bad = quoteSplit({
     priceCents: 1000,
     qty: 1,
@@ -481,7 +482,9 @@ async function main() {
   });
   const refunded = await acceptStripeEvent(refundRaw, sign(refundRaw, "whsec_billing"), "whsec_billing");
   assert(refunded.status === 200, "refund event");
-  const afterRefund = db.prepare("SELECT status FROM ledger WHERE order_id = ?").all(order.order.id) as { status: string }[];
+  const afterRefund = db
+    .prepare("SELECT status FROM ledger WHERE order_id = ? AND party IN ('reseller', 'supplier')")
+    .all(order.order.id) as { status: string }[];
   assert(afterRefund.every((row) => row.status === "reversed"), "refunds reverse transfers");
   assert(calls.some((call) => call.url.includes("/reversals")), "refund calls Stripe reversals");
 
@@ -671,9 +674,9 @@ async function main() {
     dispute_open: number;
   };
   assert(frozen.dispute_open === 1, "a dispute freezes the order");
-  const reversed = db.prepare("SELECT status FROM ledger WHERE order_id = ?").all(disputedOrder.order.id) as {
-    status: string;
-  }[];
+  const reversed = db
+    .prepare("SELECT status FROM ledger WHERE order_id = ? AND party IN ('reseller', 'supplier')")
+    .all(disputedOrder.order.id) as { status: string }[];
   assert(reversed.every((row) => row.status === "reversed"), "an open dispute reverses transfers");
   const wonRaw = JSON.stringify({
     id: "evt_won",
@@ -685,7 +688,7 @@ async function main() {
   const restores = calls.filter((call) => call.idempotency?.includes("restore-")).length;
   assert(restores === beforeRestore + 2, "a won dispute restores the two shares");
   const history = db
-    .prepare("SELECT transfer_id, kind FROM ledger_transfers WHERE order_id = ?")
+    .prepare("SELECT transfer_id, kind FROM ledger_transfers WHERE order_id = ? AND kind IN ('transfer', 'restore')")
     .all(disputedOrder.order.id) as { transfer_id: string; kind: string }[];
   const historyIds = new Set(history.map((row) => row.transfer_id));
   assert(history.filter((row) => row.kind === "transfer").length === 2, "the original transfers stay on record");
