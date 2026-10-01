@@ -78,13 +78,17 @@ export function productFromArticle(row: SavedArticle): Product {
   });
 }
 
-export function readOffsets(): Record<string, number> {
-  const rows = readJson<Record<string, number>>(OFFSET_KEY, {});
+function offsetKey(accountId?: string) {
+  return accountId ? `${OFFSET_KEY}:${accountId}` : OFFSET_KEY;
+}
+
+export function readOffsets(accountId?: string): Record<string, number> {
+  const rows = readJson<Record<string, number>>(offsetKey(accountId), {});
   return rows && typeof rows === "object" ? rows : {};
 }
 
-export function writeOffsets(offsets: Record<string, number>) {
-  window.localStorage.setItem(OFFSET_KEY, JSON.stringify(offsets));
+export function writeOffsets(offsets: Record<string, number>, accountId?: string) {
+  window.localStorage.setItem(offsetKey(accountId), JSON.stringify(offsets));
 }
 
 export function floorIndexes(count: number, offset: number) {

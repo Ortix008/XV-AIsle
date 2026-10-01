@@ -52,7 +52,7 @@ function AuthenticatorSetup({ enabled, onChanged }: { enabled: boolean; onChange
   }
 
   return (
-    <section className="border bg-card p-4">
+    <section id="authenticator" className="border bg-card p-4">
       <h2 className="text-base font-medium">Authenticator app</h2>
       {enabled ? (
         <p className="mt-2 text-sm leading-relaxed">
@@ -91,6 +91,11 @@ export function MembershipView() {
   const [stopping, setStopping] = useState(false);
 
   useEffect(() => {
+    if (params.get("verified") !== "1") return;
+    void refresh();
+  }, [params, refresh]);
+
+  useEffect(() => {
     const sessionId = params.get("session_id");
     if (params.get("checkout") !== "return" || !sessionId) return;
     let cancel = false;
@@ -124,6 +129,7 @@ export function MembershipView() {
         <h1 className="text-balance text-[1.75rem] leading-tight font-semibold tracking-tight">
           {status === "member" ? "You are keeping the account." : "Your free month is open."}
         </h1>
+        {params.get("verified") === "1" ? <p className="text-sm">Email verified.</p> : null}
         {confirm ? <p className="text-sm">{confirm}</p> : null}
         {status === "trial" ? (
           <>
@@ -159,7 +165,9 @@ export function MembershipView() {
           </>
         )}
         <AuthenticatorSetup enabled={account.totpEnabled === true} onChanged={refresh} />
-        <ConnectPayout />
+        <div id="payouts">
+          <ConnectPayout />
+        </div>
         <p className="text-xs text-pretty text-muted-foreground">
           The account is kept on the server. Bank details stay at Stripe.
         </p>

@@ -564,6 +564,9 @@ function listingPass(state: DeskState, today: string): DeskState {
 }
 
 function orderPass(state: DeskState, today: string): DeskState {
+  if (state.orders.length === 0) {
+    return withLog(state, "orders", "No orders on this desk yet. Paid store orders show under From the store.");
+  }
   const late = state.orders.find(
     (order) =>
       order.flag == null &&

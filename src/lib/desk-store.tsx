@@ -12,15 +12,11 @@ import {
 } from "react";
 import { useAccount } from "./account-store";
 import { hydrateAddedProducts } from "./added-stock";
-import { getProduct, products } from "./catalog";
+import { getProduct } from "./catalog";
 import { todayISO } from "./dates";
-import { clipText, deskStorageKey, sanitizeDesk } from "./desk-state";
+import { clipText, deskStorageKey, emptyDesk, purgeOldDesks, sanitizeDesk } from "./desk-state";
 import { applyPass, buildCampaign, buildListing } from "./engine";
-import { buildSeed } from "./seed";
 import type { BotId, DeskState, Listing, SelectionKey } from "./types";
-
-const LEGACY_KEY = "aisle-desk-v2";
-const LEGACY_CLAIM = "xvaisle-desk-legacy-owner";
 
 type DeskActions = {
   setRunning: (id: BotId, running: boolean) => void;
@@ -36,6 +32,7 @@ type DeskActions = {
   writeCampaign: (productId: string) => void;
   select: (key: SelectionKey, id: string) => void;
   reset: () => void;
+  hideGettingStarted: () => void;
 };
 
 type DeskApi = DeskActions & {
@@ -47,48 +44,24 @@ const DeskStateContext = createContext<DeskState | null>(null);
 const DeskActionsContext = createContext<DeskActions | null>(null);
 const DeskReadyContext = createContext(false);
 
-function withIncomingStock(state: DeskState): DeskState {
-  const known = new Set([...state.pipeline.map((item) => item.productId), ...state.queue]);
-  const missing = products.map((product) => product.id).filter((id) => !known.has(id));
-  if (missing.length === 0) return state;
-  return { ...state, queue: [...state.queue, ...missing] };
-}
-
 function runningIds(state: DeskState) {
   return (Object.keys(state.bots) as BotId[]).filter((id) => state.bots[id].running);
 }
 
 function readStoredDesk(accountId: string) {
+  purgeOldDesks(localStorage);
   hydrateAddedProducts(accountId);
   const key = deskStorageKey(accountId);
   const raw = localStorage.getItem(key);
-  if (raw) {
-    try {
-      const parsed = sanitizeDesk(JSON.parse(raw), todayISO());
-      if (parsed) return parsed;
-    } catch {
-      localStorage.removeItem(key);
-    }
-    return null;
-  }
-  const owner = localStorage.getItem(LEGACY_CLAIM);
-  if (owner && owner !== accountId) return null;
-  const legacy = localStorage.getItem(LEGACY_KEY);
-  if (!legacy) return null;
+  if (!raw) return null;
   try {
-    const parsed = sanitizeDesk(JSON.parse(legacy), todayISO());
-    if (!parsed) {
-      localStorage.removeItem(LEGACY_KEY);
-      return null;
-    }
-    localStorage.setItem(LEGACY_CLAIM, accountId);
-    localStorage.removeItem(LEGACY_KEY);
-    localStorage.setItem(key, JSON.stringify(parsed));
-    return parsed;
+    const parsed = sanitizeDesk(JSON.parse(raw), todayISO());
+    if (parsed) return parsed;
   } catch {
-    localStorage.removeItem(LEGACY_KEY);
-    return null;
+    // A bad stored desk is dropped below.
   }
+  localStorage.removeItem(key);
+  return null;
 }
 
 function DeskRuntime({
@@ -100,7 +73,7 @@ function DeskRuntime({
   boot: boolean;
   children: ReactNode;
 }) {
-  const [state, setState] = useState<DeskState>(() => withIncomingStock(buildSeed("2026-01-01")));
+  const [state, setState] = useState<DeskState>(() => emptyDesk("2026-01-01"));
   const [ready, setReady] = useState(false);
   const stateRef = useRef(state);
 
@@ -108,7 +81,7 @@ function DeskRuntime({
     if (boot) return;
     const timer = window.setTimeout(() => {
       const stored = accountId ? readStoredDesk(accountId) : null;
-      setState(withIncomingStock(stored ?? buildSeed(todayISO())));
+      setState(stored ?? emptyDesk(todayISO()));
       setReady(true);
     }, 0);
     return () => window.clearTimeout(timer);
@@ -127,6 +100,7 @@ function DeskRuntime({
     if (!ready || !accountId) return;
     const id = accountId;
     return () => {
+      // `id` is the account this runtime mounted with, so a switch cannot write into the next account's key.
       localStorage.setItem(deskStorageKey(id), JSON.stringify(stateRef.current));
     };
   }, [ready, accountId]);
@@ -258,9 +232,12 @@ function DeskRuntime({
           selected: { ...current.selected, [key]: id },
         })),
       reset: () => {
-        const next = withIncomingStock(buildSeed(todayISO()));
+        const next = emptyDesk(todayISO());
         if (accountId) localStorage.setItem(deskStorageKey(accountId), JSON.stringify(next));
         setState(next);
+      },
+      hideGettingStarted: () => {
+        setState((current) => ({ ...current, gettingStartedHidden: true }));
       },
     }),
     [accountId],
