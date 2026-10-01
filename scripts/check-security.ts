@@ -1,5 +1,5 @@
-import { buildSeed } from "../src/lib/seed";
-import { deskStorageKey, sanitizeDesk } from "../src/lib/desk-state";
+import { buildDeskFixture } from "./fixtures/desk-fixture";
+import { deskStorageKey, purgeOldDesks, sanitizeDesk } from "../src/lib/desk-state";
 import { DUMMY_PASSWORD_HASH, hashPassword, timingSafeEqual, verifyPassword } from "../src/lib/password";
 import {
   bankOnFile,
@@ -13,6 +13,30 @@ import {
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
+}
+
+function memoryStorage(initial: Record<string, string>): Storage {
+  const data = new Map(Object.entries(initial));
+  return {
+    get length() {
+      return data.size;
+    },
+    clear() {
+      data.clear();
+    },
+    getItem(key: string) {
+      return data.get(key) ?? null;
+    },
+    key(index: number) {
+      return [...data.keys()][index] ?? null;
+    },
+    removeItem(key: string) {
+      data.delete(key);
+    },
+    setItem(key: string, value: string) {
+      data.set(key, value);
+    },
+  };
 }
 
 async function main() {
@@ -49,23 +73,39 @@ assert(walletOnFile("bitcoin").last4 === "0000" && walletOnFile("bitcoin").metho
 assert(payoutStorageKey("one") !== payoutStorageKey("two"), "payouts are stored per account");
 
 const today = "2026-09-30";
-const seed = buildSeed(today);
-const clean = sanitizeDesk(seed, today);
-assert(clean?.pipeline.length === seed.pipeline.length, "a real desk survives the check");
-assert(clean?.orders.length === seed.orders.length, "orders survive the check");
-assert(clean?.listings.length === seed.listings.length, "listings survive the check");
+const fixture = buildDeskFixture(today);
+const clean = sanitizeDesk(fixture, today);
+assert(clean?.pipeline.length === fixture.pipeline.length, "a real desk survives the check");
+assert(clean?.orders.length === fixture.orders.length, "orders survive the check");
+assert(clean?.listings.length === fixture.listings.length, "listings survive the check");
 const poisoned = sanitizeDesk(
   {
-    ...seed,
-    pipeline: [...seed.pipeline, { productId: "not-a-product", status: "review", discoveredOn: today, pickedSupplierId: null }],
-    listings: [{ ...seed.listings[0], description: "x".repeat(20000) }],
+    ...fixture,
+    pipeline: [...fixture.pipeline, { productId: "not-a-product", status: "review", discoveredOn: today, pickedSupplierId: null }],
+    listings: [{ ...fixture.listings[0], description: "x".repeat(20000) }],
   },
   today,
 );
 assert(poisoned && !poisoned.pipeline.some((item) => item.productId === "not-a-product"), "unknown products are dropped");
 assert(poisoned && poisoned.listings[0].description.length === 8000, "oversized copy is cut");
 assert(sanitizeDesk({ version: 2 }, today) == null, "an old desk file is rejected");
+assert(sanitizeDesk({ ...fixture, version: 3 }, today) == null, "a v3 desk is rejected");
+assert(deskStorageKey("ada") === "xv-desk:v4:ada", "desks are stored under xv-desk:v4");
 assert(deskStorageKey("ada") !== deskStorageKey("bay"), "each account has its own market");
+
+const storage = memoryStorage({
+  "aisle-desk-v2": "old",
+  "xvaisle-desk-legacy-owner": "ada",
+  "xvaisle-desk-v3:x": "v3",
+  "xv-desk:v4:x": "v4",
+  "unrelated": "keep",
+});
+purgeOldDesks(storage);
+assert(storage.getItem("aisle-desk-v2") == null, "the unscoped desk is removed");
+assert(storage.getItem("xvaisle-desk-legacy-owner") == null, "the legacy owner claim is removed");
+assert(storage.getItem("xvaisle-desk-v3:x") == null, "v3 desks are removed");
+assert(storage.getItem("xv-desk:v4:x") === "v4", "a v4 desk stays");
+assert(storage.getItem("unrelated") === "keep", "unrelated keys stay");
 
 console.log("security checks ok");
 }
