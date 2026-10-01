@@ -249,6 +249,55 @@ html[data-theme="light"] .home-panel {
   box-shadow: 0 18px 50px rgb(20 40 30 / 8%);
 }
 
+.flow-glow,
+.flow-line {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.flow-glow {
+  stroke: rgb(61 255 138 / 35%);
+  stroke-width: 8;
+}
+
+.flow-line {
+  stroke: #b6ff6a;
+  stroke-width: 2.25;
+  stroke-dasharray: 12 16;
+  animation: flow-dash 20s linear infinite;
+}
+
+.flow-cube {
+  fill: #101612;
+  stroke: #b6ff6a;
+  stroke-width: 1.5;
+}
+
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -560;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 28%;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html:focus-within {
     scroll-behavior: auto;
@@ -260,5 +309,17 @@ html[data-theme="light"] .home-panel {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .home-flow animateMotion {
+    display: none;
+  }
+  .flow-line {
+    animation: none;
+    stroke-dasharray: none;
   }
 }

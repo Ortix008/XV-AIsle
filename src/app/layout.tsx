@@ -24,15 +24,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-background text-foreground">
+      <head>
         <script
           dangerouslySetInnerHTML={{
             __html:
-              '(function(){try{var q=new URLSearchParams(location.search).get("theme");var s=localStorage.getItem("xvaisle-theme");var t=(q==="light"||q==="dark")?q:(s==="light"||s==="dark"?s:"dark");document.documentElement.dataset.theme=t;}catch(e){}})();',
+              '(function(){try{var q=new URLSearchParams(location.search).get("theme");var s=localStorage.getItem("xvaisle-theme");var saved=(q==="light"||q==="dark")?q:(s==="light"||s==="dark"?s:"");var t=saved||(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=t;}catch(e){}})();',
           }}
         />
-        {children}
-      </body>
+      </head>
+      <body className="min-h-full bg-background text-foreground">{children}</body>
     </html>
   );
 }

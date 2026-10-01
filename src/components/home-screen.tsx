@@ -123,39 +123,45 @@ export function JoinScreen() {
         </nav>
       </header>
 
-      <section className="grid lg:min-h-[calc(100dvh-3.5rem)] lg:grid-cols-2">
-        <div className="flex flex-col justify-center px-5 py-14 sm:px-10 lg:px-14 lg:py-20">
-          <p className="text-xs font-semibold tracking-[0.22em] text-primary uppercase">A US trend market</p>
-          <h1 className="mt-4 max-w-xl text-balance text-4xl leading-[0.95] font-semibold tracking-tight sm:text-6xl">
+      <section className="relative isolate min-h-[calc(100dvh-3.5rem)] overflow-hidden">
+        <Image
+          src="/brand/hero-aisle-pedestals.webp"
+          alt=""
+          fill
+          preload
+          sizes="100vw"
+          className="object-cover object-[center_40%]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/78 to-black/45" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/50" />
+        <HomeScene />
+        <div className="relative z-10 flex min-h-[calc(100dvh-3.5rem)] flex-col justify-end px-5 py-14 text-white sm:px-10 lg:px-14 lg:py-20">
+          <p className="text-xs font-semibold tracking-[0.22em] text-[#b6ff6a] uppercase">A US trend market</p>
+          <h1 className="mt-4 max-w-3xl text-balance text-4xl leading-[0.95] font-semibold tracking-tight sm:text-6xl">
             {mode === "join" ? "Sell approved products without holding the box." : "Welcome back."}
           </h1>
-          <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-[var(--ink-soft)] sm:text-lg">
+          <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-white/90 sm:text-lg">
             Companies list extra inventory. You resell it. A neighborhood shop or a national floor ships the order.
             Buyers pay on xvaisle.com.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a href="#account" className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground">
+            <a href="#account" className="rounded-full bg-[#3dff8a] px-5 py-3 text-sm font-semibold text-[#052112]">
               {mode === "join" ? "Create an account" : "Sign in"}
             </a>
             <Link
               href="/shop"
-              className="rounded-full border border-current/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
+              className="rounded-full border border-white/40 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10"
             >
               Browse the store
             </Link>
           </div>
-          <ul className="mt-10 grid gap-3 text-sm sm:grid-cols-3">
-            <li className="border-t border-[var(--border)] pt-3">
+          <ul className="mt-10 grid gap-3 text-sm text-white/90 sm:grid-cols-3">
+            <li className="border-t border-white/25 pt-3">
               {TRIAL_DAYS} days free, then ${MEMBER_PRICE}/month
             </li>
-            <li className="border-t border-[var(--border)] pt-3">Buyers pay on xvaisle.com</li>
-            <li className="border-t border-[var(--border)] pt-3">Payouts through Stripe Connect</li>
+            <li className="border-t border-white/25 pt-3">Buyers pay on xvaisle.com</li>
+            <li className="border-t border-white/25 pt-3">Payouts through Stripe Connect</li>
           </ul>
-        </div>
-        <div className="px-5 pb-8 lg:px-8 lg:py-10">
-          <div className="h-[420px] overflow-hidden lg:h-full">
-            <HomeScene />
-          </div>
         </div>
       </section>
 
@@ -169,7 +175,7 @@ export function JoinScreen() {
       </div>
 
       {mode === "join" ? (
-        <section className="px-5 py-16 sm:px-10 lg:px-14">
+        <section className="reveal px-5 py-16 sm:px-10 lg:px-14">
           <h2 className="text-3xl font-semibold tracking-tight">Two ways in</h2>
           <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--ink-soft)]">
             Share your shop link anywhere. Buyers pay on xvaisle.com. Payouts go through Stripe Connect, to a bank
@@ -207,7 +213,7 @@ export function JoinScreen() {
         </section>
       ) : null}
 
-      <section className="border-t border-[var(--border)]">
+      <section className="reveal border-t border-[var(--border)]">
         <div className="px-5 py-12 sm:px-10 lg:px-14">
           <h2 className="text-3xl font-semibold tracking-tight">SI Team</h2>
           <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--ink-soft)]">
@@ -240,7 +246,7 @@ export function JoinScreen() {
         </ul>
       </section>
 
-      <section>
+      <section className="reveal">
         <div className="px-5 py-10 sm:px-10 lg:px-14">
           <h2 className="text-3xl font-semibold tracking-tight">Departments</h2>
           <p className="mt-3 max-w-xl text-base text-[var(--ink-soft)]">
@@ -250,12 +256,22 @@ export function JoinScreen() {
         <DepartmentGrid />
       </section>
 
-      <section className="border-t border-[var(--border)]">
-        <div className="px-5 py-10 sm:px-10 lg:px-14">
-          <h2 className="text-3xl font-semibold tracking-tight">Who ships</h2>
-          <p className="mt-3 max-w-xl text-base leading-relaxed text-[var(--ink-soft)]">
-            A neighborhood shop or a national floor packs the order. You do not hold the box.
-          </p>
+      <section className="reveal border-t border-[var(--border)]">
+        <div className="relative isolate min-h-[360px] overflow-hidden">
+          <Image
+            src="/brand/hero-warehouse-flow-green.webp"
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/82 via-black/55 to-black/30" />
+          <div className="relative z-10 flex min-h-[360px] flex-col justify-end px-5 py-12 text-white sm:px-10 lg:px-14">
+            <h2 className="text-3xl font-semibold tracking-tight">Who ships</h2>
+            <p className="mt-3 max-w-xl text-base leading-relaxed text-white/90">
+              A neighborhood shop or a national floor packs the order. You do not hold the box.
+            </p>
+          </div>
         </div>
         <ul className="grid gap-px bg-[var(--border)] md:grid-cols-2">
           {welcomeReach.map((place) => (
@@ -270,7 +286,7 @@ export function JoinScreen() {
         </ul>
       </section>
 
-      <section id="account" className="scroll-mt-16 px-5 py-16 sm:px-10 lg:px-14">
+      <section id="account" className="reveal scroll-mt-16 px-5 py-16 sm:px-10 lg:px-14">
         <div className="home-panel grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:p-10">
           <div>
             <h2 className="text-3xl font-semibold tracking-tight">
