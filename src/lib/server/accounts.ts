@@ -212,14 +212,23 @@ export function signIn(input: { email: string; password: string }) {
     burnPasswordCheck(input.password);
     return { error: "That email and password do not match." as const };
   }
-  const locked = (row.locked_until ?? 0) > Date.now();
+  const now = Date.now();
+  const lockedUntil = row.locked_until ?? 0;
+  if (lockedUntil > now) {
+    const minutes = Math.max(1, Math.ceil((lockedUntil - now) / 60_000));
+    const unit = minutes === 1 ? "minute" : "minutes";
+    return { error: `Too many tries. Try again in ${minutes} ${unit}.`, locked: true as const };
+  }
+  let failedLogins = row.failed_logins ?? 0;
+  if (row.locked_until != null && row.locked_until > 0 && row.locked_until <= now) {
+    failedLogins = 0;
+    db.prepare("UPDATE accounts SET failed_logins = 0, locked_until = NULL WHERE id = ?").run(row.id);
+  }
   const passwordOk = verifyPassword(input.password, row.password_salt, row.password_hash);
-  if (!passwordOk || locked) {
-    if (!passwordOk && !locked) {
-      const fails = (row.failed_logins ?? 0) + 1;
-      const until = fails >= 5 ? Date.now() + LOCK_MS : null;
-      db.prepare("UPDATE accounts SET failed_logins = ?, locked_until = ? WHERE id = ?").run(fails, until, row.id);
-    }
+  if (!passwordOk) {
+    const fails = failedLogins + 1;
+    const until = fails >= 5 ? now + LOCK_MS : null;
+    db.prepare("UPDATE accounts SET failed_logins = ?, locked_until = ? WHERE id = ?").run(fails, until, row.id);
     return { error: "That email and password do not match." as const };
   }
   db.prepare("UPDATE accounts SET failed_logins = 0, locked_until = NULL WHERE id = ?").run(row.id);

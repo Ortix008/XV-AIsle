@@ -933,10 +933,42 @@ async function main() {
   if ("error" in lock) throw new Error(lock.error);
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const miss = signIn({ email: "lock@xvaisle.test", password: "wrong-pass" });
-    assert("error" in miss, "a wrong password fails");
+    assert("error" in miss && miss.error === "That email and password do not match.", "a wrong password fails");
   }
   const locked = signIn({ email: "lock@xvaisle.test", password: "market-test" });
-  assert("error" in locked, "five failed sign-ins lock the account");
+  assert("error" in locked && locked.error.startsWith("Too many tries. Try again in "), "a lock names the wait");
+  assert("locked" in locked && locked.locked === true, "a lock is distinct from a bad password");
+  assert(!locked.error.includes("do not match"), "a correct password still reports the lock");
+  const held = db.prepare("SELECT failed_logins, locked_until, password_hash FROM accounts WHERE email = ?").get(
+    "lock@xvaisle.test",
+  ) as { failed_logins: number; locked_until: number | null; password_hash: string };
+  assert(held.failed_logins === 5 && (held.locked_until ?? 0) > Date.now(), "five misses lock the account for a while");
+  const { POST } = await import("../src/app/api/account/signin/route");
+  const lockedResponse = await POST(
+    new Request("http://local.test/api/account/signin", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "lock@xvaisle.test", password: "market-test" }),
+    }),
+  );
+  const lockedBody = (await lockedResponse.json()) as { error?: string };
+  assert(lockedResponse.status === 429, "a locked sign-in is HTTP 429");
+  assert(lockedBody.error?.startsWith("Too many tries. Try again in ") === true, "the HTTP lock names the wait");
+  const stillHeld = db.prepare("SELECT failed_logins FROM accounts WHERE email = ?").get("lock@xvaisle.test") as {
+    failed_logins: number;
+  };
+  assert(stillHeld.failed_logins === 5, "a locked attempt does not add another failure");
+
+  db.prepare("UPDATE accounts SET locked_until = ? WHERE email = ?").run(Date.now() - 1000, "lock@xvaisle.test");
+  const afterExpiry = signIn({ email: "lock@xvaisle.test", password: "wrong-again" });
+  assert(
+    "error" in afterExpiry && afterExpiry.error === "That email and password do not match.",
+    "an expired lock is a normal miss",
+  );
+  const resetCount = db.prepare("SELECT failed_logins, locked_until FROM accounts WHERE email = ?").get(
+    "lock@xvaisle.test",
+  ) as { failed_logins: number; locked_until: number | null };
+  assert(resetCount.failed_logins === 1 && resetCount.locked_until == null, "expiry clears the counter before the next miss");
 
   global.fetch = originalFetch;
   setStripeFetch(null);

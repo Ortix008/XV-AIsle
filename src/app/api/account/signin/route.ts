@@ -17,7 +17,10 @@ export async function POST(request: Request) {
   const result = body.challenge
     ? finishTotpSignIn(body.challenge, body.code ?? "")
     : signIn({ email: body.email ?? "", password: body.password ?? "" });
-  if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
+  if ("error" in result) {
+    const status = "locked" in result && result.locked ? 429 : 400;
+    return NextResponse.json({ error: result.error }, { status });
+  }
   if ("totpRequired" in result) {
     return NextResponse.json({ totpRequired: true, challenge: result.challenge });
   }
