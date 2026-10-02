@@ -183,6 +183,20 @@ See whether that account exists, its role, how many failed sign-ins it has, and 
 docker compose exec -e ADMIN_EMAIL=owner@example.com store npm run admin:status
 ```
 
+## Import a catalog (test mode)
+
+Copy both JSON files onto the droplet. Keep them out of git. `STORE_OPERATOR_EMAIL` is the existing account that will own the listings. `IMPORT_SUPPLIER_EMAIL` is a different existing account. A buyer is marked as a supplier. An admin or a reseller is refused. The command prints each slug and does not print cost, shipping, or source URLs.
+
+```bash
+docker compose cp catalog-import.json store:/data/
+docker compose cp catalog-private.json store:/data/
+docker compose exec store npm run catalog:import -- --dry-run /data/catalog-import.json /data/catalog-private.json
+docker compose exec store npm run catalog:import -- /data/catalog-import.json /data/catalog-private.json
+docker compose exec store rm /data/catalog-private.json
+```
+
+Pictures live at `public/art/products/<slug>.jpg` and are baked in when the image is built. A path with no file is imported with an empty picture.
+
 After the certificate is up, sign in as that admin, open `/shop/safety`, and save the return address there. Suppliers rotate a delivery secret from the membership page. Each secret is stored hashed.
 
 ## Collaborating

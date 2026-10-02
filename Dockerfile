@@ -22,11 +22,12 @@ COPY --from=build /app/public ./public
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/scripts/admin-create.mjs ./scripts/admin-create.mjs
+COPY --from=build --chown=node:node /app/scripts/catalog-import.mjs ./scripts/catalog-import.mjs
 COPY --from=build --chown=node:node /app/scripts/admin-reset-password.ts ./scripts/admin-reset-password.ts
 COPY --from=build --chown=node:node /app/scripts/admin-status.ts ./scripts/admin-status.ts
 COPY --from=build --chown=node:node /app/src/lib/server/password.ts ./src/lib/server/password.ts
 COPY --from=build /app/package.json /tmp/xvaisle-package.json
-RUN node -e 'const fs=require("fs"); const app=JSON.parse(fs.readFileSync("/tmp/xvaisle-package.json","utf8")); const stand=JSON.parse(fs.readFileSync("/app/package.json","utf8")); stand.scripts=Object.assign({}, stand.scripts, {"admin:create":"node scripts/admin-create.mjs","admin:reset-password":"node --experimental-strip-types scripts/admin-reset-password.ts","admin:status":"node --experimental-strip-types scripts/admin-status.ts"}); fs.writeFileSync("/app/package.json", JSON.stringify(stand,null,2)+"\n");' \
+RUN node -e 'const fs=require("fs"); const app=JSON.parse(fs.readFileSync("/tmp/xvaisle-package.json","utf8")); const stand=JSON.parse(fs.readFileSync("/app/package.json","utf8")); stand.scripts=Object.assign({}, stand.scripts, {"admin:create":"node scripts/admin-create.mjs","admin:reset-password":"node --experimental-strip-types scripts/admin-reset-password.ts","admin:status":"node --experimental-strip-types scripts/admin-status.ts","catalog:import":"node scripts/catalog-import.mjs"}); fs.writeFileSync("/app/package.json", JSON.stringify(stand,null,2)+"\n");' \
   && chown node:node /app/package.json \
   && rm /tmp/xvaisle-package.json
 USER node

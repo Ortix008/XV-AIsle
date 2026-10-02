@@ -10,10 +10,11 @@
     "admin:create": "node scripts/admin-create.mjs",
     "admin:reset-password": "node --experimental-strip-types scripts/admin-reset-password.ts",
     "admin:status": "node --experimental-strip-types scripts/admin-status.ts",
+    "catalog:import": "node scripts/catalog-import.mjs",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-4317}",
     "lint": "eslint",
-    "check": "tsx scripts/check-account.ts && tsx scripts/check-desk.ts && tsx scripts/check-security.ts && tsx scripts/check-market.ts && tsx scripts/check-connect.ts && tsx scripts/check-fees.ts"
+    "check": "tsx scripts/check-account.ts && tsx scripts/check-desk.ts && tsx scripts/check-security.ts && tsx scripts/check-market.ts && tsx scripts/check-connect.ts && tsx scripts/check-fees.ts && tsx scripts/check-import.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
