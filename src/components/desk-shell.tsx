@@ -82,8 +82,11 @@ export function DeskShell({ children }: { children: ReactNode }) {
         </Link>
         <div className="flex items-center gap-4">
           <p className="hidden text-xs text-white/55 md:block">The first US trend market</p>
-          <Link href="/shop" className="text-xs text-white/80 hover:text-white">
-            Store
+          <Link
+            href="/shop"
+            className="rounded-full bg-[#3dff8a] px-3 py-1.5 text-xs font-semibold text-[#052112] hover:bg-[#b6ff6a]"
+          >
+            Shop
           </Link>
           <Link href="/membership" className="text-xs text-white/80 hover:text-white">
             {status === "member" ? `Member · $${MEMBER_PRICE}/mo` : `Free month · ${daysLeft}d`}
@@ -127,6 +130,17 @@ export function DeskShell({ children }: { children: ReactNode }) {
           Market
         </Link>
         <Link
+          href="/shop"
+          className={cn(
+            "border-b-2 px-3 py-1.5 text-sm whitespace-nowrap",
+            pathname === "/shop"
+              ? "border-foreground font-medium"
+              : "border-transparent text-muted-foreground",
+          )}
+        >
+          Shop
+        </Link>
+        <Link
           href="/membership"
           className={cn(
             "border-b-2 px-3 py-1.5 text-sm whitespace-nowrap",
@@ -164,6 +178,17 @@ export function DeskShell({ children }: { children: ReactNode }) {
               )}
             >
               Market
+            </Link>
+            <Link
+              href="/shop"
+              className={cn(
+                "block border-l-2 px-3 py-2 text-sm",
+                pathname === "/shop"
+                  ? "border-foreground font-medium"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Shop
             </Link>
             <Link
               href="/membership"

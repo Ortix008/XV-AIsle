@@ -7,6 +7,7 @@ import { useState } from "react";
 import { AiBadge, botIcon } from "@/components/bot-mark";
 import { DepartmentGrid } from "@/components/department-grid";
 import { GettingStarted } from "@/components/getting-started";
+import { ShopGrid } from "@/components/shop-grid";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { getProduct, trendSourceLabel } from "@/lib/catalog";
@@ -173,7 +174,17 @@ export function FloorView() {
             <span className="text-muted-foreground"> — a ready page is what a buyer can pay for.</span>
           </p>
         </div>
-
+      </div>
+      <ShopGrid
+        kicker="Store"
+        title="In the store now"
+        lede="Ready pages a buyer can pay for."
+        query=""
+        empty="Nothing is marked ready yet."
+        limit={8}
+        seeAllHref="/shop"
+      />
+      <div className="mx-auto max-w-5xl px-4 pb-2 sm:px-6">
         <section aria-label="Departments">
           <h2 className="text-sm font-medium">Departments</h2>
         </section>
