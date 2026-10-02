@@ -10,6 +10,7 @@
     "admin:create": "node scripts/admin-create.mjs",
     "admin:reset-password": "node --experimental-strip-types scripts/admin-reset-password.ts",
     "admin:status": "node --experimental-strip-types scripts/admin-status.ts",
+    "catalog:import": "node scripts/catalog-import.mjs",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-4317}",
     "lint": "eslint",
