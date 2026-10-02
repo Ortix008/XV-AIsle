@@ -145,15 +145,18 @@ export function JoinScreen() {
             Buyers pay on xvaisle.com.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a href="#account" className="rounded-full bg-[#3dff8a] px-5 py-3 text-sm font-semibold text-[#052112]">
-              {mode === "join" ? "Create an account" : "Sign in"}
-            </a>
             <Link
               href="/shop"
+              className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"
+            >
+              Shop
+            </Link>
+            <a
+              href="#account"
               className="rounded-full border border-white/40 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10"
             >
-              Browse the store
-            </Link>
+              {mode === "join" ? "Create an account" : "Sign in"}
+            </a>
           </div>
           <ul className="mt-10 grid gap-3 text-sm text-white/90 sm:grid-cols-3">
             <li className="border-t border-white/25 pt-3">
