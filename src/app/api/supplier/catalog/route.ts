@@ -1,19 +1,48 @@
 import { cookies } from "next/headers";
-import { accountFromToken } from "@/lib/server/accounts";
+import { accountFromToken, type PublicAccount } from "@/lib/server/accounts";
 import { createCatalogItem, listApprovedCatalog } from "@/lib/server/catalog";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 
+async function signedInAccount() {
+  try {
+    const token = (await cookies()).get(SESSION_COOKIE)?.value;
+    return accountFromToken(token);
+  } catch {
+    return null;
+  }
+}
+
+function canSeeCost(account: PublicAccount, ownerId: string) {
+  if (account.role === "admin" || account.role === "reseller") return true;
+  return account.role === "supplier" && account.id === ownerId;
+}
+
 export async function GET() {
+  const account = await signedInAccount();
+  if (!account) return Response.json({ error: "Sign in first." }, { status: 401 });
   return Response.json({
-    items: listApprovedCatalog().map((item) => ({
-      id: item.id,
-      sku: item.sku,
-      title: item.title,
-      costCents: item.costCents,
-      shippingCents: item.shippingCents,
-      origin: item.origin,
-      supplierName: item.supplierName,
-    })),
+    items: listApprovedCatalog().map((item) => {
+      const row: {
+        id: string;
+        sku: string;
+        title: string;
+        origin: string;
+        supplierName: string;
+        costCents?: number;
+        shippingCents?: number;
+      } = {
+        id: item.id,
+        sku: item.sku,
+        title: item.title,
+        origin: item.origin,
+        supplierName: item.supplierName,
+      };
+      if (canSeeCost(account, item.accountId)) {
+        row.costCents = item.costCents;
+        row.shippingCents = item.shippingCents;
+      }
+      return row;
+    }),
   });
 }
 
