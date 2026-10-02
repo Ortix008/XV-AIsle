@@ -126,6 +126,17 @@ async function main() {
   const response = await GET();
   if (response.status !== 401) throw new Error("catalog GET without a cookie should be 401");
 
+  const { POST } = await import("../src/app/api/store/listings/quote/route");
+  const { SESSION_COOKIE } = await import("../src/lib/server/session-cookie");
+  const buyerQuote = await POST(
+    new Request("http://127.0.0.1/api/store/listings/quote", {
+      method: "POST",
+      headers: { cookie: `${SESSION_COOKIE}=${operator.token}` },
+      body: JSON.stringify({ catalogItemId: "import-example-pan", priceCents: 5000 }),
+    }),
+  );
+  if (buyerQuote.status !== 403) throw new Error("a buyer should not receive a supplier quote");
+
   closeDb();
   console.log("import checks ok");
 }
