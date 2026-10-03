@@ -6,15 +6,15 @@ export function ShopFrame({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <header className="flex h-14 items-center justify-between bg-[#111] px-4 text-white">
-        <Link href="/shop" className="flex items-center">
+        <Link href="/" className="flex items-center">
           <BrandMark />
         </Link>
         <div className="flex items-center gap-4">
           <Link href="/shop/safety" className="text-sm text-white/90 hover:text-white">
             How buying works
           </Link>
-          <Link href="/" className="text-xs text-white/80 hover:text-white">
-            Market desk
+          <Link href="/" className="rounded-full bg-[#3dff8a] px-3 py-1.5 text-xs font-semibold text-[#052112] hover:bg-[#b6ff6a]">
+            ← Back to Market
           </Link>
         </div>
       </header>
