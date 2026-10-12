@@ -1,4 +1,5 @@
 import { formatISODate } from "../business-days";
+import { RETURNS_UNSET } from "../return-address";
 import { sendMail } from "./mail";
 import { appOrigin } from "./stripe";
 
@@ -43,13 +44,19 @@ export function receiptText(input: {
   shipDaysMin: number;
   shipDaysMax: number;
   receiptUrl: string;
+  returnAddress?: string | null;
 }) {
+  const returns = input.returnAddress?.trim()
+    ? ["Returns ship back to the supplier at:", input.returnAddress.trim()]
+    : [RETURNS_UNSET];
   return [
     `Order ${input.number} received.`,
     "",
     input.title,
     `Qty ${input.qty}`,
     shipWindow(input.shipDaysMin, input.shipDaysMax),
+    "",
+    ...returns,
     "",
     `Your receipt: ${input.receiptUrl}`,
     "",
@@ -177,6 +184,7 @@ export async function sendCustomerReceipt(input: {
   shipDaysMin: number;
   shipDaysMax: number;
   token: string;
+  returnAddress?: string | null;
 }) {
   const link = receiptUrl(input.token);
   return deliver({

@@ -1,0 +1,210 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-returns-")), "returns.sqlite");
+delete process.env.STORE_RETURNS;
+delete process.env.DEMO_SEED;
+delete process.env.SMTP_HOST;
+delete process.env.MAIL_FROM;
+process.env.ORDER_ALERT_EMAIL = "ops@example.com";
+
+const STREET = "200 Example Avenue";
+const CITY = "Sample City";
+const REGION = "ST";
+const POSTAL = "00000";
+const COUNTRY = "US";
+const OVERRIDE = "300 Example Avenue";
+
+function assert(condition: unknown, message: string) {
+  if (!condition) throw new Error(message);
+}
+
+const address = { line1: STREET, city: CITY, region: REGION, postal: POSTAL, country: COUNTRY };
+
+async function main() {
+  const { RETURNS_ON_ORDER, RETURNS_UNSET, parseReturnAddress } = await import("../src/lib/return-address");
+  const { closeDb, getDb } = await import("../src/lib/server/db");
+  const { signUp } = await import("../src/lib/server/accounts");
+  const { startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
+  const { receiptText } = await import("../src/lib/server/order-mail");
+  const { buyerOrder, presentOrder, publicListing, resellerListing } = await import("../src/lib/server/order-view");
+  const { saveReturnsAddress } = await import("../src/lib/server/settings");
+  const { ensureStarterShelf } = await import("../src/lib/server/starter-shelf");
+  const { createPendingOrder, fulfillPaidOrder, getListing, getOrder, publishListing } = await import("../src/lib/server/store");
+  const {
+    listSupplierReturns,
+    resolveReturnAddress,
+    returnCopyForListing,
+    saveProductReturn,
+    saveSupplierReturn,
+    storeReturnCopy,
+  } = await import("../src/lib/server/supplier-returns");
+
+  for (const line of ["PO Box 10", "P.O. Box 10", "p.o. box 10", "P.O.Box 10", "Post Office Box 10", "pobox 10"]) {
+    const rejected = parseReturnAddress({ ...address, line1: line });
+    assert("error" in rejected, `${line} should be rejected`);
+  }
+  assert(!("error" in parseReturnAddress(address)), "an example street is accepted");
+  assert("empty" in parseReturnAddress({ line1: " ", city: "", region: "", postal: "", country: "" }), "a blank address clears");
+  assert("error" in parseReturnAddress({ ...address, city: "" }), "a partial address is rejected");
+  const legacy = saveReturnsAddress("PO Box 10, Sample City, ST 00000");
+  assert("error" in legacy, "the old store line also rejects a PO Box");
+
+  const columns = getDb().prepare("PRAGMA table_info(listings)").all() as { name: string }[];
+  assert(columns.some((column) => column.name === "return_line1"), "listings gain a return street column");
+  assert(getDb().prepare("SELECT name FROM sqlite_master WHERE name = 'supplier_returns'").get(), "supplier_returns exists");
+
+  const joined = signUp({ name: "Example Supply", email: "returns-supplier@example.com", password: "market-test" });
+  if ("error" in joined || !joined.account) throw new Error("supplier");
+  getDb().prepare("UPDATE accounts SET role = 'supplier', email_verified = 1 WHERE id = ?").run(joined.account.id);
+  const supplierId = joined.account.id;
+  const admin = {
+    id: "operator",
+    role: "admin" as const,
+    memberSince: 1,
+    membershipStatus: "active",
+    emailVerified: true,
+    totpEnabled: false,
+  };
+  const reseller = { ...admin, role: "reseller" as const };
+
+  const denied = saveSupplierReturn(reseller, `id:${supplierId}`, address);
+  assert("error" in denied && denied.status === 403, "a reseller cannot save a supplier return address");
+  assert(storeReturnCopy() === RETURNS_UNSET, "no address yet uses the fallback");
+
+  const saved = saveSupplierReturn(admin, `id:${supplierId}`, address);
+  assert(!("error" in saved) && saved.address?.line1 === STREET, "an operator can save a supplier return address");
+  assert(storeReturnCopy() === RETURNS_ON_ORDER, "a saved supplier address changes the policy line");
+  const listed = listSupplierReturns().find((item) => item.key === `id:${supplierId}`);
+  assert(listed?.line1 === STREET && listed.postal === POSTAL, "admin can read the supplier address back");
+
+  const published = publishListing(supplierId, {
+    productId: "return-pan",
+    sku: "RTN-1",
+    title: "Return pan",
+    description: "A pan for the return check.",
+    priceCents: 2000,
+    image: "",
+    supplierName: "Example Supply",
+    supplierOrigin: "US",
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    supplierAccountId: supplierId,
+    supplierCostCents: 500,
+  });
+  if ("error" in published || !published.listing) throw new Error("listing");
+  assert(published.listing.returnLine1 == null, "a new listing does not invent a return address");
+  const resolved = resolveReturnAddress(published.listing);
+  assert(resolved?.line1 === STREET, "the listing uses the supplier address");
+  assert(returnCopyForListing(published.listing) === RETURNS_ON_ORDER, "the product page points at the order page");
+  const publicJson = JSON.stringify(publicListing(published.listing));
+  const resellerJson = JSON.stringify(resellerListing(published.listing));
+  assert(!publicJson.includes(STREET) && !publicJson.includes("returnLine1"), "the public listing omits the street");
+  assert(!resellerJson.includes(STREET), "a reseller listing omits the street");
+
+  saveReturnsAddress("100 Example Street, Sample City, ST 00000");
+  assert(resolveReturnAddress(getListing("return-pan")!)?.line1 === STREET, "the old store line is not the supplier address");
+
+  const poProduct = saveProductReturn(admin, "return-pan", { ...address, line1: "P.O. Box 4" });
+  assert("error" in poProduct, "a product override rejects a PO Box");
+  const override = saveProductReturn(admin, "return-pan", { ...address, line1: OVERRIDE });
+  assert(!("error" in override) && override.address?.line1 === OVERRIDE, "a product override saves");
+  assert(resolveReturnAddress(getListing("return-pan")!)?.line1 === OVERRIDE, "the product override wins");
+  const cleared = saveProductReturn(admin, "return-pan", { line1: "", city: "", region: "", postal: "", country: "" });
+  assert(!("error" in cleared) && cleared.address === null, "a blank override clears");
+  assert(resolveReturnAddress(getListing("return-pan")!)?.line1 === STREET, "clearing the override uses the supplier address");
+
+  const other = signUp({ name: "Quiet Supply", email: "quiet-supplier@example.com", password: "market-test" });
+  if ("error" in other || !other.account) throw new Error("quiet supplier");
+  getDb().prepare("UPDATE accounts SET role = 'supplier' WHERE id = ?").run(other.account.id);
+  const named = publishListing(supplierId, {
+    productId: "named-pan",
+    sku: "RTN-2",
+    title: "Named pan",
+    description: "A pan with a name only.",
+    priceCents: 2000,
+    image: "",
+    supplierName: "Name Only Supply",
+    supplierOrigin: "US",
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    supplierAccountId: other.account.id,
+    supplierCostCents: 500,
+  });
+  if ("error" in named || !named.listing) throw new Error("named");
+  assert(resolveReturnAddress(named.listing) === null, "a supplier without an address stays blank");
+  assert(returnCopyForListing(named.listing) === RETURNS_UNSET, "a blank supplier uses the fallback");
+  const nameKey = listSupplierReturns().find((item) => item.label === "Name Only Supply")?.key;
+  if (!nameKey) throw new Error("the listing name is a supplier choice");
+  const namedSave = saveSupplierReturn(admin, nameKey, { ...address, line1: "400 Example Avenue" });
+  assert(!("error" in namedSave), "an operator can save an address for a supplier name");
+  assert(
+    resolveReturnAddress(getListing("named-pan")!)?.line1 === "400 Example Avenue",
+    "a name address applies when the supplier account has none",
+  );
+  getDb().prepare("DELETE FROM supplier_returns WHERE supplier_key = ?").run(nameKey);
+
+  const pending = createPendingOrder({
+    productId: "return-pan",
+    qty: 1,
+    ship: { name: "Example Buyer", email: "buyer@example.com", line1: "100 Example Street", city: CITY, region: REGION, postal: POSTAL, country: COUNTRY },
+  });
+  if ("error" in pending) throw new Error(pending.error);
+  assert(pending.order.returnLine1 === STREET, "the order stores the supplier address");
+  const buyerJson = JSON.stringify(buyerOrder(pending.order));
+  assert(buyerJson.includes(STREET), "the buyer order includes the return street");
+  const deskJson = JSON.stringify(presentOrder(admin, pending.order, pending.listing));
+  assert(!deskJson.includes(STREET), "the desk order view does not add the return street");
+
+  const { GET } = await import("../src/app/api/store/receipt/route");
+  const receipt = await GET(new Request(`http://127.0.0.1/api/store/receipt?token=${pending.receiptToken}`));
+  const receiptBody = (await receipt.json()) as { order?: { returnAddress?: string } };
+  assert(receiptBody.order?.returnAddress?.includes(STREET), "the order page includes the street");
+  assert(!receiptBody.order?.returnAddress?.includes("100 Example Street"), "the order page does not swap in the ship-to street");
+
+  const blankOrder = createPendingOrder({
+    productId: "named-pan",
+    qty: 1,
+    ship: { name: "Example Buyer", email: "buyer@example.com", line1: "100 Example Street", city: CITY, region: REGION, postal: POSTAL, country: COUNTRY },
+  });
+  if ("error" in blankOrder) throw new Error(blankOrder.error);
+  assert(blankOrder.order.returnLine1 == null, "an order with no supplier address stores none");
+  const blankReceipt = receiptText({
+    number: blankOrder.order.number,
+    title: "Named pan",
+    qty: 1,
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    receiptUrl: "http://127.0.0.1/shop/order?token=example",
+    returnAddress: null,
+  });
+  assert(blankReceipt.includes(RETURNS_UNSET), "the receipt email uses the fallback");
+  assert(!blankReceipt.includes(STREET), "the fallback email has no street");
+
+  const captured = startMailCapture();
+  getDb().prepare("UPDATE orders SET status = 'paid', paid_at = ? WHERE id = ?").run(Date.now(), pending.order.id);
+  await fulfillPaidOrder(pending.order.id);
+  const customer = captured.find((message) => message.subject.endsWith("received"));
+  const ops = captured.find((message) => message.subject.startsWith("New paid order"));
+  assert(customer?.text.includes(STREET), "the order email includes the supplier street");
+  assert(ops && !ops.text.includes(STREET) && !ops.text.includes("100 Example Street"), "the ops alert has neither street");
+  stopMailCapture();
+  const stored = getOrder(pending.order.id);
+  assert(stored?.returnLine1 === STREET, "fulfillment keeps the stored return address");
+
+  process.env.DEMO_SEED = "1";
+  process.env.STORE_OPERATOR_EMAIL = "returns-supplier@example.com";
+  ensureStarterShelf();
+  const sample = getDb().prepare("SELECT return_line1, return_city FROM listings WHERE product_id = 'sheet-pan'").get() as
+    | { return_line1: string | null; return_city: string | null }
+    | undefined;
+  assert(sample != null && !sample.return_line1 && !sample.return_city, "sample data leaves the return address blank");
+  const sampleListing = getListing("sheet-pan");
+  assert(sampleListing && returnCopyForListing({ ...sampleListing, supplierAccountId: null }) === RETURNS_UNSET, "a sample with no address uses the fallback");
+
+  closeDb();
+  console.log("return address checks ok");
+}
+
+void main();

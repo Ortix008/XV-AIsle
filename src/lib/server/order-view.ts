@@ -13,7 +13,15 @@ export function publicListing(listing: StoreListing, sample = false) {
 
 /** Reseller publish responses keep the cost quote and drop the supplier order link and email. */
 export function resellerListing(listing: StoreListing) {
-  return omitKeys(listing, ["supplierOrderUrl", "supplierEmail"]);
+  return omitKeys(listing, [
+    "supplierOrderUrl",
+    "supplierEmail",
+    "returnLine1",
+    "returnCity",
+    "returnRegion",
+    "returnPostal",
+    "returnCountry",
+  ]);
 }
 
 /** Buyer and supplier payloads never include what we paid the supplier. */

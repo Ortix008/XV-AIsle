@@ -1,5 +1,6 @@
 import { confirmReceipt, disputeReceipt } from "@/lib/server/ledger";
 import { orderByReceiptToken } from "@/lib/server/store";
+import { formatOrderReturn } from "@/lib/server/supplier-returns";
 import { BUYER_WINDOW_MS } from "@/lib/server/fees";
 
 function publicReceipt(token: string) {
@@ -16,6 +17,7 @@ function publicReceipt(token: string) {
     buyerConfirmedAt: order.buyerConfirmedAt,
     buyerDisputeOpen: order.buyerDisputeOpen && !order.buyerDisputeResolved,
     windowEndsAt: order.deliveredAt ? order.deliveredAt + BUYER_WINDOW_MS : null,
+    returnAddress: formatOrderReturn(order),
   };
 }
 

@@ -250,8 +250,28 @@ export function getDb() {
   addColumn(next, "orders", "delay_refunded_at", "INTEGER");
   addColumn(next, "orders", "customer_link_hash", "TEXT");
   addColumn(next, "orders", "ship_link_hash", "TEXT");
+  migrateSupplierReturns(next);
   db = next;
   return next;
+}
+
+/** Per-supplier return addresses, plus a product override and the copy stored on an order. */
+function migrateSupplierReturns(database: DatabaseSync) {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS supplier_returns (
+      supplier_key TEXT PRIMARY KEY,
+      line1 TEXT NOT NULL,
+      city TEXT NOT NULL,
+      region TEXT NOT NULL,
+      postal TEXT NOT NULL,
+      country TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+  `);
+  for (const column of ["return_line1", "return_city", "return_region", "return_postal", "return_country"] as const) {
+    addColumn(database, "listings", column, "TEXT");
+    addColumn(database, "orders", column, "TEXT");
+  }
 }
 
 function addColumn(database: DatabaseSync, table: string, column: string, definition: string) {

@@ -3,6 +3,7 @@ import { ProductBuy } from "@/components/product-buy";
 import { ShopFrame } from "@/components/shop-frame";
 import { publicListing } from "@/lib/server/order-view";
 import { ensureStarterShelf, isSampleListing, visibleOnShop } from "@/lib/server/starter-shelf";
+import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listingLoss } from "@/lib/server/store";
 
 export default async function ProductPage({ params }: { params: Promise<{ productId: string }> }) {
@@ -12,7 +13,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
   if (!listing || !visibleOnShop(listing) || listingLoss(listing)) notFound();
   return (
     <ShopFrame>
-      <ProductBuy listing={publicListing(listing, isSampleListing(listing))} />
+      <ProductBuy listing={publicListing(listing, isSampleListing(listing))} returnNote={returnCopyForListing(listing)} />
     </ShopFrame>
   );
 }

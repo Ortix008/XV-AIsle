@@ -8,6 +8,7 @@ import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { changed, getDb } from "./db";
 import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
+import { formatOrderReturn, resolveReturnAddress } from "./supplier-returns";
 import { requestShipment } from "./supplier";
 
 export type StoreListing = {
@@ -43,6 +44,11 @@ export type StoreListing = {
   supplierEmail: string | null;
   kind: "single" | "bundle";
   aisle: string | null;
+  returnLine1: string | null;
+  returnCity: string | null;
+  returnRegion: string | null;
+  returnPostal: string | null;
+  returnCountry: string | null;
 };
 
 export type StoreOrder = {
@@ -104,6 +110,11 @@ export type StoreOrder = {
   delayRefundDueAt: number | null;
   delayRefundedAt: number | null;
   refundedAt: number | null;
+  returnLine1: string | null;
+  returnCity: string | null;
+  returnRegion: string | null;
+  returnPostal: string | null;
+  returnCountry: string | null;
 };
 
 type ListingRow = {
@@ -139,6 +150,11 @@ type ListingRow = {
   supplier_email?: string | null;
   kind?: string | null;
   aisle?: string | null;
+  return_line1?: string | null;
+  return_city?: string | null;
+  return_region?: string | null;
+  return_postal?: string | null;
+  return_country?: string | null;
 };
 
 type OrderRow = {
@@ -198,6 +214,11 @@ type OrderRow = {
   delay_refund_due_at?: number | null;
   delay_refunded_at?: number | null;
   refunded_at?: number | null;
+  return_line1?: string | null;
+  return_city?: string | null;
+  return_region?: string | null;
+  return_postal?: string | null;
+  return_country?: string | null;
   fulfilling_started_at?: number | null;
   fulfillment_attempts?: number | null;
   receipt_token_hash?: string | null;
@@ -237,6 +258,11 @@ function listingFrom(row: ListingRow): StoreListing {
     supplierEmail: row.supplier_email ?? null,
     kind: row.kind === "bundle" ? "bundle" : "single",
     aisle: row.aisle?.trim() || null,
+    returnLine1: row.return_line1?.trim() || null,
+    returnCity: row.return_city?.trim() || null,
+    returnRegion: row.return_region?.trim() || null,
+    returnPostal: row.return_postal?.trim() || null,
+    returnCountry: row.return_country?.trim() || null,
   };
 }
 
@@ -370,6 +396,11 @@ function orderFrom(row: OrderRow, listing?: ListingRow): StoreOrder {
     delayRefundDueAt: row.delay_refund_due_at ?? null,
     delayRefundedAt: row.delay_refunded_at ?? null,
     refundedAt: row.refunded_at ?? null,
+    returnLine1: row.return_line1?.trim() || null,
+    returnCity: row.return_city?.trim() || null,
+    returnRegion: row.return_region?.trim() || null,
+    returnPostal: row.return_postal?.trim() || null,
+    returnCountry: row.return_country?.trim() || null,
   };
 }
 
@@ -431,6 +462,11 @@ export function publishListing(
     | "supplierEmail"
     | "kind"
     | "aisle"
+    | "returnLine1"
+    | "returnCity"
+    | "returnRegion"
+    | "returnPostal"
+    | "returnCountry"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -790,6 +826,7 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   }
   const split = priced.split;
   const created = Date.now();
+  const returnTo = resolveReturnAddress(page);
   getDb()
     .prepare(
       `INSERT INTO orders (
@@ -797,8 +834,9 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
          ship_line1, ship_city, ship_region, ship_postal, ship_country,
          stripe_session_id, status, supplier_ref, supplier_detail, created_at,
          transfer_group, fee_bps, platform_fee_cents, supplier_amount_cents, reseller_amount_cents, supplier_account_id,
-         receipt_token_hash, stripe_fee_est_cents, stripe_fee_cents
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         receipt_token_hash, stripe_fee_est_cents, stripe_fee_cents,
+         return_line1, return_city, return_region, return_postal, return_country
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -824,6 +862,11 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
       receiptHash(receiptToken),
       split.stripeFeeCents,
       split.stripeFeeCents,
+      returnTo?.line1 ?? null,
+      returnTo?.city ?? null,
+      returnTo?.region ?? null,
+      returnTo?.postal ?? null,
+      returnTo?.country ?? null,
     );
   return { order: getOrder(id)!, listing: listingFrom(listing), receiptToken };
 }
@@ -1083,6 +1126,7 @@ export async function fulfillPaidOrder(orderId: string) {
       shipDaysMin: listing?.shipDaysMin ?? 0,
       shipDaysMax: listing?.shipDaysMax ?? 0,
       token,
+      returnAddress: formatOrderReturn(current),
     });
   }
   return getOrder(orderId);

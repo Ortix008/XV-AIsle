@@ -1,14 +1,15 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { ReturnsForm } from "@/components/returns-form";
+import { SupplierReturnsForm } from "@/components/supplier-returns-form";
 import { ShopFrame } from "@/components/shop-frame";
 import { accountFromToken } from "@/lib/server/accounts";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
-import { isSupportEmail, readReturnsAddress, readSupportEmail } from "@/lib/server/settings";
+import { isSupportEmail, readSupportEmail } from "@/lib/server/settings";
+import { storeReturnCopy } from "@/lib/server/supplier-returns";
 
 export default async function ShopSafetyPage() {
-  const returns = readReturnsAddress();
   const storedEmail = readSupportEmail();
   const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
@@ -43,15 +44,7 @@ export default async function ShopSafetyPage() {
               <Link href="/shop/returns" className="underline underline-offset-4">
                 returns page
               </Link>
-              .
-              {returns ? (
-                <>
-                  {" "}
-                  Send the box to <span className="font-medium">{returns}</span>.
-                </>
-              ) : (
-                <> The seller will reply with the address for the box.</>
-              )}
+              . {storeReturnCopy()}
             </p>
           </section>
           <section>
@@ -81,7 +74,12 @@ export default async function ShopSafetyPage() {
             </p>
           </section>
         </div>
-        {account?.role === "admin" ? <ReturnsForm returns={returns} supportEmail={supportEmail} /> : null}
+        {account?.role === "admin" ? (
+          <>
+            <ReturnsForm supportEmail={supportEmail} />
+            <SupplierReturnsForm />
+          </>
+        ) : null}
       </article>
     </ShopFrame>
   );

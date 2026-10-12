@@ -47,7 +47,7 @@ Public store:
 - `/shop/reseller` Reseller program
 - `/shop/reseller/terms` Affiliate and reseller terms
 - `/shop/contact` Note to the seller
-- `/shop/safety` How buying works: payment, shipping, returns, and the return address
+- `/shop/safety` How buying works: payment, shipping, and returns. An operator saves each supplier's return address here. Buyers do not see that street until the order page.
 - `/shop/return` Stripe return landing
 
 ## What works, and what is still a stub
@@ -137,7 +137,7 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | `SMTP_USER` | SMTP username. Optional when the server does not require auth. |
 | `SMTP_PASS` | SMTP password. |
 | `MAIL_FROM` | From address. Required when `SMTP_HOST` is set. |
-| `STORE_RETURNS` | Return line shown before the operator saves one at `/shop/safety`. |
+| `STORE_RETURNS` | Legacy store line. Buyers are not shown it. Save each supplier's return address in admin instead, and do not put a home address here. |
 | `STORE_SUPPORT_EMAIL` | Support email shown before the operator saves one at `/shop/safety`. |
 | `STORE_OPERATOR_EMAIL` | Account that receives the two starter products. Empty means nobody does. |
 | `ADMIN_EMAIL` | Email for one run of `admin:create`, `admin:reset-password`, or `admin:status`. Signup ignores it. |
@@ -202,7 +202,7 @@ docker compose exec store rm /data/catalog-private.json
 
 Pictures live at `public/art/products/<slug>.jpg` and are baked in when the image is built. A path with no file is imported with an empty picture.
 
-After the certificate is up, sign in as that admin, open `/shop/safety`, and save the return address there. Suppliers rotate a delivery secret from the account page. Each secret is stored hashed.
+After the certificate is up, sign in as that admin, open `/shop/safety`, and save each supplier's return address. Use the supplier's business street. PO Boxes are rejected, and the address is not a home address. Buyers see it on the order page after they pay. Suppliers rotate a delivery secret from the account page. Each secret is stored hashed.
 
 ## Collaborating
 

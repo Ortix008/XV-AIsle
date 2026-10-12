@@ -39,7 +39,7 @@ export type ProductListing = {
   aisle?: string | null;
 };
 
-export function ProductBuy({ listing }: { listing: ProductListing }) {
+export function ProductBuy({ listing, returnNote }: { listing: ProductListing; returnNote: string }) {
   const formReveal = useReveal<HTMLFormElement>(1);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -105,6 +105,7 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
           {listing.shelf === "small" ? " This is a small business." : ""}
         </p>
         <p className="mt-2 text-base text-muted-foreground">Shared by an independent reseller. You pay on xvaisle.com.</p>
+        <p className="mt-4 max-w-xl text-base leading-relaxed">{returnNote}</p>
         {listing.kind === "bundle" && listing.includes && listing.includes.length > 0 ? (
           <div className="mt-6 max-w-xl rounded-2xl border border-border bg-secondary px-5 py-4">
             <p className="text-sm font-medium text-muted-foreground">In this bundle</p>

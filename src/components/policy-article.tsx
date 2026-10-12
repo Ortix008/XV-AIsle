@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { Reveal } from "@/components/reveal";
 import { ShopFrame } from "@/components/shop-frame";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
-import { isSupportEmail, readReturnsAddress, readSupportEmail } from "@/lib/server/settings";
+import { isSupportEmail, readSupportEmail } from "@/lib/server/settings";
+import { storeReturnCopy } from "@/lib/server/supplier-returns";
 
 export function PolicyArticle({
   kicker,
@@ -14,7 +15,6 @@ export function PolicyArticle({
   title: string;
   children: ReactNode;
 }) {
-  const returns = readReturnsAddress();
   const storedEmail = readSupportEmail();
   const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
   return (
@@ -47,13 +47,7 @@ export function PolicyArticle({
               .
             </p>
           )}
-          {returns ? (
-            <p>
-              Send a return to <span className="font-medium">{returns}</span>.
-            </p>
-          ) : (
-            <p>A return address is not published yet. Start a return and the seller will send the address.</p>
-          )}
+          <p>{storeReturnCopy()}</p>
         </section>
       </Reveal>
     </ShopFrame>

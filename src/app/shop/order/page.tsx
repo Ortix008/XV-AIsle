@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { ShopFrame } from "@/components/shop-frame";
 import { formatISODate } from "@/lib/business-days";
+import { RETURNS_UNSET } from "@/lib/return-address";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -17,6 +18,7 @@ type Receipt = {
   buyerConfirmedAt: number | null;
   buyerDisputeOpen: boolean;
   windowEndsAt: number | null;
+  returnAddress: string | null;
 };
 
 type DelayOffer = {
@@ -166,6 +168,7 @@ function OrderBody() {
             {order.buyerConfirmedAt ? " You confirmed it." : ""}
             {order.buyerDisputeOpen ? " A dispute is open." : ""}
           </p>
+          <p className="whitespace-pre-wrap">{order.returnAddress ?? RETURNS_UNSET}</p>
           {order.windowEndsAt && !order.buyerConfirmedAt && !order.buyerDisputeOpen ? (
             <p className="text-muted-foreground">
               If you do not dispute it, the seller can be paid after{" "}
