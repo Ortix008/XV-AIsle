@@ -47,6 +47,7 @@ async function main() {
   if ("error" in published || !published.listing) throw new Error("listing");
   const hidden = publicShopListing(published.listing, false);
   assert(!("checkedBy" in hidden), "an empty check stays off the public listing");
+  assert(!("whyWePicked" in hidden), "an empty earned-place line stays off the public listing");
   assert(hidden.brand === "North Mill", "brand is public when set");
   assert(hidden.whyItCosts === "The steel is thick enough to sit in a hot oven.", "the cost line is public when set");
 
@@ -59,6 +60,27 @@ async function main() {
   const shown = publicShopListing(getListing("honest-pan")!, false);
   assert(shown.checkedBy === "XV desk" && shown.checkedOn === "2026-10-12", "a finished check is public");
   assert(shown.checkedNote === "The page matches the pan we received.", "the check note is public");
+
+  const earned = publishListing("acct-honest", {
+    productId: "honest-pan",
+    sku: "PAN-H",
+    title: "Honest pan",
+    description: "One pan.",
+    priceCents: 2695,
+    image: "/art/mock-sheet-pan-1.png",
+    supplierName: "North Mill",
+    supplierOrigin: "Elizabeth, NJ",
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    whyWePicked: "The pan is one piece of steel, and the page says so.",
+  });
+  if ("error" in earned || !earned.listing) throw new Error("earned");
+  const withPlace = publicShopListing(getListing("honest-pan")!, false);
+  assert(
+    withPlace.whyWePicked === "The pan is one piece of steel, and the page says so.",
+    "the earned-place line is public when set",
+  );
+  assert(withPlace.checkedBy === "XV desk", "writing the earned-place line keeps the check");
 
   const struck = publishListing("acct-honest", {
     productId: "struck-pan",

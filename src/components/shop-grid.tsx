@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
+import { NightMotif } from "@/components/night-motif";
 import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
 import { money } from "@/lib/money";
+import { nightWorldForListing, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
 
 export type ShopCard = {
   productId: string;
@@ -19,6 +21,7 @@ export type ShopCard = {
   sample?: boolean;
   brand?: string;
   kind?: "bundle";
+  aisle?: string | null;
 };
 
 function eyebrow(listing: ShopCard) {
@@ -39,6 +42,7 @@ export function ShopGrid({
   limit,
   seeAllHref,
   level = "page",
+  world = null,
 }: {
   kicker: string;
   title: string;
@@ -48,6 +52,7 @@ export function ShopGrid({
   limit?: number;
   seeAllHref?: string;
   level?: "page" | "section";
+  world?: NightWorld | null;
 }) {
   const [listings, setListings] = useState<ShopCard[] | null>(null);
 
@@ -63,18 +68,33 @@ export function ShopGrid({
 
   return (
     <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]">
-      <Reveal className="mb-10 flex items-end justify-between gap-5">
-        <div>
-          <p className="eyebrow">{kicker}</p>
-          <Heading className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">{title}</Heading>
-          <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">{lede}</p>
-        </div>
-        {seeAllHref ? (
-          <Link href={seeAllHref} className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary">
-            Shop all →
-          </Link>
-        ) : null}
-      </Reveal>
+      {world ? (
+        <Reveal>
+          <div className="stall-mast" style={nightWorldVars(world) as CSSProperties}>
+            <NightMotif slug={world.slug} />
+            <div>
+              <p className="eyebrow" style={{ color: world.accent }}>
+                {kicker}
+              </p>
+              <Heading className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">{title}</Heading>
+              <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">{lede}</p>
+            </div>
+          </div>
+        </Reveal>
+      ) : (
+        <Reveal className="mb-10 flex items-end justify-between gap-5">
+          <div>
+            <p className="eyebrow">{kicker}</p>
+            <Heading className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">{title}</Heading>
+            <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">{lede}</p>
+          </div>
+          {seeAllHref ? (
+            <Link href={seeAllHref} className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary">
+              Shop all →
+            </Link>
+          ) : null}
+        </Reveal>
+      )}
       {visible === null ? (
         <div className="empty-panel">
           <p className="eyebrow">Store</p>
@@ -88,24 +108,29 @@ export function ShopGrid({
         </div>
       ) : null}
       <ul className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-        {visible?.map((listing, index) => (
-          <Reveal key={listing.productId} as="li" index={index % 5}>
-            <Link
-              href={`/shop/${listing.productId}`}
-              className="product-card block rounded-2xl border border-border bg-card p-2 sm:p-3"
-            >
-              <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
-              <p className="mt-4 px-1 font-heading text-xs tracking-[0.14em] text-muted-foreground uppercase">
-                {eyebrow(listing)}
-              </p>
-              <h3 className="mt-1 px-1 text-[15px] font-semibold tracking-[-0.01em] sm:text-[17px]">{listing.title}</h3>
-              <p className="mt-1 px-1 pb-1 text-sm text-muted-foreground">
-                {money(listing.priceCents / 100)} · ships from {listing.supplierOrigin} in {listing.shipDaysMin}–
-                {listing.shipDaysMax} days
-              </p>
-            </Link>
-          </Reveal>
-        ))}
+        {visible?.map((listing, index) => {
+          const cardWorld = nightWorldForListing(listing);
+          return (
+            <Reveal key={listing.productId} as="li" index={index % 5}>
+              <Link
+                href={`/shop/${listing.productId}`}
+                data-world={cardWorld?.slug}
+                style={cardWorld ? (nightWorldVars(cardWorld) as CSSProperties) : undefined}
+                className="product-card block rounded-2xl border border-border bg-card p-2 sm:p-3"
+              >
+                <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
+                <p className="mt-4 px-1 font-heading text-xs tracking-[0.14em] text-muted-foreground uppercase">
+                  {eyebrow(listing)}
+                </p>
+                <h3 className="mt-1 px-1 text-[15px] font-semibold tracking-[-0.01em] sm:text-[17px]">{listing.title}</h3>
+                <p className="mt-1 px-1 pb-1 text-sm text-muted-foreground">
+                  {money(listing.priceCents / 100)} · ships from {listing.supplierOrigin} in {listing.shipDaysMin}–
+                  {listing.shipDaysMax} days
+                </p>
+              </Link>
+            </Reveal>
+          );
+        })}
       </ul>
     </div>
   );

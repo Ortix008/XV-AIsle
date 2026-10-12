@@ -284,6 +284,95 @@
     0 0 36px rgba(61, 220, 132, 0.1);
 }
 
+.aisle-stall {
+  border-color: color-mix(in srgb, var(--world) 34%, var(--border));
+  background:
+    radial-gradient(90% 80% at 0% 0%, var(--world-wash), transparent 58%),
+    var(--secondary);
+}
+
+.night-well {
+  aspect-ratio: 16 / 10;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 18px 40px rgba(0, 0, 0, 0.35),
+    0 0 42px var(--world-glow);
+}
+
+.night-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--world) 50%, transparent);
+  border-radius: 999px;
+  background: rgba(7, 8, 10, 0.78);
+  color: var(--world);
+  box-shadow: 0 0 18px var(--world-glow);
+}
+
+.night-badge svg,
+.stall-mast svg {
+  width: 18px;
+  height: 18px;
+}
+
+.night-motif-well {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--world);
+  background:
+    radial-gradient(55% 70% at 50% 42%, var(--world-wash), transparent 72%),
+    linear-gradient(160deg, #1a1d22, #0a0b0d);
+}
+
+.night-motif-well svg {
+  width: 72px;
+  height: 72px;
+}
+
+.stall-mast {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.25rem 1.15rem;
+  margin-bottom: 2.5rem;
+  padding: 1.25rem 1.35rem;
+  border: 1px solid color-mix(in srgb, var(--world) 32%, var(--border));
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(80% 140% at 0% 0%, var(--world-wash), transparent 62%),
+    var(--secondary);
+}
+
+.stall-mast > svg {
+  width: 40px;
+  height: 40px;
+  color: var(--world);
+}
+
+.earned-card {
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--world, var(--primary));
+  border-radius: 1rem;
+  background:
+    linear-gradient(90deg, var(--world-wash, rgba(61, 220, 132, 0.07)), transparent 58%),
+    var(--secondary);
+  padding: 1.2rem 1.3rem;
+}
+
+[data-world] .product-frame {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 18px 40px rgba(0, 0, 0, 0.35),
+    0 0 28px var(--world-glow);
+}
+
 .product-frame {
   position: relative;
   aspect-ratio: 4 / 5;
@@ -333,6 +422,13 @@
   transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
+.product-card[data-world] {
+  border-color: color-mix(in srgb, var(--world) 32%, var(--border));
+  background:
+    linear-gradient(180deg, var(--world-wash), transparent 48%),
+    var(--card);
+}
+
 .product-card::after {
   content: "";
   position: absolute;
@@ -342,6 +438,10 @@
   opacity: 0;
   box-shadow: 0 0 32px rgba(61, 220, 132, 0.28);
   transition: opacity 0.35s ease;
+}
+
+.product-card[data-world]::after {
+  box-shadow: 0 0 32px var(--world-glow);
 }
 
 .product-card:hover {

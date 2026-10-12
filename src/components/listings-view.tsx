@@ -403,11 +403,12 @@ function ListingEditor({
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          Why we picked it
+          Why it earned its place
           <Textarea
             value={whyWePicked}
             maxLength={800}
             rows={4}
+            placeholder="Optional. The product page shows this only when you write it."
             onChange={(event) => setWhyWePicked(event.target.value)}
           />
         </label>

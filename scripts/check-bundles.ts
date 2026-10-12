@@ -143,6 +143,10 @@ async function main() {
   assert(shown.includes?.map((item) => item.title).join(",") === "Quarter pan,Wire rack", "the public page lists the pieces");
   assert(!("compareAtPrice" in shown), "the public page has no compare-at price");
   assert(listPublished({ aisle: "tech-and-desk" }).some((item) => item.productId === "desk-set"), "the aisle filter finds the bundle");
+  const bundlesOnly = listPublished({ aisle: "bundles" });
+  assert(bundlesOnly.every((item) => item.kind === "bundle"), "the bundles stall lists only bundles");
+  assert(bundlesOnly.some((item) => item.productId === "desk-set"), "the bundles stall includes the desk set");
+  assert(!bundlesOnly.some((item) => item.productId === "pan-a"), "the bundles stall leaves single listings out");
 
   piece("acct-pan-b", "Account rack", "Another name", "sup-1");
   const sameAccount = publishBundle(

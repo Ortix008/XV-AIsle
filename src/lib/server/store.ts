@@ -686,7 +686,9 @@ export function listPublished(filter?: { madeInUsa?: boolean; shelf?: "national"
     clauses.push("shelf = ?");
     params.push(filter.shelf);
   }
-  if (filter?.aisle) {
+  if (filter?.aisle === "bundles") {
+    clauses.push("kind = 'bundle'");
+  } else if (filter?.aisle) {
     clauses.push("aisle = ?");
     params.push(filter.aisle);
   }

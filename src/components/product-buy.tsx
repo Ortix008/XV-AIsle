@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState, type CSSProperties, type FormEvent } from "react";
 import { ProductFrame } from "@/components/product-frame";
 import { useReveal } from "@/components/reveal";
 import { CheckoutPolicies } from "@/components/shop-footer";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { isStripeCheckoutUrl } from "@/lib/checkout-url";
 import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
+import { nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 
 export type ProductListing = {
   productId: string;
@@ -35,6 +36,7 @@ export type ProductListing = {
   checkedNote?: string | null;
   kind?: "bundle";
   includes?: { productId: string; title: string }[];
+  aisle?: string | null;
 };
 
 export function ProductBuy({ listing }: { listing: ProductListing }) {
@@ -52,7 +54,9 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
     listing.checkedBy && listing.checkedOn && listing.checkedNote
       ? { by: listing.checkedBy, on: listing.checkedOn, note: listing.checkedNote }
       : null;
-  const notes = Boolean(listing.shipsFrom || listing.deliveryTime || listing.whyWePicked || listing.whyItCosts || check);
+  const notes = Boolean(listing.shipsFrom || listing.deliveryTime || listing.whyItCosts || check);
+  const world = nightWorldForListing(listing);
+  const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
 
   async function checkout(event: FormEvent) {
     event.preventDefault();
@@ -116,6 +120,12 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
             <p className="mt-3 text-sm text-muted-foreground">One price for the group. The supplier ships the pieces together.</p>
           </div>
         ) : null}
+        {listing.whyWePicked ? (
+          <aside className="earned-card mt-6 max-w-xl" style={worldStyle}>
+            <h2 className="text-xl">Why it earned its place</h2>
+            <p className="mt-2 whitespace-pre-wrap text-base leading-relaxed">{listing.whyWePicked}</p>
+          </aside>
+        ) : null}
         {notes ? (
           <dl className="mt-6 grid gap-3 text-base">
             {listing.shipsFrom ? (
@@ -128,12 +138,6 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
               <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
                 <dt className="text-sm font-medium text-muted-foreground">Delivery time</dt>
                 <dd className="mt-1">{listing.deliveryTime}</dd>
-              </div>
-            ) : null}
-            {listing.whyWePicked ? (
-              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
-                <dt className="text-sm font-medium text-muted-foreground">Why we picked it</dt>
-                <dd className="mt-1 whitespace-pre-wrap">{listing.whyWePicked}</dd>
               </div>
             ) : null}
             {listing.whyItCosts ? (
@@ -198,7 +202,7 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
         <CheckoutPolicies />
       </form>
       </div>
-      <div className="order-2 lg:order-1">
+      <div className="order-2 lg:order-1" data-world={world?.slug} style={worldStyle}>
         <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 50vw, 100vw" priority />
       </div>
     </div>

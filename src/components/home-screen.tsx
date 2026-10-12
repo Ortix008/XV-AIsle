@@ -8,6 +8,7 @@ import { ShopFooter } from "@/components/shop-footer";
 import { StoreHeader } from "@/components/store-header";
 import { botIcon } from "@/components/bot-mark";
 import { DepartmentGrid } from "@/components/department-grid";
+import { NightStalls } from "@/components/night-stalls";
 import { ShopGrid } from "@/components/shop-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,15 +67,15 @@ export function JoinScreen() {
             <div className="relative">
               <div className="hero-glow" aria-hidden />
               <div className="relative z-[1]">
-              <p className="eyebrow">Curated goods · Picked, not piled</p>
+              <p className="eyebrow">Night Boutique</p>
               <h1 className="mt-5 text-[3.25rem] leading-[0.95] font-bold tracking-[-0.045em] sm:text-7xl lg:text-[5.5rem]">
                 Goods that
                 <br />
                 earn their <span className="text-primary">place.</span>
               </h1>
               <p className="mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                A tight edit of home, kitchen, and everyday goods. Every product page tells you where it ships from, how
-                long it takes, and why we picked it.
+                A night market of home, kitchen, and everyday goods. Every product page tells you where it ships from,
+                how long it takes, and, when we wrote one, why it earned its place.
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <Link href="/shop" className="pill pill-primary max-[899px]:flex-1">
@@ -102,11 +103,19 @@ export function JoinScreen() {
         <section id="aisles" className="scroll-mt-24">
           <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]">
             <Reveal className="mb-10 flex items-end justify-between gap-5">
-              <h2 className="text-4xl sm:text-5xl lg:text-[52px]">The aisles</h2>
+              <div>
+                <p className="eyebrow">Night Boutique</p>
+                <h2 className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">Four stalls</h2>
+                <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">
+                  Each stall has its own lamp. The line under the name is what that stall actually holds.
+                </p>
+              </div>
               <Link href="/shop" className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary">
                 View all →
               </Link>
             </Reveal>
+            <NightStalls />
+            <h3 className="mt-16 mb-8 text-3xl sm:text-4xl">The rest of the floor</h3>
             <DepartmentGrid />
           </div>
         </section>
