@@ -11,6 +11,7 @@ import { isStripeCheckoutUrl } from "@/lib/checkout-url";
 import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
 import { nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
+import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
 export type ProductListing = {
   productId: string;
@@ -54,7 +55,7 @@ export function ProductBuy({ listing, returnNote }: { listing: ProductListing; r
     listing.checkedBy && listing.checkedOn && listing.checkedNote
       ? { by: listing.checkedBy, on: listing.checkedOn, note: listing.checkedNote }
       : null;
-  const notes = Boolean(listing.shipsFrom || listing.deliveryTime || listing.whyItCosts || check);
+  const notes = Boolean(listing.whyItCosts || check);
   const world = nightWorldForListing(listing);
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
 
@@ -105,7 +106,6 @@ export function ProductBuy({ listing, returnNote }: { listing: ProductListing; r
           {listing.shelf === "small" ? " This is a small business." : ""}
         </p>
         <p className="mt-2 text-base text-muted-foreground">Shared by an independent reseller. You pay on xvaisle.com.</p>
-        <p className="mt-4 max-w-xl text-base leading-relaxed">{returnNote}</p>
         {listing.kind === "bundle" && listing.includes && listing.includes.length > 0 ? (
           <div className="mt-6 max-w-xl rounded-2xl border border-border bg-secondary px-5 py-4">
             <p className="text-sm font-medium text-muted-foreground">In this bundle</p>
@@ -129,18 +129,6 @@ export function ProductBuy({ listing, returnNote }: { listing: ProductListing; r
         ) : null}
         {notes ? (
           <dl className="mt-6 grid gap-3 text-base">
-            {listing.shipsFrom ? (
-              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
-                <dt className="text-sm font-medium text-muted-foreground">Ships from</dt>
-                <dd className="mt-1">{listing.shipsFrom}</dd>
-              </div>
-            ) : null}
-            {listing.deliveryTime ? (
-              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
-                <dt className="text-sm font-medium text-muted-foreground">Delivery time</dt>
-                <dd className="mt-1">{listing.deliveryTime}</dd>
-              </div>
-            ) : null}
             {listing.whyItCosts ? (
               <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
                 <dt className="text-sm font-medium text-muted-foreground">Why it costs this</dt>
@@ -203,8 +191,35 @@ export function ProductBuy({ listing, returnNote }: { listing: ProductListing; r
         <CheckoutPolicies />
       </form>
       </div>
-      <div className="product-stage order-2 lg:order-1" data-world={world?.slug} style={worldStyle}>
-        <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 50vw, 100vw" priority />
+      <div className="order-2 flex flex-col gap-4 lg:order-1">
+        <div className="product-stage" data-world={world?.slug} style={worldStyle}>
+          <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 50vw, 100vw" priority />
+        </div>
+        <section className="rounded-2xl border border-border bg-card px-5 py-4">
+          <h2 className="text-lg">Shipping & returns</h2>
+          <dl className="mt-3 space-y-3 text-base">
+            {listing.shipsFrom ? (
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">Ships from</dt>
+                <dd className="mt-1">{listing.shipsFrom}</dd>
+              </div>
+            ) : null}
+            {listing.deliveryTime ? (
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">Delivery</dt>
+                <dd className="mt-1">{listing.deliveryTime}</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt className="text-sm font-medium text-muted-foreground">Returns</dt>
+              <dd className="mt-1">You can start a return within {RETURN_WINDOW_DAYS} days of delivery.</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-muted-foreground">Return address</dt>
+              <dd className="mt-1">{returnNote}</dd>
+            </div>
+          </dl>
+        </section>
       </div>
     </div>
   );
