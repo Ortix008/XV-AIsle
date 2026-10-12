@@ -1,3 +1,4 @@
+import { compareAtRejection } from "@/lib/honest-price";
 import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
 import { settleCheckoutSession } from "@/lib/server/ledger";
 import { attachStripeSession, createPendingOrder, getOrder } from "@/lib/server/store";
@@ -44,6 +45,8 @@ export async function POST(request: Request) {
     country?: string;
   } | null;
   if (!body?.productId) return Response.json({ error: "Choose a product." }, { status: 400 });
+  const compareAt = compareAtRejection(body);
+  if (compareAt) return Response.json({ error: compareAt }, { status: 400 });
   const created = createPendingOrder({
     productId: body.productId,
     qty: body.qty ?? 1,

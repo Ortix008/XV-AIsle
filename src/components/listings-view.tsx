@@ -7,13 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { getProduct } from "@/lib/catalog";
+import { useAccount } from "@/lib/account-store";
 import { useDesk } from "@/lib/desk-store";
 import { publishListing } from "@/lib/store-client";
 import { listingText } from "@/lib/engine";
+import { DELIVERY_WARN_BUSINESS_DAYS, deliveryExceedsWindow } from "@/lib/honest-price";
 import { costStack, landedCost, money, pct } from "@/lib/money";
 import type { Listing, PriceId } from "@/lib/types";
 import { cn } from "cn";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 export function ListingsView() {
   const { state, select, updateListing, setListingStatus, rebuildListing } = useDesk();
@@ -122,6 +124,8 @@ function ListingEditor({
   const [shipsFrom, setShipsFrom] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
   const [whyWePicked, setWhyWePicked] = useState("");
+  const [brand, setBrand] = useState("");
+  const [whyItCosts, setWhyItCosts] = useState("");
   const [quote, setQuote] = useState<{
     priceCents: number;
     supplierCostCents: number;
@@ -210,6 +214,8 @@ function ListingEditor({
       shipsFrom,
       deliveryTime,
       whyWePicked,
+      brand,
+      whyItCosts,
       ...moneyFields,
     }).then((message) => {
       setStorePending(false);
@@ -223,6 +229,7 @@ function ListingEditor({
   const activeSupplier = supplierId
     ? product.suppliers.find((item) => item.id === supplierId)
     : null;
+  const longDelivery = deliveryExceedsWindow({ shipDaysMax: supplier.shipDaysMax, deliveryTime });
 
   return (
     <div className="flex flex-col gap-6 px-4 py-5 sm:px-6">
@@ -368,6 +375,31 @@ function ListingEditor({
             onChange={(event) => setDeliveryTime(event.target.value)}
           />
         </label>
+        {longDelivery ? (
+          <p className="text-sm text-late">
+            This delivery is longer than {DELIVERY_WARN_BUSINESS_DAYS} business days. Confirm the window before the page
+            stays up.
+          </p>
+        ) : null}
+        <label className="flex flex-col gap-1 text-sm">
+          Brand
+          <Input
+            value={brand}
+            maxLength={80}
+            placeholder="Optional"
+            onChange={(event) => setBrand(event.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Why it costs this
+          <Textarea
+            value={whyItCosts}
+            maxLength={240}
+            rows={3}
+            placeholder="Optional. One honest line about the price."
+            onChange={(event) => setWhyItCosts(event.target.value)}
+          />
+        </label>
         <label className="flex flex-col gap-1 text-sm">
           Why we picked it
           <Textarea
@@ -378,6 +410,7 @@ function ListingEditor({
           />
         </label>
       </section>
+      <CheckNote productId={listing.productId} />
 
       <label className="block">
         <span className="text-sm font-medium">Description</span>
@@ -547,6 +580,92 @@ function ListingEditor({
         </label>
       </div>
     </div>
+  );
+}
+
+function CheckNote({ productId }: { productId: string }) {
+  const { account } = useAccount();
+  const [checkedBy, setCheckedBy] = useState("");
+  const [checkedOn, setCheckedOn] = useState("");
+  const [checkedNote, setCheckedNote] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const admin = account?.role === "admin" && account.emailVerified === true;
+  useEffect(() => {
+    if (!admin) return;
+    let ignore = false;
+    fetch(`/api/store/listings/${encodeURIComponent(productId)}/check`)
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = (await response.json()) as { checkedBy?: string; checkedOn?: string; checkedNote?: string };
+        if (ignore) return;
+        setCheckedBy(data.checkedBy ?? "");
+        setCheckedOn(data.checkedOn ?? "");
+        setCheckedNote(data.checkedNote ?? "");
+      })
+      .catch(() => undefined);
+    return () => {
+      ignore = true;
+    };
+  }, [admin, productId]);
+  if (account?.role !== "admin") return null;
+  if (!admin) {
+    return (
+      <p className="max-w-xl text-sm text-muted-foreground">Verify your email before you can record a Checked by XV note.</p>
+    );
+  }
+  function save(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setMessage(null);
+    void fetch(`/api/store/listings/${encodeURIComponent(productId)}/check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ checkedBy, checkedOn, checkedNote }),
+    })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        setPending(false);
+        setMessage(
+          response.ok
+            ? "Check saved. The product page shows it only when the name, date, and note are all set."
+            : (data?.error ?? "The check did not save."),
+        );
+      })
+      .catch(() => {
+        setPending(false);
+        setMessage("The check did not save.");
+      });
+  }
+  return (
+    <form onSubmit={save} className="flex max-w-xl flex-col gap-3 border-t pt-4">
+      <h3 className="text-sm font-medium">Checked by XV</h3>
+      <p className="text-pretty text-xs text-muted-foreground">
+        An operator writes who looked, the date, and what we noticed. Shoppers see the note only when all three are set.
+        Leave them blank to hide it.
+      </p>
+      <label className="flex flex-col gap-1 text-sm">
+        Who checked it
+        <Input value={checkedBy} maxLength={80} onChange={(event) => setCheckedBy(event.target.value)} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Date
+        <Input type="date" value={checkedOn} onChange={(event) => setCheckedOn(event.target.value)} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        What we noticed
+        <Textarea
+          value={checkedNote}
+          maxLength={400}
+          rows={3}
+          onChange={(event) => setCheckedNote(event.target.value)}
+        />
+      </label>
+      {message ? <p className="text-sm">{message}</p> : null}
+      <Button type="submit" variant="outline" disabled={pending} className="w-fit">
+        {pending ? "Saving…" : "Save the check"}
+      </Button>
+    </form>
   );
 }
 

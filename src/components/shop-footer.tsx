@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
+import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
 const columns = [
@@ -25,6 +26,7 @@ const columns = [
     links: [
       { href: "/shop/reseller", label: "Reseller program" },
       { href: "/shop/reseller/terms", label: "Reseller terms" },
+      { href: HOW_WE_CHECK_HREF, label: "How we check" },
       { href: "/shop/privacy", label: "Privacy" },
       { href: "/shop/terms", label: "Terms" },
     ],
@@ -41,6 +43,13 @@ export function ShopFooter() {
               <BrandMark />
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">A curated aisle for goods that earn their place.</p>
+            <p className="mt-4 max-w-xs text-sm text-muted-foreground">
+              No fake discounts, countdown timers, spin wheels, or made-up stock counts.{" "}
+              <Link href={HOW_WE_CHECK_HREF} className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+                How we check
+              </Link>
+              .
+            </p>
           </div>
           {columns.map((column) => (
             <div key={column.title}>
@@ -89,6 +98,10 @@ export function CheckoutPolicies() {
       .{" "}
       <Link href="/shop/contact" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Contact
+      </Link>
+      .{" "}
+      <Link href={HOW_WE_CHECK_HREF} className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+        How we check
       </Link>
       .
     </p>

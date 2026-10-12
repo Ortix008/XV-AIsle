@@ -184,6 +184,11 @@ export function getDb() {
   addColumn(next, "listings", "ships_from", "TEXT");
   addColumn(next, "listings", "delivery_time", "TEXT");
   addColumn(next, "listings", "why_we_picked", "TEXT");
+  addColumn(next, "listings", "brand", "TEXT");
+  addColumn(next, "listings", "why_it_costs", "TEXT");
+  addColumn(next, "listings", "checked_by", "TEXT");
+  addColumn(next, "listings", "checked_on", "TEXT");
+  addColumn(next, "listings", "checked_note", "TEXT");
   addColumn(next, "orders", "payment_intent_id", "TEXT");
   addColumn(next, "orders", "charge_id", "TEXT");
   addColumn(next, "orders", "transfer_group", "TEXT");

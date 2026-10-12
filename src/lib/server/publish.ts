@@ -25,6 +25,8 @@ export type PublishBody = {
   shipsFrom?: string | null;
   deliveryTime?: string | null;
   whyWePicked?: string | null;
+  brand?: string | null;
+  whyItCosts?: string | null;
   /** Ignored. The server uses PLATFORM_FEE_BPS. */
   feeBps?: number | null;
   /** Ignored. The server recomputes the split. */
@@ -134,6 +136,8 @@ export function publishForAccount(account: PublicAccount, input: PublishBody) {
     shipsFrom: input.shipsFrom,
     deliveryTime: input.deliveryTime,
     whyWePicked: input.whyWePicked,
+    brand: input.brand,
+    whyItCosts: input.whyItCosts,
   });
   if ("error" in result) return { status: 400 as const, error: result.error };
   return { status: 200 as const, listing: result.listing };

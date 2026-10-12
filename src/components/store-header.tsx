@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useLayoutEffect, useRef, useState } from "react";
 import { BrandMark } from "@/components/brand-mark";
+import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { cn } from "cn";
 
 const nav = [
@@ -10,6 +11,7 @@ const nav = [
   { href: "/shop/usa", label: "Made in the USA" },
   { href: "/shop/small", label: "Small business" },
   { href: "/#aisles", label: "Aisles" },
+  { href: HOW_WE_CHECK_HREF, label: "How we check" },
 ];
 
 export function StoreHeader() {

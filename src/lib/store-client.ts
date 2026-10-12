@@ -17,6 +17,8 @@ export type PublishInput = {
   shipsFrom?: string;
   deliveryTime?: string;
   whyWePicked?: string;
+  brand?: string;
+  whyItCosts?: string;
 };
 
 export async function publishListing(input: PublishInput) {
