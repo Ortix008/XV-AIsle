@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { AisleView } from "@/components/aisle-view";
+import { Reveal } from "@/components/reveal";
 import { aisleByTitle } from "@/lib/aisles";
 import { welcomeDepartments } from "@/lib/art";
 import { cn } from "cn";
@@ -15,10 +16,10 @@ export function DepartmentGrid() {
     <>
       <ul className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         {welcomeDepartments.map((dept, index) => (
-          <li key={dept.title} className={cn("reveal", index === 0 && "lg:row-span-2")}>
+          <Reveal key={dept.title} as="li" index={index % 5} className={cn(index === 0 && "lg:row-span-2")}>
             <button
               type="button"
-              className="store-card flex h-full w-full flex-col rounded-[18px] border border-border bg-secondary p-3.5 text-left"
+              className="aisle-tile flex h-full w-full flex-col rounded-[18px] border border-border bg-secondary p-3.5 text-left"
               onClick={() => setOpen(dept.title)}
             >
               <div
@@ -38,7 +39,7 @@ export function DepartmentGrid() {
               <h3 className="mt-4 px-1.5 text-2xl font-semibold tracking-[-0.02em]">{dept.title}</h3>
               <p className="mt-1 px-1.5 pb-1.5 text-sm text-muted-foreground">{dept.line}</p>
             </button>
-          </li>
+          </Reveal>
         ))}
       </ul>
       {aisle ? <AisleView aisle={aisle} onClose={() => setOpen(null)} /> : null}

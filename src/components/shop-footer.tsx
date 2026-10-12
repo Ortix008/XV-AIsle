@@ -49,7 +49,7 @@ export function ShopFooter() {
               <ul className="mt-4 space-y-2.5">
                 {column.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="text-sm text-[var(--link)] hover:text-foreground">
+                    <Link href={link.href} className="link-slide text-sm text-[var(--link)] hover:text-foreground">
                       {link.label}
                     </Link>
                   </li>

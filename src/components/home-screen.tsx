@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { Reveal } from "@/components/reveal";
 import { ShopFooter } from "@/components/shop-footer";
 import { StoreHeader } from "@/components/store-header";
 import { botIcon } from "@/components/bot-mark";
@@ -60,10 +61,12 @@ export function JoinScreen() {
         Skip to content
       </a>
       <StoreHeader />
-      <main id="home-main">
+      <main id="home-main" className="page-enter">
         <section className="hero-sweep">
           <div className="relative z-[1] mx-auto grid max-w-[1280px] items-center gap-10 px-5 py-14 sm:px-10 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:py-[110px]">
-            <div className="reveal">
+            <div className="relative">
+              <div className="hero-glow" aria-hidden />
+              <div className="relative z-[1]">
               <p className="eyebrow">Curated goods · Picked, not piled</p>
               <h1 className="mt-5 text-[3.25rem] leading-[0.95] font-bold tracking-[-0.045em] sm:text-7xl lg:text-[5.5rem]">
                 Goods that
@@ -82,8 +85,9 @@ export function JoinScreen() {
                   {mode === "join" ? "Open an account" : "Sign in"}
                 </a>
               </div>
+              </div>
             </div>
-            <div className="media-well reveal relative aspect-[4/5] overflow-hidden rounded-[14px] border border-border">
+            <div className="media-well relative z-[1] aspect-[4/5] overflow-hidden rounded-[14px] border border-border">
               <Image
                 src="/art/market-hero.png"
                 alt="A person seated at a wooden table with a bowl of salad and a glass of water."
@@ -98,12 +102,12 @@ export function JoinScreen() {
 
         <section id="aisles" className="scroll-mt-24">
           <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]">
-            <div className="reveal mb-10 flex items-end justify-between gap-5">
+            <Reveal className="mb-10 flex items-end justify-between gap-5">
               <h2 className="text-4xl sm:text-5xl lg:text-[52px]">The aisles</h2>
-              <Link href="/shop" className="shrink-0 text-sm text-muted-foreground hover:text-primary">
+              <Link href="/shop" className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary">
                 View all →
               </Link>
-            </div>
+            </Reveal>
             <DepartmentGrid />
           </div>
         </section>
@@ -123,40 +127,42 @@ export function JoinScreen() {
 
         <section>
           <div className="mx-auto grid max-w-[1280px] gap-5 px-5 py-16 sm:px-10 sm:py-[72px] lg:grid-cols-3 lg:py-[110px]">
-            <article className="reveal rounded-2xl border border-border bg-secondary p-7">
+            <Reveal as="article" index={0} className="rounded-2xl border border-border bg-secondary p-7">
               <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
               <h2 className="text-lg">Open product info</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Ships from, delivery time, and why we picked it, on every page that has those facts.
               </p>
-            </article>
-            <article className="reveal rounded-2xl border border-border bg-secondary p-7">
+            </Reveal>
+            <Reveal as="article" index={1} className="rounded-2xl border border-border bg-secondary p-7">
               <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
               <h2 className="text-lg">{RETURN_WINDOW_DAYS}-day returns</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Changed your mind? Start a return within {RETURN_WINDOW_DAYS} days of delivery.
               </p>
-            </article>
-            <article className="reveal rounded-2xl border border-border bg-secondary p-7">
+            </Reveal>
+            <Reveal as="article" index={2} className="rounded-2xl border border-border bg-secondary p-7">
               <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
               <h2 className="text-lg">Secure checkout</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Payments handled by Stripe. Questions answered by a real person.
               </p>
-            </article>
+            </Reveal>
           </div>
         </section>
 
         {mode === "join" ? (
           <section className="border-t border-border">
             <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 lg:py-24">
+              <Reveal>
               <h2 className="text-4xl sm:text-5xl">Two ways in</h2>
               <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
                 Share your shop link anywhere. Buyers pay on xvaisle.com. Payouts go through Stripe Connect, to a bank
                 account you add there.
               </p>
+              </Reveal>
               <div className="mt-10 grid gap-5 md:grid-cols-2">
-                <article className="rounded-2xl border border-border bg-card p-7">
+                <Reveal as="article" index={0} className="rounded-2xl border border-border bg-card p-7">
                   <p className="font-heading text-sm text-primary">01</p>
                   <h3 className="mt-2 text-2xl">Sell</h3>
                   <p className="mt-3 text-base leading-relaxed text-muted-foreground">
@@ -170,8 +176,8 @@ export function JoinScreen() {
                     <li>Add an approved product to your shop and set a price inside the range the platform set.</li>
                     <li>Share your shop link anywhere. The supplier ships the order. Buyers pay on xvaisle.com.</li>
                   </ol>
-                </article>
-                <article className="rounded-2xl border border-border bg-card p-7">
+                </Reveal>
+                <Reveal as="article" index={1} className="rounded-2xl border border-border bg-card p-7">
                   <p className="font-heading text-sm text-primary">02</p>
                   <h3 className="mt-2 text-2xl">Supply</h3>
                   <p className="mt-3 text-base leading-relaxed text-muted-foreground">
@@ -182,7 +188,7 @@ export function JoinScreen() {
                     <li>Submit the product, the cost, the shipping, and a photo.</li>
                     <li>Wait for review. Only an approved product can appear in a reseller shop.</li>
                   </ol>
-                </article>
+                </Reveal>
               </div>
             </div>
           </section>
@@ -190,17 +196,19 @@ export function JoinScreen() {
 
         <section className="border-t border-border">
           <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10">
+            <Reveal>
             <h2 className="text-4xl sm:text-5xl">SI Team</h2>
             <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
               These are AI tools, not people. Signal finds a product people already want and a supplier in the US. Draft
               writes the page, Harbor watches the order, and Cast drafts a post you can copy. You still say yes. Nothing
               is posted for you.
             </p>
+            </Reveal>
             <ul className="mt-8 grid gap-5 sm:grid-cols-2">
-              {bots.map((member) => {
+              {bots.map((member, index) => {
                 const Icon = botIcon(member.id);
                 return (
-                  <li key={member.id} className="rounded-2xl border border-border bg-card p-6">
+                  <Reveal key={member.id} as="li" index={index % 5} className="rounded-2xl border border-border bg-card p-6">
                     <div className="flex items-center gap-3">
                       <span className="grid size-12 shrink-0 place-items-center rounded-xl border border-border bg-secondary">
                         <Icon aria-hidden className="size-6" />
@@ -214,7 +222,7 @@ export function JoinScreen() {
                     </div>
                     <p className="mt-4 text-base leading-relaxed">{member.does}</p>
                     <p className="mt-1 text-base leading-relaxed text-muted-foreground">{member.job}</p>
-                  </li>
+                  </Reveal>
                 );
               })}
             </ul>
@@ -231,30 +239,30 @@ export function JoinScreen() {
               className="object-cover object-center"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/82 via-black/55 to-black/30" />
-            <div className="relative z-10 flex min-h-[360px] flex-col justify-end px-5 py-12 sm:px-10">
+            <Reveal className="relative z-10 flex min-h-[360px] flex-col justify-end px-5 py-12 sm:px-10">
               <h2 className="text-4xl text-white sm:text-5xl">Who ships</h2>
               <p className="mt-3 max-w-xl text-base leading-relaxed text-white/90">
                 A neighborhood shop or a national floor packs the order. You do not hold the box.
               </p>
-            </div>
+            </Reveal>
           </div>
           <ul className="mx-auto grid max-w-[1280px] gap-5 px-5 py-8 sm:px-10 md:grid-cols-2">
-            {welcomeReach.map((place) => (
-              <li key={place.title} className="store-card overflow-hidden rounded-2xl border border-border bg-card">
+            {welcomeReach.map((place, index) => (
+              <Reveal key={place.title} as="li" index={index} className="product-card overflow-hidden rounded-2xl border border-border bg-card">
                 <div className="relative aspect-[16/10]">
-                  <Image src={place.src} alt="" fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
+                  <Image src={place.src} alt="" fill sizes="(min-width: 768px) 50vw, 100vw" className="media-zoom object-cover" />
                 </div>
                 <div className="px-5 py-4">
                   <p className="font-heading text-lg">{place.title}</p>
                   <p className="mt-1 text-pretty text-sm text-muted-foreground">{place.line}</p>
                 </div>
-              </li>
+              </Reveal>
             ))}
           </ul>
         </section>
 
         <section id="account" className="scroll-mt-24 px-5 py-16 sm:px-10 lg:py-24">
-          <div className="mx-auto grid max-w-[1280px] gap-8 rounded-[18px] border border-border bg-card p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:p-10">
+          <Reveal className="mx-auto grid max-w-[1280px] gap-8 rounded-[18px] border border-border bg-card p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:p-10">
             <div>
               <h2 className="text-4xl sm:text-5xl">{mode === "join" ? "Open an account" : "Sign in"}</h2>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
@@ -354,7 +362,7 @@ export function JoinScreen() {
                 {mode === "join" ? "I already have an account" : "Create an account"}
               </button>
             </form>
-          </div>
+          </Reveal>
         </section>
       </main>
       <ShopFooter />

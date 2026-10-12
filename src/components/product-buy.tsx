@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, type FormEvent } from "react";
+import { useReveal } from "@/components/reveal";
 import { CheckoutPolicies } from "@/components/shop-footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ export type ProductListing = {
 };
 
 export function ProductBuy({ listing }: { listing: ProductListing }) {
+  const formReveal = useReveal<HTMLFormElement>(1);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [qty, setQty] = useState(1);
@@ -107,7 +109,7 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
           </dl>
         ) : null}
       </div>
-      <form onSubmit={checkout} className="order-3 flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:p-6">
+      <form {...formReveal} onSubmit={checkout} className="order-3 flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:p-6">
         <h2 className="text-xl">Checkout</h2>
         <label className="flex flex-col gap-1 text-base">
           Quantity

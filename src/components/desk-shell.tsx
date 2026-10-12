@@ -232,7 +232,9 @@ export function DeskShell({ children }: { children: ReactNode }) {
           </button>
         </nav>
         <main id="desk-main" className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain lg:overflow-hidden">
-          {children}
+          <div key={pathname} className="page-enter h-full min-h-0">
+            {children}
+          </div>
         </main>
       </div>
     </div>

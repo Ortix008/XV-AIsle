@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Reveal } from "@/components/reveal";
 import { money } from "@/lib/money";
 
 export type ShopCard = {
@@ -58,26 +59,26 @@ export function ShopGrid({
 
   return (
     <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]">
-      <div className="reveal mb-10 flex items-end justify-between gap-5">
+      <Reveal className="mb-10 flex items-end justify-between gap-5">
         <div>
           <p className="eyebrow">{kicker}</p>
           <Heading className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">{title}</Heading>
           <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">{lede}</p>
         </div>
         {seeAllHref ? (
-          <Link href={seeAllHref} className="shrink-0 text-sm text-muted-foreground hover:text-primary">
+          <Link href={seeAllHref} className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary">
             Shop all →
           </Link>
         ) : null}
-      </div>
+      </Reveal>
       {visible === null ? <p className="text-sm text-muted-foreground">Opening the store…</p> : null}
       {visible?.length === 0 ? <p className="text-sm text-muted-foreground">{empty}</p> : null}
       <ul className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-        {visible?.map((listing) => (
-          <li key={listing.productId} className="reveal">
+        {visible?.map((listing, index) => (
+          <Reveal key={listing.productId} as="li" index={index % 5}>
             <Link
               href={`/shop/${listing.productId}`}
-              className="store-card block rounded-2xl border border-border bg-card p-2 sm:p-3"
+              className="product-card block rounded-2xl border border-border bg-card p-2 sm:p-3"
             >
               <div className="media-well relative aspect-[4/5] overflow-hidden rounded-[14px] border border-border">
                 {listing.image ? (
@@ -99,7 +100,7 @@ export function ShopGrid({
                 {listing.shipDaysMax} days
               </p>
             </Link>
-          </li>
+          </Reveal>
         ))}
       </ul>
     </div>
