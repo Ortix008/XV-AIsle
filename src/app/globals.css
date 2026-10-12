@@ -784,7 +784,7 @@ html.motion [data-reveal].is-in {
 
 .auth-plate-media {
   object-fit: cover;
-  filter: saturate(1.08) contrast(1.04);
+  filter: saturate(1.35) contrast(1.12) brightness(1.45);
 }
 
 video.auth-plate-media {
@@ -832,8 +832,8 @@ video.auth-plate-media {
 
 .auth-scrim {
   background:
-    radial-gradient(ellipse 62% 64% at 50% 46%, rgba(7, 8, 10, 0.62), rgba(7, 8, 10, 0.28) 58%, rgba(7, 8, 10, 0.7) 100%),
-    linear-gradient(180deg, rgba(7, 8, 10, 0.4), rgba(7, 8, 10, 0.12) 30%, rgba(7, 8, 10, 0.72));
+    radial-gradient(ellipse 68% 70% at 50% 48%, rgba(7, 8, 10, 0.5), rgba(7, 8, 10, 0.18) 55%, rgba(7, 8, 10, 0.62) 100%),
+    linear-gradient(180deg, rgba(7, 8, 10, 0.28), rgba(7, 8, 10, 0.08) 32%, rgba(7, 8, 10, 0.55));
 }
 
 .auth-stage[data-paused="true"] .auth-wash,
@@ -1019,8 +1019,8 @@ video.auth-plate-media {
 
 .hero-aisle-photo {
   object-fit: cover;
-  object-position: center 46%;
-  filter: saturate(1.1) contrast(1.05);
+  object-position: center 58%;
+  filter: saturate(1.4) contrast(1.16) brightness(1.6);
 }
 
 .hero-aisle-grade,
@@ -1034,14 +1034,14 @@ video.auth-plate-media {
 
 .hero-aisle-grade {
   background:
-    radial-gradient(ellipse at 52% 42%, rgba(61, 220, 132, 0.14), transparent 48%),
-    linear-gradient(180deg, rgba(7, 8, 10, 0.22), transparent 30%, rgba(7, 8, 10, 0.45));
+    radial-gradient(ellipse at 58% 48%, rgba(61, 220, 132, 0.16), transparent 52%),
+    linear-gradient(180deg, rgba(7, 8, 10, 0.16), transparent 28%, rgba(7, 8, 10, 0.28));
 }
 
 .hero-aisle-scrim {
   background:
-    linear-gradient(90deg, rgba(7, 8, 10, 0.9) 0%, rgba(7, 8, 10, 0.84) 30%, rgba(7, 8, 10, 0.38) 58%, rgba(7, 8, 10, 0.16) 100%),
-    linear-gradient(180deg, rgba(7, 8, 10, 0.28), transparent 24%, rgba(7, 8, 10, 0.5));
+    linear-gradient(90deg, rgba(7, 8, 10, 0.86) 0%, rgba(7, 8, 10, 0.55) 32%, rgba(7, 8, 10, 0.12) 62%, transparent 100%),
+    linear-gradient(180deg, rgba(7, 8, 10, 0.16), transparent 20%, rgba(7, 8, 10, 0.32));
 }
 
 .xv-flow {

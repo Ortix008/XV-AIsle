@@ -68,7 +68,7 @@ export function JoinScreen() {
           <div className="hero-aisle-stage" aria-hidden>
             <AisleParallax>
               <Image
-                src="/brand/hero-aisle-glow.webp"
+                src="/brand/hero-aisle-pedestals.webp"
                 alt=""
                 fill
                 priority
