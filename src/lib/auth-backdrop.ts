@@ -12,7 +12,7 @@
  * A screen can also pass `media` to `<AuthBackdrop />`. That prop wins over this config.
  * The xvaisle flow, motes, and grain stay. Only the plate in the slot changes.
  *
- * The default plate is the aisle photo from the earlier hero, graded dark in CSS.
+ * The default plate is the dark green aisle (`/brand/hero-aisle-glow.webp`).
  * Login uses a lighter xvaisle flow on top of that plate.
  */
 
@@ -31,7 +31,7 @@ export type AuthBackdropMedia = AuthBackdropImage | AuthBackdropVideo | null;
 
 export const AUTH_BACKDROP_MEDIA: AuthBackdropMedia = {
   kind: "image",
-  src: "/brand/hero-aisle-pedestals.webp",
+  src: "/brand/hero-aisle-glow.webp",
 };
 
 /** Drawn motes. The stylesheet hides every mote from the 7th onward below 768px. */

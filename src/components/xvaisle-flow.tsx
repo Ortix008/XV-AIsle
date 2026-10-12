@@ -110,17 +110,6 @@ export function XvAisleFlow({ density = "full" }: { density?: "full" | "light" }
       ctx.fillStyle = bloom;
       ctx.fillRect(0, 0, width, height);
 
-      ctx.strokeStyle = "rgba(61, 220, 132, 0.28)";
-      ctx.lineWidth = 1.25;
-      ctx.beginPath();
-      ctx.moveTo(width * 0.5 + shiftX * 0.2, height * 0.3);
-      ctx.lineTo(width * 0.06, height * 0.94);
-      ctx.moveTo(width * 0.5 + shiftX * 0.2, height * 0.3);
-      ctx.lineTo(width * 0.94, height * 0.94);
-      ctx.moveTo(width * 0.34, height * 0.42);
-      ctx.lineTo(width * 0.66, height * 0.42);
-      ctx.stroke();
-
       const runs = RUNS.slice(0, count)
         .map((run, index) => ({ run, index }))
         .sort((a, b) => a.run.depth - b.run.depth);
@@ -131,21 +120,11 @@ export function XvAisleFlow({ density = "full" }: { density?: "full" | "light" }
         const [nx, ny] = along(run, phase);
         const x = nx * width + shiftX * depthShift;
         const y = ny * height + shiftY * depthShift;
-        const shelfX = run.shelf[0] * width + shiftX * depthShift;
-        const shelfY = run.shelf[1] * height + shiftY * depthShift;
         const midX = run.reseller[0] * width + shiftX * depthShift;
         const midY = run.reseller[1] * height + shiftY * depthShift;
         const doorX = run.door[0] * width + shiftX * depthShift;
         const doorY = run.door[1] * height + shiftY * depthShift;
         const scale = (density === "light" ? 0.7 : 0.85) * (0.55 + run.depth);
-
-        ctx.strokeStyle = "rgba(61, 220, 132, 0.16)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(shelfX, shelfY);
-        ctx.lineTo(midX, midY);
-        ctx.lineTo(doorX, doorY);
-        ctx.stroke();
 
         const history = trails[index] ?? [];
         if (!reduced && !paused) {

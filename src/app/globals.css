@@ -784,7 +784,7 @@ html.motion [data-reveal].is-in {
 
 .auth-plate-media {
   object-fit: cover;
-  filter: brightness(0.32) saturate(0.58) contrast(1.08);
+  filter: saturate(1.08) contrast(1.04);
 }
 
 video.auth-plate-media {
@@ -832,8 +832,8 @@ video.auth-plate-media {
 
 .auth-scrim {
   background:
-    radial-gradient(ellipse 58% 62% at 50% 46%, rgba(7, 8, 10, 0.78), rgba(7, 8, 10, 0.42) 58%, rgba(7, 8, 10, 0.62) 100%),
-    linear-gradient(180deg, rgba(7, 8, 10, 0.42), rgba(7, 8, 10, 0.18) 28%, rgba(7, 8, 10, 0.78));
+    radial-gradient(ellipse 62% 64% at 50% 46%, rgba(7, 8, 10, 0.62), rgba(7, 8, 10, 0.28) 58%, rgba(7, 8, 10, 0.7) 100%),
+    linear-gradient(180deg, rgba(7, 8, 10, 0.4), rgba(7, 8, 10, 0.12) 30%, rgba(7, 8, 10, 0.72));
 }
 
 .auth-stage[data-paused="true"] .auth-wash,
@@ -1019,8 +1019,8 @@ video.auth-plate-media {
 
 .hero-aisle-photo {
   object-fit: cover;
-  object-position: center 42%;
-  filter: brightness(0.34) saturate(0.72) contrast(1.08);
+  object-position: center 46%;
+  filter: saturate(1.1) contrast(1.05);
 }
 
 .hero-aisle-grade,
@@ -1034,15 +1034,14 @@ video.auth-plate-media {
 
 .hero-aisle-grade {
   background:
-    radial-gradient(ellipse at 50% 32%, rgba(61, 220, 132, 0.2), transparent 46%),
-    radial-gradient(ellipse at 78% 70%, rgba(231, 194, 122, 0.08), transparent 36%),
-    linear-gradient(180deg, rgba(7, 8, 10, 0.28), rgba(7, 8, 10, 0.18) 40%, rgba(7, 8, 10, 0.62));
+    radial-gradient(ellipse at 52% 42%, rgba(61, 220, 132, 0.14), transparent 48%),
+    linear-gradient(180deg, rgba(7, 8, 10, 0.22), transparent 30%, rgba(7, 8, 10, 0.45));
 }
 
 .hero-aisle-scrim {
   background:
-    linear-gradient(90deg, rgba(7, 8, 10, 0.9) 0%, rgba(7, 8, 10, 0.78) 36%, rgba(7, 8, 10, 0.4) 70%, rgba(7, 8, 10, 0.62) 100%),
-    radial-gradient(ellipse at 50% 45%, transparent 28%, rgba(7, 8, 10, 0.5) 100%);
+    linear-gradient(90deg, rgba(7, 8, 10, 0.9) 0%, rgba(7, 8, 10, 0.84) 30%, rgba(7, 8, 10, 0.38) 58%, rgba(7, 8, 10, 0.16) 100%),
+    linear-gradient(180deg, rgba(7, 8, 10, 0.28), transparent 24%, rgba(7, 8, 10, 0.5));
 }
 
 .xv-flow {
