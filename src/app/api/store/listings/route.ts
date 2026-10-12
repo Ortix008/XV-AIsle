@@ -1,27 +1,10 @@
 import { cookies } from "next/headers";
 import { accountFromToken } from "@/lib/server/accounts";
+import { publicListing, resellerListing } from "@/lib/server/order-view";
 import { publishForAccount } from "@/lib/server/publish";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { ensureStarterShelf, isSampleListing, visibleOnShop } from "@/lib/server/starter-shelf";
 import { listPublished } from "@/lib/server/store";
-
-function publicListing(listing: ReturnType<typeof listPublished>[number]) {
-  return {
-    productId: listing.productId,
-    sku: listing.sku,
-    title: listing.title,
-    description: listing.description,
-    priceCents: listing.priceCents,
-    image: listing.image,
-    supplierName: listing.supplierName,
-    supplierOrigin: listing.supplierOrigin,
-    shipDaysMin: listing.shipDaysMin,
-    shipDaysMax: listing.shipDaysMax,
-    madeInUsa: listing.madeInUsa,
-    shelf: listing.shelf,
-    sample: isSampleListing(listing),
-  };
-}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -32,7 +15,7 @@ export async function GET(request: Request) {
     madeInUsa: madeInUsa || undefined,
     shelf: shelf === "small" || shelf === "national" ? shelf : undefined,
   }).filter(visibleOnShop);
-  return Response.json({ listings: listings.map(publicListing) });
+  return Response.json({ listings: listings.map((listing) => publicListing(listing, isSampleListing(listing))) });
 }
 
 export async function POST(request: Request) {
@@ -74,6 +57,10 @@ export async function POST(request: Request) {
     catalogItemId: body.catalogItemId,
     feeBps: body.feeBps,
   });
-  if (result.status !== 200) return Response.json({ error: result.error }, { status: result.status });
-  return Response.json({ listing: result.listing });
+  if (result.status !== 200 || !result.listing) {
+    const status = result.status === 200 ? 400 : result.status;
+    const error = result.status === 200 ? "That page did not save." : result.error;
+    return Response.json({ error }, { status });
+  }
+  return Response.json({ listing: resellerListing(result.listing) });
 }

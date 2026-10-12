@@ -6,9 +6,11 @@ import { CopyButton, EmptyNote, Money, PageHeader, Tone } from "@/components/bit
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAccount } from "@/lib/account-store";
+import { addBusinessDays, businessDayStamp } from "@/lib/business-days";
 import { prettyDate, todayISO } from "@/lib/dates";
 import { useDesk } from "@/lib/desk-store";
 import { money, round2 } from "@/lib/money";
+import { BLOCKED_TEST_ORDER_NUMBER } from "@/lib/order-flags";
 import type { Order } from "@/lib/types";
 import { cn } from "cn";
 
@@ -34,7 +36,62 @@ const liveStatus: Record<string, string> = {
   accepted: "Supplier accepted",
   supplier_error: "Supplier did not accept",
   fulfilling: "Sending to the supplier",
+  needs_placing: "Paid, place with supplier",
+  ordered: "Ordered with supplier",
+  sent_to_supplier: "Sent to brand",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  refunded: "Refunded",
+  test: "Test order. Do not place.",
 };
+
+type DeskStoreOrder = {
+  id: string;
+  number: string;
+  title?: string;
+  status: string;
+  supplierDetail: string | null;
+  deliveredAt: number | null;
+  payoutNote: string | null;
+  riskApproved: boolean;
+  supplierRef?: string | null;
+  supplierPaidCents?: number | null;
+  supplierOrderUrl?: string | null;
+  placingOverdue?: boolean;
+  delayFlagged?: boolean;
+  delayExpectedOn?: string | null;
+  delayNoticeSentAt?: number | null;
+  delayRefundRequestedAt?: number | null;
+  delayRefundDueAt?: number | null;
+  delayRefundedAt?: number | null;
+  trackingStale?: boolean;
+  carrier?: string | null;
+  trackingNumber?: string | null;
+};
+
+function safeHttps(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function dollarsToCents(raw: string) {
+  const trimmed = raw.trim();
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return null;
+  const [whole, frac = ""] = trimmed.split(".");
+  const cents = Number(whole) * 100 + Number((frac + "00").slice(0, 2));
+  if (!Number.isInteger(cents) || cents > 10_000_000) return null;
+  return cents;
+}
+
+function statusLabel(status: string) {
+  return liveStatus[status] ?? status;
+}
 
 function ShopperNotes() {
   const [notes, setNotes] = useState<{ id: string; name: string; email: string; message: string }[]>([]);
@@ -78,27 +135,13 @@ function holdAlertText(kind: "nearing" | "refund" | "reserve") {
 
 function StoreOrders() {
   const { account } = useAccount();
-  const [orders, setOrders] = useState<
-    {
-      id: string;
-      number: string;
-      title?: string;
-      status: string;
-      supplierDetail: string | null;
-      deliveredAt: number | null;
-      payoutNote: string | null;
-      riskApproved: boolean;
-    }[]
-  >([]);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [orders, setOrders] = useState<DeskStoreOrder[]>([]);
   const [alerts, setAlerts] = useState<{ id: string; number: string; kind: "nearing" | "refund" | "reserve" }[]>([]);
-  const [carrier, setCarrier] = useState("");
-  const [tracking, setTracking] = useState("");
 
   const load = useCallback(() => {
     fetch("/api/orders")
       .then((response) => (response.ok ? response.json() : { orders: [], alerts: [] }))
-      .then((data: { orders: typeof orders; alerts?: typeof alerts }) => {
+      .then((data: { orders: DeskStoreOrder[]; alerts?: typeof alerts }) => {
         setOrders(data.orders ?? []);
         setAlerts(data.alerts ?? []);
       })
@@ -112,22 +155,8 @@ function StoreOrders() {
     load();
   }, [load]);
 
-  async function act(id: string, action: "deliver" | "release") {
-    setActionError(null);
-    const response = await fetch(`/api/orders/${id}/${action}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: action === "deliver" ? JSON.stringify({ carrier, tracking }) : "{}",
-    });
-    const data = (await response.json().catch(() => null)) as { error?: string } | null;
-    if (!response.ok) {
-      setActionError(data?.error ?? "That order did not update.");
-      return;
-    }
-    load();
-  }
-
   if (orders.length === 0) return null;
+  const canAct = account?.role === "admin" && account.emailVerified;
   return (
     <section className="border-b px-4 py-3 sm:px-6">
       <h2 className="text-sm font-medium">From the store</h2>
@@ -143,50 +172,174 @@ function StoreOrders() {
           </ul>
         </div>
       ) : null}
-      {actionError ? <p className="mt-2 text-sm text-late">{actionError}</p> : null}
-      {account?.role === "admin" && account.emailVerified ? (
-        <div className="mt-2 flex flex-wrap gap-2">
+      <ul className="mt-2 divide-y">
+        {orders.map((order) => (
+          <StoreOrderCard key={order.id} order={order} canAct={Boolean(canAct)} onDone={load} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function StoreOrderCard({
+  order,
+  canAct,
+  onDone,
+}: {
+  order: DeskStoreOrder;
+  canAct: boolean;
+  onDone: () => void;
+}) {
+  const blocked = order.number === BLOCKED_TEST_ORDER_NUMBER || order.status === "test";
+  const flagged = Boolean(order.placingOverdue || order.delayFlagged || order.trackingStale);
+  const [supplierRef, setSupplierRef] = useState(order.supplierRef ?? "");
+  const [supplierPaid, setSupplierPaid] = useState("");
+  const [carrier, setCarrier] = useState(order.carrier ?? "");
+  const [tracking, setTracking] = useState(order.trackingNumber ?? "");
+  const [expectedOn, setExpectedOn] = useState(() => businessDayStamp(addBusinessDays(Date.now(), 7)));
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const supplierLink = safeHttps(order.supplierOrderUrl);
+
+  async function post(path: string, body: unknown) {
+    setPending(true);
+    setError(null);
+    const response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    setPending(false);
+    if (!response.ok) {
+      setError(data?.error ?? "That order did not update.");
+      return;
+    }
+    onDone();
+  }
+
+  return (
+    <li className={cn("py-3 text-sm", flagged ? "border-late" : undefined)}>
+      <span className="font-mono text-xs">{order.number}</span>
+      <span className="ml-2 font-medium">{order.title}</span>
+      <span className="mt-0.5 block text-muted-foreground">
+        {order.deliveredAt ? "Delivered · " : ""}
+        {statusLabel(order.status)}
+        {order.supplierDetail ? ` · ${order.supplierDetail}` : ""}
+      </span>
+      {order.placingOverdue ? <span className="mt-1 block text-late">Not placed for 24 hours</span> : null}
+      {order.delayFlagged ? <span className="mt-1 block text-late">Past the promised ship date</span> : null}
+      {order.trackingStale ? <span className="mt-1 block text-late">Tracking has not been updated in 3 days</span> : null}
+      {order.delayRefundRequestedAt && !order.delayRefundedAt ? (
+        <span className="mt-1 block text-late">
+          Refund chosen
+          {order.delayRefundDueAt ? `. Due by ${new Date(order.delayRefundDueAt).toLocaleDateString()}` : ""}
+        </span>
+      ) : null}
+      {order.payoutNote ? <span className="mt-0.5 block text-muted-foreground">{order.payoutNote}</span> : null}
+      {blocked ? <span className="mt-1 block text-late">Test order. Do not place this with a supplier.</span> : null}
+      {canAct && supplierLink && !blocked ? (
+        <a className="mt-2 inline-block underline underline-offset-4" href={supplierLink} target="_blank" rel="noreferrer">
+          Open supplier order
+        </a>
+      ) : null}
+      {error ? <p className="mt-2 text-late">{error}</p> : null}
+      {canAct && !blocked && order.status === "needs_placing" ? (
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <input
+            value={supplierRef}
+            onChange={(event) => setSupplierRef(event.target.value)}
+            placeholder="Modalyst order number"
+            aria-label="Supplier order number"
+            className="h-8 w-full border bg-background px-2 text-sm sm:w-52"
+          />
+          <input
+            value={supplierPaid}
+            onChange={(event) => setSupplierPaid(event.target.value)}
+            placeholder="Amount paid"
+            aria-label="Amount paid to the supplier"
+            inputMode="decimal"
+            className="h-8 w-full border bg-background px-2 text-sm sm:w-36"
+          />
+          <Button
+            type="button"
+            size="sm"
+            disabled={pending}
+            onClick={() => {
+              const supplierCostCents = dollarsToCents(supplierPaid);
+              if (supplierCostCents == null) {
+                setError("Enter the amount paid to the supplier.");
+                return;
+              }
+              void post(`/api/orders/${order.id}/placed`, { supplierRef, supplierCostCents });
+            }}
+          >
+            Mark ordered
+          </Button>
+        </div>
+      ) : null}
+      {canAct && !blocked && order.delayFlagged ? (
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <input
+            type="date"
+            value={expectedOn}
+            onChange={(event) => setExpectedOn(event.target.value)}
+            aria-label="New expected date"
+            className="h-8 w-full border bg-background px-2 text-sm sm:w-44"
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={pending}
+            onClick={() => void post(`/api/orders/${order.id}/delay`, { expectedOn })}
+          >
+            {order.delayNoticeSentAt ? "Send delay notice again" : "Send delay notice"}
+          </Button>
+        </div>
+      ) : null}
+      {canAct && !blocked && order.status !== "pending" ? (
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <input
             value={carrier}
             onChange={(event) => setCarrier(event.target.value)}
             placeholder="Carrier"
-            className="h-8 border bg-background px-2 text-sm"
+            aria-label="Carrier"
+            className="h-8 w-full border bg-background px-2 text-sm sm:w-36"
           />
           <input
             value={tracking}
             onChange={(event) => setTracking(event.target.value)}
             placeholder="Tracking number"
-            className="h-8 border bg-background px-2 text-sm"
+            aria-label="Tracking number"
+            className="h-8 w-full border bg-background px-2 text-sm sm:w-52"
           />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={pending}
+            onClick={() => void post(`/api/orders/${order.id}/ship`, { carrier, tracking })}
+          >
+            Save tracking
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={pending}
+            onClick={() => void post(`/api/orders/${order.id}/deliver`, { carrier, tracking })}
+          >
+            Mark delivered
+          </Button>
+          {!order.riskApproved ? (
+            <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => void post(`/api/orders/${order.id}/release`, {})}>
+              Approve payout
+            </Button>
+          ) : null}
         </div>
       ) : null}
-      <ul className="mt-2 divide-y">
-        {orders.map((order) => (
-          <li key={order.id} className="py-2 text-sm">
-            <span className="font-mono text-xs">{order.number}</span>
-            <span className="ml-2 font-medium">{order.title}</span>
-            <span className="mt-0.5 block text-muted-foreground">
-              {order.deliveredAt ? "Delivered · " : ""}
-              {liveStatus[order.status] ?? order.status}
-              {order.supplierDetail ? ` · ${order.supplierDetail}` : ""}
-            </span>
-            {order.payoutNote ? <span className="mt-0.5 block text-muted-foreground">{order.payoutNote}</span> : null}
-            {account?.role === "admin" && account.emailVerified && order.status !== "pending" ? (
-              <span className="mt-2 flex flex-wrap gap-2">
-                <Button type="button" size="sm" variant="outline" onClick={() => void act(order.id, "deliver")}>
-                  Mark delivered
-                </Button>
-                {!order.riskApproved ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => void act(order.id, "release")}>
-                    Approve payout
-                  </Button>
-                ) : null}
-              </span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-    </section>
+    </li>
   );
 }
 

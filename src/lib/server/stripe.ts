@@ -361,6 +361,24 @@ export async function createTransfer(input: {
   return (await stripeForm("/v1/transfers", body, input.idempotencyKey)) as { id?: string };
 }
 
+export async function createRefund(input: {
+  chargeId: string | null;
+  paymentIntentId: string | null;
+  amountCents: number;
+  idempotencyKey: string;
+}) {
+  if (!Number.isInteger(input.amountCents) || input.amountCents < 1) {
+    throw new Error("The refund amount is not valid.");
+  }
+  const body = new URLSearchParams();
+  if (input.chargeId) body.set("charge", input.chargeId);
+  else if (input.paymentIntentId) body.set("payment_intent", input.paymentIntentId);
+  else throw new Error("This order has no Stripe charge to refund.");
+  body.set("amount", String(input.amountCents));
+  body.set("reason", "requested_by_customer");
+  return (await stripeForm("/v1/refunds", body, input.idempotencyKey)) as { id?: string; status?: string };
+}
+
 export async function reverseTransfer(input: { transferId: string; amountCents: number; idempotencyKey: string }) {
   const body = new URLSearchParams();
   body.set("amount", String(input.amountCents));

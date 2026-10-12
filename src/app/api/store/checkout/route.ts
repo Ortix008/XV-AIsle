@@ -1,5 +1,6 @@
 import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
 import { settleCheckoutSession } from "@/lib/server/ledger";
+import { buyerOrder } from "@/lib/server/order-view";
 import { attachStripeSession, createPendingOrder, getOrder } from "@/lib/server/store";
 import { createCheckoutSession, retrieveCheckoutSession, stripeConfigured } from "@/lib/server/stripe";
 
@@ -15,6 +16,7 @@ export async function GET(request: Request) {
       return Response.json({ error: "That checkout is not a store order." }, { status: 400 });
     }
     const settled = await settleCheckoutSession(session);
+    if ("order" in settled && settled.order) return Response.json({ ...settled, order: buyerOrder(settled.order) });
     return Response.json(settled);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Checkout could not be confirmed.";
@@ -75,7 +77,8 @@ export async function POST(request: Request) {
       return Response.json({ error: "Stripe did not return a checkout page." }, { status: 502 });
     }
     attachStripeSession(created.order.id, session.id);
-    return Response.json({ url: session.url, order: getOrder(created.order.id) });
+    const saved = getOrder(created.order.id);
+    return Response.json({ url: session.url, order: saved ? buyerOrder(saved) : null });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Checkout did not open.";
     return Response.json({ error: message }, { status: 502 });

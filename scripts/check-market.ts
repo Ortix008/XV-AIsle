@@ -33,6 +33,7 @@ const published = publishListing(joined.account.id, {
   shipDaysMax: 4,
   supplierAccountId: joined.account.id,
   supplierCostCents: 500,
+  route: "api",
 });
 if ("error" in published) throw new Error(published.error);
 

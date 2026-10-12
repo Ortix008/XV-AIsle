@@ -831,6 +831,24 @@ function closePayoutIfCovered(orderId: string) {
   getDb().prepare("UPDATE ledger SET status = ? WHERE id = ?").run(status, reseller.id);
 }
 
+function fullRefundAlreadyBooked(order: StoreOrder, amountRefunded: number, gross: number) {
+  if (!order.refundedAt || amountRefunded < gross || gross <= 0) return false;
+  const claw = refundClawback({
+    grossCents: gross,
+    refundedCents: amountRefunded,
+    platformFeeCents: order.platformFeeCents ?? 0,
+    stripeFeeCents: order.stripeFeeCents ?? order.stripeFeeEstCents ?? 0,
+    supplierAmountCents: order.supplierAmountCents ?? 0,
+    resellerAmountCents: order.resellerAmountCents ?? 0,
+  });
+  const rows = rowsFor(order.id);
+  const reseller = rows.find((row) => row.party === "reseller");
+  const supplier = rows.find((row) => row.party === "supplier");
+  const resellerDone = !reseller || reseller.reversed_cents >= claw.resellerReverseCents;
+  const supplierDone = !supplier || supplier.reversed_cents >= claw.supplierReverseCents;
+  return resellerDone && supplierDone;
+}
+
 export async function applyRefund(input: {
   chargeId: string | null;
   paymentIntentId: string | null;
@@ -840,6 +858,7 @@ export async function applyRefund(input: {
 }) {
   const order = findOrder(input.chargeId, input.paymentIntentId);
   if (!order || input.gross <= 0) return;
+  if (fullRefundAlreadyBooked(order, input.amountRefunded, input.gross)) return;
   getDb().prepare("UPDATE orders SET had_refund = 1, refunded_at = ? WHERE id = ?").run(Date.now(), order.id);
   const claw = refundClawback({
     grossCents: input.gross,

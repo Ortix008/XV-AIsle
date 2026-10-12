@@ -2,8 +2,10 @@ import { cookies } from "next/headers";
 import { accountFromToken } from "@/lib/server/accounts";
 import { holdState } from "@/lib/server/fees";
 import { payoutHold, releaseMatured } from "@/lib/server/ledger";
+import { flagShippingDelays, remindUnplacedOrders } from "@/lib/server/order-routing";
+import { presentOrder } from "@/lib/server/order-view";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
-import { flagRefundDeadlines, listHoldAlerts, ordersVisibleTo, sweepStuckFulfillment } from "@/lib/server/store";
+import { flagRefundDeadlines, getListing, listHoldAlerts, ordersVisibleTo, sweepStuckFulfillment } from "@/lib/server/store";
 
 export async function GET() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
@@ -11,27 +13,12 @@ export async function GET() {
   if (!account) return Response.json({ error: "Sign in first." }, { status: 401 });
   await sweepStuckFulfillment();
   flagRefundDeadlines();
+  flagShippingDelays();
+  await remindUnplacedOrders();
   await releaseMatured();
   const orders = ordersVisibleTo(account).map((order) => ({
-    id: order.id,
-    number: order.number,
-    title: order.title,
-    status: order.status,
-    supplierDetail: order.supplierDetail,
-    deliveredAt: order.deliveredAt,
-    paidAt: order.paidAt,
-    riskLevel: order.riskLevel,
-    reviewOpen: order.reviewOpen,
-    reviewClosed: order.reviewClosed,
-    disputeOpen: order.disputeOpen,
-    riskApproved: order.riskApproved,
+    ...presentOrder(account, order, account.role === "admin" ? getListing(order.productId) : null),
     hold: holdState(order.paidAt),
-    carrier: order.carrier,
-    trackingNumber: order.trackingNumber,
-    buyerConfirmedAt: order.buyerConfirmedAt,
-    buyerDisputeOpen: order.buyerDisputeOpen,
-    refundRequired: order.refundRequired,
-    fulfillmentFlag: order.fulfillmentFlag,
     payoutNote: payoutHold(order),
   }));
   const alerts = account.role === "admin" && account.emailVerified ? listHoldAlerts() : [];
