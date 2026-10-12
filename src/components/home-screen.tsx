@@ -83,7 +83,7 @@ export function JoinScreen() {
           <div className="relative z-[1] mx-auto flex min-h-[inherit] max-w-[1280px] flex-col justify-center px-5 py-16 sm:px-10 lg:py-24">
             <div className="hero-glow" aria-hidden />
             <div className="relative z-[1] max-w-xl">
-              <p className="eyebrow">{HERO_EYEBROW}</p>
+              <p className="eyebrow hero-eyebrow">{HERO_EYEBROW}</p>
               <h1 className="mt-5 text-[3.25rem] leading-[0.95] font-bold tracking-[-0.045em] sm:text-7xl lg:text-[5.5rem]">
                 Goods that
                 <br />

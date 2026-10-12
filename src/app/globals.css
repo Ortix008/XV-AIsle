@@ -1001,6 +1001,11 @@ video.auth-plate-media {
   background: #07080a;
 }
 
+.hero-eyebrow {
+  text-transform: none;
+  letter-spacing: 0.18em;
+}
+
 .hero-aisle-stage {
   position: absolute;
   inset: 0;
