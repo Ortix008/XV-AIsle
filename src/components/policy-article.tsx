@@ -19,9 +19,9 @@ export function PolicyArticle({
   const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
   return (
     <ShopFrame>
-      <Reveal as="article" className="mx-auto max-w-2xl px-5 py-16 sm:px-10 sm:py-24">
+      <Reveal as="article" className="page-read">
         <p className="eyebrow">{kicker}</p>
-        <h1 className="mt-4 text-4xl sm:text-5xl">{title}</h1>
+        <h1 className="page-title">{title}</h1>
         <div className="mt-8 space-y-4 text-base leading-relaxed text-foreground">{children}</div>
         <p className="mt-6">
           <Link href={HOW_WE_CHECK_HREF} className="underline underline-offset-4">
