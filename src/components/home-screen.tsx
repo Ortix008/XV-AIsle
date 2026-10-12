@@ -366,6 +366,11 @@ export function JoinScreen() {
               <Button type="submit" disabled={pending} className="mt-1 h-12 w-fit rounded-full px-6">
                 {totpChallenge ? "Confirm code" : mode === "join" ? "Create an account" : "Sign in"}
               </Button>
+              {mode === "sign-in" && !totpChallenge ? (
+                <Link href="/reset" className="w-fit text-base text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+                  Forgot password
+                </Link>
+              ) : null}
               <button
                 type="button"
                 className="w-fit text-base text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
