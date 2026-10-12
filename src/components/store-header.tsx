@@ -39,7 +39,7 @@ export function StoreHeader() {
         )}
       >
         <div className="store-header-veil" aria-hidden />
-        <div className="store-header-bar relative z-[1] mx-auto flex h-[68px] max-w-[1280px] items-center justify-between gap-4 px-5 sm:px-10">
+        <div className="store-header-bar relative z-[1] mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-3 px-4 min-[900px]:h-[68px] min-[900px]:gap-4 min-[900px]:px-10 sm:px-5">
           <Link href="/" className="min-w-0">
             <BrandMark />
           </Link>
@@ -63,7 +63,7 @@ export function StoreHeader() {
           </div>
         </div>
         <nav
-          className="relative z-[1] flex gap-5 overflow-x-auto px-5 pb-3 text-sm text-muted-foreground min-[900px]:hidden"
+          className="relative z-[1] flex gap-4 overflow-x-auto px-4 pb-3 text-sm text-muted-foreground min-[900px]:hidden"
           aria-label="Shop"
         >
           {nav.map((item) => (

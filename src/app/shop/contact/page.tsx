@@ -12,9 +12,9 @@ export default function ContactPage() {
   const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
   return (
     <ShopFrame>
-      <article className="mx-auto max-w-xl px-5 py-16 sm:px-10 sm:py-24">
+      <article className="page-read">
         <p className="eyebrow">Store</p>
-        <h1 className="mt-4 text-4xl sm:text-5xl">Write the seller</h1>
+        <h1 className="page-title">Write the seller</h1>
         <p className="mt-2 text-base text-pretty text-foreground">
           Use this for a question, a return, or a late box. A real person replies within {REPLY_WITHIN_HOURS} hours. The
           note goes to the seller.

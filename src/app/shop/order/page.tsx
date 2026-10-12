@@ -121,9 +121,9 @@ function OrderBody() {
   }
 
   return (
-    <div className="mx-auto max-w-xl px-5 py-16 sm:px-10 sm:py-24">
+    <div className="page-read">
       <p className="eyebrow">Order</p>
-      <h1 className="mt-4 text-4xl sm:text-5xl">{delay ? "Your order is delayed" : "Your delivery"}</h1>
+      <h1 className="page-title">{delay ? "Your order is delayed" : "Your delivery"}</h1>
       {delay ? (
         <div className="mt-6 space-y-3 text-base">
           <p>
@@ -202,7 +202,7 @@ function OrderBody() {
 export default function BuyerOrderPage() {
   return (
     <ShopFrame>
-      <Suspense fallback={<p className="px-4 py-10 text-sm text-muted-foreground">Opening the order…</p>}>
+      <Suspense fallback={<p className="page-read text-base text-muted-foreground">Opening the order…</p>}>
         <OrderBody />
       </Suspense>
     </ShopFrame>

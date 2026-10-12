@@ -41,10 +41,10 @@ function ReturnBody() {
   }, [sessionId]);
 
   return (
-    <div className="mx-auto max-w-xl px-5 py-16 sm:px-10 sm:py-24">
+    <div className="page-read">
       <p className="eyebrow">Order</p>
-      <h1 className="mt-4 text-4xl sm:text-5xl">After payment</h1>
-      <p className="mt-3 text-sm text-muted-foreground">{message}</p>
+      <h1 className="page-title">After payment</h1>
+      <p className="mt-5 text-base leading-relaxed text-muted-foreground">{message}</p>
       {token ? (
         <p className="mt-4 text-sm">
           <a className="underline underline-offset-4" href={`/shop/order?token=${encodeURIComponent(token)}`}>
@@ -59,7 +59,7 @@ function ReturnBody() {
 export default function ReturnPage() {
   return (
     <ShopFrame>
-      <Suspense fallback={<p className="px-4 py-10 text-sm text-muted-foreground">Confirming payment…</p>}>
+      <Suspense fallback={<p className="page-read text-base text-muted-foreground">Confirming payment…</p>}>
         <ReturnBody />
       </Suspense>
     </ShopFrame>

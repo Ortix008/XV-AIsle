@@ -24,7 +24,7 @@ export function DepartmentGrid() {
             >
               <div
                 className={cn(
-                  "media-well relative overflow-hidden rounded-[14px] border border-border",
+                  "media-well frame-glow relative overflow-hidden rounded-[14px] border border-border",
                   index === 0 ? "aspect-[4/5] min-h-72 lg:min-h-[520px] lg:flex-1" : "aspect-[16/10]",
                 )}
               >

@@ -86,7 +86,7 @@ export function JoinScreen() {
               </div>
               </div>
             </div>
-            <div className="media-well relative z-[1] aspect-[4/5] overflow-hidden rounded-[14px] border border-border">
+            <div className="product-frame relative z-[1]">
               <Image
                 src="/art/market-hero.png"
                 alt="A person seated at a wooden table with a bowl of salad and a glass of water."

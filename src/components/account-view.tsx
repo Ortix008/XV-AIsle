@@ -98,8 +98,8 @@ export function AccountView() {
   return (
     <div className="lg:h-full lg:overflow-y-auto lg:overscroll-y-contain">
       <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-6 sm:px-6">
-        <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">Account</p>
-        <h1 className="text-balance text-[1.75rem] leading-tight font-semibold tracking-tight">Your account</h1>
+        <p className="eyebrow">Account</p>
+        <h1 className="text-3xl sm:text-4xl">Your account</h1>
         {params.get("verified") === "1" ? <p className="text-sm">Email verified.</p> : null}
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
           The reseller program is free to join. Commission is {resellerCommissionLabel()} of a completed sale.{" "}

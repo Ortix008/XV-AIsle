@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
 import { money } from "@/lib/money";
 
@@ -75,8 +75,18 @@ export function ShopGrid({
           </Link>
         ) : null}
       </Reveal>
-      {visible === null ? <p className="text-sm text-muted-foreground">Opening the store…</p> : null}
-      {visible?.length === 0 ? <p className="text-sm text-muted-foreground">{empty}</p> : null}
+      {visible === null ? (
+        <div className="empty-panel">
+          <p className="eyebrow">Store</p>
+          <p className="mt-3 text-2xl">Opening the store…</p>
+        </div>
+      ) : null}
+      {visible?.length === 0 ? (
+        <div className="empty-panel">
+          <p className="eyebrow">Empty</p>
+          <p className="mt-3 text-2xl">{empty}</p>
+        </div>
+      ) : null}
       <ul className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         {visible?.map((listing, index) => (
           <Reveal key={listing.productId} as="li" index={index % 5}>
@@ -84,17 +94,7 @@ export function ShopGrid({
               href={`/shop/${listing.productId}`}
               className="product-card block rounded-2xl border border-border bg-card p-2 sm:p-3"
             >
-              <div className="media-well relative aspect-[4/5] overflow-hidden rounded-[14px] border border-border">
-                {listing.image ? (
-                  <Image
-                    src={listing.image}
-                    alt=""
-                    fill
-                    sizes="(min-width: 1024px) 280px, 50vw"
-                    className="media-zoom object-cover"
-                  />
-                ) : null}
-              </div>
+              <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
               <p className="mt-4 px-1 font-heading text-xs tracking-[0.14em] text-muted-foreground uppercase">
                 {eyebrow(listing)}
               </p>

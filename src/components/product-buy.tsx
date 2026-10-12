@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { ProductFrame } from "@/components/product-frame";
 import { useReveal } from "@/components/reveal";
 import { CheckoutPolicies } from "@/components/shop-footer";
 import { Button } from "@/components/ui/button";
@@ -198,16 +198,8 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
         <CheckoutPolicies />
       </form>
       </div>
-      <div className="media-well relative order-2 aspect-[4/5] w-full overflow-hidden rounded-[14px] border border-border lg:order-1">
-        {listing.image ? (
-          <Image
-            src={listing.image}
-            alt={listing.title}
-            fill
-            sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-cover object-center"
-          />
-        ) : null}
+      <div className="order-2 lg:order-1">
+        <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 50vw, 100vw" priority />
       </div>
     </div>
   );
