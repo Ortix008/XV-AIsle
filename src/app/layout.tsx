@@ -1,37 +1,38 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "XV-AIsle",
   description:
-    "Sell approved products without holding the box. Buyers pay on xvaisle.com. The first 30 days are free, then $10 a month.",
+    "A curated aisle of goods. Every product page tells you where it ships from, how long it takes, and why we picked it. Buyers pay on xvaisle.com.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              '(function(){try{var q=new URLSearchParams(location.search).get("theme");var s=localStorage.getItem("xvaisle-theme");var saved=(q==="light"||q==="dark")?q:(s==="light"||s==="dark"?s:"");var t=saved||(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=t;}catch(e){}})();',
-          }}
-        />
-      </head>
       <body className="min-h-full bg-background text-foreground">{children}</body>
     </html>
   );

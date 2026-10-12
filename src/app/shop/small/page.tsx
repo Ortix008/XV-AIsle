@@ -18,9 +18,9 @@ export default function SmallBusinessPage() {
 
   return (
     <ShopFrame>
-      <div className="mx-auto max-w-5xl px-4 pt-8 sm:px-6">
-        <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">Small business</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Neighborhood shops</h1>
+      <div className="mx-auto max-w-[1280px] px-5 pt-16 sm:px-10">
+        <p className="eyebrow">Small business</p>
+        <h1 className="mt-4 text-4xl sm:text-5xl">Neighborhood shops</h1>
         <p className="mt-2 max-w-xl text-pretty text-sm text-muted-foreground">
           A small business keeps its own name on the store. National floors are a different list. If they make the goods
           in the USA, the page says so.
@@ -29,9 +29,9 @@ export default function SmallBusinessPage() {
         {shops?.length === 0 ? (
           <p className="mt-6 text-sm text-muted-foreground">No small business is listed yet.</p>
         ) : null}
-        <ul className="mt-6 divide-y border-y">
+        <ul className="mt-8 grid gap-4 sm:grid-cols-2">
           {shops?.map((shop) => (
-            <li key={shop.id} className="py-3">
+            <li key={shop.id} className="rounded-2xl border border-border bg-card p-5">
               <p className="text-sm font-medium">{shop.name}</p>
               <p className="text-sm text-muted-foreground">
                 {shop.city}

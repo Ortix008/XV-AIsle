@@ -15,8 +15,9 @@ export default async function ShopSafetyPage() {
   const account = accountFromToken(token);
   return (
     <ShopFrame>
-      <article className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-        <h1 className="text-3xl font-semibold tracking-tight">How buying works</h1>
+      <article className="mx-auto max-w-2xl px-5 py-16 sm:px-10 sm:py-24">
+        <p className="eyebrow">Store</p>
+        <h1 className="mt-4 text-4xl sm:text-5xl">How buying works</h1>
         <p className="mt-3 text-base leading-relaxed text-foreground">
           You pick a product, pay on this site, and the supplier ships it to you.
         </p>

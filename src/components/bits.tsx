@@ -112,7 +112,7 @@ export function MockupFrame({
 }) {
   return (
     <figure className="min-w-0">
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#f7f7f6]">
+      <div className="media-well relative aspect-[4/3] overflow-hidden rounded-[14px] border border-border">
         {idea.src ? (
           <Image src={idea.src} alt="" fill sizes="(min-width: 640px) 30vw, 100vw" className="object-cover" />
         ) : null}
@@ -130,8 +130,8 @@ export function MockupFrame({
         {!idea.src && idea.layout === "stack" ? (
           <div className="absolute inset-6 flex flex-col justify-end gap-1.5">
             <span className="h-8 w-2/3" style={{ background: swatch }} />
-            <span className="h-3 w-1/2 bg-[#1a1a1a]/15" />
-            <span className="h-3 w-1/3 bg-[#1a1a1a]/10" />
+            <span className="h-3 w-1/2 bg-foreground/15" />
+            <span className="h-3 w-1/3 bg-foreground/10" />
           </div>
         ) : null}
         {!idea.src && idea.layout === "pair" ? (

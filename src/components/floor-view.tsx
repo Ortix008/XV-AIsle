@@ -11,7 +11,6 @@ import { ShopGrid } from "@/components/shop-grid";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { getProduct, trendSourceLabel } from "@/lib/catalog";
-import { MEMBER_PRICE } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
 import { parties, welcomeHero, welcomeReach } from "@/lib/art";
 import { bots } from "@/lib/bots";
@@ -161,12 +160,6 @@ export function FloorView() {
             The SI Team finds the product, writes the page, watches the order, and drafts a post.
             You still say yes before anything goes out. Share your shop link anywhere. Buyers pay on xvaisle.com.
           </p>
-          {status === "trial" ? (
-            <p className="mt-3 max-w-2xl text-pretty text-sm">
-              The first 30 days are free. Ask the SI Team to work when you are ready. After that, leaving them on is $
-              {MEMBER_PRICE} a month.
-            </p>
-          ) : null}
           <p className="mt-3 text-sm">
             <Link href="/shop" className="underline underline-offset-4">
               Open the store
@@ -183,6 +176,7 @@ export function FloorView() {
         empty="Nothing is marked ready yet."
         limit={8}
         seeAllHref="/shop"
+        level="section"
       />
       <div className="mx-auto max-w-5xl px-4 pb-2 sm:px-6">
         <section aria-label="Departments">
@@ -265,7 +259,7 @@ export function FloorView() {
                         router.push(decision.href);
                       }}
                     >
-                      <span className="flex items-center gap-2 text-base text-[#2c3036]">
+                      <span className="flex items-center gap-2 text-base text-muted-foreground">
                         {decision.kicker}
                       </span>
                       <span className="text-sm font-medium">{decision.title}</span>
@@ -279,7 +273,7 @@ export function FloorView() {
 
           <section>
             <h2 className="text-xl font-semibold tracking-tight">SI Team</h2>
-            <p className="mt-2 text-base leading-relaxed text-[#2c3036]">
+            <p className="mt-2 text-base leading-relaxed text-muted-foreground">
               These are AI tools, not people. You still say yes before anything goes out.
             </p>
             <ul className="mt-2 divide-y border-y">
@@ -288,7 +282,7 @@ export function FloorView() {
                 const Icon = botIcon(bot.id);
                 return (
                   <li key={bot.id} className="flex items-start gap-3 py-3">
-                    <span className="grid size-12 shrink-0 place-items-center border border-[#1a1a1a] bg-[#f4f5f7]">
+                    <span className="grid size-12 shrink-0 place-items-center rounded-xl border border-border bg-secondary">
                       <Icon aria-hidden className="size-6" />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -296,8 +290,8 @@ export function FloorView() {
                         {bot.name}
                         <AiBadge />
                       </p>
-                      <p className="text-base leading-relaxed text-[#1a1a1a]">{bot.does}</p>
-                      <p className="text-base leading-relaxed text-[#2c3036]">{bot.job}</p>
+                      <p className="text-base leading-relaxed">{bot.does}</p>
+                      <p className="text-base leading-relaxed text-muted-foreground">{bot.job}</p>
                     </div>
                     {status === "member" ? (
                       <label className="flex shrink-0 items-center gap-2 pt-0.5 text-xs">

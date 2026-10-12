@@ -67,86 +67,97 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
   }
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
-      <div>
-        <div className="relative aspect-[4/3] bg-card">
-          {listing.image ? (
-            <Image src={listing.image} alt={listing.title} fill sizes="640px" className="object-cover" />
-          ) : null}
-        </div>
-        <p className="mt-4 text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">{listing.sku}</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">{listing.title}</h1>
-        {listing.sample ? <p className="mt-2 text-sm font-medium">Sample</p> : null}
-        <p className="mt-3 max-w-xl whitespace-pre-wrap text-pretty text-base leading-relaxed">{listing.description}</p>
-        <p className="mt-3 text-base">
-          {money(listing.priceCents / 100)}. {listing.supplierName} in {listing.supplierOrigin} ships it in{" "}
-          {listing.shipDaysMin}–{listing.shipDaysMax} days after you pay.
+    <div className="mx-auto grid max-w-[1280px] gap-8 px-5 py-12 sm:px-10 sm:py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)] lg:items-start lg:gap-x-16">
+      <div className="contents lg:order-2 lg:flex lg:flex-col lg:gap-8">
+      <div className="order-1">
+        <p className="eyebrow">{listing.sku}</p>
+        <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl">{listing.title}</h1>
+        {listing.sample ? <p className="mt-3 text-sm font-medium text-primary">Sample</p> : null}
+        <p className="mt-5 max-w-xl text-2xl font-heading tracking-tight">{money(listing.priceCents / 100)}</p>
+        <p className="mt-4 max-w-xl whitespace-pre-wrap text-pretty text-base leading-relaxed text-muted-foreground">
+          {listing.description}
+        </p>
+        <p className="mt-4 max-w-xl text-base leading-relaxed">
+          {listing.supplierName} in {listing.supplierOrigin} ships it in {listing.shipDaysMin}–{listing.shipDaysMax}{" "}
+          days after you pay.
           {listing.madeInUsa ? " Made in the USA." : ""}
           {listing.shelf === "small" ? " This is a small business." : ""}
         </p>
-        <p className="mt-2 text-base">Shared by an independent reseller. You pay on xvaisle.com.</p>
+        <p className="mt-2 text-base text-muted-foreground">Shared by an independent reseller. You pay on xvaisle.com.</p>
         {listing.shipsFrom || listing.deliveryTime || listing.whyWePicked ? (
-          <dl className="mt-4 max-w-xl space-y-3 text-base">
+          <dl className="mt-6 grid gap-3 text-base">
             {listing.shipsFrom ? (
-              <div>
-                <dt className="text-sm font-medium">Ships from</dt>
-                <dd>{listing.shipsFrom}</dd>
+              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
+                <dt className="text-sm font-medium text-muted-foreground">Ships from</dt>
+                <dd className="mt-1">{listing.shipsFrom}</dd>
               </div>
             ) : null}
             {listing.deliveryTime ? (
-              <div>
-                <dt className="text-sm font-medium">Delivery time</dt>
-                <dd>{listing.deliveryTime}</dd>
+              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
+                <dt className="text-sm font-medium text-muted-foreground">Delivery time</dt>
+                <dd className="mt-1">{listing.deliveryTime}</dd>
               </div>
             ) : null}
             {listing.whyWePicked ? (
-              <div>
-                <dt className="text-sm font-medium">Why we picked it</dt>
-                <dd className="whitespace-pre-wrap">{listing.whyWePicked}</dd>
+              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
+                <dt className="text-sm font-medium text-muted-foreground">Why we picked it</dt>
+                <dd className="mt-1 whitespace-pre-wrap">{listing.whyWePicked}</dd>
               </div>
             ) : null}
           </dl>
         ) : null}
       </div>
-      <form onSubmit={checkout} className="flex flex-col gap-3 border bg-card p-4">
-        <h2 className="text-base font-medium">Ship to</h2>
+      <form onSubmit={checkout} className="order-3 flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:p-6">
+        <h2 className="text-xl">Checkout</h2>
         <label className="flex flex-col gap-1 text-base">
           Quantity
-          <Input type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
+          <Input className="h-11" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
         </label>
         <label className="flex flex-col gap-1 text-base">
           Name
-          <Input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required />
+          <Input className="h-11" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required />
         </label>
         <label className="flex flex-col gap-1 text-base">
           Email
-          <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+          <Input className="h-11" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
         </label>
         <label className="flex flex-col gap-1 text-base">
           Street
-          <Input value={line1} onChange={(event) => setLine1(event.target.value)} autoComplete="address-line1" required />
+          <Input className="h-11" value={line1} onChange={(event) => setLine1(event.target.value)} autoComplete="address-line1" required />
         </label>
         <label className="flex flex-col gap-1 text-base">
           City
-          <Input value={city} onChange={(event) => setCity(event.target.value)} autoComplete="address-level2" required />
+          <Input className="h-11" value={city} onChange={(event) => setCity(event.target.value)} autoComplete="address-level2" required />
         </label>
         <label className="flex flex-col gap-1 text-base">
           State
-          <Input value={region} onChange={(event) => setRegion(event.target.value)} autoComplete="address-level1" required />
+          <Input className="h-11" value={region} onChange={(event) => setRegion(event.target.value)} autoComplete="address-level1" required />
         </label>
         <label className="flex flex-col gap-1 text-base">
           Postal code
-          <Input value={postal} onChange={(event) => setPostal(event.target.value)} autoComplete="postal-code" required />
+          <Input className="h-11" value={postal} onChange={(event) => setPostal(event.target.value)} autoComplete="postal-code" required />
         </label>
         {error ? <p className="text-base text-late">{error}</p> : null}
-        <Button type="submit" disabled={pending} className="h-11">
+        <Button type="submit" disabled={pending} className="mt-2 h-12 w-full rounded-full text-[15px]">
           {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qty) / 100)}`}
         </Button>
-        <p className="text-base text-pretty">
+        <p className="text-base text-pretty text-muted-foreground">
           You pay on xvaisle.com. Stripe handles the card. We never see your card number.
         </p>
         <CheckoutPolicies />
       </form>
+      </div>
+      <div className="media-well relative order-2 aspect-[4/5] w-full overflow-hidden rounded-[14px] border border-border lg:order-1">
+        {listing.image ? (
+          <Image
+            src={listing.image}
+            alt={listing.title}
+            fill
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            className="object-cover object-center"
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

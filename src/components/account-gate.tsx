@@ -12,9 +12,9 @@ export function ClosedScreen() {
   const { signOut } = useAccount();
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center justify-between bg-[#111] px-4 text-white">
+      <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-border bg-[#07080a]/90 px-4 text-foreground backdrop-blur-[14px]">
         <BrandMark />
-        <button type="button" className="text-xs text-white/70 hover:text-white" onClick={signOut}>
+        <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={signOut}>
           Sign out
         </button>
       </header>

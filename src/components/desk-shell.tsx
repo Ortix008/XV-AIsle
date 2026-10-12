@@ -76,24 +76,24 @@ export function DeskShell({ children }: { children: ReactNode }) {
       >
         Skip to the market
       </a>
-      <header className="flex h-14 shrink-0 items-center justify-between gap-3 bg-[#111] px-4 text-white">
+      <header className="flex h-[68px] shrink-0 items-center justify-between gap-3 border-b border-border bg-[#07080a]/90 px-4 backdrop-blur-[14px] text-foreground">
         <Link href="/" className="flex min-w-0 items-center gap-2.5">
           <BrandMark />
         </Link>
         <div className="flex items-center gap-4">
-          <p className="hidden text-xs text-white/55 md:block">The first US trend market</p>
+          <p className="hidden text-xs text-muted-foreground md:block">The first US trend market</p>
           <Link
             href="/shop"
-            className="rounded-full bg-[#3dff8a] px-3 py-1.5 text-xs font-semibold text-[#052112] hover:bg-[#b6ff6a]"
+            className="rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:shadow-[0_0_24px_rgba(61,220,132,0.45)]"
           >
             Shop
           </Link>
-          <Link href="/membership" className="text-xs text-white/80 hover:text-white">
+          <Link href="/membership" className="text-xs text-muted-foreground hover:text-foreground">
             {status === "member" ? `Member · $${MEMBER_PRICE}/mo` : `Free month · ${daysLeft}d`}
           </Link>
           <button
             type="button"
-            className="text-xs text-white/70 hover:text-white md:hidden"
+            className="text-xs text-muted-foreground hover:text-foreground md:hidden"
             onClick={signOut}
           >
             Sign out

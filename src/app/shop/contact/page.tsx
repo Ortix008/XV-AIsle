@@ -11,9 +11,9 @@ export default function ContactPage() {
   const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
   return (
     <ShopFrame>
-      <article className="mx-auto max-w-xl px-4 py-8 sm:px-6">
-        <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">Store</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Write the seller</h1>
+      <article className="mx-auto max-w-xl px-5 py-16 sm:px-10 sm:py-24">
+        <p className="eyebrow">Store</p>
+        <h1 className="mt-4 text-4xl sm:text-5xl">Write the seller</h1>
         <p className="mt-2 text-base text-pretty text-foreground">
           Use this for a question, a return, or a late box. The note goes to the seller.
           {supportEmail ? (
