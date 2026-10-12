@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AisleHero } from "@/components/aisle-hero";
 import { Reveal } from "@/components/reveal";
 import { ShopFrame } from "@/components/shop-frame";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
@@ -10,19 +11,26 @@ export function PolicyArticle({
   kicker,
   title,
   children,
+  story = false,
 }: {
   kicker: string;
   title: string;
   children: ReactNode;
+  story?: boolean;
 }) {
   const storedEmail = readSupportEmail();
   const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
   return (
     <ShopFrame>
-      <Reveal as="article" className="page-read">
-        <p className="eyebrow">{kicker}</p>
-        <h1 className="page-title">{title}</h1>
-        <div className="mt-8 space-y-4 text-base leading-relaxed text-foreground">{children}</div>
+      {story ? <AisleHero kicker={kicker} title={title} /> : null}
+      <Reveal as="article" className={story ? "page-read story-copy" : "page-read"}>
+        {story ? null : (
+          <>
+            <p className="eyebrow">{kicker}</p>
+            <h1 className="page-title">{title}</h1>
+          </>
+        )}
+        <div className={story ? "space-y-4 text-base leading-relaxed text-foreground" : "mt-8 space-y-4 text-base leading-relaxed text-foreground"}>{children}</div>
         <p className="mt-6">
           <Link href={HOW_WE_CHECK_HREF} className="underline underline-offset-4">
             How we check

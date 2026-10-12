@@ -27,7 +27,7 @@ async function main() {
   const { closeDb, getDb } = await import("../src/lib/server/db");
   const { signUp } = await import("../src/lib/server/accounts");
   const { startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
-  const { receiptText } = await import("../src/lib/server/order-mail");
+  const { receiptHtml, receiptText, sampleReceiptHtml } = await import("../src/lib/server/order-mail");
   const { buyerOrder, presentOrder, publicListing, resellerListing } = await import("../src/lib/server/order-view");
   const { saveReturnsAddress } = await import("../src/lib/server/settings");
   const { ensureStarterShelf } = await import("../src/lib/server/starter-shelf");
@@ -181,13 +181,37 @@ async function main() {
   });
   assert(blankReceipt.includes(RETURNS_UNSET), "the receipt email uses the fallback");
   assert(!blankReceipt.includes(STREET), "the fallback email has no street");
+  assert(!blankReceipt.includes("Ships from"), "a receipt with no origin omits ships-from");
+  const blankHtml = receiptHtml({
+    number: blankOrder.order.number,
+    title: "Named pan",
+    qty: 1,
+    shipsFrom: null,
+    eta: null,
+    shipDaysMin: 0,
+    shipDaysMax: 0,
+    receiptUrl: "http://127.0.0.1/shop/order?token=example",
+    returnAddress: null,
+  });
+  assert(blankHtml.includes(RETURNS_UNSET), "the receipt html uses the fallback");
+  assert(!blankHtml.includes("Ships from") && !blankHtml.includes("Arrival"), "blank receipt html omits empty facts");
+  assert(!blankHtml.toLowerCase().includes("<script"), "the receipt html has no script");
+  assert(blankHtml.includes('bgcolor="#07080a"') && blankHtml.includes("color:#f4f1ea"), "the receipt html is dark with a light-text fallback");
+  const sampleHtml = sampleReceiptHtml();
+  assert(sampleHtml.includes("https://x.com/intent/post"), "the sample receipt shares through the X web intent");
+  assert(sampleHtml.includes("Share your find on X"), "the sample receipt names the share button");
+  assert(sampleHtml.includes("400 Supplier Street"), "the sample receipt includes the return street");
 
   const captured = startMailCapture();
   getDb().prepare("UPDATE orders SET status = 'paid', paid_at = ? WHERE id = ?").run(Date.now(), pending.order.id);
   await fulfillPaidOrder(pending.order.id);
   const customer = captured.find((message) => message.subject.endsWith("received"));
   const ops = captured.find((message) => message.subject.startsWith("New paid order"));
+  const receiptHtmlSent = customer?.html ?? "";
   assert(customer?.text.includes(STREET), "the order email includes the supplier street");
+  assert(receiptHtmlSent.includes(STREET), "the receipt html includes the supplier street");
+  assert(!receiptHtmlSent.toLowerCase().includes("<script"), "the sent receipt html has no script");
+  assert(receiptHtmlSent.includes("https://x.com/intent/post"), "the sent receipt html shares through the X web intent");
   assert(ops && !ops.text.includes(STREET) && !ops.text.includes("100 Example Street"), "the ops alert has neither street");
   stopMailCapture();
   const stored = getOrder(pending.order.id);

@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Reseller program · XV-AIsle" };
 
 export default function ResellerPage() {
   return (
-    <PolicyArticle kicker="Store" title="Reseller program">
+    <PolicyArticle kicker="Store" title="Reseller program" story>
       <p>
         The reseller program is free to join. There is no sign-up fee and no payment for recruiting other people.
         Commission is {resellerCommissionLabel()} of a completed sale. {resellerPayLine()}

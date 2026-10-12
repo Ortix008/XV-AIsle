@@ -7,6 +7,7 @@ import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseLis
 import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { changed, getDb } from "./db";
+import { etaFromListing } from "../order-facts";
 import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
 import { formatOrderReturn, resolveReturnAddress } from "./supplier-returns";
 import { requestShipment } from "./supplier";
@@ -1123,9 +1124,13 @@ export async function fulfillPaidOrder(orderId: string) {
       number: current.number,
       title: current.title ?? listing?.title ?? "Order",
       qty: current.qty,
+      amountCents: current.amountCents,
+      shipsFrom: listing?.shipsFrom ?? null,
+      eta: etaFromListing(listing),
       shipDaysMin: listing?.shipDaysMin ?? 0,
       shipDaysMax: listing?.shipDaysMax ?? 0,
       token,
+      productId: current.productId,
       returnAddress: formatOrderReturn(current),
     });
   }

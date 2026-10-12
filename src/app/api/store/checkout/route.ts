@@ -1,6 +1,7 @@
 import { compareAtRejection } from "@/lib/honest-price";
 import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
 import { settleCheckoutSession } from "@/lib/server/ledger";
+import { orderSummary } from "@/lib/server/order-summary";
 import { buyerOrder } from "@/lib/server/order-view";
 import { attachStripeSession, createPendingOrder, getOrder } from "@/lib/server/store";
 import { createCheckoutSession, retrieveCheckoutSession, stripeConfigured } from "@/lib/server/stripe";
@@ -17,7 +18,9 @@ export async function GET(request: Request) {
       return Response.json({ error: "That checkout is not a store order." }, { status: 400 });
     }
     const settled = await settleCheckoutSession(session);
-    if ("order" in settled && settled.order) return Response.json({ ...settled, order: buyerOrder(settled.order) });
+    if ("order" in settled && settled.order) {
+      return Response.json({ ...settled, order: buyerOrder(settled.order), summary: orderSummary(settled.order) });
+    }
     return Response.json(settled);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Checkout could not be confirmed.";

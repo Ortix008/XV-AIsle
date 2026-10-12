@@ -7,6 +7,7 @@ export type MailMessage = {
   to: string;
   subject: string;
   text: string;
+  html?: string;
 };
 
 type MailDelivery = (message: MailMessage) => Promise<void>;
@@ -142,14 +143,23 @@ async function smtpSend(message: MailMessage, from: string) {
     await session.command(`MAIL FROM:<${from}>`, "250");
     await session.command(`RCPT TO:<${message.to}>`, "250");
     await session.command("DATA", "354");
-    const body = [
-      `From: ${from}`,
-      `To: ${message.to}`,
-      `Subject: ${message.subject}`,
-      "Content-Type: text/plain; charset=utf-8",
-      "",
-      message.text,
-    ]
+    const boundary = "xvaisle-receipt";
+    const content = message.html
+      ? [
+          `Content-Type: multipart/alternative; boundary="${boundary}"`,
+          "",
+          `--${boundary}`,
+          "Content-Type: text/plain; charset=utf-8",
+          "",
+          message.text,
+          `--${boundary}`,
+          "Content-Type: text/html; charset=utf-8",
+          "",
+          message.html,
+          `--${boundary}--`,
+        ]
+      : ["Content-Type: text/plain; charset=utf-8", "", message.text];
+    const body = [`From: ${from}`, `To: ${message.to}`, `Subject: ${message.subject}`, ...content]
       .map((line) => (line.startsWith(".") ? `.${line}` : line))
       .join("\r\n");
     socket.write(`${body}\r\n.\r\n`);
@@ -166,6 +176,7 @@ export async function sendMail(input: MailMessage) {
     to: headerValue(input.to),
     subject: headerValue(input.subject).slice(0, 200),
     text: input.text.slice(0, 20_000),
+    ...(input.html ? { html: input.html.slice(0, 80_000) } : {}),
   };
   captured?.push(message);
   try {
