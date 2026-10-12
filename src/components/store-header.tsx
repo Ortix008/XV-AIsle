@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BrandMark } from "@/components/brand-mark";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { cn } from "cn";
@@ -12,11 +12,20 @@ const nav = [
   { href: "/shop/small", label: "Small business" },
   { href: "/#aisles", label: "Aisles" },
   { href: HOW_WE_CHECK_HREF, label: "How we check" },
+  { href: "/#account", label: "Account" },
 ];
+
+function focusable(button: HTMLButtonElement | null, panel: HTMLElement | null) {
+  const links = panel ? [...panel.querySelectorAll<HTMLElement>("a[href]")] : [];
+  return button ? [button, ...links] : links;
+}
 
 export function StoreHeader() {
   const sentinel = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const [compact, setCompact] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useLayoutEffect(() => {
     const node = sentinel.current;
@@ -28,6 +37,59 @@ export function StoreHeader() {
     watch.observe(node);
     return () => watch.disconnect();
   }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 900px)");
+    const closeOnDesktop = () => {
+      if (media.matches) setOpen(false);
+    };
+    media.addEventListener("change", closeOnDesktop);
+    return () => media.removeEventListener("change", closeOnDesktop);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const button = buttonRef.current;
+    const panel = panelRef.current;
+    const links = focusable(button, panel).filter((node) => node !== button);
+    links[0]?.focus();
+
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        button?.focus();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const nodes = focusable(button, panel);
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (button?.contains(target) || panel?.contains(target)) return;
+      setOpen(false);
+    }
+
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [open]);
 
   return (
     <>
@@ -44,13 +106,13 @@ export function StoreHeader() {
             <BrandMark />
           </Link>
           <nav className="hidden items-center gap-[30px] text-sm text-muted-foreground min-[900px]:flex" aria-label="Shop">
-            {nav.map((item) => (
+            {nav.slice(0, 5).map((item) => (
               <Link key={item.href} href={item.href} className="link-slide hover:text-foreground">
                 {item.label}
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex shrink-0 items-center gap-3 text-sm text-muted-foreground min-[900px]:gap-4">
             <Link href="/shop" className="link-slide hover:text-foreground">
               Search
             </Link>
@@ -60,20 +122,36 @@ export function StoreHeader() {
             <Link href="/shop/cart" className="rounded-full border border-border px-3.5 py-1.5 text-foreground hover:border-primary">
               Cart
             </Link>
+            <button
+              ref={buttonRef}
+              type="button"
+              className="rounded-full border border-primary/40 px-3.5 py-1.5 text-foreground shadow-[0_0_18px_rgba(61,220,132,0.18)] min-[900px]:hidden"
+              aria-expanded={open}
+              aria-controls="shop-menu"
+              onClick={() => setOpen((value) => !value)}
+            >
+              Menu
+            </button>
           </div>
         </div>
         <nav
-          className="relative z-[1] flex gap-4 overflow-x-auto px-4 pb-3 text-sm text-muted-foreground min-[900px]:hidden"
+          id="shop-menu"
+          ref={panelRef}
           aria-label="Shop"
+          inert={!open}
+          className={cn("nav-fold relative z-[1] min-[900px]:hidden", open && "is-open")}
         >
-          {nav.map((item) => (
-            <Link key={item.href} href={item.href} className="link-slide shrink-0 hover:text-foreground">
-              {item.label}
-            </Link>
-          ))}
-          <Link href="/#account" className="link-slide shrink-0 hover:text-foreground">
-            Account
-          </Link>
+          <div className="nav-fold-clip">
+            <ul className="mx-auto flex max-w-[1280px] flex-col px-4 pb-3 sm:px-5">
+              {nav.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className="nav-fold-link" onClick={() => setOpen(false)}>
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </nav>
       </header>
     </>

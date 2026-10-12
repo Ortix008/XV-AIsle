@@ -470,6 +470,33 @@
   padding: 1.8rem 1.4rem;
 }
 
+.lost-aisle {
+  position: relative;
+  overflow: hidden;
+  min-height: 70dvh;
+}
+
+.lost-aisle-art {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(7, 8, 10, 0.94), rgba(7, 8, 10, 0.78) 52%, rgba(7, 8, 10, 0.55)),
+    url("/brand/hero-aisle-pedestals.webp") center 42% / cover no-repeat;
+}
+
+.lost-aisle-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 40rem;
+  padding: 3.25rem 1.25rem 4rem;
+}
+
+@media (min-width: 640px) {
+  .lost-aisle-copy {
+    padding: 5rem 2.5rem 5rem;
+  }
+}
+
 .product-stage {
   border-radius: 18px;
   padding: 7px;
@@ -650,6 +677,37 @@
   transform: scale(0.97);
 }
 
+.nav-fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  background:
+    radial-gradient(90% 140% at 0% 0%, rgba(61, 220, 132, 0.1), transparent 58%),
+    #07080a;
+  transition: grid-template-rows 0.28s ease;
+}
+
+.nav-fold.is-open {
+  grid-template-rows: 1fr;
+}
+
+.nav-fold-clip {
+  overflow: hidden;
+}
+
+.nav-fold-link {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+  color: var(--foreground);
+  font-size: 1rem;
+}
+
+.nav-fold-link:hover,
+.nav-fold-link:focus-visible {
+  color: var(--primary);
+}
+
 .page-enter {
   animation: page-in 0.48s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
@@ -765,6 +823,7 @@ html.motion [data-reveal].is-in {
   .aisle-tile:active,
   .stall-tab:hover,
   .store-header.is-compact .store-header-bar,
+  .nav-fold,
   .media-zoom,
   .product-card:hover .media-zoom,
   .aisle-tile:hover .media-zoom {
@@ -787,8 +846,9 @@ html.motion [data-reveal].is-in {
 }
 
 .auth-screen-pane {
-  min-height: 100%;
-  overflow: visible;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .auth-screen-body {
@@ -801,8 +861,10 @@ html.motion [data-reveal].is-in {
 }
 
 .auth-screen-pane .auth-screen-body {
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
   align-items: start;
+  overflow: auto;
   padding: 28px 16px 48px;
 }
 
