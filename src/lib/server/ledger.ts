@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { MEMBER_PRICE } from "../account";
 import {
   BUYER_WINDOW_MS,
   disputeClawback,
@@ -613,7 +612,9 @@ export async function settleCheckoutSession(session: StripeSession) {
     const accountId = session.metadata.account_id;
     if (!accountId) return { error: "Checkout is missing the account." as const };
     const trial = session.amount_total === 0;
-    if (!trial && session.amount_total !== MEMBER_PRICE * 100) {
+    // Recognizes a Checkout session that already exists. This does not start a new charge.
+    const recordedMembershipCents = 1000;
+    if (!trial && session.amount_total !== recordedMembershipCents) {
       return { error: "The paid amount does not match membership." as const };
     }
     const customer = typeof session.customer === "string" ? session.customer : null;

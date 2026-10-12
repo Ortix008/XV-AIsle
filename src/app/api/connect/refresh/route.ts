@@ -13,7 +13,7 @@ export async function GET() {
     const result = await beginOnboarding(account);
     if (result.status === 200) return Response.redirect(result.url);
   } catch {
-    return Response.redirect(`${origin}/membership?connect=retry`);
+    return Response.redirect(`${origin}/account?connect=retry`);
   }
-  return Response.redirect(`${origin}/membership?connect=retry`);
+  return Response.redirect(`${origin}/account?connect=retry`);
 }

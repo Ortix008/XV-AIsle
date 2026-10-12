@@ -63,13 +63,13 @@ export function GettingStarted() {
           {verifyError ? <span className="text-late">{verifyError}</span> : null}
         </li>
         <li className="flex flex-wrap items-center gap-2">
-          <Link href="/membership#authenticator" className="underline underline-offset-4">
+          <Link href="/account#authenticator" className="underline underline-offset-4">
             Turn on an authenticator (2FA)
           </Link>
           {authenticatorDone ? <span className="text-xs text-muted-foreground">Done</span> : null}
         </li>
         <li className="flex flex-wrap items-center gap-2">
-          <Link href="/membership#payouts" className="underline underline-offset-4">
+          <Link href="/account#payouts" className="underline underline-offset-4">
             Connect Stripe payouts
           </Link>
           {payoutsDone ? <span className="text-xs text-muted-foreground">Done</span> : null}

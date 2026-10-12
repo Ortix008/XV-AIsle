@@ -24,6 +24,7 @@ const columns = [
     title: "Company",
     links: [
       { href: "/shop/reseller", label: "Reseller program" },
+      { href: "/shop/reseller/terms", label: "Reseller terms" },
       { href: "/shop/privacy", label: "Privacy" },
       { href: "/shop/terms", label: "Terms" },
     ],

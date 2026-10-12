@@ -1,5 +1,4 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
-import { TRIAL_DAYS } from "../account";
 
 export type CheckoutKind = "membership" | "order";
 
@@ -151,16 +150,25 @@ export async function createCheckoutSession(input: {
   cancelPath: string;
   attemptId?: string;
 }) {
+  switch (input.kind) {
+    case "membership":
+      throw new Error("Membership is not offered.");
+    case "order":
+      break;
+    default: {
+      const _never: never = input.kind;
+      throw new Error(`Checkout is not offered: ${_never}`);
+    }
+  }
   const origin = appOrigin();
-  const idempotencyKey =
-    input.kind === "order" && input.orderId
-      ? `checkout-order-${input.orderId}`
-      : `checkout-membership-${input.accountId}-${input.attemptId ?? randomUUID()}`;
+  const idempotencyKey = input.orderId
+    ? `checkout-order-${input.orderId}`
+    : `checkout-order-${input.accountId}-${input.attemptId ?? randomUUID()}`;
   const body = new URLSearchParams();
-  body.set("mode", input.kind === "membership" ? "subscription" : "payment");
+  body.set("mode", "payment");
   body.set("success_url", `${origin}${input.successPath}`);
   body.set("cancel_url", `${origin}${input.cancelPath}`);
-  body.set("client_reference_id", input.kind === "order" && input.orderId ? input.orderId : input.accountId);
+  body.set("client_reference_id", input.orderId ?? input.accountId);
   body.set("metadata[kind]", input.kind);
   body.set("metadata[account_id]", input.accountId);
   body.set("integration_identifier", `xvaisle_${input.kind}_${integrationSuffix(idempotencyKey)}`);
@@ -172,24 +180,11 @@ export async function createCheckoutSession(input: {
   body.set("excluded_payment_method_types[3]", "amazon_pay");
   body.set("excluded_payment_method_types[4]", "pay_by_bank");
   body.set("phone_number_collection[enabled]", "false");
-  const priceId = input.kind === "membership" ? process.env.STRIPE_MEMBERSHIP_PRICE_ID?.trim() : "";
-  if (priceId) {
-    body.set("line_items[0][quantity]", "1");
-    body.set("line_items[0][price]", priceId);
-  } else {
-    body.set("line_items[0][quantity]", String(input.quantity ?? 1));
-    body.set("line_items[0][price_data][currency]", "usd");
-    body.set("line_items[0][price_data][unit_amount]", String(input.amountCents));
-    body.set("line_items[0][price_data][product_data][name]", input.name);
-    if (input.kind === "membership") {
-      body.set("line_items[0][price_data][recurring][interval]", "month");
-    }
-  }
-  if (input.kind === "membership") {
-    body.set("subscription_data[trial_period_days]", String(TRIAL_DAYS));
-    body.set("subscription_data[metadata][kind]", "membership");
-    body.set("subscription_data[metadata][account_id]", input.accountId);
-  } else if (input.orderId) {
+  body.set("line_items[0][quantity]", String(input.quantity ?? 1));
+  body.set("line_items[0][price_data][currency]", "usd");
+  body.set("line_items[0][price_data][unit_amount]", String(input.amountCents));
+  body.set("line_items[0][price_data][product_data][name]", input.name);
+  if (input.orderId) {
     body.set("payment_intent_data[transfer_group]", input.transferGroup || `order_${input.orderId}`);
     body.set("payment_intent_data[metadata][kind]", "order");
     body.set("payment_intent_data[metadata][order_id]", input.orderId);

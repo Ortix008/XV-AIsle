@@ -289,8 +289,7 @@ function ListingEditor({
       {quote?.error ? <p className="text-sm text-late">{quote.error}</p> : null}
       <p className="text-xs text-pretty text-muted-foreground">
         Cost, the platform fee, and the Stripe estimate come from the server. A reseller cannot set them, and cannot
-        list their own supply. Publishing needs an active membership, a finished Stripe payout setup, and no open
-        balance.
+        list their own supply. Publishing needs a finished Stripe payout setup and no open balance.
       </p>
       {storeError ? <p className="text-sm text-late">{storeError}</p> : null}
       {listing.status === "ready" ? (

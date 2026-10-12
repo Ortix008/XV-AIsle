@@ -12,11 +12,10 @@ import { ShopGrid } from "@/components/shop-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordField } from "@/components/password-field";
-import { MEMBER_PRICE, TRIAL_DAYS } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
 import { welcomeReach } from "@/lib/art";
 import { bots } from "@/lib/bots";
-import { RETURN_WINDOW_DAYS } from "@/lib/policies";
+import { RETURN_WINDOW_DAYS, resellerCommissionLabel } from "@/lib/policies";
 
 export function JoinScreen() {
   const { signUp, signIn, totpChallenge, submitTotp } = useAccount();
@@ -170,8 +169,11 @@ export function JoinScreen() {
                   </p>
                   <ol className="mt-5 list-decimal space-y-3 pl-5 text-base leading-relaxed">
                     <li>
-                      Open an account. The first {TRIAL_DAYS} days are free. After that, membership is ${MEMBER_PRICE} a
-                      month.
+                      Open an account. Joining is free. Commission is {resellerCommissionLabel()} of a completed sale.{" "}
+                      <Link href="/shop/reseller/terms" className="underline underline-offset-4">
+                        Read the reseller terms
+                      </Link>
+                      .
                     </li>
                     <li>Add an approved product to your shop and set a price inside the range the platform set.</li>
                     <li>Share your shop link anywhere. The supplier ships the order. Buyers pay on xvaisle.com.</li>
@@ -267,8 +269,13 @@ export function JoinScreen() {
               <h2 className="text-4xl sm:text-5xl">{mode === "join" ? "Open an account" : "Sign in"}</h2>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
                 {mode === "join"
-                  ? `The first ${TRIAL_DAYS} days are free. After that, membership is $${MEMBER_PRICE} a month. If you stop, the account stays and the market closes.`
-                  : `Sign in and the market opens again. The first ${TRIAL_DAYS} days are free. After that, membership is $${MEMBER_PRICE} a month.`}
+                  ? `Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. We do not promise income.`
+                  : "Sign in to your account. The reseller program is free to join."}
+              </p>
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
+                <Link href="/shop/reseller/terms" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+                  Reseller terms
+                </Link>
               </p>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
                 Your account is kept on the server. Payouts are Stripe Connect only.

@@ -11,7 +11,6 @@ import { ShopGrid } from "@/components/shop-grid";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { getProduct, trendSourceLabel } from "@/lib/catalog";
-import { useAccount } from "@/lib/account-store";
 import { parties, welcomeHero, welcomeReach } from "@/lib/art";
 import { bots } from "@/lib/bots";
 import { useDesk } from "@/lib/desk-store";
@@ -30,7 +29,6 @@ type Decision = {
 
 export function FloorView() {
   const { state, setRunning, reset, select } = useDesk();
-  const { status } = useAccount();
   const router = useRouter();
   const [confirmReset, setConfirmReset] = useState(false);
 
@@ -293,21 +291,15 @@ export function FloorView() {
                       <p className="text-base leading-relaxed">{bot.does}</p>
                       <p className="text-base leading-relaxed text-muted-foreground">{bot.job}</p>
                     </div>
-                    {status === "member" ? (
-                      <label className="flex shrink-0 items-center gap-2 pt-0.5 text-xs">
-                        <Switch
-                          checked={running}
-                          onCheckedChange={(checked) => setRunning(bot.id, checked)}
-                          aria-label={`${running ? "Stop" : "Start"} ${bot.name}`}
-                          className="bot-live"
-                        />
-                        <span className="w-14">{running ? "Running" : "Off"}</span>
-                      </label>
-                    ) : (
-                      <Link href="/membership" className="shrink-0 pt-1 text-xs text-muted-foreground underline-offset-4 hover:underline">
-                        Members
-                      </Link>
-                    )}
+                    <label className="flex shrink-0 items-center gap-2 pt-0.5 text-xs">
+                      <Switch
+                        checked={running}
+                        onCheckedChange={(checked) => setRunning(bot.id, checked)}
+                        aria-label={`${running ? "Stop" : "Start"} ${bot.name}`}
+                        className="bot-live"
+                      />
+                      <span className="w-14">{running ? "Running" : "Off"}</span>
+                    </label>
                   </li>
                 );
               })}

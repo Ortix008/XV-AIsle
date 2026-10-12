@@ -4,7 +4,7 @@ Our mission: [MISSION.md](MISSION.md)
 
 [xvaisle.com](https://xvaisle.com) is a dropshipping marketplace. Companies with extra inventory list it. People resell that stock and never hold the box. A neighborhood shop or a national floor ships the order. You keep the sale, the supplier keeps the fulfillment, and XV-AIsle keeps the market.
 
-An account is required for the seller desk. The first 30 days are free. After that, membership is $10 a month through Stripe, billed to the platform account. Shoppers can browse the public store without an account. Publishing a listing takes an active membership and a finished Stripe payout setup.
+An account is required for the seller desk. The reseller program is free to join. Shoppers can browse the public store without an account. Publishing a listing takes a reseller or admin account and a finished Stripe payout setup. It does not take a paid membership. Existing Stripe subscriptions are left in place.
 
 Signup never creates an admin. The business has two co-owner admins. Each one is promoted by running the seed command once. A new account is a buyer until they choose reseller or supplier. Admin actions require a verified admin. `ADMIN_EMAILS` does not grant admin on signup. An admin must turn on an authenticator app before they can approve a supplier product or release a payout. Sign-in is limited by IP, and five wrong passwords lock that account for 15 minutes.
 
@@ -34,7 +34,7 @@ Seller desk (sign-in required):
 - `/listings` Draft
 - `/orders` Harbor
 - `/marketing` Cast
-- `/membership` Membership
+- `/account` Account, authenticator, and payouts
 - `/floors` National retailers and small shops
 
 Public store:
@@ -44,6 +44,8 @@ Public store:
 - `/shop/usa` Made in the USA
 - `/shop/small` Small-business shelf
 - `/api/store/catalog` A platform-neutral product feed
+- `/shop/reseller` Reseller program
+- `/shop/reseller/terms` Affiliate and reseller terms
 - `/shop/contact` Note to the seller
 - `/shop/safety` How buying works: payment, shipping, returns, and the return address
 - `/shop/return` Stripe return landing
@@ -61,7 +63,7 @@ Still manual or sample data:
 
 ## How money moves
 
-Shoppers pay the platform Stripe account. Membership is the same account, $10 a month, with a 30-day Stripe trial. Buyers pay only on xvaisle.com.
+Shoppers pay the platform Stripe account. Buyers pay only on xvaisle.com. The reseller program does not sell a membership. Existing Stripe subscriptions are left in place and are not required to publish.
 
 A product sale is one charge. The buyer pays the listed price and no added fee. The platform keeps 8–12% (`PLATFORM_FEE_BPS`, default 10%, clamped to that range). The supplier is owed the catalog unit cost times quantity, plus shipping once. Estimated card processing (`STRIPE_FEE_BPS` and `STRIPE_FEE_FIXED_CENTS`, default 2.9% + 30¢) comes out of the reseller's share. When the charge's balance transaction reports a fee, that actual fee replaces the estimate and the reseller's pending payout is recomputed. The server does this from the stored price, the approved catalog cost, and these settings. A client cannot send a fee, a net, or a split.
 
@@ -116,7 +118,7 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | `STRIPE_WEBHOOK_SECRET` | Signing secret for `https://xvaisle.com/api/billing/webhook`. |
 | `STRIPE_CONNECT_WEBHOOK_SECRET` | Signing secret for `https://xvaisle.com/api/connect/webhook`. |
 | `STRIPE_API_VERSION` | Optional `Stripe-Version` header. Default `2026-07-29.dahlia`. |
-| `STRIPE_MEMBERSHIP_PRICE_ID` | Optional $10/month price. Otherwise Checkout uses `price_data`. |
+| `STRIPE_MEMBERSHIP_PRICE_ID` | Ignored. Membership checkout is closed. Existing subscriptions are not canceled. |
 | `PLATFORM_FEE_BPS` | Platform cut in basis points. Default `1000`, clamped to `800`–`1200`. |
 | `STRIPE_FEE_BPS` | Estimated Stripe percentage, in basis points, taken from the reseller. Default `290`, clamped to `0`–`1000`. |
 | `STRIPE_FEE_FIXED_CENTS` | Estimated Stripe fixed fee, in cents, taken from the reseller. Default `30`, clamped to `0`–`100`. |
@@ -200,7 +202,7 @@ docker compose exec store rm /data/catalog-private.json
 
 Pictures live at `public/art/products/<slug>.jpg` and are baked in when the image is built. A path with no file is imported with an empty picture.
 
-After the certificate is up, sign in as that admin, open `/shop/safety`, and save the return address there. Suppliers rotate a delivery secret from the membership page. Each secret is stored hashed.
+After the certificate is up, sign in as that admin, open `/shop/safety`, and save the return address there. Suppliers rotate a delivery secret from the account page. Each secret is stored hashed.
 
 ## Collaborating
 

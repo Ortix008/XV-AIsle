@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
-import { ClosedScreen, JoinScreen } from "@/components/account-gate";
+import type { ReactNode } from "react";
+import { JoinScreen } from "@/components/home-screen";
 import { BrandMark } from "@/components/brand-mark";
 import { botIcon } from "@/components/bot-mark";
 import { Switch } from "@/components/ui/switch";
-import { canKeepBotsRunning, MEMBER_PRICE } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
 import { botById, bots } from "@/lib/bots";
 import { useDesk } from "@/lib/desk-store";
@@ -44,18 +43,10 @@ function reviewCount(
 
 export function DeskShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { ready: accountReady, account, status, daysLeft, signOut } = useAccount();
-  const { ready, state, setRunning } = useDesk();
+  const { ready: accountReady, account, signOut } = useAccount();
+  const { ready, state } = useDesk();
   const latest = state.log[0];
   const anyRunning = bots.some((bot) => state.bots[bot.id].running);
-  const member = canKeepBotsRunning(status ?? "closed");
-
-  useEffect(() => {
-    if (!accountReady || !ready || member) return;
-    for (const bot of bots) {
-      if (state.bots[bot.id].running) setRunning(bot.id, false);
-    }
-  }, [accountReady, ready, member, setRunning, state.bots]);
 
   if (!accountReady || !ready) {
     return (
@@ -66,7 +57,6 @@ export function DeskShell({ children }: { children: ReactNode }) {
   }
 
   if (!account) return <JoinScreen />;
-  if (status === "closed") return <ClosedScreen />;
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -88,8 +78,8 @@ export function DeskShell({ children }: { children: ReactNode }) {
           >
             Shop
           </Link>
-          <Link href="/membership" className="text-xs text-muted-foreground hover:text-foreground">
-            {status === "member" ? `Member · $${MEMBER_PRICE}/mo` : `Free month · ${daysLeft}d`}
+          <Link href="/account" className="text-xs text-muted-foreground hover:text-foreground">
+            Account
           </Link>
           <button
             type="button"
@@ -141,15 +131,15 @@ export function DeskShell({ children }: { children: ReactNode }) {
           Shop
         </Link>
         <Link
-          href="/membership"
+          href="/account"
           className={cn(
             "border-b-2 px-3 py-1.5 text-sm whitespace-nowrap",
-            pathname === "/membership"
+            pathname === "/account"
               ? "border-foreground font-medium"
               : "border-transparent text-muted-foreground",
           )}
         >
-          Membership
+          Account
         </Link>
         <Link
           href="/floors"
@@ -191,15 +181,15 @@ export function DeskShell({ children }: { children: ReactNode }) {
               Shop
             </Link>
             <Link
-              href="/membership"
+              href="/account"
               className={cn(
                 "block border-l-2 px-3 py-2 text-sm",
-                pathname === "/membership"
+                pathname === "/account"
                   ? "border-foreground font-medium"
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
-              Membership
+              Account
             </Link>
             <Link
               href="/floors"
@@ -330,9 +320,7 @@ function NavLinks({
 
 export function BotControls({ id }: { id: (typeof bots)[number]["id"] }) {
   const { state, setRunning, runPass } = useDesk();
-  const { status } = useAccount();
   const running = state.bots[id].running;
-  const member = canKeepBotsRunning(status ?? "closed");
   return (
     <div className="flex flex-wrap items-center gap-3">
       <button
@@ -342,21 +330,15 @@ export function BotControls({ id }: { id: (typeof bots)[number]["id"] }) {
       >
         Work once
       </button>
-      {member ? (
-        <label className="flex items-center gap-2 text-sm">
-          <Switch
-            checked={running}
-            onCheckedChange={(checked) => setRunning(id, checked)}
-            aria-label={running ? `Stop ${botById(id).name}` : `Keep ${botById(id).name} running`}
-            className="bot-live"
-          />
-          <span>{running ? "Running" : "Keep running"}</span>
-        </label>
-      ) : (
-        <Link href="/membership" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-          Members can leave this on
-        </Link>
-      )}
+      <label className="flex items-center gap-2 text-sm">
+        <Switch
+          checked={running}
+          onCheckedChange={(checked) => setRunning(id, checked)}
+          aria-label={running ? `Stop ${botById(id).name}` : `Keep ${botById(id).name} running`}
+          className="bot-live"
+        />
+        <span>{running ? "Running" : "Keep running"}</span>
+      </label>
     </div>
   );
 }

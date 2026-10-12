@@ -225,12 +225,13 @@ async function main() {
   let refused = false;
   try {
     await createCheckoutSession({
-      kind: "membership",
+      kind: "order",
       accountId: "acct",
-      name: "XVAIsle membership",
+      orderId: "ord_live",
+      name: "Pan",
       amountCents: 1000,
-      successPath: "/membership",
-      cancelPath: "/membership",
+      successPath: "/shop/order",
+      cancelPath: "/shop/cart",
     });
   } catch (error) {
     refused = error instanceof Error && error.message.includes("Live Stripe keys are refused");
@@ -238,33 +239,27 @@ async function main() {
   assert(refused, "live keys are refused");
   assert(!calls.some((call) => call.url.includes("checkout")), "a refused live key never calls Stripe");
   process.env.STRIPE_SECRET_KEY = testKey();
-  await createCheckoutSession({
-    kind: "membership",
-    accountId: "acct-1",
-    name: "XVAIsle membership",
-    amountCents: 1000,
-    successPath: "/membership",
-    cancelPath: "/membership",
-    attemptId: "attempt-a",
-  });
-  await createCheckoutSession({
-    kind: "membership",
-    accountId: "acct-1",
-    name: "XVAIsle membership",
-    amountCents: 1000,
-    successPath: "/membership",
-    cancelPath: "/membership",
-    attemptId: "attempt-b",
-  });
-  const membershipCalls = calls.filter((call) => call.url.endsWith("/v1/checkout/sessions"));
-  assert(membershipCalls.length >= 2, "membership checkout was sent");
+  const checkoutCallsBefore = calls.filter((call) => call.url.endsWith("/v1/checkout/sessions")).length;
+  let membershipOffered = false;
+  try {
+    await createCheckoutSession({
+      kind: "membership",
+      accountId: "acct-1",
+      name: "XVAIsle membership",
+      amountCents: 1000,
+      successPath: "/account",
+      cancelPath: "/account",
+      attemptId: "attempt-a",
+    });
+    membershipOffered = true;
+  } catch (error) {
+    assert(error instanceof Error && error.message === "Membership is not offered.", "membership checkout is refused");
+  }
+  assert(!membershipOffered, "membership checkout is not offered");
   assert(
-    decodeURIComponent(membershipCalls[0]?.body ?? "").includes("subscription_data[trial_period_days]=30"),
-    "membership includes a 30 day trial",
+    calls.filter((call) => call.url.endsWith("/v1/checkout/sessions")).length === checkoutCallsBefore,
+    "refusing membership does not call Stripe",
   );
-  assert(membershipCalls[0]?.idempotency?.includes("attempt-a"), "membership idempotency uses the attempt");
-  assert(membershipCalls[1]?.idempotency?.includes("attempt-b"), "a second attempt gets its own key");
-  assert(membershipCalls[0]?.idempotency !== membershipCalls[1]?.idempotency, "membership keys are not the calendar day");
 
   const { closeDb, getDb } = await import("../src/lib/server/db");
   const { accountFromToken, confirmTotp, getAccount, seedAdmin, sendAccountVerification, setOwnRole, signIn, signUp, startTotp, verifyEmailToken } = await import(
@@ -381,15 +376,19 @@ async function main() {
     shipDaysMax: 4,
     catalogItemId: catalog.item.id,
   };
-  const buyerPublish = publishForAccount(resellerRole.account, page);
-  assert(buyerPublish.status === 403, "membership is required to publish");
-  getDb()
-    .prepare("UPDATE accounts SET member_since = ?, membership_status = 'active' WHERE id = ?")
-    .run(Date.now(), resellerJoin.account.id);
-  const member = getAccount(resellerJoin.account.id);
-  if (!member) throw new Error("member missing");
-  const noConnect = publishForAccount(member, page);
-  assert(noConnect.status === 403, "payout setup is required to publish");
+  const withoutMembership = publishForAccount(resellerRole.account, page);
+  const publishError = "error" in withoutMembership ? withoutMembership.error : undefined;
+  assert(withoutMembership.status === 403, "payout setup is required to publish");
+  assert(
+    typeof publishError === "string" && !/membership/i.test(publishError),
+    "publishing does not require a membership",
+  );
+  const openReseller = getAccount(resellerJoin.account.id);
+  if (!openReseller) throw new Error("reseller missing");
+  assert(
+    openReseller.memberSince == null && openReseller.membershipStatus == null,
+    "the reseller has no membership record",
+  );
   const db = getDb();
   db.prepare(
     `INSERT INTO connected_accounts (
@@ -412,6 +411,11 @@ async function main() {
   const listed = publishForAccount(getAccount(resellerJoin.account.id)!, page);
   assert(listed.status === 200 && listed.listing?.supplierCostCents === 500, "cost comes from the supplier catalog");
   assert(listed.listing?.supplierAccountId === supplierJoin.account.id, "the supplier is the catalog owner");
+  const published = getAccount(resellerJoin.account.id);
+  assert(
+    published?.memberSince == null && published?.membershipStatus == null,
+    "publishing works without a membership",
+  );
   getDb().prepare("UPDATE accounts SET role = 'buyer' WHERE id = ?").run(supplierJoin.account.id);
   const wrongRole = publishForAccount(getAccount(resellerJoin.account.id)!, { ...page, productId: "role-pan" });
   assert(wrongRole.status === 400, "the supplier account must have the supplier role");
