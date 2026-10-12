@@ -202,7 +202,7 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
         <CheckoutPolicies />
       </form>
       </div>
-      <div className="order-2 lg:order-1" data-world={world?.slug} style={worldStyle}>
+      <div className="product-stage order-2 lg:order-1" data-world={world?.slug} style={worldStyle}>
         <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 50vw, 100vw" priority />
       </div>
     </div>

@@ -261,8 +261,13 @@ function routedTitle(order: { title?: string | null; productId: string }, listin
   return `${base}. Includes ${pieces.map((piece) => piece.title).join(", ")}`;
 }
 
+/** Generic preview copy. It is attached only when the caller marks the row as a sample. */
+export const SAMPLE_EARNED_PLACE =
+  "Sample preview. This sentence is generic placeholder copy so the card can be seen. A product on the shop uses the note written for that product.";
+
 /** Shopper-facing listing. Cost, margin, fees, and any fund share stay off this object. */
 export function publicShopListing(listing: StoreListing, sample: boolean) {
+  const whyWePicked = listing.whyWePicked?.trim() || (sample ? SAMPLE_EARNED_PLACE : "");
   return {
     productId: listing.productId,
     sku: listing.sku,
@@ -279,7 +284,7 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     sample,
     ...(listing.shipsFrom ? { shipsFrom: listing.shipsFrom } : {}),
     ...(listing.deliveryTime ? { deliveryTime: listing.deliveryTime } : {}),
-    ...(listing.whyWePicked ? { whyWePicked: listing.whyWePicked } : {}),
+    ...(whyWePicked ? { whyWePicked } : {}),
     ...(listing.brand ? { brand: listing.brand } : {}),
     ...(listing.whyItCosts ? { whyItCosts: listing.whyItCosts } : {}),
     ...(listing.checkedBy && listing.checkedOn && listing.checkedNote

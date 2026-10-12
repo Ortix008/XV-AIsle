@@ -350,6 +350,137 @@
     var(--secondary);
 }
 
+.shop-band {
+  position: relative;
+  overflow: hidden;
+  min-height: 168px;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(61, 220, 132, 0.22);
+  border-radius: 18px;
+}
+
+.shop-band-art {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(7, 8, 10, 0.9) 0%, rgba(7, 8, 10, 0.62) 46%, rgba(7, 8, 10, 0.38) 100%),
+    url("/brand/hero-aisle-pedestals.webp") 72% 42% / cover no-repeat;
+}
+
+.shop-band-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 40rem;
+  padding: 1.6rem 1.35rem 1.5rem;
+}
+
+.stall-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+
+@media (min-width: 900px) {
+  .stall-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.stall-tab {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--world) 38%, var(--border));
+  border-radius: 16px;
+  background:
+    radial-gradient(90% 90% at 0% 0%, var(--world-wash), transparent 62%),
+    var(--card);
+  padding: 0.9rem 0.95rem 1rem;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--world-glow) 70%, transparent);
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 0.35s ease;
+}
+
+.stall-tab svg {
+  width: 22px;
+  height: 22px;
+  color: var(--world);
+}
+
+.stall-tab-title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.stall-tab-story {
+  color: var(--muted-foreground);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.stall-tab[aria-current="page"] {
+  border-color: var(--world);
+  box-shadow:
+    0 0 0 1px var(--world),
+    0 0 28px var(--world-glow);
+}
+
+.stall-tab:hover {
+  transform: translate3d(0, -3px, 0);
+}
+
+.shop-fill {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 0.85rem;
+}
+
+@media (min-width: 640px) {
+  .shop-fill {
+    gap: 1.15rem;
+  }
+}
+
+.shop-empty {
+  position: relative;
+  overflow: hidden;
+  min-height: 220px;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(61, 220, 132, 0.18);
+  border-radius: 18px;
+}
+
+.shop-empty-art {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(7, 8, 10, 0.92), rgba(7, 8, 10, 0.72) 58%, rgba(7, 8, 10, 0.5)),
+    url("/brand/hero-aisle-pedestals.webp") center 40% / cover no-repeat;
+  filter: saturate(0.85);
+}
+
+.shop-empty-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 36rem;
+  padding: 1.8rem 1.4rem;
+}
+
+.product-stage {
+  border-radius: 18px;
+  padding: 7px;
+  background:
+    radial-gradient(80% 70% at 50% 40%, rgba(61, 220, 132, 0.22), transparent 68%),
+    #0c0e11;
+  box-shadow:
+    0 0 0 1px rgba(61, 220, 132, 0.38),
+    0 0 32px rgba(61, 220, 132, 0.22);
+}
+
 .stall-mast > svg {
   width: 40px;
   height: 40px;
@@ -632,6 +763,7 @@ html.motion [data-reveal].is-in {
   .product-card:active,
   .aisle-tile:hover,
   .aisle-tile:active,
+  .stall-tab:hover,
   .store-header.is-compact .store-header-bar,
   .media-zoom,
   .product-card:hover .media-zoom,
@@ -1003,7 +1135,22 @@ video.auth-plate-media {
 
 .hero-eyebrow {
   text-transform: none;
-  letter-spacing: 0.18em;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  line-height: 1.4;
+}
+
+@media (min-width: 768px) {
+  .hero-eyebrow {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .hero-eyebrow {
+    font-size: 16px;
+  }
 }
 
 .hero-aisle-stage {
@@ -1040,8 +1187,31 @@ video.auth-plate-media {
 
 .hero-aisle-scrim {
   background:
-    linear-gradient(90deg, rgba(7, 8, 10, 0.86) 0%, rgba(7, 8, 10, 0.55) 32%, rgba(7, 8, 10, 0.12) 62%, transparent 100%),
-    linear-gradient(180deg, rgba(7, 8, 10, 0.16), transparent 20%, rgba(7, 8, 10, 0.32));
+    linear-gradient(
+      90deg,
+      rgba(7, 8, 10, 0.94) 0%,
+      rgba(7, 8, 10, 0.9) 38%,
+      rgba(7, 8, 10, 0.62) 68%,
+      rgba(7, 8, 10, 0.22) 88%,
+      transparent 100%
+    ),
+    linear-gradient(180deg, rgba(7, 8, 10, 0.2), transparent 18%, rgba(7, 8, 10, 0.34));
+}
+
+@media (min-width: 768px) {
+  .hero-aisle-scrim {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(7, 8, 10, 0.94) 0%,
+        rgba(7, 8, 10, 0.9) 24%,
+        rgba(7, 8, 10, 0.7) 42%,
+        rgba(7, 8, 10, 0.32) 62%,
+        rgba(7, 8, 10, 0.08) 82%,
+        transparent 100%
+      ),
+      linear-gradient(180deg, rgba(7, 8, 10, 0.16), transparent 18%, rgba(7, 8, 10, 0.28));
+  }
 }
 
 .xv-flow {

@@ -22,8 +22,13 @@ function ShopCatalog() {
           : "Payment goes to Stripe. After it clears, the order is sent to the supplier that holds the stock."
       }
       query={filter ? `?aisle=${encodeURIComponent(filter)}` : ""}
-      empty={world || aisle ? "Nothing in this stall is marked ready yet." : "Nothing is marked ready yet."}
+      empty={
+        world || aisle
+          ? "This stall is quiet for now. The next pieces show up here when they are ready."
+          : "Nothing is marked ready yet."
+      }
       world={world}
+      catalog
     />
   );
 }
