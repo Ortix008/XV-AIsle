@@ -33,7 +33,7 @@ export const nightWorlds: readonly NightWorld[] = [
   {
     slug: "home-and-gifts",
     title: "Home & Gifts",
-    story: "Bags to give and jars to keep. Pieces chosen for a home that feels lived-in.",
+    story: "Gifts to give and jars to keep. Pieces chosen for a home that feels lived-in.",
     accent: "#e3b4c4",
     glow: "rgba(227, 180, 196, 0.2)",
     wash: "rgba(227, 180, 196, 0.08)",
