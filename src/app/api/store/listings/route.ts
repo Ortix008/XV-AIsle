@@ -3,24 +3,10 @@ import { accountFromToken } from "@/lib/server/accounts";
 import { publishForAccount } from "@/lib/server/publish";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { ensureStarterShelf, isSampleListing, visibleOnShop } from "@/lib/server/starter-shelf";
-import { listPublished } from "@/lib/server/store";
+import { listPublished, publicShopListing } from "@/lib/server/store";
 
 function publicListing(listing: ReturnType<typeof listPublished>[number]) {
-  return {
-    productId: listing.productId,
-    sku: listing.sku,
-    title: listing.title,
-    description: listing.description,
-    priceCents: listing.priceCents,
-    image: listing.image,
-    supplierName: listing.supplierName,
-    supplierOrigin: listing.supplierOrigin,
-    shipDaysMin: listing.shipDaysMin,
-    shipDaysMax: listing.shipDaysMax,
-    madeInUsa: listing.madeInUsa,
-    shelf: listing.shelf,
-    sample: isSampleListing(listing),
-  };
+  return publicShopListing(listing, isSampleListing(listing));
 }
 
 export async function GET(request: Request) {
@@ -55,6 +41,9 @@ export async function POST(request: Request) {
     shelf?: string;
     catalogItemId?: string;
     feeBps?: number | null;
+    shipsFrom?: string;
+    deliveryTime?: string;
+    whyWePicked?: string;
   } | null;
   if (!body?.productId) return Response.json({ error: "Name the product." }, { status: 400 });
   const result = publishForAccount(account, {
@@ -73,6 +62,9 @@ export async function POST(request: Request) {
     shelf: body.shelf === "small" ? "small" : "national",
     catalogItemId: body.catalogItemId,
     feeBps: body.feeBps,
+    shipsFrom: typeof body.shipsFrom === "string" ? body.shipsFrom : undefined,
+    deliveryTime: typeof body.deliveryTime === "string" ? body.deliveryTime : undefined,
+    whyWePicked: typeof body.whyWePicked === "string" ? body.whyWePicked : undefined,
   });
   if (result.status !== 200) return Response.json({ error: result.error }, { status: result.status });
   return Response.json({ listing: result.listing });

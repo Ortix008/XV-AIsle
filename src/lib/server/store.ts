@@ -24,6 +24,9 @@ export type StoreListing = {
   supplierShippingCents: number;
   feeBps: number | null;
   catalogItemId: string | null;
+  shipsFrom: string | null;
+  deliveryTime: string | null;
+  whyWePicked: string | null;
 };
 
 export type StoreOrder = {
@@ -96,6 +99,9 @@ type ListingRow = {
   supplier_shipping_cents?: number | null;
   fee_bps?: number | null;
   catalog_item_id?: string | null;
+  ships_from?: string | null;
+  delivery_time?: string | null;
+  why_we_picked?: string | null;
 };
 
 type OrderRow = {
@@ -170,7 +176,47 @@ function listingFrom(row: ListingRow): StoreListing {
     supplierShippingCents: row.supplier_shipping_cents ?? 0,
     feeBps: row.fee_bps ?? null,
     catalogItemId: row.catalog_item_id ?? null,
+    shipsFrom: row.ships_from?.trim() || null,
+    deliveryTime: row.delivery_time?.trim() || null,
+    whyWePicked: row.why_we_picked?.trim() || null,
   };
+}
+
+/** Shopper-facing listing. Cost, margin, fees, and any fund share stay off this object. */
+export function publicShopListing(listing: StoreListing, sample: boolean) {
+  return {
+    productId: listing.productId,
+    sku: listing.sku,
+    title: listing.title,
+    description: listing.description,
+    priceCents: listing.priceCents,
+    image: listing.image,
+    supplierName: listing.supplierName,
+    supplierOrigin: listing.supplierOrigin,
+    shipDaysMin: listing.shipDaysMin,
+    shipDaysMax: listing.shipDaysMax,
+    madeInUsa: listing.madeInUsa,
+    shelf: listing.shelf,
+    sample,
+    ...(listing.shipsFrom ? { shipsFrom: listing.shipsFrom } : {}),
+    ...(listing.deliveryTime ? { deliveryTime: listing.deliveryTime } : {}),
+    ...(listing.whyWePicked ? { whyWePicked: listing.whyWePicked } : {}),
+  };
+}
+
+function optionalCopy(
+  value: string | null | undefined,
+  existing: string | null,
+  max: number,
+  label: string,
+  collapse: boolean,
+): { text: string | null } | { error: string } {
+  if (value === undefined) return { text: existing };
+  if (value === null) return { text: null };
+  const text = collapse ? value.trim().replace(/\s+/g, " ") : value.replace(/\r\n/g, "\n").trim();
+  if (!text) return { text: null };
+  if (text.length > max) return { error: `Shorten the ${label}.` };
+  return { text };
 }
 
 function orderFrom(row: OrderRow, listing?: ListingRow): StoreOrder {
@@ -268,6 +314,9 @@ export function publishListing(
     | "supplierShippingCents"
     | "feeBps"
     | "catalogItemId"
+    | "shipsFrom"
+    | "deliveryTime"
+    | "whyWePicked"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -277,6 +326,9 @@ export function publishListing(
     supplierShippingCents?: number;
     feeBps?: number | null;
     catalogItemId?: string | null;
+    shipsFrom?: string | null;
+    deliveryTime?: string | null;
+    whyWePicked?: string | null;
   },
 ) {
   if (!input.title.trim() || !input.sku.trim()) return { error: "The page needs a title." as const };
@@ -295,14 +347,20 @@ export function publishListing(
     return { error: "That page already belongs to another account." as const };
   }
   const shelf = input.shelf === "small" ? "small" : "national";
+  const shipsFrom = optionalCopy(input.shipsFrom, existing?.shipsFrom ?? null, 120, "ships-from line", true);
+  if ("error" in shipsFrom) return shipsFrom;
+  const deliveryTime = optionalCopy(input.deliveryTime, existing?.deliveryTime ?? null, 120, "delivery time", true);
+  if ("error" in deliveryTime) return deliveryTime;
+  const whyWePicked = optionalCopy(input.whyWePicked, existing?.whyWePicked ?? null, 800, "why-we-picked note", false);
+  if ("error" in whyWePicked) return whyWePicked;
   getDb()
     .prepare(
       `INSERT INTO listings (
          product_id, account_id, sku, title, description, price_cents, image,
          supplier_name, supplier_origin, ship_days_min, ship_days_max, published,
          made_in_usa, shelf, supplier_account_id, supplier_cost_cents, supplier_shipping_cents, fee_bps,
-         catalog_item_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         catalog_item_id, ships_from, delivery_time, why_we_picked
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(product_id) DO UPDATE SET
          account_id = excluded.account_id,
          sku = excluded.sku,
@@ -321,7 +379,10 @@ export function publishListing(
          supplier_cost_cents = excluded.supplier_cost_cents,
          supplier_shipping_cents = excluded.supplier_shipping_cents,
          fee_bps = excluded.fee_bps,
-         catalog_item_id = excluded.catalog_item_id`,
+         catalog_item_id = excluded.catalog_item_id,
+         ships_from = excluded.ships_from,
+         delivery_time = excluded.delivery_time,
+         why_we_picked = excluded.why_we_picked`,
     )
     .run(
       input.productId,
@@ -343,6 +404,9 @@ export function publishListing(
       input.supplierShippingCents ?? 0,
       input.feeBps ?? null,
       input.catalogItemId ?? null,
+      shipsFrom.text,
+      deliveryTime.text,
+      whyWePicked.text,
     );
   return { listing: getListing(input.productId) };
 }

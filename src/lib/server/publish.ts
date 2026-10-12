@@ -22,6 +22,9 @@ export type PublishBody = {
   madeInUsa?: boolean;
   shelf?: string;
   catalogItemId?: string | null;
+  shipsFrom?: string | null;
+  deliveryTime?: string | null;
+  whyWePicked?: string | null;
   /** Ignored. The server uses PLATFORM_FEE_BPS. */
   feeBps?: number | null;
   /** Ignored. The server recomputes the split. */
@@ -128,6 +131,9 @@ export function publishForAccount(account: PublicAccount, input: PublishBody) {
     supplierShippingCents,
     feeBps: publishing ? feeBps : (existing?.feeBps ?? feeBps),
     catalogItemId,
+    shipsFrom: input.shipsFrom,
+    deliveryTime: input.deliveryTime,
+    whyWePicked: input.whyWePicked,
   });
   if ("error" in result) return { status: 400 as const, error: result.error };
   return { status: 200 as const, listing: result.listing };

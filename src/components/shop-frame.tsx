@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BrandMark } from "@/components/brand-mark";
+import { ShopFooter } from "@/components/shop-footer";
 
 export function ShopFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="flex h-14 items-center justify-between bg-[#111] px-4 text-white">
         <Link href="/" className="flex items-center">
           <BrandMark />
@@ -29,7 +30,8 @@ export function ShopFrame({ children }: { children: ReactNode }) {
           Small business
         </Link>
       </nav>
-      {children}
+      <div className="flex-1">{children}</div>
+      <ShopFooter />
     </div>
   );
 }

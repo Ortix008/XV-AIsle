@@ -9,7 +9,7 @@ delete process.env.SUPPLIER_API_KEY;
 async function main() {
 const { closeDb, getDb } = await import("../src/lib/server/db");
 const { signIn, signUp } = await import("../src/lib/server/accounts");
-const { createPendingOrder, fulfillPaidOrder, publishListing } = await import("../src/lib/server/store");
+const { createPendingOrder, fulfillPaidOrder, publicShopListing, publishListing } = await import("../src/lib/server/store");
 const { requestShipment } = await import("../src/lib/server/supplier");
 const { verifyStripeSignature } = await import("../src/lib/server/stripe");
 
@@ -141,7 +141,50 @@ const usaPage = publishListing(joined.account.id, {
   madeInUsa: true,
   shelf: "small",
 });
-if ("error" in usaPage) throw new Error(usaPage.error);
+if ("error" in usaPage || !usaPage.listing) throw new Error("error" in usaPage ? usaPage.error : "towel missing");
+const towel = {
+  productId: "usa-towel",
+  sku: "TWL-1",
+  title: "Heavy cotton towel",
+  description: "Made on a short run.",
+  priceCents: 1800,
+  image: "/art/mock-sheet-pan-1.png",
+  supplierName: "Harbor Towel Co",
+  supplierOrigin: "Elizabeth, NJ",
+  shipDaysMin: 2,
+  shipDaysMax: 4,
+  madeInUsa: true as const,
+  shelf: "small" as const,
+};
+const withOpen = publishListing(joined.account.id, {
+  ...towel,
+  shipsFrom: "Elizabeth, NJ",
+  deliveryTime: "2–4 days",
+  whyWePicked: "A short run from a small shop.",
+});
+if ("error" in withOpen || !withOpen.listing) throw new Error("open info should save");
+if (
+  withOpen.listing.shipsFrom !== "Elizabeth, NJ" ||
+  withOpen.listing.deliveryTime !== "2–4 days" ||
+  withOpen.listing.whyWePicked !== "A short run from a small shop."
+) {
+  throw new Error("open info should round-trip");
+}
+const publicTowel = publicShopListing(withOpen.listing, false);
+if ("supplierCostCents" in publicTowel || "supplierShippingCents" in publicTowel || "feeBps" in publicTowel) {
+  throw new Error("public listing should hide cost and margin");
+}
+if (publicTowel.shipsFrom !== "Elizabeth, NJ") throw new Error("public listing should show ships from");
+const kept = publishListing(joined.account.id, towel);
+if ("error" in kept || kept.listing?.shipsFrom !== "Elizabeth, NJ") {
+  throw new Error("open info should stay when a later save omits it");
+}
+const cleared = publishListing(joined.account.id, { ...towel, shipsFrom: "", deliveryTime: "   ", whyWePicked: "" });
+if ("error" in cleared || cleared.listing?.shipsFrom || cleared.listing?.deliveryTime || cleared.listing?.whyWePicked) {
+  throw new Error("blank open info should clear");
+}
+const huge = publishListing(joined.account.id, { ...towel, shipsFrom: "x".repeat(200) });
+if (!("error" in huge)) throw new Error("a long ships-from should fail");
 const { listPublished } = await import("../src/lib/server/store");
 const usaOnly = listPublished({ madeInUsa: true });
 if (!usaOnly.some((item) => item.productId === "usa-towel")) throw new Error("usa shelf should include the towel");
@@ -155,7 +198,13 @@ const post = xTimelinePost({
   url: "https://xvaisle.com/shop/usa-towel",
   madeInUsa: true,
 });
-if (post.length > 280 || !post.includes("https://xvaisle.com/shop/usa-towel")) throw new Error("x post was wrong");
+if (
+  post.length > 280 ||
+  !post.includes("https://xvaisle.com/shop/usa-towel") ||
+  !post.includes("#ad, I earn a commission.")
+) {
+  throw new Error("x post was wrong");
+}
 const { addInquiry } = await import("../src/lib/server/inquiries");
 const inquiry = addInquiry({ name: "Example Buyer", email: "buyer@example.com", message: "The towel arrived late." });
 if ("error" in inquiry) throw new Error(inquiry.error);
@@ -217,7 +266,9 @@ const underpaid = await settleCheckoutSession({
 });
 if (!("error" in underpaid)) throw new Error("underpaid session should not fulfill");
 const { ensureStarterShelf } = await import("../src/lib/server/starter-shelf");
-const { saveReturnsAddress, readReturnsAddress } = await import("../src/lib/server/settings");
+const { saveReturnsAddress, readReturnsAddress, saveSupportEmail, readSupportEmail } = await import(
+  "../src/lib/server/settings"
+);
 delete process.env.STORE_OPERATOR_EMAIL;
 ensureStarterShelf();
 if (getDb().prepare("SELECT product_id FROM listings WHERE product_id = 'bench-scraper'").get()) {
@@ -259,6 +310,12 @@ if ("error" in savedReturns || readReturnsAddress() !== "100 Example Street, Sam
 }
 saveReturnsAddress("");
 if (readReturnsAddress()) throw new Error("return address should clear");
+const savedEmail = saveSupportEmail("support@example.com");
+if ("error" in savedEmail || readSupportEmail() !== "support@example.com") throw new Error("support email should save");
+const badEmail = saveSupportEmail("not-an-email");
+if (!("error" in badEmail)) throw new Error("support email should reject a bad address");
+saveSupportEmail("");
+if (readSupportEmail()) throw new Error("support email should clear");
 
 closeDb();
 console.log("market checks ok", { order: pending.order.number });

@@ -14,6 +14,9 @@ export type PublishInput = {
   shelf?: "national" | "small";
   catalogItemId?: string;
   feeBps?: number;
+  shipsFrom?: string;
+  deliveryTime?: string;
+  whyWePicked?: string;
 };
 
 export async function publishListing(input: PublishInput) {
