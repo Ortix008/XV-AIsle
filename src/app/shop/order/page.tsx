@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { ShopFrame } from "@/components/shop-frame";
+import { formatISODate } from "@/lib/business-days";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -18,16 +19,50 @@ type Receipt = {
   windowEndsAt: number | null;
 };
 
+type DelayOffer = {
+  number: string;
+  title: string;
+  expectedOn: string | null;
+  refundRequestedAt: number | null;
+  refundDueAt: number | null;
+  refundedAt: number | null;
+};
+
 function OrderBody() {
   const params = useSearchParams();
+  const delayToken = params.get("delay") ?? "";
   const token = params.get("token") ?? "";
+  const [delay, setDelay] = useState<DelayOffer | null>(null);
   const [order, setOrder] = useState<Receipt | null>(null);
-  const [error, setError] = useState<string | null>(token ? null : "This page needs the link from your receipt.");
+  const [error, setError] = useState<string | null>(
+    token || delayToken ? null : "This page needs the link from your receipt.",
+  );
   const [note, setNote] = useState("");
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
+    if (!delayToken) return;
+    let cancel = false;
+    fetch(`/api/store/delay?token=${encodeURIComponent(delayToken)}`)
+      .then(async (response) => {
+        if (cancel) return;
+        const data = (await response.json().catch(() => null)) as { order?: DelayOffer; error?: string } | null;
+        if (!response.ok || !data?.order) {
+          setError(data?.error ?? "That refund link does not match an order.");
+          return;
+        }
+        setDelay(data.order);
+      })
+      .catch(() => {
+        if (!cancel) setError("That refund link does not match an order.");
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [delayToken]);
+
+  useEffect(() => {
+    if (!token || delayToken) return;
     let cancel = false;
     fetch(`/api/store/receipt?token=${encodeURIComponent(token)}`)
       .then(async (response) => {
@@ -45,7 +80,28 @@ function OrderBody() {
     return () => {
       cancel = true;
     };
-  }, [token]);
+  }, [token, delayToken]);
+
+  async function requestRefund() {
+    setPending(true);
+    setError(null);
+    const response = await fetch("/api/store/delay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: delayToken }),
+    });
+    const data = (await response.json().catch(() => null)) as { order?: DelayOffer; error?: string } | null;
+    setPending(false);
+    if (data?.order) setDelay(data.order);
+    if (!response.ok) {
+      setError(data?.error ?? "The refund did not go through.");
+      return;
+    }
+    if (!data?.order) {
+      setError("The refund did not go through.");
+      return;
+    }
+  }
 
   async function send(action: "confirm" | "dispute") {
     setPending(true);
@@ -67,9 +123,37 @@ function OrderBody() {
   return (
     <div className="mx-auto max-w-xl px-5 py-16 sm:px-10 sm:py-24">
       <p className="eyebrow">Order</p>
-      <h1 className="mt-4 text-4xl sm:text-5xl">Your delivery</h1>
-      {order ? (
-        <div className="mt-4 space-y-3 text-sm">
+      <h1 className="mt-4 text-4xl sm:text-5xl">{delay ? "Your order is delayed" : "Your delivery"}</h1>
+      {delay ? (
+        <div className="mt-6 space-y-3 text-base">
+          <p>
+            <span className="font-mono text-xs">{delay.number}</span>
+            <span className="ml-2 font-medium">{delay.title}</span>
+          </p>
+          <p>
+            {delay.expectedOn
+              ? `The new expected date is ${formatISODate(delay.expectedOn)}.`
+              : "We do not have a new ship date yet."}
+          </p>
+          <p className="text-muted-foreground">
+            You can take a full refund instead. If you choose it, the charge is refunded in Stripe within 7 working days.
+          </p>
+          {delay.refundedAt ? (
+            <p>The refund is in. It was sent within 7 working days of your request.</p>
+          ) : delay.refundRequestedAt ? (
+            <p>
+              The refund is requested
+              {delay.refundDueAt ? ` and is due by ${new Date(delay.refundDueAt).toLocaleDateString()}.` : "."}
+            </p>
+          ) : (
+            <Button type="button" disabled={pending} onClick={() => void requestRefund()}>
+              {pending ? "Requesting…" : "Request a full refund"}
+            </Button>
+          )}
+        </div>
+      ) : null}
+      {order && !delay ? (
+        <div className="mt-6 space-y-3 text-base">
           <p>
             <span className="font-mono text-xs">{order.number}</span>
             <span className="ml-2 font-medium">{order.title}</span>

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ProductBuy } from "@/components/product-buy";
 import { ShopFrame } from "@/components/shop-frame";
+import { publicListing } from "@/lib/server/order-view";
 import { ensureStarterShelf, isSampleListing, visibleOnShop } from "@/lib/server/starter-shelf";
 import { getListing, listingLoss } from "@/lib/server/store";
 
@@ -11,31 +12,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
   if (!listing || !visibleOnShop(listing) || listingLoss(listing)) notFound();
   return (
     <ShopFrame>
-      <ProductBuy
-        listing={{
-          productId: listing.productId,
-          sku: listing.sku,
-          title: listing.title,
-          description: listing.description,
-          priceCents: listing.priceCents,
-          image: listing.image,
-          supplierName: listing.supplierName,
-          supplierOrigin: listing.supplierOrigin,
-          shipDaysMin: listing.shipDaysMin,
-          shipDaysMax: listing.shipDaysMax,
-          madeInUsa: listing.madeInUsa,
-          shelf: listing.shelf,
-          sample: isSampleListing(listing),
-          shipsFrom: listing.shipsFrom,
-          deliveryTime: listing.deliveryTime,
-          whyWePicked: listing.whyWePicked,
-          brand: listing.brand,
-          whyItCosts: listing.whyItCosts,
-          checkedBy: listing.checkedBy,
-          checkedOn: listing.checkedOn,
-          checkedNote: listing.checkedNote,
-        }}
-      />
+      <ProductBuy listing={publicListing(listing, isSampleListing(listing))} />
     </ShopFrame>
   );
 }

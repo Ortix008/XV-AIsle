@@ -60,6 +60,10 @@ async function main() {
 
   const listed = listPublished().find((item) => item.productId === "example-pan");
   if (!listed || listed.accountId !== operator.account.id) throw new Error("listing should be published");
+  if (listed.supplierOrderUrl !== "https://example.invalid/hidden-source") {
+    throw new Error("the supplier link should be stored from the catalog file");
+  }
+  if (listed.route !== "manual") throw new Error("imported listings default to the manual route");
   const loss = listingLoss(listed);
   if (loss) throw new Error("imported listing should clear the payout floor");
 
@@ -120,6 +124,17 @@ async function main() {
   if (dry.stdout.includes("919")) throw new Error("stdout leaked a private field");
   if (getDb().prepare("SELECT product_id FROM listings WHERE product_id = 'example-dry'").get()) {
     throw new Error("dry run wrote a listing");
+  }
+
+  const { GET: catalogGet } = await import("../src/app/api/store/catalog/route");
+  const catalogBody = JSON.stringify(await (await catalogGet()).json());
+  if (catalogBody.includes("hidden-source") || catalogBody.includes("supplier_order_url") || catalogBody.includes("supplierOrderUrl")) {
+    throw new Error("the public catalog leaked the supplier link");
+  }
+  const { GET: listingsGet } = await import("../src/app/api/store/listings/route");
+  const listingsBody = JSON.stringify(await (await listingsGet(new Request("http://127.0.0.1/api/store/listings"))).json());
+  if (listingsBody.includes("hidden-source") || listingsBody.includes("supplierOrderUrl") || listingsBody.includes("supplier_email")) {
+    throw new Error("the public listings leaked a supplier field");
   }
 
   const { GET } = await import("../src/app/api/supplier/catalog/route");

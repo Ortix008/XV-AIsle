@@ -3,6 +3,32 @@ import { connect as tlsConnect, type TLSSocket } from "node:tls";
 
 type MailSocket = Socket | TLSSocket;
 
+export type MailMessage = {
+  to: string;
+  subject: string;
+  text: string;
+};
+
+type MailDelivery = (message: MailMessage) => Promise<void>;
+
+let deliveryOverride: MailDelivery | null = null;
+let captured: MailMessage[] | null = null;
+
+export function setMailDelivery(delivery: MailDelivery | null) {
+  deliveryOverride = delivery;
+}
+
+export function startMailCapture() {
+  captured = [];
+  return captured;
+}
+
+export function stopMailCapture() {
+  const messages = captured ?? [];
+  captured = null;
+  return messages;
+}
+
 function smtpHost() {
   return process.env.SMTP_HOST?.trim() ?? "";
 }
@@ -13,6 +39,10 @@ export function smtpConfigured() {
 
 function isMailbox(value: string) {
   return /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value);
+}
+
+function headerValue(value: string) {
+  return value.replace(/[\r\n]/g, " ").trim();
 }
 
 class SmtpSession {
@@ -85,17 +115,7 @@ function upgrade(socket: Socket, host: string) {
   });
 }
 
-export async function sendVerificationLink(input: { to: string; link: string }) {
-  if (!smtpConfigured()) {
-    console.info(`Verification link (SMTP is not configured): ${input.link}`);
-    return { sent: false as const };
-  }
-  const to = input.to.trim();
-  const from = process.env.MAIL_FROM?.trim() ?? "";
-  if (!isMailbox(to) || !isMailbox(from)) {
-    console.info(`Verification link (mail address was not usable): ${input.link}`);
-    return { sent: false as const };
-  }
+async function smtpSend(message: MailMessage, from: string) {
   const host = smtpHost();
   const port = Number(process.env.SMTP_PORT?.trim() || "587");
   const user = process.env.SMTP_USER?.trim() ?? "";
@@ -120,17 +140,15 @@ export async function sendVerificationLink(input: { to: string; link: string }) 
       await session.command(Buffer.from(pass).toString("base64"), "235");
     }
     await session.command(`MAIL FROM:<${from}>`, "250");
-    await session.command(`RCPT TO:<${to}>`, "250");
+    await session.command(`RCPT TO:<${message.to}>`, "250");
     await session.command("DATA", "354");
     const body = [
       `From: ${from}`,
-      `To: ${to}`,
-      "Subject: Confirm your XVAIsle email",
+      `To: ${message.to}`,
+      `Subject: ${message.subject}`,
       "Content-Type: text/plain; charset=utf-8",
       "",
-      "Confirm this email address for XVAIsle:",
-      input.link,
-      "",
+      message.text,
     ]
       .map((line) => (line.startsWith(".") ? `.${line}` : line))
       .join("\r\n");
@@ -138,13 +156,43 @@ export async function sendVerificationLink(input: { to: string; link: string }) 
     const accepted = await session.read();
     if (!accepted.startsWith("250")) throw new Error("The mail server did not accept the message.");
     socket.write("QUIT\r\n");
-    return { sent: true as const };
-  } catch (error) {
-    console.info(`Verification link (mail was not sent): ${input.link}`);
-    const message = error instanceof Error ? error.message : "Mail was not sent.";
-    console.error(message);
-    return { sent: false as const };
   } finally {
     socket.end();
   }
+}
+
+export async function sendMail(input: MailMessage) {
+  const message: MailMessage = {
+    to: headerValue(input.to),
+    subject: headerValue(input.subject).slice(0, 200),
+    text: input.text.slice(0, 20_000),
+  };
+  captured?.push(message);
+  try {
+    if (deliveryOverride) {
+      await deliveryOverride(message);
+      return { sent: true as const };
+    }
+    const from = headerValue(process.env.MAIL_FROM ?? "");
+    if (!smtpConfigured() || !isMailbox(message.to) || !isMailbox(from)) {
+      console.info(`Mail not sent (SMTP is not configured): ${message.subject} to ${message.to || "unset"}`);
+      return { sent: false as const };
+    }
+    await smtpSend(message, from);
+    return { sent: true as const };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "Mail was not sent.";
+    console.error(detail);
+    return { sent: false as const };
+  }
+}
+
+export async function sendVerificationLink(input: { to: string; link: string }) {
+  const result = await sendMail({
+    to: input.to,
+    subject: "Confirm your XVAIsle email",
+    text: `Confirm this email address for XVAIsle:\n${input.link}\n`,
+  });
+  if (!result.sent) console.info(`Verification link (mail was not sent): ${input.link}`);
+  return result;
 }
