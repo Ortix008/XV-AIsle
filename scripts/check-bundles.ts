@@ -91,7 +91,7 @@ async function main() {
       itemIds: ["pan-a", "other-pan"],
     },
   );
-  assert("error" in mixed && mixed.error.includes("one supplier"), "two suppliers are refused");
+  assert("error" in mixed && typeof mixed.error === "string" && mixed.error.includes("one supplier"), "two suppliers are refused");
 
   piece("acct-pan", "Account pan", "North Mill", "sup-1");
   const mixedKey = publishBundle(

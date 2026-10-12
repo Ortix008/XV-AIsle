@@ -3,22 +3,29 @@ import { accountFromToken, type PublicAccount } from "@/lib/server/accounts";
 import { createCatalogItem, listApprovedCatalog } from "@/lib/server/catalog";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 
-async function signedInAccount() {
+async function signedInAccount(request?: Request) {
   try {
     const token = (await cookies()).get(SESSION_COOKIE)?.value;
-    return accountFromToken(token);
+    if (token) return accountFromToken(token);
   } catch {
-    return null;
+    // The route test sends the session on the request instead of the Next cookie store.
   }
+  const header = request?.headers.get("cookie");
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const [name, ...rest] = part.trim().split("=");
+    if (name === SESSION_COOKIE) return accountFromToken(decodeURIComponent(rest.join("=")));
+  }
+  return null;
 }
 
 function canSeeCost(account: PublicAccount, ownerId: string) {
-  if (account.role === "admin" || account.role === "reseller") return true;
+  if (account.role === "admin") return true;
   return account.role === "supplier" && account.id === ownerId;
 }
 
-export async function GET() {
-  const account = await signedInAccount();
+export async function GET(request?: Request) {
+  const account = await signedInAccount(request);
   if (!account) return Response.json({ error: "Sign in first." }, { status: 401 });
   return Response.json({
     items: listApprovedCatalog().map((item) => {

@@ -37,5 +37,11 @@ export async function POST(request: Request) {
     priceCents: body.priceCents ?? 0,
   });
   if (result.status !== 200) return Response.json({ error: result.error }, { status: result.status });
-  return Response.json({ quote: result.quote });
+  if (account.role === "admin") return Response.json({ quote: result.quote });
+  return Response.json({
+    quote: {
+      priceCents: result.quote.priceCents,
+      error: result.quote.error,
+    },
+  });
 }

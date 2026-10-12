@@ -6,6 +6,7 @@ import { compareAtRejection } from "../honest-price";
 import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseListingRoute, type ListingRoute } from "../order-flags";
 import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
+import { marginGuard, snapshotOrderCost } from "./money-flow";
 import { changed, getDb } from "./db";
 import { etaFromListing } from "../order-facts";
 import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
@@ -50,6 +51,8 @@ export type StoreListing = {
   returnRegion: string | null;
   returnPostal: string | null;
   returnCountry: string | null;
+  /** Private. Cents. Shoppers and resellers never receive this. */
+  wholesaleCost: number | null;
 };
 
 export type StoreOrder = {
@@ -156,6 +159,7 @@ type ListingRow = {
   return_region?: string | null;
   return_postal?: string | null;
   return_country?: string | null;
+  wholesale_cost?: number | null;
 };
 
 type OrderRow = {
@@ -264,6 +268,7 @@ function listingFrom(row: ListingRow): StoreListing {
     returnRegion: row.return_region?.trim() || null,
     returnPostal: row.return_postal?.trim() || null,
     returnCountry: row.return_country?.trim() || null,
+    wholesaleCost: row.wholesale_cost ?? null,
   };
 }
 
@@ -468,6 +473,7 @@ export function publishListing(
     | "returnRegion"
     | "returnPostal"
     | "returnCountry"
+    | "wholesaleCost"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -500,6 +506,10 @@ export function publishListing(
   }
   if (!Number.isInteger(input.priceCents) || input.priceCents < 50) return { error: "Set a price before the store can sell it." as const };
   const existing = getListing(input.productId);
+  if (existing?.wholesaleCost != null && input.published !== false) {
+    const guarded = marginGuard(input.priceCents, existing.wholesaleCost);
+    if (guarded) return { error: guarded satisfies string };
+  }
   if (existing && existing.accountId !== accountId) {
     return { error: "That page already belongs to another account." as const };
   }
@@ -765,6 +775,10 @@ function pricedSplit(listing: StoreListing, qty: number) {
 }
 
 export function listingLoss(listing: StoreListing) {
+  if (listing.wholesaleCost != null) {
+    const guarded = marginGuard(listing.priceCents, listing.wholesaleCost);
+    if (guarded) return guarded;
+  }
   if (!listing.supplierAccountId && !listing.catalogItemId) return null;
   const priced = pricedSplit(listing, 1);
   if ("error" in priced) return priced.error;
@@ -811,6 +825,13 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   const number = `XV-${allocateOrderNumber()}`;
   const receiptToken = randomBytes(32).toString("hex");
   const page = listingFrom(listing);
+  if (page.wholesaleCost != null) {
+    const guarded = marginGuard(page.priceCents, page.wholesaleCost);
+    if (guarded) {
+      pauseListing(page.productId);
+      return { error: guarded };
+    }
+  }
   const priced = pricedSplit(page, qty);
   if ("error" in priced) {
     pauseListing(page.productId);
@@ -869,6 +890,7 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
       returnTo?.postal ?? null,
       returnTo?.country ?? null,
     );
+  snapshotOrderCost(id, page.productId, qty, page.priceCents);
   return { order: getOrder(id)!, listing: listingFrom(listing), receiptToken };
 }
 

@@ -22,6 +22,6 @@ export async function GET() {
         }
       : null,
     billing: billingConfigured(),
-    reserve: resellerReserveSummary(account.id),
+    reserve: account.role === "admin" ? resellerReserveSummary(account.id) : null,
   });
 }

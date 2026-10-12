@@ -255,6 +255,7 @@ export function getDb() {
     "CREATE UNIQUE INDEX IF NOT EXISTS accounts_x_user_id ON accounts (x_user_id) WHERE x_user_id IS NOT NULL",
   );
   migrateSupplierReturns(next);
+  migrateMoneyFlow(next);
   db = next;
   return next;
 }
@@ -276,6 +277,60 @@ function migrateSupplierReturns(database: DatabaseSync) {
     addColumn(database, "listings", column, "TEXT");
     addColumn(database, "orders", column, "TEXT");
   }
+}
+
+/**
+ * Wholesale cost is private. Public pages and reseller responses must not select it.
+ * Commission batches are records only. They do not create Stripe transfers.
+ */
+function migrateMoneyFlow(database: DatabaseSync) {
+  addColumn(database, "listings", "wholesale_cost", "INTEGER");
+  addColumn(database, "orders", "referrer_account_id", "TEXT");
+  addColumn(database, "orders", "item_price_cents", "INTEGER");
+  addColumn(database, "orders", "wholesale_cost", "INTEGER");
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS order_money (
+      order_id TEXT PRIMARY KEY,
+      item_price_cents INTEGER NOT NULL,
+      wholesale_cost INTEGER,
+      wholesale_total_cents INTEGER,
+      stripe_fee_cents INTEGER NOT NULL,
+      commission_cents INTEGER NOT NULL,
+      platform_margin_cents INTEGER,
+      referrer_account_id TEXT
+    );
+    CREATE TABLE IF NOT EXISTS reseller_commissions (
+      id TEXT PRIMARY KEY,
+      order_id TEXT NOT NULL UNIQUE,
+      account_id TEXT NOT NULL,
+      item_price_cents INTEGER NOT NULL,
+      rate_bps INTEGER NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      batch_id TEXT,
+      reason TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS reseller_commission_batches (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      period TEXT NOT NULL,
+      gross_cents INTEGER NOT NULL,
+      debt_cents INTEGER NOT NULL,
+      net_cents INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS reseller_debts (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      order_id TEXT NOT NULL UNIQUE,
+      amount_cents INTEGER NOT NULL,
+      open_cents INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+  `);
 }
 
 function addColumn(database: DatabaseSync, table: string, column: string, definition: string) {
