@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { isStripeRedirectUrl } from "@/lib/checkout-url";
+import { accountSupportRef } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
+import { isStripeRedirectUrl } from "@/lib/checkout-url";
 
 function reserveMoney(cents: number) {
   const dollars = cents / 100;
@@ -146,7 +147,9 @@ export function ConnectPayout() {
           )}
         </div>
       ) : null}
-      <p className="text-xs text-muted-foreground">Account id {account.id}</p>
+      <p className="text-xs text-muted-foreground">
+        {account.role === "admin" ? `Account id ${account.id}` : accountSupportRef(account.id)}
+      </p>
       {returned === "return" ? <p className="text-sm">Stripe sent you back. Payout status is below.</p> : null}
       {returned === "retry" ? (
         <p className="text-sm">The Stripe link expired. Start payout setup again.</p>

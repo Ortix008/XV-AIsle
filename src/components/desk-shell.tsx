@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { JoinScreen } from "@/components/home-screen";
 import { BrandMark } from "@/components/brand-mark";
 import { botIcon } from "@/components/bot-mark";
@@ -126,7 +126,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
           </p>
         </div>
       ) : null}
-      <nav className="flex shrink-0 gap-1 overflow-x-auto border-b bg-card px-2 py-1.5 md:hidden" aria-label={operator ? "Desk" : "Account"}>
+      <PhoneTabRow label={operator ? "Desk" : "Account"}>
         {operator ? (
           <>
             <DeskLink href="/" pathname={pathname} mobile>
@@ -151,7 +151,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
             </DeskLink>
           ))
         )}
-      </nav>
+      </PhoneTabRow>
       <div className="flex min-h-0 flex-1">
         <nav className="hidden w-52 shrink-0 flex-col border-r bg-card md:flex">
           <div className="px-2 pt-3">
@@ -212,6 +212,61 @@ export function DeskShell({ children }: { children: ReactNode }) {
           </div>
         </main>
       </div>
+    </div>
+  );
+}
+
+function PhoneTabRow({ label, children }: { label: string; children: ReactNode }) {
+  const scroller = useRef<HTMLElement>(null);
+  const [edges, setEdges] = useState({ start: false, end: false });
+
+  useLayoutEffect(() => {
+    const node = scroller.current;
+    if (!node) return;
+    const measure = () => {
+      const max = node.scrollWidth - node.clientWidth;
+      const overflow = max > 2;
+      const start = overflow && node.scrollLeft > 2;
+      const end = overflow && node.scrollLeft < max - 2;
+      setEdges((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
+    };
+    measure();
+    node.addEventListener("scroll", measure, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(node);
+    return () => {
+      node.removeEventListener("scroll", measure);
+      observer?.disconnect();
+    };
+  }, [label]);
+
+  return (
+    <div className="relative md:hidden">
+      <nav
+        ref={scroller}
+        className="flex shrink-0 gap-1 overflow-x-auto border-b bg-card px-2 py-1.5"
+        aria-label={label}
+      >
+        {children}
+      </nav>
+      <span
+        aria-hidden
+        data-tab-fade="start"
+        data-shown={edges.start ? "true" : "false"}
+        className={cn(
+          "pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-card to-transparent motion-safe:transition-opacity motion-safe:duration-200",
+          edges.start ? "opacity-100" : "opacity-0",
+        )}
+      />
+      <span
+        aria-hidden
+        data-tab-fade="end"
+        data-shown={edges.end ? "true" : "false"}
+        className={cn(
+          "pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-card to-transparent motion-safe:transition-opacity motion-safe:duration-200",
+          edges.end ? "opacity-100" : "opacity-0",
+        )}
+      />
     </div>
   );
 }
