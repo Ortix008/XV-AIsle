@@ -988,4 +988,63 @@ video.auth-plate-media {
   .auth-stage .auth-grain {
     opacity: 0.24;
   }
+  .hero-aisle-back,
+  .xv-flow {
+    transform: none !important;
+  }
+}
+
+.hero-aisle {
+  position: relative;
+  min-height: 92vh;
+  overflow: hidden;
+  background: #07080a;
+}
+
+.hero-aisle-stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hero-aisle-back {
+  position: absolute;
+  inset: -6%;
+}
+
+.hero-aisle-photo {
+  object-fit: cover;
+  object-position: center 42%;
+  filter: brightness(0.34) saturate(0.72) contrast(1.08);
+}
+
+.hero-aisle-grade,
+.hero-aisle-scrim,
+.xv-flow,
+.auth-flow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hero-aisle-grade {
+  background:
+    radial-gradient(ellipse at 50% 32%, rgba(61, 220, 132, 0.2), transparent 46%),
+    radial-gradient(ellipse at 78% 70%, rgba(231, 194, 122, 0.08), transparent 36%),
+    linear-gradient(180deg, rgba(7, 8, 10, 0.28), rgba(7, 8, 10, 0.18) 40%, rgba(7, 8, 10, 0.62));
+}
+
+.hero-aisle-scrim {
+  background:
+    linear-gradient(90deg, rgba(7, 8, 10, 0.9) 0%, rgba(7, 8, 10, 0.78) 36%, rgba(7, 8, 10, 0.4) 70%, rgba(7, 8, 10, 0.62) 100%),
+    radial-gradient(ellipse at 50% 45%, transparent 28%, rgba(7, 8, 10, 0.5) 100%);
+}
+
+.xv-flow {
+  width: 100%;
+  height: 100%;
+}
+
+.xv-flow-light {
+  opacity: 0.72;
 }

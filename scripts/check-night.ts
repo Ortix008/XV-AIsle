@@ -22,4 +22,4 @@ for (const world of nightWorlds) {
   assert(!hype.test(world.story), `${world.title} stays free of hype`);
 }
 
-console.log("night boutique checks ok");
+console.log("night world checks ok");

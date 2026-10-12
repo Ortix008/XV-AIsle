@@ -10,10 +10,10 @@
  *    - Drawn aisle only: `null`
  *
  * A screen can also pass `media` to `<AuthBackdrop />`. That prop wins over this config.
- * Shelves, light trails, motes, and grain stay. Only the plate in the slot changes.
+ * The xvaisle flow, motes, and grain stay. Only the plate in the slot changes.
  *
- * The default plate is the aisle photo from the earlier hero, graded dark in CSS
- * so it sits under the night market instead of washing the page white.
+ * The default plate is the aisle photo from the earlier hero, graded dark in CSS.
+ * Login uses a lighter xvaisle flow on top of that plate.
  */
 
 export type AuthBackdropImage = {

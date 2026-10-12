@@ -14,7 +14,7 @@ function ShopCatalog() {
   const filter = world?.slug === "bundles" ? "bundles" : aisle?.slug;
   return (
     <ShopGrid
-      kicker={world ? "Night Boutique" : aisle ? "Aisle" : "Store"}
+      kicker={world || aisle ? "Aisle" : "Store"}
       title={world ? world.title : aisle ? aisle.title : "What is ready to ship"}
       lede={
         world

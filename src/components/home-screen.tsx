@@ -9,6 +9,7 @@ import { StoreHeader } from "@/components/store-header";
 import { botIcon } from "@/components/bot-mark";
 import { DepartmentGrid } from "@/components/department-grid";
 import { NightStalls } from "@/components/night-stalls";
+import { AisleParallax, XvAisleFlow } from "@/components/xvaisle-flow";
 import { ShopGrid } from "@/components/shop-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { PasswordField } from "@/components/password-field";
 import { useAccount } from "@/lib/account-store";
 import { welcomeReach } from "@/lib/art";
 import { bots } from "@/lib/bots";
+import { HERO_EYEBROW } from "@/lib/hero-copy";
 import { RETURN_WINDOW_DAYS, resellerCommissionLabel } from "@/lib/policies";
 
 export function JoinScreen() {
@@ -62,12 +64,26 @@ export function JoinScreen() {
       </a>
       <StoreHeader />
       <main id="home-main" className="page-enter">
-        <section className="hero-sweep">
-          <div className="relative z-[1] mx-auto grid max-w-[1280px] items-center gap-10 px-5 py-14 sm:px-10 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:py-[110px]">
-            <div className="relative">
-              <div className="hero-glow" aria-hidden />
-              <div className="relative z-[1]">
-              <p className="eyebrow">Night Boutique</p>
+        <section className="hero-aisle">
+          <div className="hero-aisle-stage" aria-hidden>
+            <AisleParallax>
+              <Image
+                src="/brand/hero-aisle-pedestals.webp"
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                className="hero-aisle-photo"
+              />
+            </AisleParallax>
+            <div className="hero-aisle-grade" />
+            <XvAisleFlow />
+            <div className="hero-aisle-scrim" />
+          </div>
+          <div className="relative z-[1] mx-auto flex min-h-[inherit] max-w-[1280px] flex-col justify-center px-5 py-16 sm:px-10 lg:py-24">
+            <div className="hero-glow" aria-hidden />
+            <div className="relative z-[1] max-w-xl">
+              <p className="eyebrow">{HERO_EYEBROW}</p>
               <h1 className="mt-5 text-[3.25rem] leading-[0.95] font-bold tracking-[-0.045em] sm:text-7xl lg:text-[5.5rem]">
                 Goods that
                 <br />
@@ -85,17 +101,6 @@ export function JoinScreen() {
                   {mode === "join" ? "Open an account" : "Sign in"}
                 </a>
               </div>
-              </div>
-            </div>
-            <div className="product-frame relative z-[1]">
-              <Image
-                src="/art/market-hero.png"
-                alt="A person seated at a wooden table with a bowl of salad and a glass of water."
-                fill
-                priority
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                className="object-cover object-[center_30%]"
-              />
             </div>
           </div>
         </section>
@@ -104,7 +109,7 @@ export function JoinScreen() {
           <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]">
             <Reveal className="mb-10 flex items-end justify-between gap-5">
               <div>
-                <p className="eyebrow">Night Boutique</p>
+                <p className="eyebrow">Aisles</p>
                 <h2 className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">Four stalls</h2>
                 <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">
                   Each stall has its own lamp. The line under the name is what that stall actually holds.

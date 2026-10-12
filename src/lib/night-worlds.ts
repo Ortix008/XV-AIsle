@@ -1,4 +1,4 @@
-/** Night Boutique stalls. Accents are decorative lamps, not prices or warnings. */
+/** Stall lamps. Accents are decorative, not prices or warnings. */
 
 export const nightWorldSlugs = ["build-your-rig", "tech-and-desk", "home-and-gifts", "bundles"] as const;
 

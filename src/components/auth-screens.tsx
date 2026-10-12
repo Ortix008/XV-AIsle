@@ -33,7 +33,7 @@ function AuthScreen({
             <BrandMark />
           </Link>
           <main id="auth-main" className="auth-glass">
-            <p className="eyebrow">Night door</p>
+            <p className="eyebrow">Account</p>
             <h1 className="auth-title">{title}</h1>
             <p className="auth-lede">{lede}</p>
             {children}

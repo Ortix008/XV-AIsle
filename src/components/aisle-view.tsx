@@ -163,7 +163,7 @@ export function AisleView({ aisle, onClose }: { aisle: Aisle; onClose: () => voi
               <NightMotif slug={world.slug} />
               <div>
                 <p className="eyebrow" style={{ color: world.accent }}>
-                  Night Boutique
+                  {world.title}
                 </p>
                 <p className="mt-2 text-base leading-relaxed text-muted-foreground">{world.story}</p>
               </div>
