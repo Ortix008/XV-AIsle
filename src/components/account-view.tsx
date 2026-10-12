@@ -8,7 +8,7 @@ import { ConnectPayout } from "@/components/connect-payout";
 import { Input } from "@/components/ui/input";
 import { AuthPane } from "@/components/auth-backdrop";
 import { useAccount } from "@/lib/account-store";
-import { resellerCommissionLabel } from "@/lib/policies";
+import { RESELLER_DISCLOSURE, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
 
 function AuthenticatorSetup({ enabled, onChanged }: { enabled: boolean; onChanged: () => Promise<void> }) {
   const [secret, setSecret] = useState<string | null>(null);
@@ -102,13 +102,17 @@ export function AccountView() {
         <p className="eyebrow">Account</p>
         <h1 className="auth-title">Your account</h1>
         {params.get("verified") === "1" ? <p className="text-base">Email verified.</p> : null}
-        <p className="text-pretty text-base leading-relaxed text-muted-foreground">
-          The reseller program is free to join. Commission is {resellerCommissionLabel()} of a completed sale.{" "}
-          <Link href="/shop/reseller/terms" className="auth-text-link">
-            Reseller terms
-          </Link>
-          .
-        </p>
+        {account.role === "buyer" || account.role === "reseller" ? (
+          <p className="text-pretty text-base leading-relaxed text-muted-foreground">
+            The reseller program is free to join. Commission is {resellerCommissionLabel()} of a completed sale.{" "}
+            {resellerPayLine()} If you mention a product, use these words:{" "}
+            <span className="font-medium text-foreground">{RESELLER_DISCLOSURE}</span>{" "}
+            <Link href="/shop/reseller" className="auth-text-link">
+              Reseller program
+            </Link>
+            .
+          </p>
+        ) : null}
         <AuthenticatorSetup enabled={account.totpEnabled === true} onChanged={refresh} />
         <div id="payouts">
           <ConnectPayout />

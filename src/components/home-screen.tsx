@@ -18,7 +18,7 @@ import { useAccount } from "@/lib/account-store";
 import { welcomeReach } from "@/lib/art";
 import { bots } from "@/lib/bots";
 import { HERO_EYEBROW } from "@/lib/hero-copy";
-import { RETURN_WINDOW_DAYS, resellerCommissionLabel } from "@/lib/policies";
+import { RESELLER_DISCLOSURE, RETURN_WINDOW_DAYS, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
 
 export function JoinScreen() {
   const { signUp, signIn, totpChallenge, submitTotp } = useAccount();
@@ -184,6 +184,7 @@ export function JoinScreen() {
                   <ol className="mt-5 list-decimal space-y-3 pl-5 text-base leading-relaxed">
                     <li>
                       Open an account. Joining is free. Commission is {resellerCommissionLabel()} of a completed sale.{" "}
+                      {resellerPayLine()} If you mention a product, say {RESELLER_DISCLOSURE}{" "}
                       <Link href="/shop/reseller/terms" className="underline underline-offset-4">
                         Read the reseller terms
                       </Link>
@@ -283,7 +284,7 @@ export function JoinScreen() {
               <h2 className="text-4xl sm:text-5xl">{mode === "join" ? "Open an account" : "Sign in"}</h2>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
                 {mode === "join"
-                  ? `Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. We do not promise income.`
+                  ? `Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. ${resellerPayLine()} If you mention a product, say ${RESELLER_DISCLOSURE}`
                   : "Sign in to your account. The reseller program is free to join."}
               </p>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">

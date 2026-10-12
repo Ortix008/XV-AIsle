@@ -111,15 +111,21 @@ export function ConnectPayout() {
     <section className="flex max-w-sm flex-col gap-3 border-t pt-4">
       <div>
         <h2 className="text-sm font-medium">Your share</h2>
-        <p className="mt-1 text-pretty text-sm text-muted-foreground">
-          Stripe holds the bank account. This market never asks for a card number, a bank number, or a crypto
-          address. After the buyer confirms delivery, or 7 days pass with no dispute, Stripe sends the reseller
-          share and the supplier share. The platform keeps 8–12%. We hold {reserve ? reservePercent(reserve.bps) : "10"}%
-          of each payout, up to {reserve ? reserveMoney(reserve.capCents) : "$100"} total, for{" "}
-          {reserve ? reserve.days : 120} days to cover refunds and disputes, then release it to you automatically.
-        </p>
+        {account.role === "admin" ? (
+          <p className="mt-1 text-pretty text-sm text-muted-foreground">
+            Stripe holds the bank account. This market never asks for a card number, a bank number, or a crypto
+            address. After the buyer confirms delivery, or 7 days pass with no dispute, Stripe sends the reseller
+            share and the supplier share. The platform keeps 8–12%. We hold {reserve ? reservePercent(reserve.bps) : "10"}%
+            of each payout, up to {reserve ? reserveMoney(reserve.capCents) : "$100"} total, for{" "}
+            {reserve ? reserve.days : 120} days to cover refunds and disputes, then release it to you automatically.
+          </p>
+        ) : (
+          <p className="mt-1 text-pretty text-sm text-muted-foreground">
+            Stripe holds the bank account. This market never asks for a card number, a bank number, or a crypto address.
+          </p>
+        )}
       </div>
-      {account.role === "reseller" && reserve ? (
+      {account.role === "admin" && reserve ? (
         <div className="text-sm">
           <p>Reserve held {reserveMoney(reserve.heldCents)}</p>
           {reserve.releases.length === 0 ? (

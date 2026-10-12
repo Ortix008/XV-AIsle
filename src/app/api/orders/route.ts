@@ -19,7 +19,7 @@ export async function GET() {
   const orders = ordersVisibleTo(account).map((order) => ({
     ...presentOrder(account, order, account.role === "admin" ? getListing(order.productId) : null),
     hold: holdState(order.paidAt),
-    payoutNote: payoutHold(order),
+    payoutNote: account.role === "admin" ? payoutHold(order) : null,
   }));
   const alerts = account.role === "admin" && account.emailVerified ? listHoldAlerts() : [];
   return Response.json({ orders, alerts });

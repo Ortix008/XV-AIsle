@@ -133,7 +133,7 @@ function holdAlertText(kind: "nearing" | "refund" | "reserve") {
   }
 }
 
-function StoreOrders() {
+function StoreOrders({ payoutNotes = false, empty = false }: { payoutNotes?: boolean; empty?: boolean }) {
   const { account } = useAccount();
   const [orders, setOrders] = useState<DeskStoreOrder[]>([]);
   const [alerts, setAlerts] = useState<{ id: string; number: string; kind: "nearing" | "refund" | "reserve" }[]>([]);
@@ -155,7 +155,10 @@ function StoreOrders() {
     load();
   }, [load]);
 
-  if (orders.length === 0) return null;
+  if (orders.length === 0) {
+    if (!empty) return null;
+    return <p className="px-4 py-6 text-sm text-muted-foreground sm:px-6">No orders on this account yet.</p>;
+  }
   const canAct = account?.role === "admin" && account.emailVerified;
   return (
     <section className="border-b px-4 py-3 sm:px-6">
@@ -174,7 +177,7 @@ function StoreOrders() {
       ) : null}
       <ul className="mt-2 divide-y">
         {orders.map((order) => (
-          <StoreOrderCard key={order.id} order={order} canAct={Boolean(canAct)} onDone={load} />
+          <StoreOrderCard key={order.id} order={order} canAct={Boolean(canAct)} payoutNotes={payoutNotes} onDone={load} />
         ))}
       </ul>
     </section>
@@ -184,10 +187,12 @@ function StoreOrders() {
 function StoreOrderCard({
   order,
   canAct,
+  payoutNotes,
   onDone,
 }: {
   order: DeskStoreOrder;
   canAct: boolean;
+  payoutNotes: boolean;
   onDone: () => void;
 }) {
   const blocked = order.number === BLOCKED_TEST_ORDER_NUMBER || order.status === "test";
@@ -236,7 +241,7 @@ function StoreOrderCard({
           {order.delayRefundDueAt ? `. Due by ${new Date(order.delayRefundDueAt).toLocaleDateString()}` : ""}
         </span>
       ) : null}
-      {order.payoutNote ? <span className="mt-0.5 block text-muted-foreground">{order.payoutNote}</span> : null}
+      {payoutNotes && order.payoutNote ? <span className="mt-0.5 block text-muted-foreground">{order.payoutNote}</span> : null}
       {blocked ? <span className="mt-1 block text-late">Test order. Do not place this with a supplier.</span> : null}
       {canAct && supplierLink && !blocked ? (
         <a className="mt-2 inline-block underline underline-offset-4" href={supplierLink} target="_blank" rel="noreferrer">
@@ -351,6 +356,21 @@ const filters = [
 ] as const;
 
 export function OrdersView() {
+  const { account } = useAccount();
+  if (account && account.role !== "admin") return <MemberOrders />;
+  return <HarborOrders />;
+}
+
+function MemberOrders() {
+  return (
+    <div>
+      <PageHeader kicker="Account" title="Orders" lede="Orders placed on your account." />
+      <StoreOrders empty />
+    </div>
+  );
+}
+
+function HarborOrders() {
   const { state, select, runPass } = useDesk();
   const [filter, setFilter] = useState<(typeof filters)[number]["id"]>("open");
   const today = todayISO();
@@ -378,7 +398,7 @@ export function OrdersView() {
         }
       >
         <div className="min-w-0 border-b lg:overflow-y-auto lg:border-r lg:border-b-0">
-          <StoreOrders />
+          <StoreOrders payoutNotes />
           <ShopperNotes />
           {state.orders.length === 0 ? (
             <EmptyNote

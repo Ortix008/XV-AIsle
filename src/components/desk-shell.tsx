@@ -8,6 +8,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { botIcon } from "@/components/bot-mark";
 import { Switch } from "@/components/ui/switch";
 import { useAccount } from "@/lib/account-store";
+import type { AccountRole } from "@/lib/account";
 import { botById, bots } from "@/lib/bots";
 import { useDesk } from "@/lib/desk-store";
 import { cn } from "cn";
@@ -41,6 +42,19 @@ function reviewCount(
   return unwritten + drafts;
 }
 
+const memberLinks = [
+  { href: "/orders", label: "Orders" },
+  { href: "/account", label: "Profile" },
+  { href: "/shop/reseller", label: "Reseller program" },
+  { href: "/account#payouts", label: "I resell / I supply" },
+];
+
+const operatorPaths = new Set(["/", "/scout", "/listings", "/marketing", "/floors", "/catalog"]);
+
+function isOperator(role: AccountRole) {
+  return role === "admin";
+}
+
 export function DeskShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { ready: accountReady, account, signOut } = useAccount();
@@ -58,13 +72,16 @@ export function DeskShell({ children }: { children: ReactNode }) {
 
   if (!account) return <JoinScreen />;
 
+  const operator = isOperator(account.role);
+  const desk = operator || !operatorPaths.has(pathname) ? children : <DeskGate />;
+
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <a
         href="#desk-main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-background focus:px-3 focus:py-2 focus:text-sm"
       >
-        Skip to the market
+        {operator ? "Skip to the market" : "Skip to content"}
       </a>
       <header className="flex h-[68px] shrink-0 items-center justify-between gap-3 border-b border-border bg-[#07080a]/90 px-4 backdrop-blur-[14px] text-foreground">
         <Link href="/" className="flex min-w-0 items-center gap-2.5">
@@ -90,126 +107,88 @@ export function DeskShell({ children }: { children: ReactNode }) {
           </button>
         </div>
       </header>
-      <div className="flex shrink-0 items-center gap-3 border-b bg-card px-4 py-2">
-        <span
-          className={cn("size-1.5 shrink-0 rounded-full", anyRunning ? "bg-live" : "bg-border")}
-          aria-hidden
-        />
-        <p className="truncate text-[13px] text-muted-foreground">
-          {latest ? (
-            <>
-              <span className="font-medium text-foreground">{botById(latest.bot).name}</span>
-              <span className="text-border"> · </span>
-              {latest.text}
-            </>
-          ) : (
-            "The SI Team is quiet. Ask them to work when you are ready."
-          )}
-        </p>
-      </div>
-      <nav className="flex shrink-0 gap-1 overflow-x-auto border-b bg-card px-2 py-1.5 md:hidden">
-        <Link
-          href="/"
-          className={cn(
-            "border-b-2 px-3 py-1.5 text-sm whitespace-nowrap",
-            pathname === "/"
-              ? "border-foreground font-medium"
-              : "border-transparent text-muted-foreground",
-          )}
-        >
-          Market
-        </Link>
-        <Link
-          href="/shop"
-          className={cn(
-            "border-b-2 px-3 py-1.5 text-sm whitespace-nowrap",
-            pathname === "/shop"
-              ? "border-foreground font-medium"
-              : "border-transparent text-muted-foreground",
-          )}
-        >
-          Shop
-        </Link>
-        <Link
-          href="/account"
-          className={cn(
-            "border-b-2 px-3 py-1.5 text-sm whitespace-nowrap",
-            pathname === "/account"
-              ? "border-foreground font-medium"
-              : "border-transparent text-muted-foreground",
-          )}
-        >
-          Account
-        </Link>
-        <Link
-          href="/floors"
-          className={cn(
-            "border-b-2 px-3 py-1.5 text-sm whitespace-nowrap",
-            pathname === "/floors"
-              ? "border-foreground font-medium"
-              : "border-transparent text-muted-foreground",
-          )}
-        >
-          Floors
-        </Link>
-        <PendingCatalogLink pathname={pathname} mobile />
-        <NavLinks pathname={pathname} mobile />
+      {operator ? (
+        <div className="flex shrink-0 items-center gap-3 border-b bg-card px-4 py-2">
+          <span
+            className={cn("size-1.5 shrink-0 rounded-full", anyRunning ? "bg-live" : "bg-border")}
+            aria-hidden
+          />
+          <p className="truncate text-[13px] text-muted-foreground">
+            {latest ? (
+              <>
+                <span className="font-medium text-foreground">{botById(latest.bot).name}</span>
+                <span className="text-border"> · </span>
+                {latest.text}
+              </>
+            ) : (
+              "The SI Team is quiet. Ask them to work when you are ready."
+            )}
+          </p>
+        </div>
+      ) : null}
+      <nav className="flex shrink-0 gap-1 overflow-x-auto border-b bg-card px-2 py-1.5 md:hidden" aria-label={operator ? "Desk" : "Account"}>
+        {operator ? (
+          <>
+            <DeskLink href="/" pathname={pathname} mobile>
+              Market
+            </DeskLink>
+            <DeskLink href="/shop" pathname={pathname} mobile>
+              Shop
+            </DeskLink>
+            <DeskLink href="/account" pathname={pathname} mobile>
+              Account
+            </DeskLink>
+            <DeskLink href="/floors" pathname={pathname} mobile>
+              Floors
+            </DeskLink>
+            <PendingCatalogLink pathname={pathname} mobile />
+            <NavLinks pathname={pathname} mobile />
+          </>
+        ) : (
+          memberLinks.map((item) => (
+            <DeskLink key={item.href} href={item.href} pathname={pathname} mobile>
+              {item.label}
+            </DeskLink>
+          ))
+        )}
       </nav>
       <div className="flex min-h-0 flex-1">
         <nav className="hidden w-52 shrink-0 flex-col border-r bg-card md:flex">
           <div className="px-2 pt-3">
-            <Link
-              href="/"
-              className={cn(
-                "block border-l-2 px-3 py-2 text-sm",
-                pathname === "/"
-                  ? "border-foreground font-medium"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Market
-            </Link>
-            <Link
-              href="/shop"
-              className={cn(
-                "block border-l-2 px-3 py-2 text-sm",
-                pathname === "/shop"
-                  ? "border-foreground font-medium"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Shop
-            </Link>
-            <Link
-              href="/account"
-              className={cn(
-                "block border-l-2 px-3 py-2 text-sm",
-                pathname === "/account"
-                  ? "border-foreground font-medium"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Account
-            </Link>
-            <Link
-              href="/floors"
-              className={cn(
-                "block border-l-2 px-3 py-2 text-sm",
-                pathname === "/floors"
-                  ? "border-foreground font-medium"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Floors
-            </Link>
-            <PendingCatalogLink pathname={pathname} />
+            {operator ? (
+              <>
+                <DeskLink href="/" pathname={pathname}>
+                  Market
+                </DeskLink>
+                <DeskLink href="/shop" pathname={pathname}>
+                  Shop
+                </DeskLink>
+                <DeskLink href="/account" pathname={pathname}>
+                  Account
+                </DeskLink>
+                <DeskLink href="/floors" pathname={pathname}>
+                  Floors
+                </DeskLink>
+                <PendingCatalogLink pathname={pathname} />
+              </>
+            ) : (
+              memberLinks.map((item) => (
+                <DeskLink key={item.href} href={item.href} pathname={pathname}>
+                  {item.label}
+                </DeskLink>
+              ))
+            )}
           </div>
-          <p className="px-5 pt-4 pb-1 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground">
-            SI Team
-          </p>
-          <div className="flex flex-col px-2">
-            <NavLinks pathname={pathname} showCounts />
-          </div>
+          {operator ? (
+            <>
+              <p className="px-5 pt-4 pb-1 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground">
+                SI Team
+              </p>
+              <div className="flex flex-col px-2">
+                <NavLinks pathname={pathname} showCounts />
+              </div>
+            </>
+          ) : null}
           <p className="px-5 pt-4 text-xs text-pretty text-muted-foreground">
             Signed in as {account.name}.
           </p>
@@ -221,11 +200,66 @@ export function DeskShell({ children }: { children: ReactNode }) {
             Sign out
           </button>
         </nav>
-        <main id="desk-main" className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain lg:overflow-hidden">
+        <main
+          id="desk-main"
+          className={cn(
+            "min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain",
+            operator && "lg:overflow-hidden",
+          )}
+        >
           <div key={pathname} className="page-enter h-full min-h-0">
-            {children}
+            {desk}
           </div>
         </main>
+      </div>
+    </div>
+  );
+}
+
+function DeskLink({
+  href,
+  pathname,
+  mobile = false,
+  children,
+}: {
+  href: string;
+  pathname: string;
+  mobile?: boolean;
+  children: ReactNode;
+}) {
+  const active = !href.includes("#") && pathname === href;
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "whitespace-nowrap text-sm",
+        mobile ? "border-b-2 px-3 py-1.5" : "block border-l-2 px-3 py-2",
+        active
+          ? "border-foreground font-medium text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground",
+      )}
+      aria-current={active ? "page" : undefined}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function DeskGate() {
+  return (
+    <div className="mx-auto max-w-xl px-6 py-16">
+      <p className="eyebrow">Account</p>
+      <h1 className="mt-3 text-3xl">This desk is for the operator.</h1>
+      <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+        Your account shows your orders, your profile, and the reseller program.
+      </p>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link href="/orders" className="pill pill-primary">
+          Orders
+        </Link>
+        <Link href="/account" className="pill pill-ghost">
+          Profile
+        </Link>
       </div>
     </div>
   );

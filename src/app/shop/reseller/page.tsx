@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyArticle } from "@/components/policy-article";
-import { RESELLER_DISCLOSURE, resellerCommissionLabel } from "@/lib/policies";
+import { RESELLER_DISCLOSURE, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
 
 export const metadata: Metadata = { title: "Reseller program · XV-AIsle" };
 
@@ -10,7 +10,7 @@ export default function ResellerPage() {
     <PolicyArticle kicker="Store" title="Reseller program">
       <p>
         The reseller program is free to join. There is no sign-up fee and no payment for recruiting other people.
-        Commission is {resellerCommissionLabel()} of a completed sale.
+        Commission is {resellerCommissionLabel()} of a completed sale. {resellerPayLine()}
       </p>
       <p>
         Commission is paid only when a customer completes a real purchase on xvaisle.com. A signup, a click, or a post

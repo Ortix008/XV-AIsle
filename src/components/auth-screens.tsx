@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAccount } from "@/lib/account-store";
 import { REPLY_WITHIN_HOURS } from "@/lib/honest-price";
-import { resellerCommissionLabel } from "@/lib/policies";
+import { RESELLER_DISCLOSURE, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
 
 function AuthScreen({
   title,
@@ -166,7 +166,7 @@ export function SignUpScreen() {
   return (
     <AuthScreen
       title="Open an account"
-      lede={`Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. We do not promise income.`}
+      lede={`Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. ${resellerPayLine()} If you mention a product, say ${RESELLER_DISCLOSURE}`}
     >
       <form onSubmit={onSubmit} className="auth-form">
         <label className="auth-field" htmlFor={nameId}>
