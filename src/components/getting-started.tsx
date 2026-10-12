@@ -52,7 +52,11 @@ export function GettingStarted() {
       <ul className="mt-3 flex flex-col gap-2 text-sm">
         <li className="flex flex-wrap items-center gap-2">
           <span>Verify your email</span>
-          {emailDone ? (
+          {account.needsEmail ? (
+            <Link href="/account" className="underline underline-offset-4">
+              Add an email
+            </Link>
+          ) : emailDone ? (
             <span className="text-xs text-muted-foreground">Done</span>
           ) : (
             <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => void sendVerification()}>

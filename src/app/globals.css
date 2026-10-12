@@ -1430,3 +1430,58 @@ video.auth-plate-media {
     transform: none !important;
   }
 }
+
+.auth-email-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-x,
+.share-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.auth-x {
+  width: 100%;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.share-x {
+  border: 1px solid color-mix(in srgb, var(--primary) 55%, var(--border));
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  color: var(--foreground);
+}
+
+.auth-x:focus-visible,
+.share-x:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 3px;
+}
+
+@media (min-width: 640px) {
+  .auth-email-row {
+    flex-direction: row;
+    align-items: end;
+  }
+
+  .auth-email-row .auth-field {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .auth-x {
+    width: auto;
+    margin-bottom: 0;
+  }
+}

@@ -10,6 +10,7 @@ export type Account = {
   membershipStatus: string | null;
   emailVerified: boolean;
   totpEnabled?: boolean;
+  needsEmail?: boolean;
 };
 
 /** Support reference. The full id stays on operator screens. */

@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { isAccountRole, type AccountRole } from "../account";
-import { getDb } from "./db";
+import { changed, getDb } from "./db";
 import { sendVerificationLink } from "./mail";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password";
 import { authSecretReady, decryptSecret, encryptSecret, generateTotpSecret, verifyTotp } from "./totp";
@@ -17,6 +17,7 @@ export type PublicAccount = {
   membershipStatus: string | null;
   emailVerified: boolean;
   totpEnabled: boolean;
+  needsEmail: boolean;
 };
 
 type AccountRow = {
@@ -36,7 +37,14 @@ type AccountRow = {
   locked_until?: number | null;
   totp_secret?: string | null;
   totp_enabled?: number | null;
+  x_user_id?: string | null;
 };
+
+const PENDING_EMAIL_SUFFIX = "@pending.xvaisle.invalid";
+
+function pendingReceiptEmail(email: string) {
+  return email.endsWith(PENDING_EMAIL_SUFFIX);
+}
 
 function tokenHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -60,16 +68,18 @@ export function adminAllowlist() {
 }
 
 function publicAccount(row: AccountRow): PublicAccount {
+  const needsEmail = pendingReceiptEmail(row.email);
   return {
     id: row.id,
     name: row.name,
-    email: row.email,
+    email: needsEmail ? "" : row.email,
     createdAt: row.created_at,
     memberSince: row.member_since,
     role: roleFor(row),
     membershipStatus: row.membership_status ?? null,
     emailVerified: row.email_verified === 1,
     totpEnabled: row.totp_enabled === 1,
+    needsEmail,
   };
 }
 
@@ -77,7 +87,7 @@ export function signUp(input: { name: string; email: string; password: string })
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
   if (name.length < 2 || name.length > 80) return { error: "Add your name." as const };
-  if (email.length > 120 || !email.includes("@") || !email.includes(".")) {
+  if (email.length > 120 || !email.includes("@") || !email.includes(".") || pendingReceiptEmail(email)) {
     return { error: "That email does not look right." as const };
   }
   if (input.password.length < 8) return { error: "Use at least 8 characters." as const };
@@ -137,6 +147,7 @@ async function issueVerification(accountId: string) {
     | { id: string; email: string; email_verified: number | null }
     | undefined;
   if (!row) return { error: "That account is not on file." as const };
+  if (pendingReceiptEmail(row.email)) return { error: "Add an email for receipts first." as const };
   if (row.email_verified === 1) return { already: true as const };
   const token = randomBytes(32).toString("hex");
   const expires = Date.now() + VERIFY_MS;
@@ -233,16 +244,84 @@ export function signIn(input: { email: string; password: string }) {
   }
   db.prepare("UPDATE accounts SET failed_logins = 0, locked_until = NULL WHERE id = ?").run(row.id);
   if (row.totp_enabled === 1) {
-    const challenge = randomBytes(32).toString("hex");
-    db.prepare("DELETE FROM login_challenges WHERE account_id = ?").run(row.id);
-    db.prepare("INSERT INTO login_challenges (token_hash, account_id, expires_at) VALUES (?, ?, ?)").run(
-      tokenHash(challenge),
-      row.id,
-      Date.now() + CHALLENGE_MS,
-    );
-    return { totpRequired: true as const, challenge };
+    return { totpRequired: true as const, challenge: issueTotpChallenge(row.id) };
   }
   return { account: publicAccount(row), token: openSession(row.id) };
+}
+
+function issueTotpChallenge(accountId: string) {
+  const challenge = randomBytes(32).toString("hex");
+  const db = getDb();
+  db.prepare("DELETE FROM login_challenges WHERE account_id = ?").run(accountId);
+  db.prepare("INSERT INTO login_challenges (token_hash, account_id, expires_at) VALUES (?, ?, ?)").run(
+    tokenHash(challenge),
+    accountId,
+    Date.now() + CHALLENGE_MS,
+  );
+  return challenge;
+}
+
+function xDisplayName(value: string) {
+  const cleaned = value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 80);
+  if (cleaned.length < 2) return "Member";
+  return cleaned;
+}
+
+function insertXAccount(input: { xUserId: string; name: string }) {
+  const db = getDb();
+  const name = xDisplayName(input.name);
+  const email = `x-${input.xUserId}${PENDING_EMAIL_SUFFIX}`;
+  const { salt, hash } = hashPassword(randomBytes(24).toString("base64url"));
+  const id = randomUUID();
+  try {
+    db.prepare(
+      `INSERT INTO accounts (
+         id, name, email, password_hash, password_salt, created_at, member_since, stripe_customer_id, stripe_subscription_id, role, email_verified, x_user_id
+       ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 'buyer', 0, ?)`,
+    ).run(id, name, email, hash, salt, Date.now(), input.xUserId);
+  } catch {
+    return db.prepare("SELECT * FROM accounts WHERE x_user_id = ?").get(input.xUserId) as AccountRow | undefined;
+  }
+  return db.prepare("SELECT * FROM accounts WHERE id = ?").get(id) as AccountRow | undefined;
+}
+
+export function signInWithX(input: { xUserId: string; name: string }) {
+  if (!/^\d{1,32}$/.test(input.xUserId)) return { error: "X did not return an account id." as const };
+  const existing = getDb().prepare("SELECT * FROM accounts WHERE x_user_id = ?").get(input.xUserId) as AccountRow | undefined;
+  const row = existing ?? insertXAccount(input);
+  if (!row) return { error: "X sign-in did not finish." as const };
+  if (row.totp_enabled === 1) {
+    return { totpRequired: true as const, challenge: issueTotpChallenge(row.id) };
+  }
+  return { account: publicAccount(row), token: openSession(row.id) };
+}
+
+export function setReceiptEmail(accountId: string, email: string) {
+  const next = email.trim().toLowerCase();
+  if (next.length > 120 || !next.includes("@") || !next.includes(".") || pendingReceiptEmail(next)) {
+    return { error: "That email does not look right." as const };
+  }
+  const db = getDb();
+  const row = db.prepare("SELECT * FROM accounts WHERE id = ?").get(accountId) as AccountRow | undefined;
+  if (!row) return { error: "That account is not on file." as const };
+  if (!pendingReceiptEmail(row.email)) return { error: "This account already has an email." as const };
+  const taken = db.prepare("SELECT id FROM accounts WHERE email = ? AND id != ?").get(next, accountId) as
+    | { id: string }
+    | undefined;
+  if (taken) return { error: "That email already has an account. Sign in instead." as const };
+  try {
+    const result = db
+      .prepare("UPDATE accounts SET email = ?, email_verified = 0 WHERE id = ? AND email = ?")
+      .run(next, accountId, row.email);
+    if (changed(result) !== 1) return { error: "This account already has an email." as const };
+  } catch {
+    return { error: "That email already has an account. Sign in instead." as const };
+  }
+  void sendAccountVerification(accountId).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : "Verification email failed.";
+    console.error(message);
+  });
+  return { account: getAccount(accountId)! };
 }
 
 export function finishTotpSignIn(challenge: string, code: string) {
@@ -274,7 +353,7 @@ export function startTotp(accountId: string) {
   const stored = encryptSecret(secret);
   if (!stored) return { error: "Set AUTH_SECRET on the server before turning on an authenticator." as const };
   getDb().prepare("UPDATE accounts SET totp_secret = ?, totp_enabled = 0 WHERE id = ?").run(stored, accountId);
-  const label = encodeURIComponent(row.email);
+  const label = encodeURIComponent(pendingReceiptEmail(row.email) ? row.name : row.email);
   return {
     secret,
     uri: `otpauth://totp/XVAIsle:${label}?secret=${secret}&issuer=XVAIsle&algorithm=SHA1&digits=6&period=30`,
