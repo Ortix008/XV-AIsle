@@ -4,6 +4,7 @@ import {
   disputeClawback,
   holdState,
   platformFeeBps,
+  sellerLedgerEnabled,
   refundClawback,
   resellerReserveBps,
   resellerReserveCapCents,
@@ -556,21 +557,23 @@ export async function releaseTransfers(orderId: string) {
         row.reversed_cents = reversed;
         remaining -= offset;
       }
-      const savedHold = savedReserveCents(order.id);
-      const withheld =
-        savedHold == null
-          ? holdReserve(
-              order,
-              row.account_id,
-              reserveHoldCents({
-                payoutCents: remaining,
-                heldCents: resellerReserveHeldCents(row.account_id),
-                bps: resellerReserveBps(),
-                capCents: resellerReserveCapCents(),
-              }),
-            )
-          : Math.min(remaining, savedHold);
-      remaining -= withheld;
+      if (sellerLedgerEnabled()) {
+        const savedHold = savedReserveCents(order.id);
+        const withheld =
+          savedHold == null
+            ? holdReserve(
+                order,
+                row.account_id,
+                reserveHoldCents({
+                  payoutCents: remaining,
+                  heldCents: resellerReserveHeldCents(row.account_id),
+                  bps: resellerReserveBps(),
+                  capCents: resellerReserveCapCents(),
+                }),
+              )
+            : Math.min(remaining, savedHold);
+        remaining -= withheld;
+      }
     }
     if (remaining <= 0) {
       getDb().prepare("UPDATE ledger SET status = 'canceled' WHERE id = ? AND status = 'pending'").run(row.id);

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { accountFromToken } from "@/lib/server/accounts";
+import { sellerLedgerEnabled } from "@/lib/server/fees";
 import { quoteForAccount } from "@/lib/server/publish";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 
@@ -37,7 +38,14 @@ export async function POST(request: Request) {
     priceCents: body.priceCents ?? 0,
   });
   if (result.status !== 200) return Response.json({ error: result.error }, { status: result.status });
-  if (account.role === "admin") return Response.json({ quote: result.quote });
+  if (account.role === "admin") {
+    if (!sellerLedgerEnabled()) {
+      const quote: { platformFeeCents?: number } = { ...result.quote };
+      delete quote.platformFeeCents;
+      return Response.json({ quote });
+    }
+    return Response.json({ quote: result.quote });
+  }
   return Response.json({
     quote: {
       priceCents: result.quote.priceCents,

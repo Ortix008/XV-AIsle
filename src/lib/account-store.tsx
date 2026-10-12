@@ -39,6 +39,7 @@ type AccountApi = {
   ready: boolean;
   account: Account | null;
   connect: ConnectState | null;
+  sellerLedger: boolean;
   reserve: ReserveState | null;
   signUp: (input: { name: string; email: string; password: string; confirmPassword: string }) => Promise<string | null>;
   totpChallenge: string | null;
@@ -60,6 +61,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
   const [connect, setConnect] = useState<ConnectState | null>(null);
+  const [sellerLedger, setSellerLedger] = useState(false);
   const [reserve, setReserve] = useState<ReserveState | null>(null);
   const [totpChallenge, setTotpChallenge] = useState<string | null>(null);
 
@@ -68,16 +70,19 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     if (!response.ok) {
       setAccount(null);
       setConnect(null);
+      setSellerLedger(false);
       setReserve(null);
       return;
     }
     const data = (await response.json()) as {
       account: Account | null;
       connect: ConnectState | null;
+      sellerLedger?: boolean;
       reserve?: ReserveState | null;
     };
     setAccount(data.account);
     setConnect(data.connect);
+    setSellerLedger(data.sellerLedger === true);
     setReserve(data.reserve ?? null);
   }, []);
 
@@ -89,17 +94,20 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         if (!response.ok) {
           setAccount(null);
           setConnect(null);
+          setSellerLedger(false);
           setReserve(null);
           return;
         }
         const data = (await response.json()) as {
           account: Account | null;
           connect: ConnectState | null;
+          sellerLedger?: boolean;
           reserve?: ReserveState | null;
         };
         if (cancel) return;
         setAccount(data.account);
         setConnect(data.connect);
+        setSellerLedger(data.sellerLedger === true);
         setReserve(data.reserve ?? null);
       })
       .catch(() => {
@@ -118,6 +126,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       ready,
       account,
       connect,
+      sellerLedger,
       reserve,
       totpChallenge,
       refresh,
@@ -181,7 +190,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         return null;
       },
     }),
-    [ready, account, connect, reserve, totpChallenge, refresh],
+    [ready, account, connect, sellerLedger, reserve, totpChallenge, refresh],
   );
 
   return <AccountContext.Provider value={api}>{children}</AccountContext.Provider>;

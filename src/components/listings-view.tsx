@@ -319,7 +319,9 @@ function ListingEditor({
       {quote?.error ? <p className="text-sm text-late">{quote.error}</p> : null}
       <p className="text-xs text-pretty text-muted-foreground">
         {operator
-          ? "Cost, the platform fee, and the Stripe estimate come from the server. A reseller cannot set them, and cannot list their own supply. Publishing needs a finished Stripe payout setup and no open balance."
+          ? quote?.platformFeeCents == null
+            ? "Cost and the Stripe estimate come from the server. A reseller cannot set them, and cannot list their own supply. Publishing needs a finished Stripe payout setup and no open balance."
+            : "Cost, the platform fee, and the Stripe estimate come from the server. A reseller cannot set them, and cannot list their own supply. Publishing needs a finished Stripe payout setup and no open balance."
           : "The price comes from the server. You cannot set a supplier cost, and you cannot list your own supply."}
       </p>
       {storeError ? <p className="text-sm text-late">{storeError}</p> : null}
