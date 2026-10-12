@@ -43,6 +43,12 @@ export function getDb() {
       ship_days_max INTEGER NOT NULL,
       published INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS bundle_items (
+      bundle_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      PRIMARY KEY (bundle_id, product_id)
+    );
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY,
       number TEXT NOT NULL UNIQUE,
@@ -192,6 +198,8 @@ export function getDb() {
   addColumn(next, "listings", "route", "TEXT NOT NULL DEFAULT 'manual'");
   addColumn(next, "listings", "supplier_order_url", "TEXT");
   addColumn(next, "listings", "supplier_email", "TEXT");
+  addColumn(next, "listings", "kind", "TEXT NOT NULL DEFAULT 'single'");
+  addColumn(next, "listings", "aisle", "TEXT");
   addColumn(next, "orders", "payment_intent_id", "TEXT");
   addColumn(next, "orders", "charge_id", "TEXT");
   addColumn(next, "orders", "transfer_group", "TEXT");

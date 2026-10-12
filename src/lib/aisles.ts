@@ -6,12 +6,14 @@ export type AisleSection = {
 
 export type Aisle = {
   title: string;
+  slug: string;
   sections: AisleSection[];
 };
 
 export const aisles: Aisle[] = [
   {
     title: "Kitchen",
+    slug: "kitchen",
     sections: [
       { name: "Pans" },
       { name: "Prep" },
@@ -23,25 +25,45 @@ export const aisles: Aisle[] = [
   },
   {
     title: "Clothing",
+    slug: "clothing",
     sections: [{ name: "Aprons" }, { name: "Shirts" }],
   },
   {
     title: "Home",
+    slug: "home",
     sections: [{ name: "Storage" }, { name: "Light" }, { name: "Cleaning" }, { name: "Cords" }],
   },
-  { title: "Sports", sections: [{ name: "Court" }] },
+  { title: "Sports", slug: "sports", sections: [{ name: "Court" }] },
   {
     title: "Health",
+    slug: "health",
     sections: [{ name: "Thermometers" }, { name: "Monitors" }, { name: "Cuffs" }],
   },
-  { title: "Seasonal", sections: [{ name: "Carry-home" }] },
+  { title: "Seasonal", slug: "seasonal", sections: [{ name: "Carry-home" }] },
   {
     title: "Garden",
+    slug: "garden",
     sections: [{ name: "Digging" }, { name: "Cutting" }, { name: "Hands" }],
   },
   {
     title: "Electronics",
+    slug: "electronics",
     sections: [{ name: "Audio" }, { name: "Cases" }, { name: "Cables" }],
+  },
+  {
+    title: "Build Your Rig",
+    slug: "build-your-rig",
+    sections: [{ name: "Components" }, { name: "Power" }],
+  },
+  {
+    title: "Tech & Desk",
+    slug: "tech-and-desk",
+    sections: [{ name: "Desk" }, { name: "Desk cables" }],
+  },
+  {
+    title: "Home & Gifts",
+    slug: "home-and-gifts",
+    sections: [{ name: "Gifts" }, { name: "For the house" }],
   },
 ];
 
@@ -53,7 +75,19 @@ export function aisleByTitle(title: string) {
   return aisles.find((aisle) => aisle.title === title) ?? null;
 }
 
+export function aisleBySlug(slug: string) {
+  return aisles.find((aisle) => aisle.slug === slug) ?? null;
+}
+
 export function placeProduct(product: Product): { aisle: string; section: string } | null {
+  if (product.id === "headphones" || product.id === "phone-case") {
+    return { aisle: "Build Your Rig", section: "Components" };
+  }
+  if (product.id === "charger-brick") return { aisle: "Build Your Rig", section: "Power" };
+  if (product.id === "desk-lamp") return { aisle: "Tech & Desk", section: "Desk" };
+  if (product.id === "cable-sleeve") return { aisle: "Tech & Desk", section: "Desk cables" };
+  if (product.id === "gift-bags") return { aisle: "Home & Gifts", section: "Gifts" };
+  if (product.id === "storage-jars") return { aisle: "Home & Gifts", section: "For the house" };
   if (product.id === "apron" || product.id === "bib-apron" || /apron/i.test(product.name)) {
     return { aisle: "Clothing", section: "Aprons" };
   }

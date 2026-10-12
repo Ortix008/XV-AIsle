@@ -10,11 +10,13 @@ import { listPublished } from "@/lib/server/store";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const shelf = url.searchParams.get("shelf");
+  const aisle = url.searchParams.get("aisle")?.trim() || undefined;
   const madeInUsa = url.searchParams.get("madeInUsa") === "1";
   ensureStarterShelf();
   const listings = listPublished({
     madeInUsa: madeInUsa || undefined,
     shelf: shelf === "small" || shelf === "national" ? shelf : undefined,
+    aisle,
   }).filter(visibleOnShop);
   return Response.json({ listings: listings.map((listing) => publicListing(listing, isSampleListing(listing))) });
 }
@@ -47,8 +49,14 @@ export async function POST(request: Request) {
     whyWePicked?: string;
     brand?: string;
     whyItCosts?: string;
+    kind?: string;
+    itemIds?: unknown;
+    aisle?: string;
   } | null;
   if (!body?.productId) return Response.json({ error: "Name the product." }, { status: 400 });
+  if (body.kind === "bundle" || body.itemIds != null) {
+    return Response.json({ error: "An operator builds a bundle on its own form." }, { status: 400 });
+  }
   const compareAt = compareAtRejection(body);
   if (compareAt) return Response.json({ error: compareAt }, { status: 400 });
   if (body.checkedBy != null || body.checkedOn != null || body.checkedNote != null) {

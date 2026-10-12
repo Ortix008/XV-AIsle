@@ -1,4 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { aisleBySlug, aisleByTitle, placeProduct } from "../aisles";
+import { bundlePriceRejection } from "../bundles";
+import { getProduct } from "../catalog";
 import { compareAtRejection } from "../honest-price";
 import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseListingRoute, type ListingRoute } from "../order-flags";
 import { getApprovedCatalog } from "./catalog";
@@ -38,6 +41,8 @@ export type StoreListing = {
   route: ListingRoute;
   supplierOrderUrl: string | null;
   supplierEmail: string | null;
+  kind: "single" | "bundle";
+  aisle: string | null;
 };
 
 export type StoreOrder = {
@@ -132,6 +137,8 @@ type ListingRow = {
   route?: string | null;
   supplier_order_url?: string | null;
   supplier_email?: string | null;
+  kind?: string | null;
+  aisle?: string | null;
 };
 
 type OrderRow = {
@@ -228,7 +235,30 @@ function listingFrom(row: ListingRow): StoreListing {
     route: parseListingRoute(row.route),
     supplierOrderUrl: row.supplier_order_url ?? null,
     supplierEmail: row.supplier_email ?? null,
+    kind: row.kind === "bundle" ? "bundle" : "single",
+    aisle: row.aisle?.trim() || null,
   };
+}
+
+export function bundlePieces(bundleId: string) {
+  const rows = getDb()
+    .prepare(
+      `SELECT listings.product_id, listings.title
+       FROM bundle_items
+       JOIN listings ON listings.product_id = bundle_items.product_id
+       WHERE bundle_items.bundle_id = ?
+       ORDER BY bundle_items.position`,
+    )
+    .all(bundleId) as { product_id: string; title: string }[];
+  return rows.map((row) => ({ productId: row.product_id, title: row.title }));
+}
+
+function routedTitle(order: { title?: string | null; productId: string }, listing: StoreListing | null) {
+  const base = order.title ?? listing?.title ?? "Listing";
+  if (!listing || listing.kind !== "bundle") return base;
+  const pieces = bundlePieces(listing.productId);
+  if (pieces.length === 0) return base;
+  return `${base}. Includes ${pieces.map((piece) => piece.title).join(", ")}`;
 }
 
 /** Shopper-facing listing. Cost, margin, fees, and any fund share stay off this object. */
@@ -255,6 +285,8 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     ...(listing.checkedBy && listing.checkedOn && listing.checkedNote
       ? { checkedBy: listing.checkedBy, checkedOn: listing.checkedOn, checkedNote: listing.checkedNote }
       : {}),
+    ...(listing.aisle ? { aisle: listing.aisle } : {}),
+    ...(listing.kind === "bundle" ? { kind: "bundle" as const, includes: bundlePieces(listing.productId) } : {}),
   };
 }
 
@@ -392,6 +424,8 @@ export function publishListing(
     | "route"
     | "supplierOrderUrl"
     | "supplierEmail"
+    | "kind"
+    | "aisle"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -409,6 +443,7 @@ export function publishListing(
     route?: ListingRoute;
     supplierOrderUrl?: string | null;
     supplierEmail?: string | null;
+    aisle?: string | null;
   },
 ) {
   if (!input.title.trim() || !input.sku.trim()) return { error: "The page needs a title." as const };
@@ -447,6 +482,9 @@ export function publishListing(
     deliveryTime: deliveryTime.text,
   });
   if (struck) return { error: struck };
+  const derivedAisle = aisleSlugForProduct(input.productId);
+  const aisle = input.aisle !== undefined ? input.aisle?.trim() || null : (existing?.aisle ?? derivedAisle);
+  if (aisle && !aisleBySlug(aisle)) return { error: "That aisle is not on the store." as const };
   getDb()
     .prepare(
       `INSERT INTO listings (
@@ -520,6 +558,87 @@ export function publishListing(
       )
       .run(route, supplierOrderUrl, supplierEmail, input.productId);
   }
+  getDb().prepare("UPDATE listings SET aisle = ? WHERE product_id = ?").run(aisle, input.productId);
+  return { listing: getListing(input.productId) };
+}
+
+function aisleSlugForProduct(productId: string) {
+  try {
+    const place = placeProduct(getProduct(productId));
+    if (!place) return null;
+    return aisleByTitle(place.aisle)?.slug ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function supplierKey(listing: StoreListing) {
+  if (listing.supplierAccountId) return `account:${listing.supplierAccountId}`;
+  return `name:${listing.supplierName.trim().toLowerCase()}`;
+}
+
+export function publishBundle(
+  account: { id: string; role: string },
+  input: {
+    productId: string;
+    sku: string;
+    title: string;
+    description: string;
+    priceCents: number;
+    image: string;
+    itemIds: string[];
+    aisle?: string | null;
+  },
+) {
+  if (account.role !== "admin") return { error: "Only an operator can price a bundle." as const };
+  const struck = bundlePriceRejection({ title: input.title, description: input.description });
+  if (struck) return { error: struck };
+  const itemIds = [...new Set(input.itemIds.map((id) => id.trim()).filter(Boolean))];
+  if (itemIds.length < 2) return { error: "A bundle needs at least two listings." as const };
+  if (itemIds.includes(input.productId)) return { error: "A bundle cannot include itself." as const };
+  const items = itemIds.map((id) => getListing(id));
+  if (items.some((item) => !item || !item.published || item.kind === "bundle")) {
+    return { error: "Every piece has to be a published listing, and not another bundle." as const };
+  }
+  const pieces = items.filter((item): item is StoreListing => item !== null);
+  const first = pieces[0];
+  if (!first || pieces.length < 2) return { error: "A bundle needs at least two listings." as const };
+  const key = supplierKey(first);
+  if (pieces.some((item) => supplierKey(item) !== key)) {
+    return { error: "A bundle can only group listings from one supplier." as const };
+  }
+  const image = input.image.trim() || first.image;
+  const published = publishListing(account.id, {
+    productId: input.productId,
+    sku: input.sku,
+    title: input.title,
+    description: input.description,
+    priceCents: input.priceCents,
+    image,
+    supplierName: first.supplierName,
+    supplierOrigin: first.supplierOrigin,
+    shipDaysMin: Math.min(...pieces.map((item) => item.shipDaysMin)),
+    shipDaysMax: Math.max(...pieces.map((item) => item.shipDaysMax)),
+    published: true,
+    madeInUsa: pieces.every((item) => item.madeInUsa),
+    shelf: pieces.every((item) => item.shelf === "small") ? "small" : "national",
+    supplierAccountId: first.supplierAccountId,
+    supplierCostCents: pieces.reduce((sum, item) => sum + item.supplierCostCents, 0),
+    supplierShippingCents: pieces.reduce((sum, item) => sum + item.supplierShippingCents, 0),
+    feeBps: first.feeBps,
+    catalogItemId: null,
+    route: first.route,
+    supplierOrderUrl: first.supplierOrderUrl,
+    supplierEmail: first.supplierEmail,
+    aisle: input.aisle,
+  });
+  if ("error" in published) return published;
+  if (!published.listing) return { error: "That bundle did not save." as const };
+  const db = getDb();
+  db.prepare("UPDATE listings SET kind = 'bundle' WHERE product_id = ?").run(input.productId);
+  db.prepare("DELETE FROM bundle_items WHERE bundle_id = ?").run(input.productId);
+  const insert = db.prepare("INSERT INTO bundle_items (bundle_id, product_id, position) VALUES (?, ?, ?)");
+  itemIds.forEach((id, index) => insert.run(input.productId, id, index));
   return { listing: getListing(input.productId) };
 }
 
@@ -559,13 +678,17 @@ export function getListing(productId: string) {
   return row ? listingFrom(row) : null;
 }
 
-export function listPublished(filter?: { madeInUsa?: boolean; shelf?: "national" | "small" }) {
+export function listPublished(filter?: { madeInUsa?: boolean; shelf?: "national" | "small"; aisle?: string }) {
   const clauses = ["published = 1"];
   const params: Array<string | number> = [];
   if (filter?.madeInUsa) clauses.push("made_in_usa = 1");
   if (filter?.shelf) {
     clauses.push("shelf = ?");
     params.push(filter.shelf);
+  }
+  if (filter?.aisle) {
+    clauses.push("aisle = ?");
+    params.push(filter.aisle);
   }
   const rows = getDb()
     .prepare(`SELECT * FROM listings WHERE ${clauses.join(" AND ")} ORDER BY title`)
@@ -828,7 +951,7 @@ export function ordersForAccount(accountId: string) {
 function paidNotice(order: StoreOrder, listing: StoreListing | null) {
   return {
     number: order.number,
-    title: order.title ?? listing?.title ?? "Listing",
+    title: routedTitle(order, listing),
     sku: order.sku ?? listing?.sku ?? order.productId,
     qty: order.qty,
     supplierOrderUrl: isBlockedTestOrder(order.number) ? null : (listing?.supplierOrderUrl ?? null),
@@ -862,7 +985,7 @@ async function finishEmail(order: StoreOrder, listing: StoreListing | null) {
     to: listing.supplierEmail,
     number: order.number,
     sku: order.sku ?? listing.sku,
-    title: order.title ?? listing.title,
+    title: routedTitle(order, listing),
     qty: order.qty,
     shipTo: {
       name: order.customerName,
