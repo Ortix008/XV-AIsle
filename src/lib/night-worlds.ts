@@ -17,7 +17,7 @@ export const nightWorlds: readonly NightWorld[] = [
   {
     slug: "build-your-rig",
     title: "Build Your Rig",
-    story: "Headphones, cases, and chargers we placed here because they belong on a setup.",
+    story: "Headphones and phone cases we placed here because they belong on a setup.",
     accent: "#3ddc84",
     glow: "rgba(61, 220, 132, 0.22)",
     wash: "rgba(61, 220, 132, 0.09)",
@@ -33,7 +33,7 @@ export const nightWorlds: readonly NightWorld[] = [
   {
     slug: "home-and-gifts",
     title: "Home & Gifts",
-    story: "Bags to give and jars to keep. Nothing in the box is a meal.",
+    story: "Bags to give and jars to keep. Pieces chosen for a home that feels lived-in.",
     accent: "#e3b4c4",
     glow: "rgba(227, 180, 196, 0.2)",
     wash: "rgba(227, 180, 196, 0.08)",
