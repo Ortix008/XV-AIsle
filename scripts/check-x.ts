@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
+import { xCallbackLogLine } from "../src/app/api/auth/x/callback/route";
 import { RESELLER_DISCLOSURE } from "../src/lib/policies";
+import { profileFromXCode } from "../src/lib/server/x-auth";
+import { sessionCookieOptions } from "../src/lib/server/session-cookie";
 import { buyerShareHref, resellerShareHref, xIntentUrl } from "../src/lib/x-share";
 import {
   buildAuthorizeUrl,
@@ -22,10 +25,16 @@ const saved = {
   secret: process.env.X_CLIENT_SECRET,
   redirect: process.env.X_REDIRECT_URI,
   nodeEnv: process.env.NODE_ENV,
+  appUrl: process.env.APP_URL,
 };
 
 function setNodeEnv(value: string | undefined) {
   (process.env as Record<string, string | undefined>).NODE_ENV = value;
+}
+
+function setAppUrl(value: string | undefined) {
+  if (value == null) delete process.env.APP_URL;
+  else process.env.APP_URL = value;
 }
 
 function restoreEnv() {
@@ -33,6 +42,7 @@ function restoreEnv() {
   process.env.X_CLIENT_SECRET = saved.secret;
   process.env.X_REDIRECT_URI = saved.redirect;
   setNodeEnv(saved.nodeEnv);
+  setAppUrl(saved.appUrl);
 }
 
 assert(X_SCOPES === "users.read tweet.read", "scopes are users.read and tweet.read");
@@ -81,16 +91,22 @@ assert(!authorize.includes(rfcVerifier), "authorize URL does not carry the verif
 assert(!authorize.includes("offline.access"), "authorize URL does not ask for a refresh token");
 assert(!authorize.includes("tweet.write"), "authorize URL does not ask to post");
 
-setNodeEnv("development");
+setAppUrl("http://127.0.0.1:4317");
+setNodeEnv("production");
 const devCookies = xOauthCookieOptions();
 assert(devCookies.httpOnly === true, "oauth cookies are httpOnly");
 assert(devCookies.sameSite === "lax", "oauth cookies are SameSite=Lax");
 assert(devCookies.path === "/", "oauth cookies use the site path");
 assert(devCookies.maxAge === 600, "oauth cookies last 10 minutes");
-assert(devCookies.secure === false, "development cookies are not Secure");
-setNodeEnv("production");
-assert(xOauthCookieOptions().secure === true, "production cookies are Secure");
+assert(devCookies.secure === false, "an http APP_URL leaves oauth cookies unset for Secure");
+assert(sessionCookieOptions().secure === false, "an http APP_URL leaves the session cookie unset for Secure");
+setAppUrl("https://xvaisle.com");
 setNodeEnv("development");
+assert(xOauthCookieOptions().secure === true, "an https APP_URL marks oauth cookies Secure");
+assert(sessionCookieOptions().secure === true, "an https APP_URL marks the session cookie Secure");
+setAppUrl(" HTTPS://xvaisle.com ");
+assert(xOauthCookieOptions().secure === true, "the https check ignores case and surrounding space");
+setAppUrl("http://127.0.0.1:4317");
 
 delete process.env.X_CLIENT_ID;
 delete process.env.X_CLIENT_SECRET;
@@ -138,5 +154,79 @@ assert(buyer.searchParams.get("text") === "Quarter sheet pan and rack", "buyer t
 assert(!buyer.searchParams.get("text")?.includes(RESELLER_DISCLOSURE), "buyer text omits the ad line");
 assert(!new URL(buyer.searchParams.get("url") ?? "").searchParams.has("ref"), "buyer url drops a referral");
 
-restoreEnv();
-console.log("x oauth checks ok");
+const code = "code-marker-9f3a2c-not-an-oauth-name";
+const secret = "secret-marker-b7c1-not-an-oauth-name";
+const leakVerifier = "verifier-marker-E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+process.env.X_CLIENT_ID = "client";
+process.env.X_CLIENT_SECRET = secret;
+process.env.X_REDIRECT_URI = "https://xvaisle.com/api/auth/x/callback";
+const logs: string[] = [];
+const originalInfo = console.info;
+console.info = (...args: unknown[]) => {
+  logs.push(args.map((part) => String(part)).join(" "));
+};
+const originalFetch = globalThis.fetch;
+
+async function checkLogs() {
+  try {
+    console.info(xCallbackLogLine("x_error", `${code} ${secret} ${leakVerifier}`));
+    console.info(xCallbackLogLine("x_error", "access_denied"));
+    console.info(xCallbackLogLine("rate_limited"));
+    console.info(xCallbackLogLine("state_mismatch"));
+    console.info(xCallbackLogLine("missing_verifier"));
+    console.info(xCallbackLogLine("signin_error"));
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          error: secret,
+          error_description: `${code} ${leakVerifier} ${secret}`,
+          access_token: `token-${secret}`,
+        }),
+        { status: 400 },
+      );
+    assert((await profileFromXCode({ code, verifier: leakVerifier })) == null, "a refused token exchange returns no profile");
+    let step = 0;
+    globalThis.fetch = async () => {
+      step += 1;
+      if (step === 1) {
+        return new Response(
+          JSON.stringify({ access_token: `bearer-${secret}`, error_description: `${code} ${leakVerifier}` }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ detail: `${code} ${secret} ${leakVerifier}` }), { status: 401 });
+    };
+    assert((await profileFromXCode({ code, verifier: leakVerifier })) == null, "a refused profile fetch returns no profile");
+    globalThis.fetch = async () => {
+      throw new Error(`boom ${code} ${secret} ${leakVerifier}`);
+    };
+    assert((await profileFromXCode({ code, verifier: leakVerifier })) == null, "a thrown exchange returns no profile");
+  } finally {
+    console.info = originalInfo;
+    globalThis.fetch = originalFetch;
+  }
+  const dumped = logs.join("\n");
+  assert(!dumped.includes(code), "logs omit the authorization code");
+  assert(!dumped.includes(leakVerifier), "logs omit the verifier");
+  assert(!dumped.includes(secret), "logs omit the client secret");
+  assert(dumped.includes("x-callback: x_error=unknown"), "a raw callback error is not copied into the log");
+  assert(dumped.includes("x-callback: x_error=access_denied"), "a known callback error is logged");
+  assert(dumped.includes("x-callback: rate_limited"), "rate limit is logged");
+  assert(dumped.includes("x-callback: state_mismatch"), "state mismatch is logged");
+  assert(dumped.includes("x-callback: missing_verifier"), "a missing verifier is logged");
+  assert(dumped.includes("x-callback: signin_error"), "sign-in failure is logged");
+  assert(dumped.includes("x-auth: token_exchange status=400 error=unknown"), "token failure logs status without the body");
+  assert(dumped.includes("x-auth: profile_fetch status=401"), "profile failure logs the status");
+  assert(dumped.includes("x-auth: token_exchange status=0 error=unreachable"), "a thrown exchange logs a fixed reason");
+}
+
+void checkLogs()
+  .then(() => {
+    restoreEnv();
+    console.log("x oauth checks ok");
+  })
+  .catch((error: unknown) => {
+    restoreEnv();
+    console.error(error);
+    process.exit(1);
+  });

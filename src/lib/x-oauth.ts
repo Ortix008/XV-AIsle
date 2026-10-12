@@ -42,11 +42,15 @@ export function xSignInConfigured() {
   return redirectUriAllowed(redirectUri);
 }
 
+function appUrlIsHttps() {
+  return (process.env.APP_URL ?? "").trim().toLowerCase().startsWith("https://");
+}
+
 export function xOauthCookieOptions() {
   return {
     httpOnly: true as const,
     sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    secure: appUrlIsHttps(),
     path: "/",
     maxAge: OAUTH_MAX_AGE,
   };
