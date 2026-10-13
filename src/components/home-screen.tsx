@@ -90,8 +90,8 @@ export function JoinScreen() {
                 earn their <span className="text-primary">place.</span>
               </h1>
               <p className="mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                A night market of home, kitchen, and everyday goods. Every product page tells you where it ships from,
-                how long it takes, and, when we wrote one, why it earned its place.
+                Everyday things for your home, your desk, and the people you love, picked one by one. Every item shows
+                where it ships from and when it&apos;ll reach your door. No guessing.
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <Link href="/shop" className="pill pill-primary max-[899px]:flex-1">
@@ -129,7 +129,7 @@ export function JoinScreen() {
           <ShopGrid
             kicker="Featured"
             title="In the store"
-            lede="Payment goes to Stripe. After it clears, the supplier that holds the stock ships the order."
+            lede="Check out safely, and the supplier ships your order straight to your door."
             query=""
             empty="Nothing is marked ready yet."
             limit={4}
