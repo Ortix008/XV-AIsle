@@ -1,13 +1,20 @@
 import { confirmReceipt, disputeReceipt } from "@/lib/server/ledger";
+import { orderSummary } from "@/lib/server/order-summary";
 import { orderByReceiptToken } from "@/lib/server/store";
 import { BUYER_WINDOW_MS } from "@/lib/server/fees";
 
 function publicReceipt(token: string) {
   const order = orderByReceiptToken(token);
   if (!order) return null;
+  const summary = orderSummary(order);
   return {
-    number: order.number,
-    title: order.title ?? "Order",
+    number: summary.number,
+    title: summary.title,
+    qty: summary.qty,
+    amountCents: summary.amountCents,
+    shipsFrom: summary.shipsFrom,
+    eta: summary.eta,
+    productId: summary.productId,
     status: order.status,
     deliveredAt: order.deliveredAt,
     shippedAt: order.shippedAt,
@@ -16,6 +23,7 @@ function publicReceipt(token: string) {
     buyerConfirmedAt: order.buyerConfirmedAt,
     buyerDisputeOpen: order.buyerDisputeOpen && !order.buyerDisputeResolved,
     windowEndsAt: order.deliveredAt ? order.deliveredAt + BUYER_WINDOW_MS : null,
+    returnAddress: summary.returnAddress,
   };
 }
 

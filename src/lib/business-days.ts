@@ -1,17 +1,44 @@
 const WEEKEND = new Set([0, 6]);
 
-/** End of the UTC day that is `days` business days after `fromMs`. Weekends are skipped. */
-export function addBusinessDays(fromMs: number, days: number) {
+/** `YYYY-MM-DD` dates from a comma-separated list. Invalid dates are dropped. */
+export function parseHolidayList(raw: string | undefined | null) {
+  const holidays = new Set<string>();
+  if (!raw) return holidays;
+  for (const part of raw.split(",")) {
+    const stamp = part.trim();
+    if (isISODate(stamp)) holidays.add(stamp);
+  }
+  return holidays;
+}
+
+/** Holidays the 7-business-day delay check skips, besides weekends. */
+export function storeHolidays() {
+  return parseHolidayList(process.env.STORE_HOLIDAYS);
+}
+
+/**
+ * End of the UTC day that is `days` business days after `fromMs`.
+ * Weekends are skipped. Dates in `holidays` (`YYYY-MM-DD`, UTC) are skipped too.
+ */
+export function addBusinessDaysSkipping(fromMs: number, days: number, holidays?: ReadonlySet<string>) {
+  const skip = holidays ?? new Set<string>();
   const start = new Date(fromMs);
   const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
   let left = days;
   if (!Number.isInteger(left) || left < 1) left = 1;
   while (left > 0) {
     cursor.setUTCDate(cursor.getUTCDate() + 1);
-    if (!WEEKEND.has(cursor.getUTCDay())) left -= 1;
+    if (WEEKEND.has(cursor.getUTCDay())) continue;
+    if (skip.has(businessDayStamp(cursor.getTime()))) continue;
+    left -= 1;
   }
   cursor.setUTCHours(23, 59, 59, 999);
   return cursor.getTime();
+}
+
+/** End of the UTC day that is `days` business days after `fromMs`. Weekends are skipped. */
+export function addBusinessDays(fromMs: number, days: number) {
+  return addBusinessDaysSkipping(fromMs, days);
 }
 
 /** Promised ship-by instant. A missing or zero window means 7 business days. */

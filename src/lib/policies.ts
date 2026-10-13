@@ -13,3 +13,8 @@ export const RESELLER_COMMISSION_BPS = 500;
 export function resellerCommissionLabel() {
   return `${RESELLER_COMMISSION_BPS / 100}%`;
 }
+
+/** What a reseller is told about pay. The ledger still uses the operator payout rules. */
+export function resellerPayLine() {
+  return `Commission is paid monthly, after each order's ${RETURN_WINDOW_DAYS}-day return window.`;
+}

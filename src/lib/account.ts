@@ -12,6 +12,11 @@ export type Account = {
   totpEnabled?: boolean;
 };
 
+/** Support reference. The full id stays on operator screens. */
+export function accountSupportRef(id: string) {
+  return `Ref …${id.slice(-6)}`;
+}
+
 export function isAccountRole(value: string | null | undefined): value is AccountRole {
   switch (value) {
     case "admin":

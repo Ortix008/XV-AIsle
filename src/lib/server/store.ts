@@ -7,7 +7,9 @@ import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseLis
 import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { changed, getDb } from "./db";
+import { etaFromListing } from "../order-facts";
 import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
+import { formatOrderReturn, resolveReturnAddress } from "./supplier-returns";
 import { requestShipment } from "./supplier";
 
 export type StoreListing = {
@@ -43,6 +45,11 @@ export type StoreListing = {
   supplierEmail: string | null;
   kind: "single" | "bundle";
   aisle: string | null;
+  returnLine1: string | null;
+  returnCity: string | null;
+  returnRegion: string | null;
+  returnPostal: string | null;
+  returnCountry: string | null;
 };
 
 export type StoreOrder = {
@@ -104,6 +111,11 @@ export type StoreOrder = {
   delayRefundDueAt: number | null;
   delayRefundedAt: number | null;
   refundedAt: number | null;
+  returnLine1: string | null;
+  returnCity: string | null;
+  returnRegion: string | null;
+  returnPostal: string | null;
+  returnCountry: string | null;
 };
 
 type ListingRow = {
@@ -139,6 +151,11 @@ type ListingRow = {
   supplier_email?: string | null;
   kind?: string | null;
   aisle?: string | null;
+  return_line1?: string | null;
+  return_city?: string | null;
+  return_region?: string | null;
+  return_postal?: string | null;
+  return_country?: string | null;
 };
 
 type OrderRow = {
@@ -198,6 +215,11 @@ type OrderRow = {
   delay_refund_due_at?: number | null;
   delay_refunded_at?: number | null;
   refunded_at?: number | null;
+  return_line1?: string | null;
+  return_city?: string | null;
+  return_region?: string | null;
+  return_postal?: string | null;
+  return_country?: string | null;
   fulfilling_started_at?: number | null;
   fulfillment_attempts?: number | null;
   receipt_token_hash?: string | null;
@@ -237,6 +259,11 @@ function listingFrom(row: ListingRow): StoreListing {
     supplierEmail: row.supplier_email ?? null,
     kind: row.kind === "bundle" ? "bundle" : "single",
     aisle: row.aisle?.trim() || null,
+    returnLine1: row.return_line1?.trim() || null,
+    returnCity: row.return_city?.trim() || null,
+    returnRegion: row.return_region?.trim() || null,
+    returnPostal: row.return_postal?.trim() || null,
+    returnCountry: row.return_country?.trim() || null,
   };
 }
 
@@ -261,8 +288,13 @@ function routedTitle(order: { title?: string | null; productId: string }, listin
   return `${base}. Includes ${pieces.map((piece) => piece.title).join(", ")}`;
 }
 
+/** Generic preview copy. It is attached only when the caller marks the row as a sample. */
+export const SAMPLE_EARNED_PLACE =
+  "Sample preview. This sentence is generic placeholder copy so the card can be seen. A product on the shop uses the note written for that product.";
+
 /** Shopper-facing listing. Cost, margin, fees, and any fund share stay off this object. */
 export function publicShopListing(listing: StoreListing, sample: boolean) {
+  const whyWePicked = listing.whyWePicked?.trim() || (sample ? SAMPLE_EARNED_PLACE : "");
   return {
     productId: listing.productId,
     sku: listing.sku,
@@ -279,7 +311,7 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     sample,
     ...(listing.shipsFrom ? { shipsFrom: listing.shipsFrom } : {}),
     ...(listing.deliveryTime ? { deliveryTime: listing.deliveryTime } : {}),
-    ...(listing.whyWePicked ? { whyWePicked: listing.whyWePicked } : {}),
+    ...(whyWePicked ? { whyWePicked } : {}),
     ...(listing.brand ? { brand: listing.brand } : {}),
     ...(listing.whyItCosts ? { whyItCosts: listing.whyItCosts } : {}),
     ...(listing.checkedBy && listing.checkedOn && listing.checkedNote
@@ -365,6 +397,11 @@ function orderFrom(row: OrderRow, listing?: ListingRow): StoreOrder {
     delayRefundDueAt: row.delay_refund_due_at ?? null,
     delayRefundedAt: row.delay_refunded_at ?? null,
     refundedAt: row.refunded_at ?? null,
+    returnLine1: row.return_line1?.trim() || null,
+    returnCity: row.return_city?.trim() || null,
+    returnRegion: row.return_region?.trim() || null,
+    returnPostal: row.return_postal?.trim() || null,
+    returnCountry: row.return_country?.trim() || null,
   };
 }
 
@@ -426,6 +463,11 @@ export function publishListing(
     | "supplierEmail"
     | "kind"
     | "aisle"
+    | "returnLine1"
+    | "returnCity"
+    | "returnRegion"
+    | "returnPostal"
+    | "returnCountry"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -686,7 +728,9 @@ export function listPublished(filter?: { madeInUsa?: boolean; shelf?: "national"
     clauses.push("shelf = ?");
     params.push(filter.shelf);
   }
-  if (filter?.aisle) {
+  if (filter?.aisle === "bundles") {
+    clauses.push("kind = 'bundle'");
+  } else if (filter?.aisle) {
     clauses.push("aisle = ?");
     params.push(filter.aisle);
   }
@@ -783,6 +827,7 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   }
   const split = priced.split;
   const created = Date.now();
+  const returnTo = resolveReturnAddress(page);
   getDb()
     .prepare(
       `INSERT INTO orders (
@@ -790,8 +835,9 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
          ship_line1, ship_city, ship_region, ship_postal, ship_country,
          stripe_session_id, status, supplier_ref, supplier_detail, created_at,
          transfer_group, fee_bps, platform_fee_cents, supplier_amount_cents, reseller_amount_cents, supplier_account_id,
-         receipt_token_hash, stripe_fee_est_cents, stripe_fee_cents
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         receipt_token_hash, stripe_fee_est_cents, stripe_fee_cents,
+         return_line1, return_city, return_region, return_postal, return_country
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -817,12 +863,25 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
       receiptHash(receiptToken),
       split.stripeFeeCents,
       split.stripeFeeCents,
+      returnTo?.line1 ?? null,
+      returnTo?.city ?? null,
+      returnTo?.region ?? null,
+      returnTo?.postal ?? null,
+      returnTo?.country ?? null,
     );
   return { order: getOrder(id)!, listing: listingFrom(listing), receiptToken };
 }
 
 export function attachStripeSession(orderId: string, sessionId: string) {
   getDb().prepare("UPDATE orders SET stripe_session_id = ? WHERE id = ?").run(sessionId, orderId);
+}
+
+export function orderByStripeSession(sessionId: string) {
+  if (!sessionId) return null;
+  const row = getDb().prepare("SELECT id FROM orders WHERE stripe_session_id = ?").get(sessionId) as
+    | { id: string }
+    | undefined;
+  return row ? getOrder(row.id) : null;
 }
 
 const LINK_COLUMNS = {
@@ -1073,9 +1132,14 @@ export async function fulfillPaidOrder(orderId: string) {
       number: current.number,
       title: current.title ?? listing?.title ?? "Order",
       qty: current.qty,
+      amountCents: current.amountCents,
+      shipsFrom: listing?.shipsFrom ?? null,
+      eta: etaFromListing(listing),
       shipDaysMin: listing?.shipDaysMin ?? 0,
       shipDaysMax: listing?.shipDaysMax ?? 0,
       token,
+      productId: current.productId,
+      returnAddress: formatOrderReturn(current),
     });
   }
   return getOrder(orderId);

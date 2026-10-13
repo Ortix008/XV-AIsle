@@ -47,7 +47,7 @@ Public store:
 - `/shop/reseller` Reseller program
 - `/shop/reseller/terms` Affiliate and reseller terms
 - `/shop/contact` Note to the seller
-- `/shop/safety` How buying works: payment, shipping, returns, and the return address
+- `/shop/safety` How buying works: payment, shipping, and returns. An operator saves each supplier's return address here. Buyers do not see that street until the order page.
 - `/shop/return` Stripe return landing
 
 ## What works, and what is still a stub
@@ -59,6 +59,7 @@ Still manual or sample data:
 - Posts and retailer notes are copied by hand. Nothing is sent to a social network or to a retailer.
 - The product book is a fixed catalog with fictional warehouses. It is not a live feed.
 - Sample products (the sheet pan and bench scraper) publish only when `DEMO_SEED=1`. Leave that unset in production.
+- `DEMO_SEED=1 npx tsx scripts/seed-preview-order.ts` inserts one paid sample order and prints `/shop/return?token=…&session_id=cs_preview_sample_sheet_pan`. It refuses to run unless `DEMO_SEED=1`, refuses a live Stripe key, and does not call Stripe. With SMTP unset, mail is logged and not sent.
 - Small shops are names you type in.
 
 ## How money moves
@@ -137,7 +138,7 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | `SMTP_USER` | SMTP username. Optional when the server does not require auth. |
 | `SMTP_PASS` | SMTP password. |
 | `MAIL_FROM` | From address. Required when `SMTP_HOST` is set. |
-| `STORE_RETURNS` | Return line shown before the operator saves one at `/shop/safety`. |
+| `STORE_RETURNS` | Legacy store line. Buyers are not shown it. Save each supplier's return address in admin instead, and do not put a home address here. |
 | `STORE_SUPPORT_EMAIL` | Support email shown before the operator saves one at `/shop/safety`. |
 | `STORE_OPERATOR_EMAIL` | Account that receives the two starter products. Empty means nobody does. |
 | `ADMIN_EMAIL` | Email for one run of `admin:create`, `admin:reset-password`, or `admin:status`. Signup ignores it. |
@@ -163,6 +164,14 @@ The domain is at Porkbun. Point the A record for `xvaisle.com` and `www` at that
 cp .env.example .env
 # fill the file on the server only, then:
 docker compose up -d --build
+```
+
+The store process checks once an hour for paid orders that have not shipped after 7 business days. Weekends are skipped. `STORE_HOLIDAYS` is an optional comma-separated list of `YYYY-MM-DD` dates that are skipped too. Each matching order gets one email: the order has not shipped, the buyer can wait or cancel for a full refund, and the message links to the order page. The send is stored on the order, so a later check does not send it again. If `SMTP_HOST` is empty, the mailer logs the message and does not send it.
+
+Leave the container running and that hourly check is enough. A checkout on the droplet can run the same check from cron:
+
+```
+0 * * * * cd /opt/xvaisle && npx tsx scripts/notify-unshipped-orders.ts
 ```
 
 Promote both owners inside the `store` container. Run the command once per person. The first example creates a new verified admin. The second promotes an account that already signed up. Promotion sets the role and marks the email verified. It leaves the name, password, membership, Stripe ids, listings, and orders in place. Starting the app does not demote existing roles. The command does not print the password.
@@ -202,7 +211,7 @@ docker compose exec store rm /data/catalog-private.json
 
 Pictures live at `public/art/products/<slug>.jpg` and are baked in when the image is built. A path with no file is imported with an empty picture.
 
-After the certificate is up, sign in as that admin, open `/shop/safety`, and save the return address there. Suppliers rotate a delivery secret from the account page. Each secret is stored hashed.
+After the certificate is up, sign in as that admin, open `/shop/safety`, and save each supplier's return address. Use the supplier's business street. PO Boxes are rejected, and the address is not a home address. Buyers see it on the order page after they pay. Suppliers rotate a delivery secret from the account page. Each secret is stored hashed.
 
 ## Collaborating
 

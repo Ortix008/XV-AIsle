@@ -1,16 +1,36 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyArticle } from "@/components/policy-article";
-import { RESELLER_DISCLOSURE, resellerCommissionLabel } from "@/lib/policies";
+import { RESELLER_DISCLOSURE, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
 
 export const metadata: Metadata = { title: "Reseller program · XV-AIsle" };
 
+const earnSteps = [
+  { title: "Join free", detail: "No fee, no recruiting." },
+  { title: "Share your link", detail: "Post a find you'd actually use, with #ad." },
+  { title: `Earn ${resellerCommissionLabel()} monthly`, detail: "Paid after the 14-day return window." },
+] as const;
+
+function EarnSteps() {
+  return (
+    <ol className="earn-steps">
+      {earnSteps.map((step, index) => (
+        <li key={step.title} className="order-sheet earn-step">
+          <p className="eyebrow">0{index + 1}</p>
+          <p className="earn-step-title">{step.title}</p>
+          <p className="earn-step-detail">{step.detail}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export default function ResellerPage() {
   return (
-    <PolicyArticle kicker="Store" title="Reseller program">
+    <PolicyArticle kicker="Earn with xvaisle" title="Reseller program" story underHero={<EarnSteps />}>
       <p>
         The reseller program is free to join. There is no sign-up fee and no payment for recruiting other people.
-        Commission is {resellerCommissionLabel()} of a completed sale.
+        Commission is {resellerCommissionLabel()} of a completed sale. {resellerPayLine()}
       </p>
       <p>
         Commission is paid only when a customer completes a real purchase on xvaisle.com. A signup, a click, or a post

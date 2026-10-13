@@ -3,11 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { BrandMark } from "@/components/brand-mark";
+import { NightMotif } from "@/components/night-motif";
 import { placeProduct, type Aisle } from "@/lib/aisles";
 import { getProduct } from "@/lib/catalog";
 import { useDesk } from "@/lib/desk-store";
+import { nightWorldBySlug, nightWorldVars } from "@/lib/night-worlds";
 import { cn } from "cn";
 
 const statusLabel = {
@@ -77,6 +79,7 @@ export function AisleView({ aisle, onClose }: { aisle: Aisle; onClose: () => voi
     scroller.scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
   }
 
+  const world = nightWorldBySlug(aisle.slug);
   const sections = aisle.sections.map((section) => {
     const items = state.pipeline.flatMap((row) => {
       const product = getProduct(row.productId);
@@ -155,6 +158,17 @@ export function AisleView({ aisle, onClose }: { aisle: Aisle; onClose: () => voi
         </nav>
 
         <div ref={scrollerRef} className="min-w-0 flex-1 overflow-y-auto">
+          {world ? (
+            <div className="stall-mast mx-4 mt-4 sm:mx-6" style={nightWorldVars(world) as CSSProperties}>
+              <NightMotif slug={world.slug} />
+              <div>
+                <p className="eyebrow" style={{ color: world.accent }}>
+                  {world.title}
+                </p>
+                <p className="mt-2 text-base leading-relaxed text-muted-foreground">{world.story}</p>
+              </div>
+            </div>
+          ) : null}
           <div data-aisle-chips className="sticky top-0 z-10 flex gap-2 overflow-x-auto border-b bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
             {sections.map((section) => (
               <button

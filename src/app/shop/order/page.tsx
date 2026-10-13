@@ -2,6 +2,8 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { AisleHero } from "@/components/aisle-hero";
+import { OrderCard } from "@/components/order-card";
 import { ShopFrame } from "@/components/shop-frame";
 import { formatISODate } from "@/lib/business-days";
 import { Button } from "@/components/ui/button";
@@ -10,6 +12,11 @@ import { Textarea } from "@/components/ui/textarea";
 type Receipt = {
   number: string;
   title: string;
+  qty: number;
+  amountCents: number;
+  shipsFrom: string | null;
+  eta: string | null;
+  productId: string;
   status: string;
   deliveredAt: number | null;
   carrier: string | null;
@@ -17,6 +24,7 @@ type Receipt = {
   buyerConfirmedAt: number | null;
   buyerDisputeOpen: boolean;
   windowEndsAt: number | null;
+  returnAddress: string | null;
 };
 
 type DelayOffer = {
@@ -120,12 +128,23 @@ function OrderBody() {
     setOrder(data.order);
   }
 
+  const tracking =
+    order && order.carrier && order.trackingNumber
+      ? `${order.carrier} · ${order.trackingNumber}`
+      : order
+        ? "Tracking is not on this order yet."
+        : null;
+
   return (
-    <div className="mx-auto max-w-xl px-5 py-16 sm:px-10 sm:py-24">
-      <p className="eyebrow">Order</p>
-      <h1 className="mt-4 text-4xl sm:text-5xl">{delay ? "Your order is delayed" : "Your delivery"}</h1>
+    <>
+      <AisleHero
+        kicker="Order"
+        title={delay ? "Your order is delayed" : "Your delivery"}
+        lede={error}
+      />
       {delay ? (
-        <div className="mt-6 space-y-3 text-base">
+        <div className="order-sheet-wrap">
+          <section className="order-sheet space-y-3 text-base">
           <p>
             <span className="font-mono text-xs">{delay.number}</span>
             <span className="ml-2 font-medium">{delay.title}</span>
@@ -150,59 +169,57 @@ function OrderBody() {
               {pending ? "Requesting…" : "Request a full refund"}
             </Button>
           )}
+          </section>
         </div>
       ) : null}
       {order && !delay ? (
-        <div className="mt-6 space-y-3 text-base">
-          <p>
-            <span className="font-mono text-xs">{order.number}</span>
-            <span className="ml-2 font-medium">{order.title}</span>
-          </p>
-          <p className="text-muted-foreground">
-            {order.carrier && order.trackingNumber
-              ? `${order.carrier} · ${order.trackingNumber}`
-              : "Tracking is not on this order yet."}
-            {order.deliveredAt ? " Delivered." : ""}
-            {order.buyerConfirmedAt ? " You confirmed it." : ""}
-            {order.buyerDisputeOpen ? " A dispute is open." : ""}
-          </p>
-          {order.windowEndsAt && !order.buyerConfirmedAt && !order.buyerDisputeOpen ? (
-            <p className="text-muted-foreground">
-              If you do not dispute it, the seller can be paid after{" "}
-              {new Date(order.windowEndsAt).toLocaleDateString()}.
-            </p>
-          ) : null}
-          {order.deliveredAt && !order.buyerConfirmedAt && !order.buyerDisputeOpen ? (
-            <form
-              className="flex flex-col gap-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void send("confirm");
-              }}
-            >
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "I received this"}
-              </Button>
-              <label className="flex flex-col gap-1">
-                Something wrong?
-                <Textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} />
-              </label>
-              <Button type="button" variant="outline" disabled={pending} onClick={() => void send("dispute")}>
-                Dispute this delivery
-              </Button>
-            </form>
-          ) : null}
+        <div className="order-sheet-wrap">
+          <OrderCard facts={order}>
+            <div className="space-y-3 text-base">
+              <p className="text-muted-foreground">
+                {tracking}
+                {order.deliveredAt ? " Delivered." : ""}
+                {order.buyerConfirmedAt ? " You confirmed it." : ""}
+                {order.buyerDisputeOpen ? " A dispute is open." : ""}
+              </p>
+              {order.windowEndsAt && !order.buyerConfirmedAt && !order.buyerDisputeOpen ? (
+                <p className="text-muted-foreground">
+                  If you do not dispute it, the seller can be paid after{" "}
+                  {new Date(order.windowEndsAt).toLocaleDateString()}.
+                </p>
+              ) : null}
+              {order.deliveredAt && !order.buyerConfirmedAt && !order.buyerDisputeOpen ? (
+                <form
+                  className="flex flex-col gap-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void send("confirm");
+                  }}
+                >
+                  <Button type="submit" disabled={pending}>
+                    {pending ? "Saving…" : "I received this"}
+                  </Button>
+                  <label className="flex flex-col gap-1">
+                    Something wrong?
+                    <Textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} />
+                  </label>
+                  <Button type="button" variant="outline" disabled={pending} onClick={() => void send("dispute")}>
+                    Dispute this delivery
+                  </Button>
+                </form>
+              ) : null}
+            </div>
+          </OrderCard>
         </div>
       ) : null}
-      {error ? <p className="mt-3 text-sm text-late">{error}</p> : null}
-    </div>
+    </>
   );
 }
 
 export default function BuyerOrderPage() {
   return (
     <ShopFrame>
-      <Suspense fallback={<p className="px-4 py-10 text-sm text-muted-foreground">Opening the order…</p>}>
+      <Suspense fallback={<AisleHero kicker="Order" title="Your delivery" lede="Opening the order…" />}>
         <OrderBody />
       </Suspense>
     </ShopFrame>

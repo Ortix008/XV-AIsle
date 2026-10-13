@@ -1,9 +1,13 @@
+import { poBoxRejection } from "../return-address";
 import type { Actor } from "./access";
 import { settingsWriteDecision } from "./access";
 import { getDb } from "./db";
 
 const RETURNS_KEY = "returns_address";
 const SUPPORT_EMAIL_KEY = "support_email";
+
+/** Shown when the operator has not saved a support address. */
+export const PUBLISHED_SUPPORT_EMAIL = "xvaisle.team@gmail.com";
 
 function readSetting(key: string, envName: "STORE_RETURNS" | "STORE_SUPPORT_EMAIL") {
   const row = getDb().prepare("SELECT value FROM settings WHERE key = ?").get(key) as
@@ -26,6 +30,8 @@ export function saveReturnsAddress(value: string) {
   const address = value.trim().replace(/\s+/g, " ");
   if (address.length > 200) return { error: "Shorten the return address." as const };
   if (address.length > 0 && address.length < 8) return { error: "Add the street, city, and state." as const };
+  const poBox = poBoxRejection(address);
+  if (poBox) return { error: poBox };
   const db = getDb();
   if (!address) {
     db.prepare("DELETE FROM settings WHERE key = ?").run(RETURNS_KEY);
@@ -42,6 +48,12 @@ const SUPPORT_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function isSupportEmail(value: string) {
   return SUPPORT_EMAIL.test(value);
+}
+
+/** Operator setting or STORE_SUPPORT_EMAIL when valid, otherwise the published address. */
+export function supportEmailForDisplay() {
+  const stored = readSupportEmail();
+  return isSupportEmail(stored) ? stored : PUBLISHED_SUPPORT_EMAIL;
 }
 
 export function saveSupportEmail(value: string) {

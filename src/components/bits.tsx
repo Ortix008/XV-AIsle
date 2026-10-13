@@ -21,11 +21,9 @@ export function PageHeader({
   return (
     <header className="sticky top-0 z-10 flex flex-col gap-3 border-b bg-background/95 px-4 py-4 backdrop-blur-sm sm:px-6 lg:static lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0">
-        <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-          {kicker}
-        </p>
-        <h1 className="text-balance text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 max-w-2xl text-pretty text-sm text-muted-foreground">{lede}</p>
+        <p className="eyebrow">{kicker}</p>
+        <h1 className="mt-2 text-3xl sm:text-4xl">{title}</h1>
+        <p className="mt-2 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground">{lede}</p>
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
@@ -112,7 +110,7 @@ export function MockupFrame({
 }) {
   return (
     <figure className="min-w-0">
-      <div className="media-well relative aspect-[4/3] overflow-hidden rounded-[14px] border border-border">
+      <div className="product-frame">
         {idea.src ? (
           <Image src={idea.src} alt="" fill sizes="(min-width: 640px) 30vw, 100vw" className="object-cover" />
         ) : null}
@@ -164,10 +162,11 @@ export function EmptyNote({
   action?: ReactNode;
 }) {
   return (
-    <div className="px-4 py-8 sm:px-6">
-      <p className="text-sm font-medium">{title}</p>
-      <p className="mt-1 max-w-md text-pretty text-sm text-muted-foreground">{body}</p>
-      {action ? <div className="mt-3">{action}</div> : null}
+    <div className="empty-panel mx-4 my-6 sm:mx-6">
+      <p className="eyebrow">Empty</p>
+      <p className="mt-3 text-2xl">{title}</p>
+      <p className="mt-2 max-w-md text-pretty text-base leading-relaxed text-muted-foreground">{body}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }

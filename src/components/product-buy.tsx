@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState, type CSSProperties, type FormEvent } from "react";
+import { ProductFrame } from "@/components/product-frame";
 import { useReveal } from "@/components/reveal";
 import { CheckoutPolicies } from "@/components/shop-footer";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { isStripeCheckoutUrl } from "@/lib/checkout-url";
 import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
+import { nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
+import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
 export type ProductListing = {
   productId: string;
@@ -35,9 +37,10 @@ export type ProductListing = {
   checkedNote?: string | null;
   kind?: "bundle";
   includes?: { productId: string; title: string }[];
+  aisle?: string | null;
 };
 
-export function ProductBuy({ listing }: { listing: ProductListing }) {
+export function ProductBuy({ listing, returnNote }: { listing: ProductListing; returnNote: string }) {
   const formReveal = useReveal<HTMLFormElement>(1);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -52,7 +55,9 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
     listing.checkedBy && listing.checkedOn && listing.checkedNote
       ? { by: listing.checkedBy, on: listing.checkedOn, note: listing.checkedNote }
       : null;
-  const notes = Boolean(listing.shipsFrom || listing.deliveryTime || listing.whyWePicked || listing.whyItCosts || check);
+  const notes = Boolean(listing.whyItCosts || check);
+  const world = nightWorldForListing(listing);
+  const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
 
   async function checkout(event: FormEvent) {
     event.preventDefault();
@@ -116,26 +121,14 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
             <p className="mt-3 text-sm text-muted-foreground">One price for the group. The supplier ships the pieces together.</p>
           </div>
         ) : null}
+        {listing.whyWePicked ? (
+          <aside className="earned-card mt-6 max-w-xl" style={worldStyle}>
+            <h2 className="text-xl">Why it earned its place</h2>
+            <p className="mt-2 whitespace-pre-wrap text-base leading-relaxed">{listing.whyWePicked}</p>
+          </aside>
+        ) : null}
         {notes ? (
           <dl className="mt-6 grid gap-3 text-base">
-            {listing.shipsFrom ? (
-              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
-                <dt className="text-sm font-medium text-muted-foreground">Ships from</dt>
-                <dd className="mt-1">{listing.shipsFrom}</dd>
-              </div>
-            ) : null}
-            {listing.deliveryTime ? (
-              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
-                <dt className="text-sm font-medium text-muted-foreground">Delivery time</dt>
-                <dd className="mt-1">{listing.deliveryTime}</dd>
-              </div>
-            ) : null}
-            {listing.whyWePicked ? (
-              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
-                <dt className="text-sm font-medium text-muted-foreground">Why we picked it</dt>
-                <dd className="mt-1 whitespace-pre-wrap">{listing.whyWePicked}</dd>
-              </div>
-            ) : null}
             {listing.whyItCosts ? (
               <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
                 <dt className="text-sm font-medium text-muted-foreground">Why it costs this</dt>
@@ -198,16 +191,35 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
         <CheckoutPolicies />
       </form>
       </div>
-      <div className="media-well relative order-2 aspect-[4/5] w-full overflow-hidden rounded-[14px] border border-border lg:order-1">
-        {listing.image ? (
-          <Image
-            src={listing.image}
-            alt={listing.title}
-            fill
-            sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-cover object-center"
-          />
-        ) : null}
+      <div className="order-2 flex flex-col gap-4 lg:order-1">
+        <div className="product-stage" data-world={world?.slug} style={worldStyle}>
+          <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 50vw, 100vw" priority />
+        </div>
+        <section className="rounded-2xl border border-border bg-card px-5 py-4">
+          <h2 className="text-lg">Shipping & returns</h2>
+          <dl className="mt-3 space-y-3 text-base">
+            {listing.shipsFrom ? (
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">Ships from</dt>
+                <dd className="mt-1">{listing.shipsFrom}</dd>
+              </div>
+            ) : null}
+            {listing.deliveryTime ? (
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">Delivery</dt>
+                <dd className="mt-1">{listing.deliveryTime}</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt className="text-sm font-medium text-muted-foreground">Returns</dt>
+              <dd className="mt-1">You can start a return within {RETURN_WINDOW_DAYS} days of delivery.</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-muted-foreground">Return address</dt>
+              <dd className="mt-1">{returnNote}</dd>
+            </div>
+          </dl>
+        </section>
       </div>
     </div>
   );

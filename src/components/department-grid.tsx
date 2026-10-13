@@ -6,7 +6,10 @@ import { AisleView } from "@/components/aisle-view";
 import { Reveal } from "@/components/reveal";
 import { aisleByTitle } from "@/lib/aisles";
 import { welcomeDepartments } from "@/lib/art";
+import { nightWorldByTitle } from "@/lib/night-worlds";
 import { cn } from "cn";
+
+const floorDepartments = welcomeDepartments.filter((dept) => !nightWorldByTitle(dept.title));
 
 export function DepartmentGrid() {
   const [open, setOpen] = useState<string | null>(null);
@@ -15,7 +18,7 @@ export function DepartmentGrid() {
   return (
     <>
       <ul className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-        {welcomeDepartments.map((dept, index) => (
+        {floorDepartments.map((dept, index) => (
           <Reveal key={dept.title} as="li" index={index % 5} className={cn(index === 0 && "lg:row-span-2")}>
             <button
               type="button"
@@ -24,7 +27,7 @@ export function DepartmentGrid() {
             >
               <div
                 className={cn(
-                  "media-well relative overflow-hidden rounded-[14px] border border-border",
+                  "media-well frame-glow relative overflow-hidden rounded-[14px] border border-border",
                   index === 0 ? "aspect-[4/5] min-h-72 lg:min-h-[520px] lg:flex-1" : "aspect-[16/10]",
                 )}
               >

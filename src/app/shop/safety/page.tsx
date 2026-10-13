@@ -1,23 +1,24 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { ReturnsForm } from "@/components/returns-form";
+import { SupplierReturnsForm } from "@/components/supplier-returns-form";
 import { ShopFrame } from "@/components/shop-frame";
 import { accountFromToken } from "@/lib/server/accounts";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
-import { isSupportEmail, readReturnsAddress, readSupportEmail } from "@/lib/server/settings";
+import { isSupportEmail, readSupportEmail } from "@/lib/server/settings";
+import { storeReturnCopy } from "@/lib/server/supplier-returns";
 
 export default async function ShopSafetyPage() {
-  const returns = readReturnsAddress();
   const storedEmail = readSupportEmail();
   const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const account = accountFromToken(token);
   return (
     <ShopFrame>
-      <article className="mx-auto max-w-2xl px-5 py-16 sm:px-10 sm:py-24">
+      <article className="page-read">
         <p className="eyebrow">Store</p>
-        <h1 className="mt-4 text-4xl sm:text-5xl">How buying works</h1>
+        <h1 className="page-title">How buying works</h1>
         <p className="mt-3 text-base leading-relaxed text-foreground">
           You pick a product, pay on this site, and the supplier ships it to you.
         </p>
@@ -43,15 +44,7 @@ export default async function ShopSafetyPage() {
               <Link href="/shop/returns" className="underline underline-offset-4">
                 returns page
               </Link>
-              .
-              {returns ? (
-                <>
-                  {" "}
-                  Send the box to <span className="font-medium">{returns}</span>.
-                </>
-              ) : (
-                <> The seller will reply with the address for the box.</>
-              )}
+              . {storeReturnCopy()}
             </p>
           </section>
           <section>
@@ -81,7 +74,12 @@ export default async function ShopSafetyPage() {
             </p>
           </section>
         </div>
-        {account?.role === "admin" ? <ReturnsForm returns={returns} supportEmail={supportEmail} /> : null}
+        {account?.role === "admin" ? (
+          <>
+            <ReturnsForm supportEmail={supportEmail} />
+            <SupplierReturnsForm />
+          </>
+        ) : null}
       </article>
     </ShopFrame>
   );

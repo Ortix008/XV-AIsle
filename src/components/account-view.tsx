@@ -6,8 +6,9 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ConnectPayout } from "@/components/connect-payout";
 import { Input } from "@/components/ui/input";
+import { AuthPane } from "@/components/auth-backdrop";
 import { useAccount } from "@/lib/account-store";
-import { resellerCommissionLabel } from "@/lib/policies";
+import { RESELLER_DISCLOSURE, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
 
 function AuthenticatorSetup({ enabled, onChanged }: { enabled: boolean; onChanged: () => Promise<void> }) {
   const [secret, setSecret] = useState<string | null>(null);
@@ -52,7 +53,7 @@ function AuthenticatorSetup({ enabled, onChanged }: { enabled: boolean; onChange
   }
 
   return (
-    <section id="authenticator" className="border bg-card p-4">
+    <section id="authenticator" className="auth-subcard">
       <h2 className="text-base font-medium">Authenticator app</h2>
       {enabled ? (
         <p className="mt-2 text-sm leading-relaxed">
@@ -96,26 +97,30 @@ export function AccountView() {
   if (!account) return null;
 
   return (
-    <div className="lg:h-full lg:overflow-y-auto lg:overscroll-y-contain">
-      <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-6 sm:px-6">
-        <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">Account</p>
-        <h1 className="text-balance text-[1.75rem] leading-tight font-semibold tracking-tight">Your account</h1>
-        {params.get("verified") === "1" ? <p className="text-sm">Email verified.</p> : null}
-        <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-          The reseller program is free to join. Commission is {resellerCommissionLabel()} of a completed sale.{" "}
-          <Link href="/shop/reseller/terms" className="underline underline-offset-4 hover:text-foreground">
-            Reseller terms
-          </Link>
-          .
-        </p>
+    <AuthPane>
+      <div className="flex flex-col gap-4">
+        <p className="eyebrow">Account</p>
+        <h1 className="auth-title">Your account</h1>
+        {params.get("verified") === "1" ? <p className="text-base">Email verified.</p> : null}
+        {account.role === "buyer" || account.role === "reseller" ? (
+          <p className="text-pretty text-base leading-relaxed text-muted-foreground">
+            The reseller program is free to join. Commission is {resellerCommissionLabel()} of a completed sale.{" "}
+            {resellerPayLine()} If you mention a product, use these words:{" "}
+            <span className="font-medium text-foreground">{RESELLER_DISCLOSURE}</span>{" "}
+            <Link href="/shop/reseller" className="auth-text-link">
+              Reseller program
+            </Link>
+            .
+          </p>
+        ) : null}
         <AuthenticatorSetup enabled={account.totpEnabled === true} onChanged={refresh} />
         <div id="payouts">
           <ConnectPayout />
         </div>
-        <p className="text-xs text-pretty text-muted-foreground">
+        <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
           The account is kept on the server. Bank details stay at Stripe.
         </p>
       </div>
-    </div>
+    </AuthPane>
   );
 }

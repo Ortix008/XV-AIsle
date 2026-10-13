@@ -8,6 +8,8 @@ import { ShopFooter } from "@/components/shop-footer";
 import { StoreHeader } from "@/components/store-header";
 import { botIcon } from "@/components/bot-mark";
 import { DepartmentGrid } from "@/components/department-grid";
+import { NightStalls } from "@/components/night-stalls";
+import { AisleParallax, XvAisleFlow } from "@/components/xvaisle-flow";
 import { ShopGrid } from "@/components/shop-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +17,8 @@ import { PasswordField } from "@/components/password-field";
 import { useAccount } from "@/lib/account-store";
 import { welcomeReach } from "@/lib/art";
 import { bots } from "@/lib/bots";
-import { RETURN_WINDOW_DAYS, resellerCommissionLabel } from "@/lib/policies";
+import { HERO_EYEBROW } from "@/lib/hero-copy";
+import { RESELLER_DISCLOSURE, RETURN_WINDOW_DAYS, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
 
 export function JoinScreen() {
   const { signUp, signIn, totpChallenge, submitTotp } = useAccount();
@@ -61,20 +64,34 @@ export function JoinScreen() {
       </a>
       <StoreHeader />
       <main id="home-main" className="page-enter">
-        <section className="hero-sweep">
-          <div className="relative z-[1] mx-auto grid max-w-[1280px] items-center gap-10 px-5 py-14 sm:px-10 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:py-[110px]">
-            <div className="relative">
-              <div className="hero-glow" aria-hidden />
-              <div className="relative z-[1]">
-              <p className="eyebrow">Curated goods · Picked, not piled</p>
+        <section className="hero-aisle">
+          <div className="hero-aisle-stage" aria-hidden>
+            <AisleParallax>
+              <Image
+                src="/brand/hero-aisle-pedestals.webp"
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                className="hero-aisle-photo"
+              />
+            </AisleParallax>
+            <div className="hero-aisle-grade" />
+            <XvAisleFlow />
+            <div className="hero-aisle-scrim" />
+          </div>
+          <div className="relative z-[1] mx-auto flex min-h-[inherit] max-w-[1280px] flex-col justify-center px-5 py-16 sm:px-10 lg:py-24">
+            <div className="hero-glow" aria-hidden />
+            <div className="relative z-[1] max-w-xl">
+              <p className="eyebrow hero-eyebrow">{HERO_EYEBROW}</p>
               <h1 className="mt-5 text-[3.25rem] leading-[0.95] font-bold tracking-[-0.045em] sm:text-7xl lg:text-[5.5rem]">
                 Goods that
                 <br />
                 earn their <span className="text-primary">place.</span>
               </h1>
               <p className="mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                A tight edit of home, kitchen, and everyday goods. Every product page tells you where it ships from, how
-                long it takes, and why we picked it.
+                A night market of home, kitchen, and everyday goods. Every product page tells you where it ships from,
+                how long it takes, and, when we wrote one, why it earned its place.
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <Link href="/shop" className="pill pill-primary max-[899px]:flex-1">
@@ -84,17 +101,6 @@ export function JoinScreen() {
                   {mode === "join" ? "Open an account" : "Sign in"}
                 </a>
               </div>
-              </div>
-            </div>
-            <div className="media-well relative z-[1] aspect-[4/5] overflow-hidden rounded-[14px] border border-border">
-              <Image
-                src="/art/market-hero.png"
-                alt="A person seated at a wooden table with a bowl of salad and a glass of water."
-                fill
-                priority
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                className="object-cover object-[center_30%]"
-              />
             </div>
           </div>
         </section>
@@ -102,11 +108,19 @@ export function JoinScreen() {
         <section id="aisles" className="scroll-mt-24">
           <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]">
             <Reveal className="mb-10 flex items-end justify-between gap-5">
-              <h2 className="text-4xl sm:text-5xl lg:text-[52px]">The aisles</h2>
+              <div>
+                <p className="eyebrow">Aisles</p>
+                <h2 className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">Four stalls</h2>
+                <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">
+                  Each stall has its own lamp. The line under the name is what that stall actually holds.
+                </p>
+              </div>
               <Link href="/shop" className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary">
                 View all →
               </Link>
             </Reveal>
+            <NightStalls />
+            <h3 className="mt-16 mb-8 text-3xl sm:text-4xl">The rest of the floor</h3>
             <DepartmentGrid />
           </div>
         </section>
@@ -170,6 +184,7 @@ export function JoinScreen() {
                   <ol className="mt-5 list-decimal space-y-3 pl-5 text-base leading-relaxed">
                     <li>
                       Open an account. Joining is free. Commission is {resellerCommissionLabel()} of a completed sale.{" "}
+                      {resellerPayLine()} If you mention a product, say {RESELLER_DISCLOSURE}{" "}
                       <Link href="/shop/reseller/terms" className="underline underline-offset-4">
                         Read the reseller terms
                       </Link>
@@ -269,7 +284,7 @@ export function JoinScreen() {
               <h2 className="text-4xl sm:text-5xl">{mode === "join" ? "Open an account" : "Sign in"}</h2>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
                 {mode === "join"
-                  ? `Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. We do not promise income.`
+                  ? `Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. ${resellerPayLine()} If you mention a product, say ${RESELLER_DISCLOSURE}`
                   : "Sign in to your account. The reseller program is free to join."}
               </p>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
@@ -357,6 +372,11 @@ export function JoinScreen() {
               <Button type="submit" disabled={pending} className="mt-1 h-12 w-fit rounded-full px-6">
                 {totpChallenge ? "Confirm code" : mode === "join" ? "Create an account" : "Sign in"}
               </Button>
+              {mode === "sign-in" && !totpChallenge ? (
+                <Link href="/reset" className="w-fit text-base text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+                  Forgot password
+                </Link>
+              ) : null}
               <button
                 type="button"
                 className="w-fit text-base text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"

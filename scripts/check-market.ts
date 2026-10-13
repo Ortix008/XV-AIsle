@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -267,9 +267,8 @@ const underpaid = await settleCheckoutSession({
 });
 if (!("error" in underpaid)) throw new Error("underpaid session should not fulfill");
 const { ensureStarterShelf } = await import("../src/lib/server/starter-shelf");
-const { saveReturnsAddress, readReturnsAddress, saveSupportEmail, readSupportEmail } = await import(
-  "../src/lib/server/settings"
-);
+const { saveReturnsAddress, readReturnsAddress, saveSupportEmail, readSupportEmail, supportEmailForDisplay, PUBLISHED_SUPPORT_EMAIL } =
+  await import("../src/lib/server/settings");
 delete process.env.STORE_OPERATOR_EMAIL;
 ensureStarterShelf();
 if (getDb().prepare("SELECT product_id FROM listings WHERE product_id = 'bench-scraper'").get()) {
@@ -317,6 +316,38 @@ const badEmail = saveSupportEmail("not-an-email");
 if (!("error" in badEmail)) throw new Error("support email should reject a bad address");
 saveSupportEmail("");
 if (readSupportEmail()) throw new Error("support email should clear");
+delete process.env.STORE_SUPPORT_EMAIL;
+if (supportEmailForDisplay() !== PUBLISHED_SUPPORT_EMAIL) {
+  throw new Error("an empty support email shows the published address");
+}
+if (PUBLISHED_SUPPORT_EMAIL !== "xvaisle.team@gmail.com") throw new Error("the published support email is xvaisle.team@gmail.com");
+saveSupportEmail("support@example.com");
+if (supportEmailForDisplay() !== "support@example.com") throw new Error("a saved support email replaces the published address");
+saveSupportEmail("");
+const resellerPage = readFileSync(join(process.cwd(), "src/app/shop/reseller/page.tsx"), "utf8");
+if (!resellerPage.includes('kicker="Earn with xvaisle"')) throw new Error("reseller eyebrow should say Earn with xvaisle");
+if (!resellerPage.includes("Join free") || !resellerPage.includes("Share your link")) {
+  throw new Error("reseller steps should include Join free and Share your link");
+}
+for (const line of [
+  "No fee, no recruiting.",
+  "Post a find you'd actually use, with #ad.",
+  "Paid after the 14-day return window.",
+]) {
+  if (!resellerPage.includes(line)) throw new Error("reseller step lines should stay as written");
+}
+for (const sentence of [
+  "The reseller program is free to join.",
+  "We do not promise income.",
+  "Buyers pay on xvaisle.com.",
+]) {
+  if (!resellerPage.includes(sentence)) throw new Error("honest reseller copy should stay");
+}
+for (const file of ["src/components/policy-article.tsx", "src/app/shop/contact/page.tsx"]) {
+  const source = readFileSync(join(process.cwd(), file), "utf8");
+  if (source.includes("A support email is not published yet")) throw new Error(`${file} still hides the support email`);
+  if (!source.includes("mailto:")) throw new Error(`${file} should link the support email`);
+}
 
 closeDb();
 console.log("market checks ok", { order: pending.order.number });

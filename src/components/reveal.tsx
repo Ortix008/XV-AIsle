@@ -4,7 +4,39 @@ import { useLayoutEffect, useRef, type CSSProperties, type ReactNode, type Ref }
 
 type RevealTag = "div" | "li" | "article" | "section";
 
+const FALLBACK_MS = 1000;
+
 let observer: IntersectionObserver | null = null;
+const timers = new WeakMap<HTMLElement, number>();
+
+function reducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function canObserve() {
+  return typeof IntersectionObserver === "function" && !reducedMotion();
+}
+
+function inViewport(node: HTMLElement) {
+  const rect = node.getBoundingClientRect();
+  const height = window.innerHeight || document.documentElement.clientHeight;
+  const width = window.innerWidth || document.documentElement.clientWidth;
+  if (height <= 0 || width <= 0 || rect.width <= 0 || rect.height <= 0) return true;
+  return rect.bottom > 0 && rect.right > 0 && rect.top < height && rect.left < width;
+}
+
+function clearTimer(node: HTMLElement) {
+  const timer = timers.get(node);
+  if (timer == null) return;
+  window.clearTimeout(timer);
+  timers.delete(node);
+}
+
+function show(node: HTMLElement) {
+  node.classList.add("is-in");
+  observer?.unobserve(node);
+  clearTimer(node);
+}
 
 function motionObserver() {
   if (observer) return observer;
@@ -12,30 +44,29 @@ function motionObserver() {
     (entries) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
-        entry.target.classList.add("is-in");
-        observer?.unobserve(entry.target);
+        show(entry.target as HTMLElement);
       }
     },
-    { rootMargin: "0px 0px -8% 0px", threshold: 0.16 },
+    { rootMargin: "0px", threshold: 0 },
   );
   return observer;
 }
 
-function reducedMotion() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
 function arm(node: HTMLElement) {
-  if (reducedMotion() || typeof IntersectionObserver === "undefined") {
-    node.classList.add("is-in");
+  if (!canObserve()) {
+    show(node);
     return;
   }
-  const rect = node.getBoundingClientRect();
-  const height = window.innerHeight || document.documentElement.clientHeight;
-  const seen = rect.bottom > 0 && rect.top < height * 0.92;
-  if (seen) node.classList.add("is-in");
+  if (inViewport(node)) show(node);
   else motionObserver().observe(node);
   document.documentElement.classList.add("motion");
+  const timer = window.setTimeout(() => show(node), FALLBACK_MS);
+  timers.set(node, timer);
+}
+
+function disarm(node: HTMLElement) {
+  observer?.unobserve(node);
+  clearTimer(node);
 }
 
 function revealStyle(index: number): CSSProperties {
@@ -48,7 +79,7 @@ export function useReveal<T extends HTMLElement>(index = 0) {
     const node = ref.current;
     if (!node) return;
     arm(node);
-    return () => observer?.unobserve(node);
+    return () => disarm(node);
   }, []);
   return {
     ref,
@@ -73,7 +104,7 @@ export function Reveal({
     const node = ref.current;
     if (!node) return;
     arm(node);
-    return () => observer?.unobserve(node);
+    return () => disarm(node);
   }, []);
 
   const style = revealStyle(index);

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BundleDesk } from "@/components/bundle-desk";
 import { BotControls } from "@/components/desk-shell";
 import { CopyButton, EmptyNote, MockupFrame, Money, PageHeader, Tone } from "@/components/bits";
+import { ProductReturnForm } from "@/components/supplier-returns-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -403,16 +404,18 @@ function ListingEditor({
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          Why we picked it
+          Why it earned its place
           <Textarea
             value={whyWePicked}
             maxLength={800}
             rows={4}
+            placeholder="Optional. The product page shows this only when you write it."
             onChange={(event) => setWhyWePicked(event.target.value)}
           />
         </label>
       </section>
       <CheckNote productId={listing.productId} />
+      <ProductReturnForm productId={listing.productId} />
 
       <label className="block">
         <span className="text-sm font-medium">Description</span>

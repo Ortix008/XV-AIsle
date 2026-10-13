@@ -2,14 +2,20 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { AisleHero } from "@/components/aisle-hero";
+import { OrderCard, type OrderCardFacts } from "@/components/order-card";
 import { ShopFrame } from "@/components/shop-frame";
+
+type CheckoutSummary = OrderCardFacts & { productId: string };
 
 function ReturnBody() {
   const params = useSearchParams();
   const sessionId = params.get("session_id");
   const token = params.get("token");
-  const [message, setMessage] = useState(
-    sessionId ? "Confirming payment…" : "Checkout did not come back with a payment.",
+  const [summary, setSummary] = useState<CheckoutSummary | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    sessionId ? null : "Checkout did not come back with a payment.",
   );
 
   useEffect(() => {
@@ -21,45 +27,53 @@ function ReturnBody() {
         const data = (await response.json().catch(() => null)) as {
           error?: string;
           order?: { number: string; supplierDetail: string | null };
+          summary?: CheckoutSummary;
         } | null;
         if (!response.ok) {
-          setMessage(data?.error ?? "Payment was not confirmed.");
+          setError(data?.error ?? "Payment was not confirmed.");
           return;
         }
-        if (data?.order) {
-          setMessage(`${data.order.number}. ${data.order.supplierDetail ?? "The supplier has the order."}`);
-          return;
-        }
-        setMessage("Payment is recorded.");
+        if (data?.summary) setSummary(data.summary);
+        if (data?.order) setDetail(data.order.supplierDetail ?? "The supplier has the order.");
+        if (!data?.order && !data?.summary) setDetail("Payment is recorded.");
       })
       .catch(() => {
-        if (!cancel) setMessage("Payment was not confirmed.");
+        if (!cancel) setError("Payment was not confirmed.");
       });
     return () => {
       cancel = true;
     };
   }, [sessionId]);
 
+  const lede = error ?? detail ?? (sessionId ? "Confirming payment…" : null);
+  const receiptHref = token ? `/shop/order?token=${encodeURIComponent(token)}` : null;
+
   return (
-    <div className="mx-auto max-w-xl px-5 py-16 sm:px-10 sm:py-24">
-      <p className="eyebrow">Order</p>
-      <h1 className="mt-4 text-4xl sm:text-5xl">After payment</h1>
-      <p className="mt-3 text-sm text-muted-foreground">{message}</p>
-      {token ? (
-        <p className="mt-4 text-sm">
-          <a className="underline underline-offset-4" href={`/shop/order?token=${encodeURIComponent(token)}`}>
-            Confirm or dispute this delivery
+    <>
+      <AisleHero className="hero-confirm" kicker="Order" title={summary ? "Your order is in." : "After payment"} lede={lede}>
+        {receiptHref ? (
+          <a className="pill pill-ghost" href={receiptHref}>
+            Open your receipt
           </a>
-        </p>
+        ) : null}
+      </AisleHero>
+      {summary ? (
+        <div className="order-sheet-wrap">
+          <OrderCard facts={summary} />
+        </div>
       ) : null}
-    </div>
+    </>
   );
 }
 
 export default function ReturnPage() {
   return (
     <ShopFrame>
-      <Suspense fallback={<p className="px-4 py-10 text-sm text-muted-foreground">Confirming payment…</p>}>
+      <Suspense
+        fallback={
+          <AisleHero className="hero-confirm" kicker="Order" title="After payment" lede="Confirming payment…" />
+        }
+      >
         <ReturnBody />
       </Suspense>
     </ShopFrame>

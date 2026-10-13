@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyArticle } from "@/components/policy-article";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
+import { storeReturnCopy } from "@/lib/server/supplier-returns";
 
 export const metadata: Metadata = { title: "Returns · XV-AIsle" };
 
@@ -11,10 +12,7 @@ export default function ReturnsPage() {
       <p>
         You can start a return within {RETURN_WINDOW_DAYS} days of delivery. Include your order number when you write.
       </p>
-      <p>
-        Use the address in the contact section when it is published. If it is blank, the seller replies with the address
-        for the box. Do not ship a return until you have that address.
-      </p>
+      <p>{storeReturnCopy()}</p>
       <p>
         After the return is accepted, the refund goes back to the original payment method. Stripe processes the card.
         We do not see your card number.
