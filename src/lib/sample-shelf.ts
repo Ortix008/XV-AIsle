@@ -1,11 +1,23 @@
 import { etaFromListing } from "./order-facts";
 import { charm, landedCost, suggestRetail, TARGET_MARGIN } from "./money";
+import { formatReturnAddress } from "./return-address";
 
 /** Obvious stand-in. Not a street, city, or ZIP the store ships to. */
-export const SAMPLE_RETURN_ADDRESS = "100 Example Street\nSample City, ST 00000\nUS";
+export const SAMPLE_RETURN_PARTS = {
+  line1: "100 Example Street",
+  city: "Sample City",
+  region: "ST",
+  postal: "00000",
+  country: "US",
+} as const;
+
+export const SAMPLE_RETURN_ADDRESS = formatReturnAddress(SAMPLE_RETURN_PARTS);
 
 /** Checkout session id the preview seed inserts. It is not a Stripe id. */
 export const PREVIEW_CHECKOUT_SESSION = "cs_preview_sample_sheet_pan";
+
+/** Order number shared by /dev/receipt and the preview seed. */
+export const SAMPLE_ORDER_NUMBER = "XV-1002";
 
 export type SampleStarter = {
   productId: string;

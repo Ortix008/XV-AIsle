@@ -1,6 +1,6 @@
 import { formatISODate } from "../business-days";
 import { RETURNS_UNSET } from "../return-address";
-import { sampleReceiptFacts } from "../sample-shelf";
+import { SAMPLE_ORDER_NUMBER, sampleReceiptFacts } from "../sample-shelf";
 import { buyerShareHref } from "../x-share";
 import { dollars } from "./fees";
 import { sendMail } from "./mail";
@@ -206,7 +206,7 @@ export function sampleReceiptHtml() {
   const sample = sampleReceiptFacts();
   const productUrl = `https://xvaisle.com/shop/${sample.productId}`;
   return receiptHtml({
-    number: "XV-1002",
+    number: SAMPLE_ORDER_NUMBER,
     title: sample.title,
     qty: 1,
     amountCents: sample.amountCents,

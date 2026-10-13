@@ -1,4 +1,6 @@
-import { PREVIEW_CHECKOUT_SESSION } from "../src/lib/sample-shelf";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { PREVIEW_CHECKOUT_SESSION, SAMPLE_ORDER_NUMBER, SAMPLE_RETURN_PARTS } from "../src/lib/sample-shelf";
 import { isLiveKey } from "../src/lib/server/stripe";
 
 const SAMPLE_SUPPLIER_EMAIL = "sample-supplier@example.com";
@@ -8,21 +10,22 @@ function refuse(message: string): never {
   process.exit(1);
 }
 
-if (process.env.DEMO_SEED !== "1") {
-  refuse("Refusing: set DEMO_SEED=1. This script only inserts a sample order.");
+function guardPreviewSeed() {
+  if (process.env.DEMO_SEED !== "1") {
+    refuse("Refusing: set DEMO_SEED=1. This script only inserts a sample order.");
+  }
+  if (process.env.NODE_ENV === "production") {
+    refuse("Refusing: this preview seed does not run in production.");
+  }
+  const stripeKey = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
+  if (stripeKey && isLiveKey(stripeKey)) {
+    refuse("Refusing: a live Stripe key is set. This script does not call Stripe.");
+  }
+  delete process.env.SMTP_HOST;
+  delete process.env.SMTP_USER;
+  delete process.env.SMTP_PASS;
+  delete process.env.MAIL_FROM;
 }
-if (process.env.NODE_ENV === "production") {
-  refuse("Refusing: this preview seed does not run in production.");
-}
-const stripeKey = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
-if (stripeKey && isLiveKey(stripeKey)) {
-  refuse("Refusing: a live Stripe key is set. This script does not call Stripe.");
-}
-
-delete process.env.SMTP_HOST;
-delete process.env.SMTP_USER;
-delete process.env.SMTP_PASS;
-delete process.env.MAIL_FROM;
 
 const shipTo = {
   name: "Sample Buyer",
@@ -35,6 +38,7 @@ const shipTo = {
 };
 
 async function main() {
+  guardPreviewSeed();
   const { getDb } = await import("../src/lib/server/db");
   const { signUp } = await import("../src/lib/server/accounts");
   const { ensureStarterShelf } = await import("../src/lib/server/starter-shelf");
@@ -55,6 +59,27 @@ async function main() {
     supplierId = joined.account.id;
   }
   getDb().prepare("UPDATE accounts SET role = 'supplier', email_verified = 1 WHERE id = ?").run(supplierId);
+  getDb()
+    .prepare(
+      `INSERT INTO supplier_returns (supplier_key, line1, city, region, postal, country, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(supplier_key) DO UPDATE SET
+         line1 = excluded.line1,
+         city = excluded.city,
+         region = excluded.region,
+         postal = excluded.postal,
+         country = excluded.country,
+         updated_at = excluded.updated_at`,
+    )
+    .run(
+      `id:${supplierId}`,
+      SAMPLE_RETURN_PARTS.line1,
+      SAMPLE_RETURN_PARTS.city,
+      SAMPLE_RETURN_PARTS.region,
+      SAMPLE_RETURN_PARTS.postal,
+      SAMPLE_RETURN_PARTS.country,
+      Date.now(),
+    );
   ensureStarterShelf();
   getDb()
     .prepare(
@@ -69,12 +94,15 @@ async function main() {
   if (!listing) refuse("The sample sheet pan was not published. Set DEMO_SEED=1 and try again.");
 
   const already = orderByStripeSession(PREVIEW_CHECKOUT_SESSION);
+  let orderId: string;
   let token: string;
   if (already) {
+    orderId = already.id;
     token = issueOrderToken(already.id, "customer_link_hash");
   } else {
     const created = createPendingOrder({ productId: "sheet-pan", qty: 1, ship: shipTo });
     if ("error" in created) refuse(created.error ?? "The sample order was not created.");
+    orderId = created.order.id;
     getDb()
       .prepare(
         `UPDATE orders
@@ -88,12 +116,43 @@ async function main() {
         Date.now(),
         PREVIEW_CHECKOUT_SESSION,
         "Sample order for the confirmation page. No card was charged.",
-        created.order.id,
+        orderId,
       );
     token = created.receiptToken;
   }
+  const holder = getDb().prepare("SELECT id FROM orders WHERE number = ?").get(SAMPLE_ORDER_NUMBER) as
+    | { id: string }
+    | undefined;
+  if (holder && holder.id !== orderId) {
+    getDb().prepare("UPDATE orders SET number = ? WHERE id = ?").run(`XV-held-${holder.id}`, holder.id);
+  }
+  getDb()
+    .prepare(
+      `UPDATE orders
+       SET number = ?,
+           return_line1 = ?,
+           return_city = ?,
+           return_region = ?,
+           return_postal = ?,
+           return_country = ?
+       WHERE id = ?`,
+    )
+    .run(
+      SAMPLE_ORDER_NUMBER,
+      SAMPLE_RETURN_PARTS.line1,
+      SAMPLE_RETURN_PARTS.city,
+      SAMPLE_RETURN_PARTS.region,
+      SAMPLE_RETURN_PARTS.postal,
+      SAMPLE_RETURN_PARTS.country,
+      orderId,
+    );
   const url = `${appOrigin()}/shop/return?token=${encodeURIComponent(token)}&session_id=${encodeURIComponent(PREVIEW_CHECKOUT_SESSION)}`;
   console.log(url);
 }
 
-void main();
+const entry = process.argv[1];
+if (entry && import.meta.url === pathToFileURL(resolve(entry)).href) {
+  void main();
+}
+
+export { main as seedPreviewOrder };

@@ -36,6 +36,7 @@ async function main() {
   const { closeDb, getDb } = await import("../src/lib/server/db");
   const { signUp } = await import("../src/lib/server/accounts");
   const { startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
+  const { SAMPLE_ORDER_NUMBER, SAMPLE_RETURN_ADDRESS, SAMPLE_RETURN_PARTS } = await import("../src/lib/sample-shelf");
   const { receiptHtml, receiptText, sampleReceiptHtml } = await import("../src/lib/server/order-mail");
   const { buyerOrder, presentOrder, publicListing, resellerListing } = await import("../src/lib/server/order-view");
   const { saveReturnsAddress } = await import("../src/lib/server/settings");
@@ -216,6 +217,7 @@ async function main() {
   assert(sampleHtml.includes("https://x.com/intent/post"), "the sample receipt shares through the X web intent");
   assert(sampleHtml.includes("Share your find on X"), "the sample receipt names the share button");
   assert(sampleHtml.includes("Quarter sheet pan and rack"), "the sample receipt uses the sample product title");
+  assert(sampleHtml.includes(SAMPLE_ORDER_NUMBER), "the sample receipt uses the shared order number");
   assert(sampleHtml.includes("Ships in 2-4 business days."), "the sample receipt uses the sample ship window");
   assert(sampleHtml.includes("100 Example Street"), "the sample receipt includes the placeholder street");
   assert(sampleHtml.includes("Sample City") && sampleHtml.includes("00000"), "the sample receipt includes the placeholder city and ZIP");
@@ -285,6 +287,36 @@ async function main() {
   delete process.env.DEMO_SEED;
   const closed = await checkoutGet(new Request("http://127.0.0.1/api/store/checkout?session_id=cs_preview_sample_sheet_pan"));
   assert(closed.status === 503, "the preview session does not skip Stripe unless DEMO_SEED=1");
+
+  process.env.DEMO_SEED = "1";
+  const { seedPreviewOrder } = await import("./seed-preview-order");
+  await seedPreviewOrder();
+  const seededResponse = await checkoutGet(
+    new Request("http://127.0.0.1/api/store/checkout?session_id=cs_preview_sample_sheet_pan"),
+  );
+  const seededBody = (await seededResponse.json()) as { summary?: { number?: string; returnAddress?: string | null } };
+  assert(
+    seededResponse.status === 200 && seededBody.summary?.number === SAMPLE_ORDER_NUMBER,
+    "the seeded order uses the sample receipt number",
+  );
+  assert(seededBody.summary?.returnAddress === SAMPLE_RETURN_ADDRESS, "the confirmation page shows the placeholder return address");
+  const sampleSupplier = getDb().prepare("SELECT id FROM accounts WHERE email = ?").get("sample-supplier@example.com") as
+    | { id: string }
+    | undefined;
+  const supplierReturn = sampleSupplier
+    ? (getDb().prepare("SELECT line1, city, region, postal, country FROM supplier_returns WHERE supplier_key = ?").get(
+        `id:${sampleSupplier.id}`,
+      ) as { line1: string; city: string; region: string; postal: string; country: string } | undefined)
+    : undefined;
+  assert(
+    supplierReturn?.line1 === SAMPLE_RETURN_PARTS.line1 &&
+      supplierReturn.city === SAMPLE_RETURN_PARTS.city &&
+      supplierReturn.region === SAMPLE_RETURN_PARTS.region &&
+      supplierReturn.postal === SAMPLE_RETURN_PARTS.postal &&
+      supplierReturn.country === SAMPLE_RETURN_PARTS.country,
+    "the seeded supplier stores the placeholder return address",
+  );
+  delete process.env.DEMO_SEED;
 
   closeDb();
   console.log("return address checks ok");
