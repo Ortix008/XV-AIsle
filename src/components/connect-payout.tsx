@@ -18,7 +18,7 @@ function reservePercent(bps: number) {
 }
 
 export function ConnectPayout() {
-  const { account, connect, reserve, chooseRole, refresh } = useAccount();
+  const { account, connect, sellerLedger, reserve, chooseRole, refresh } = useAccount();
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
@@ -112,7 +112,7 @@ export function ConnectPayout() {
     <section className="flex max-w-sm flex-col gap-3 border-t pt-4">
       <div>
         <h2 className="text-sm font-medium">Your share</h2>
-        {account.role === "admin" ? (
+        {account.role === "admin" && sellerLedger ? (
           <p className="mt-1 text-pretty text-sm text-muted-foreground">
             Stripe holds the bank account. This market never asks for a card number, a bank number, or a crypto
             address. After the buyer confirms delivery, or 7 days pass with no dispute, Stripe sends the reseller
@@ -126,7 +126,7 @@ export function ConnectPayout() {
           </p>
         )}
       </div>
-      {account.role === "admin" && reserve ? (
+      {account.role === "admin" && sellerLedger && reserve ? (
         <div className="text-sm">
           <p>Reserve held {reserveMoney(reserve.heldCents)}</p>
           {reserve.releases.length === 0 ? (

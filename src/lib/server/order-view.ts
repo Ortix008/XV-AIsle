@@ -11,11 +11,14 @@ export function publicListing(listing: StoreListing, sample = false) {
   return publicShopListing(listing, sample);
 }
 
-/** Reseller publish responses keep the cost quote and drop the supplier order link and email. */
+/** Reseller responses drop supplier cost, wholesale cost, and the supplier's private contact. */
 export function resellerListing(listing: StoreListing) {
   return omitKeys(listing, [
     "supplierOrderUrl",
     "supplierEmail",
+    "supplierCostCents",
+    "supplierShippingCents",
+    "wholesaleCost",
     "returnLine1",
     "returnCity",
     "returnRegion",
@@ -24,9 +27,9 @@ export function resellerListing(listing: StoreListing) {
   ]);
 }
 
-/** Buyer and supplier payloads never include what we paid the supplier. */
+/** Buyer payloads never include wholesale cost or what the supplier is owed. */
 export function buyerOrder(order: StoreOrder) {
-  return omitKeys(order, ["supplierPaidCents"]);
+  return omitKeys(order, ["supplierPaidCents", "supplierAmountCents"]);
 }
 
 export function presentOrder(

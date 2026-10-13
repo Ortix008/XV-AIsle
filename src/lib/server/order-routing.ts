@@ -2,6 +2,7 @@ import { addBusinessDays, addBusinessDaysSkipping, formatISODate, isISODate, shi
 import { BLOCKED_TEST_ORDER_NUMBER, isBlockedTestOrder, PLACE_REMIND_MS } from "../order-flags";
 import { changed, getDb } from "./db";
 import { applyRefund } from "./ledger";
+import { voidResellerCommission } from "./money-flow";
 import { sendDelayNoticeMail, sendOpsAlert, sendUnshippedDelayMail } from "./order-mail";
 import { createRefund } from "./stripe";
 import { getListing, getOrder, issueOrderToken, orderByDelayToken } from "./store";
@@ -181,6 +182,7 @@ export async function acceptDelayRefund(token: string, now = Date.now()) {
       .prepare("UPDATE orders SET delay_refund_requested_at = ?, delay_refund_due_at = ? WHERE id = ?")
       .run(now, dueAt, order.id);
   }
+  voidResellerCommission(order.id, "return");
   try {
     await createRefund({
       chargeId: order.chargeId,

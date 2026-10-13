@@ -129,8 +129,10 @@ function ListingEditor({
   const [smallShops, setSmallShops] = useState<{ id: string; name: string; city: string; madeInUsa: boolean }[]>([]);
   const [smallId, setSmallId] = useState("");
   const [madeInUsa, setMadeInUsa] = useState(false);
+  const { account } = useAccount();
+  const operator = account?.role === "admin";
   const [catalog, setCatalog] = useState<
-    { id: string; title: string; sku: string; costCents: number; shippingCents: number; supplierName: string }[]
+    { id: string; title: string; sku: string; costCents?: number; shippingCents?: number; supplierName: string }[]
   >([]);
   const [catalogItemId, setCatalogItemId] = useState("");
   const [shipsFrom, setShipsFrom] = useState("");
@@ -140,10 +142,10 @@ function ListingEditor({
   const [whyItCosts, setWhyItCosts] = useState("");
   const [quote, setQuote] = useState<{
     priceCents: number;
-    supplierCostCents: number;
-    platformFeeCents: number;
-    stripeFeeCents: number;
-    resellerNetCents: number;
+    supplierCostCents?: number;
+    platformFeeCents?: number;
+    stripeFeeCents?: number;
+    resellerNetCents?: number;
     error: string | null;
   } | null>(null);
   useEffect(() => {
@@ -290,7 +292,8 @@ function ListingEditor({
             <option value="">Choose an approved item</option>
             {catalog.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.supplierName} · {item.title} · {item.costCents}¢ + {item.shippingCents}¢ ship
+                {item.supplierName} · {item.title}
+                {item.costCents == null ? "" : ` · ${item.costCents}¢ + ${item.shippingCents ?? 0}¢ ship`}
               </option>
             ))}
           </select>
@@ -299,16 +302,27 @@ function ListingEditor({
       {quote ? (
         <dl className="max-w-sm divide-y border-y text-sm">
           <Row label="Price" value={money(quote.priceCents / 100)} />
-          <Row label="Supplier cost" value={money(quote.supplierCostCents / 100)} />
-          <Row label="Platform fee" value={money(quote.platformFeeCents / 100)} />
-          <Row label="Estimated Stripe fee" value={money(quote.stripeFeeCents / 100)} />
-          <Row label="Your estimated payout" value={money(quote.resellerNetCents / 100)} />
+          {quote.supplierCostCents == null ? null : (
+            <Row label="Supplier cost" value={money(quote.supplierCostCents / 100)} />
+          )}
+          {quote.platformFeeCents == null ? null : (
+            <Row label="Platform fee" value={money(quote.platformFeeCents / 100)} />
+          )}
+          {quote.stripeFeeCents == null ? null : (
+            <Row label="Estimated Stripe fee" value={money(quote.stripeFeeCents / 100)} />
+          )}
+          {quote.resellerNetCents == null ? null : (
+            <Row label="Your estimated payout" value={money(quote.resellerNetCents / 100)} />
+          )}
         </dl>
       ) : null}
       {quote?.error ? <p className="text-sm text-late">{quote.error}</p> : null}
       <p className="text-xs text-pretty text-muted-foreground">
-        Cost, the platform fee, and the Stripe estimate come from the server. A reseller cannot set them, and cannot
-        list their own supply. Publishing needs a finished Stripe payout setup and no open balance.
+        {operator
+          ? quote?.platformFeeCents == null
+            ? "Cost and the Stripe estimate come from the server. A reseller cannot set them, and cannot list their own supply. Publishing needs a finished Stripe payout setup and no open balance."
+            : "Cost, the platform fee, and the Stripe estimate come from the server. A reseller cannot set them, and cannot list their own supply. Publishing needs a finished Stripe payout setup and no open balance."
+          : "The price comes from the server. You cannot set a supplier cost, and you cannot list your own supply."}
       </p>
       {storeError ? <p className="text-sm text-late">{storeError}</p> : null}
       {listing.status === "ready" ? (

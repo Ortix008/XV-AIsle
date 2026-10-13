@@ -79,6 +79,12 @@ export function dollars(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+/** Operator Connect ledger. Off unless SELLER_LEDGER_ENABLED is 1, true, or on. */
+export function sellerLedgerEnabled() {
+  const raw = process.env.SELLER_LEDGER_ENABLED?.trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "on";
+}
+
 export function platformFeeBps() {
   return clampedInt(process.env.PLATFORM_FEE_BPS, FEE_BPS_DEFAULT, FEE_BPS_MIN, FEE_BPS_MAX);
 }
@@ -142,6 +148,7 @@ export function resellerReserveCapCents() {
 
 /** Portion of this payout kept on the platform, capped by the reseller's remaining room. */
 export function reserveHoldCents(input: { payoutCents: number; heldCents: number; bps: number; capCents: number }) {
+  if (!sellerLedgerEnabled()) return 0;
   if (input.payoutCents <= 0 || input.bps <= 0 || input.capCents <= 0) return 0;
   const room = Math.max(0, input.capCents - Math.max(0, input.heldCents));
   const desired = Math.round((input.payoutCents * input.bps) / 10000);
@@ -166,7 +173,7 @@ export function quoteSplit(input: {
   supplierShippingCents: number;
   feeBps: number | null;
 }): Split {
-  const feeBps = input.feeBps ?? platformFeeBps();
+  const feeBps = sellerLedgerEnabled() ? (input.feeBps ?? platformFeeBps()) : 0;
   const grossCents = input.priceCents * input.qty;
   const platformFeeCents = Math.round((grossCents * feeBps) / 10000);
   const stripeFeeCents = estimateStripeFee(grossCents);
@@ -187,7 +194,9 @@ export function splitProblem(split: Split, supplierAccountId: string | null) {
   if (!supplierAccountId) return "Name the supplier account before this page can sell.";
   if (split.supplierAmountCents < 0) return "Supplier cost cannot be negative.";
   if (split.resellerAmountCents < 0) {
-    return "The price does not cover the supplier, the platform fee, and the Stripe fee.";
+    return sellerLedgerEnabled()
+      ? "The price does not cover the supplier, the platform fee, and the Stripe fee."
+      : "The price does not cover the supplier and the Stripe fee.";
   }
   return null;
 }

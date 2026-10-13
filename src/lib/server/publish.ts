@@ -3,7 +3,7 @@ import type { PublicAccount } from "./accounts";
 import { getAccount } from "./accounts";
 import { getApprovedCatalog } from "./catalog";
 import { connectReady, getConnected } from "./connect";
-import { platformFeeBps, quoteSplit, saleBlock } from "./fees";
+import { platformFeeBps, quoteSplit, saleBlock, sellerLedgerEnabled } from "./fees";
 import { resellerDebtCents } from "./ledger";
 import { getListing, publishListing } from "./store";
 
@@ -69,7 +69,7 @@ export function quoteForAccount(input: { catalogItemId: string; priceCents: numb
 
 export function publishForAccount(account: PublicAccount, input: PublishBody) {
   const publishing = input.published !== false;
-  const feeBps = platformFeeBps();
+  const feeBps = sellerLedgerEnabled() ? platformFeeBps() : 0;
   const existing = getListing(input.productId);
   let supplierAccountId = existing?.supplierAccountId ?? null;
   let supplierCostCents = existing?.supplierCostCents ?? 0;

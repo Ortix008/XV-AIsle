@@ -89,5 +89,6 @@ export async function POST(request: Request) {
     const error = result.status === 200 ? "That page did not save." : result.error;
     return Response.json({ error }, { status });
   }
-  return Response.json({ listing: resellerListing(result.listing) });
+  const listing = account.role === "admin" ? result.listing : resellerListing(result.listing);
+  return Response.json({ listing });
 }

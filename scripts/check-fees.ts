@@ -3,6 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+process.env.SELLER_LEDGER_ENABLED = "1";
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-fees-")), "market.sqlite");
 delete process.env.PLATFORM_FEE_BPS;
 delete process.env.STRIPE_FEE_BPS;

@@ -1,4 +1,6 @@
 import { compareAtRejection } from "@/lib/honest-price";
+import { referralFromCookieHeader } from "@/lib/referral";
+import { attachReferrer } from "@/lib/server/money-flow";
 import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
 import { settleCheckoutSession } from "@/lib/server/ledger";
 import { orderSummary } from "@/lib/server/order-summary";
@@ -81,6 +83,7 @@ export async function POST(request: Request) {
     },
   });
   if ("error" in created) return Response.json({ error: created.error }, { status: 400 });
+  attachReferrer(created.order.id, referralFromCookieHeader(request.headers.get("cookie")));
   try {
     const session = await createCheckoutSession({
       kind: "order",

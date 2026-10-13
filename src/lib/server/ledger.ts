@@ -4,6 +4,7 @@ import {
   disputeClawback,
   holdState,
   platformFeeBps,
+  sellerLedgerEnabled,
   refundClawback,
   resellerReserveBps,
   resellerReserveCapCents,
@@ -16,6 +17,7 @@ import {
 import { markMember } from "./accounts";
 import { connectReady, getConnected } from "./connect";
 import { changed, getDb } from "./db";
+import { recordPaidSale, voidResellerCommission } from "./money-flow";
 import { fulfillPaidOrder, getOrder, orderByReceiptToken, type StoreOrder } from "./store";
 import {
   createTransfer,
@@ -555,21 +557,23 @@ export async function releaseTransfers(orderId: string) {
         row.reversed_cents = reversed;
         remaining -= offset;
       }
-      const savedHold = savedReserveCents(order.id);
-      const withheld =
-        savedHold == null
-          ? holdReserve(
-              order,
-              row.account_id,
-              reserveHoldCents({
-                payoutCents: remaining,
-                heldCents: resellerReserveHeldCents(row.account_id),
-                bps: resellerReserveBps(),
-                capCents: resellerReserveCapCents(),
-              }),
-            )
-          : Math.min(remaining, savedHold);
-      remaining -= withheld;
+      if (sellerLedgerEnabled()) {
+        const savedHold = savedReserveCents(order.id);
+        const withheld =
+          savedHold == null
+            ? holdReserve(
+                order,
+                row.account_id,
+                reserveHoldCents({
+                  payoutCents: remaining,
+                  heldCents: resellerReserveHeldCents(row.account_id),
+                  bps: resellerReserveBps(),
+                  capCents: resellerReserveCapCents(),
+                }),
+              )
+            : Math.min(remaining, savedHold);
+        remaining -= withheld;
+      }
     }
     if (remaining <= 0) {
       getDb().prepare("UPDATE ledger SET status = 'canceled' WHERE id = ? AND status = 'pending'").run(row.id);
@@ -666,6 +670,7 @@ export async function settleCheckoutSession(session: StripeSession) {
     const paid = getOrder(orderId);
     if (!paid || paid.status === "pending") return { error: "Payment is not complete." as const };
     writePendingLedger(paid);
+    recordPaidSale(orderId);
     const order = await fulfillPaidOrder(orderId);
     return { kind: "order" as const, order };
   }
@@ -871,6 +876,7 @@ export async function applyRefund(input: {
   });
   await clawSupplier(order, claw.supplierReverseCents, "refund", input.eventKey);
   await recoverReseller(order, claw.resellerReverseCents, claw.debtCents, "refund_fee", input.eventKey);
+  voidResellerCommission(order.id, "refund");
 }
 
 export async function applyDisputeOpened(input: {
@@ -883,6 +889,7 @@ export async function applyDisputeOpened(input: {
   if (!order) return;
   getDb().prepare("UPDATE orders SET dispute_open = 1, had_dispute = 1 WHERE id = ?").run(order.id);
   await holdDispute(order, input.amount, input.disputeId);
+  voidResellerCommission(order.id, "dispute");
 }
 
 async function holdDispute(order: StoreOrder, disputedCents: number, disputeId: string) {
@@ -1050,6 +1057,7 @@ export async function disputeReceipt(token: string, note: string) {
        WHERE id = ?`,
     )
     .run(text, order.id);
+  voidResellerCommission(order.id, "dispute");
   return { order: getOrder(order.id) };
 }
 

@@ -144,7 +144,8 @@ async function main() {
   const resellerJson = JSON.stringify(resellerListing(hidden!));
   assert(!publicJson.includes(SUPPLIER_URL) && !publicJson.includes(SUPPLIER_EMAIL), "public pages omit the supplier link and email");
   assert(!resellerJson.includes(SUPPLIER_URL) && !resellerJson.includes(SUPPLIER_EMAIL), "a reseller listing omits the supplier link and email");
-  assert(resellerJson.includes("supplierCostCents"), "a reseller listing still includes the cost field");
+  assert(!resellerJson.includes("supplierCostCents"), "a reseller listing omits supplier cost");
+  assert(!resellerJson.includes("wholesaleCost") && !resellerJson.includes("wholesale_cost"), "a reseller listing omits wholesale cost");
 
   const { GET: catalogGet } = await import("../src/app/api/store/catalog/route");
   const { GET: listingsGet } = await import("../src/app/api/store/listings/route");
