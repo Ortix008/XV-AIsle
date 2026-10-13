@@ -1431,12 +1431,6 @@ video.auth-plate-media {
   }
 }
 
-.auth-email-row {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .auth-x,
 .share-x {
   display: inline-flex;
@@ -1453,8 +1447,33 @@ video.auth-plate-media {
 
 .auth-x {
   width: 100%;
+  gap: 10px;
   background: var(--primary);
   color: var(--primary-foreground);
+}
+
+.auth-x-mark {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.auth-or {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.auth-or::before,
+.auth-or::after {
+  content: "";
+  height: 1px;
+  background: var(--border);
 }
 
 .share-x {
@@ -1469,19 +1488,3 @@ video.auth-plate-media {
   outline-offset: 3px;
 }
 
-@media (min-width: 640px) {
-  .auth-email-row {
-    flex-direction: row;
-    align-items: end;
-  }
-
-  .auth-email-row .auth-field {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .auth-x {
-    width: auto;
-    margin-bottom: 0;
-  }
-}

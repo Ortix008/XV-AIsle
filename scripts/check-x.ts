@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { xCallbackLogLine } from "../src/app/api/auth/x/callback/route";
 import { RESELLER_DISCLOSURE } from "../src/lib/policies";
 import { profileFromXCode } from "../src/lib/server/x-auth";
@@ -19,6 +21,27 @@ import {
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
+
+const authScreens = readFileSync(join(process.cwd(), "src/components/auth-screens.tsx"), "utf8");
+function authSlice(name: string, next: string) {
+  const start = authScreens.indexOf(`export function ${name}`);
+  const end = authScreens.indexOf(`export function ${next}`);
+  assert(start >= 0 && end > start, `${name} is in the auth screens`);
+  return authScreens.slice(start, end);
+}
+for (const [name, next] of [
+  ["SignInScreen", "SignUpScreen"],
+  ["SignUpScreen", "ResetRequestScreen"],
+] as const) {
+  const slice = authSlice(name, next);
+  const button = slice.indexOf("<ContinueWithX />");
+  const divider = slice.indexOf("<AuthOr />");
+  const email = slice.indexOf("Email");
+  const password = slice.indexOf("Password");
+  assert(button >= 0 && divider > button && email > divider && password > email, `${name} puts Continue with X, then or, then email and password`);
+}
+assert(authScreens.includes("/brand/logo-official-xo.png"), "Continue with X shows the X mark");
+assert(!authScreens.includes("auth-email-row"), "Continue with X is not beside the email field");
 
 const saved = {
   id: process.env.X_CLIENT_ID,

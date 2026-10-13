@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
@@ -55,8 +56,17 @@ function useEnterDeskWhenSignedIn() {
 function ContinueWithX() {
   return (
     <a href="/api/auth/x/start" className="auth-x">
+      <Image src="/brand/logo-official-xo.png" alt="" width={20} height={20} unoptimized className="auth-x-mark" />
       Continue with X
     </a>
+  );
+}
+
+function AuthOr() {
+  return (
+    <p className="auth-or">
+      <span>or</span>
+    </p>
   );
 }
 
@@ -118,22 +128,25 @@ export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolea
           </label>
         ) : (
           <>
-            <div className="auth-email-row">
-              <label className="auth-field" htmlFor={emailId}>
-                Email
-                <Input
-                  id={emailId}
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  autoComplete="email"
-                  maxLength={254}
-                  required
-                  className="h-11 md:text-base"
-                />
-              </label>
-              {showX ? <ContinueWithX /> : null}
-            </div>
+            {showX ? (
+              <>
+                <ContinueWithX />
+                <AuthOr />
+              </>
+            ) : null}
+            <label className="auth-field" htmlFor={emailId}>
+              Email
+              <Input
+                id={emailId}
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+                maxLength={254}
+                required
+                className="h-11 md:text-base"
+              />
+            </label>
             <PasswordField
               label="Password"
               value={password}
@@ -200,6 +213,12 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
       lede={`Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. ${resellerPayLine()} If you mention a product, say ${RESELLER_DISCLOSURE}`}
     >
       <form onSubmit={onSubmit} className="auth-form">
+        {showX ? (
+          <>
+            <ContinueWithX />
+            <AuthOr />
+          </>
+        ) : null}
         <label className="auth-field" htmlFor={nameId}>
           Your name
           <Input
@@ -212,22 +231,19 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
             className="h-11 md:text-base"
           />
         </label>
-        <div className="auth-email-row">
-          <label className="auth-field" htmlFor={emailId}>
-            Email
-            <Input
-              id={emailId}
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-              maxLength={254}
-              required
-              className="h-11 md:text-base"
-            />
-          </label>
-          {showX ? <ContinueWithX /> : null}
-        </div>
+        <label className="auth-field" htmlFor={emailId}>
+          Email
+          <Input
+            id={emailId}
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
+            maxLength={254}
+            required
+            className="h-11 md:text-base"
+          />
+        </label>
         <PasswordField
           label="Password"
           value={password}
