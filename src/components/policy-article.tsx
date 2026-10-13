@@ -4,7 +4,7 @@ import { AisleHero } from "@/components/aisle-hero";
 import { Reveal } from "@/components/reveal";
 import { ShopFrame } from "@/components/shop-frame";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
-import { isSupportEmail, readSupportEmail } from "@/lib/server/settings";
+import { supportEmailForDisplay } from "@/lib/server/settings";
 import { storeReturnCopy } from "@/lib/server/supplier-returns";
 
 export function PolicyArticle({
@@ -12,17 +12,19 @@ export function PolicyArticle({
   title,
   children,
   story = false,
+  underHero,
 }: {
   kicker: string;
   title: string;
   children: ReactNode;
   story?: boolean;
+  underHero?: ReactNode;
 }) {
-  const storedEmail = readSupportEmail();
-  const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
+  const supportEmail = supportEmailForDisplay();
   return (
     <ShopFrame>
       {story ? <AisleHero kicker={kicker} title={title} /> : null}
+      {underHero}
       <Reveal as="article" className={story ? "page-read story-copy" : "page-read"}>
         {story ? null : (
           <>
@@ -38,23 +40,13 @@ export function PolicyArticle({
         </p>
         <section className="mt-10 space-y-3 border-t border-border pt-6 text-base leading-relaxed">
           <h2 className="text-lg font-semibold">Contact</h2>
-          {supportEmail ? (
-            <p>
-              Email{" "}
-              <a className="underline underline-offset-4" href={`mailto:${supportEmail}`}>
-                {supportEmail}
-              </a>
-              .
-            </p>
-          ) : (
-            <p>
-              A support email is not published yet.{" "}
-              <Link href="/shop/contact" className="underline underline-offset-4">
-                Write the seller
-              </Link>
-              .
-            </p>
-          )}
+          <p>
+            Email{" "}
+            <a className="underline underline-offset-4" href={`mailto:${supportEmail}`}>
+              {supportEmail}
+            </a>
+            .
+          </p>
           <p>{storeReturnCopy()}</p>
         </section>
       </Reveal>

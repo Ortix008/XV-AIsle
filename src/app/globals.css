@@ -1340,6 +1340,38 @@ video.auth-plate-media {
   padding-top: 2.5rem;
 }
 
+.earn-steps {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 12px;
+  margin: -1.75rem auto 0;
+  max-width: 1280px;
+  padding: 0 1.25rem;
+  list-style: none;
+}
+
+.earn-step {
+  border-radius: 14px;
+}
+
+.earn-step-title {
+  margin-top: 0.65rem;
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+@media (min-width: 768px) {
+  .earn-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: -2.25rem;
+    padding: 0 2.5rem;
+  }
+}
+
 .order-sheet-wrap {
   position: relative;
   z-index: 2;

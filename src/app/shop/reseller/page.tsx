@@ -5,9 +5,24 @@ import { RESELLER_DISCLOSURE, resellerCommissionLabel, resellerPayLine } from "@
 
 export const metadata: Metadata = { title: "Reseller program · XV-AIsle" };
 
+const earnSteps = ["Join free", "Share your link", `Earn ${resellerCommissionLabel()} monthly`] as const;
+
+function EarnSteps() {
+  return (
+    <ol className="earn-steps">
+      {earnSteps.map((label, index) => (
+        <li key={label} className="order-sheet earn-step">
+          <p className="eyebrow">0{index + 1}</p>
+          <p className="earn-step-title">{label}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export default function ResellerPage() {
   return (
-    <PolicyArticle kicker="Store" title="Reseller program" story>
+    <PolicyArticle kicker="Earn with xvaisle" title="Reseller program" story underHero={<EarnSteps />}>
       <p>
         The reseller program is free to join. There is no sign-up fee and no payment for recruiting other people.
         Commission is {resellerCommissionLabel()} of a completed sale. {resellerPayLine()}

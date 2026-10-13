@@ -3,13 +3,12 @@ import Link from "next/link";
 import { ContactForm } from "@/components/contact-form";
 import { ShopFrame } from "@/components/shop-frame";
 import { HOW_WE_CHECK_HREF, REPLY_WITHIN_HOURS } from "@/lib/honest-price";
-import { isSupportEmail, readSupportEmail } from "@/lib/server/settings";
+import { supportEmailForDisplay } from "@/lib/server/settings";
 
 export const metadata: Metadata = { title: "Contact · XV-AIsle" };
 
 export default function ContactPage() {
-  const storedEmail = readSupportEmail();
-  const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
+  const supportEmail = supportEmailForDisplay();
   return (
     <ShopFrame>
       <article className="page-read">
@@ -17,19 +16,11 @@ export default function ContactPage() {
         <h1 className="page-title">Write the seller</h1>
         <p className="mt-2 text-base text-pretty text-foreground">
           Use this for a question, a return, or a late box. A real person replies within {REPLY_WITHIN_HOURS} hours. The
-          note goes to the seller.
-          {supportEmail ? (
-            <>
-              {" "}
-              You can also email{" "}
-              <a className="underline underline-offset-4" href={`mailto:${supportEmail}`}>
-                {supportEmail}
-              </a>
-              .
-            </>
-          ) : (
-            " A support email is not published yet."
-          )}
+          note goes to the seller. You can also email{" "}
+          <a className="underline underline-offset-4" href={`mailto:${supportEmail}`}>
+            {supportEmail}
+          </a>
+          .
         </p>
         <ContactForm />
         <p className="mt-8 text-sm">
