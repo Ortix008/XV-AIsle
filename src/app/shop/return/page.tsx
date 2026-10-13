@@ -50,7 +50,7 @@ function ReturnBody() {
 
   return (
     <>
-      <AisleHero kicker="Order" title={summary ? "Your order is in." : "After payment"} lede={lede}>
+      <AisleHero className="hero-confirm" kicker="Order" title={summary ? "Your order is in." : "After payment"} lede={lede}>
         {receiptHref ? (
           <a className="pill pill-ghost" href={receiptHref}>
             Open your receipt
@@ -71,7 +71,7 @@ export default function ReturnPage() {
     <ShopFrame>
       <Suspense
         fallback={
-          <AisleHero kicker="Order" title="After payment" lede="Confirming payment…" />
+          <AisleHero className="hero-confirm" kicker="Order" title="After payment" lede="Confirming payment…" />
         }
       >
         <ReturnBody />

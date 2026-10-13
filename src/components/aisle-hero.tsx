@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
+import { cn } from "cn";
 import { nightWorlds, nightWorldVars } from "@/lib/night-worlds";
 
 export function AisleHero({
@@ -7,14 +8,16 @@ export function AisleHero({
   title,
   lede,
   children,
+  className,
 }: {
   kicker: string;
   title: string;
   lede?: string | null;
   children?: ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="hero-band">
+    <section className={cn("hero-band", className)}>
       <div className="hero-aisle-stage" aria-hidden>
         <Image
           src="/brand/hero-aisle-pedestals.webp"
