@@ -44,6 +44,11 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers },
       {
+        // Email clients load the receipt logo from another origin.
+        source: "/brand/:path*",
+        headers: [{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }],
+      },
+      {
         source: "/art/:path*",
         headers: [
           { key: "Content-Security-Policy", value: "default-src 'none'; style-src 'unsafe-inline'; sandbox" },

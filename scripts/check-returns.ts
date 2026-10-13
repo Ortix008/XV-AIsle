@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -23,6 +23,15 @@ function assert(condition: unknown, message: string) {
 const address = { line1: STREET, city: CITY, region: REGION, postal: POSTAL, country: COUNTRY };
 
 async function main() {
+  const config = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
+  const catchAll = config.indexOf('source: "/:path*"');
+  const brand = config.indexOf('source: "/brand/:path*"');
+  const brandBlock = config.slice(brand, config.indexOf("source:", brand + 10));
+  assert(catchAll >= 0 && brand > catchAll, "brand headers come after the site-wide headers");
+  assert(config.includes('{ key: "Cross-Origin-Resource-Policy", value: "same-origin" }'), "the site CORP stays same-origin");
+  assert(brandBlock.includes('{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }'), "brand images can load in an email client");
+  assert(!brandBlock.includes("X-Frame-Options") && !brandBlock.includes("Content-Security-Policy"), "the brand rule only changes CORP");
+
   const { RETURNS_ON_ORDER, RETURNS_UNSET, parseReturnAddress } = await import("../src/lib/return-address");
   const { closeDb, getDb } = await import("../src/lib/server/db");
   const { signUp } = await import("../src/lib/server/accounts");
