@@ -3,6 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
+import { buyerShareHref } from "../src/lib/x-share";
 
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-money-")), "market.sqlite");
 delete process.env.RESELLER_COMMISSION_BPS;
@@ -327,6 +328,7 @@ async function main() {
     createElement(ProductBuy, {
       listing: { ...publicListing(hidden), image: "" },
       returnNote: "Returns ship back to the supplier at the address on your order page.",
+      shareHref: buyerShareHref({ title: "Public pan", productUrl: "http://127.0.0.1/shop/public-pan" }),
     }),
   );
   assert(html.includes("Public pan"), "the product markup renders the title");
