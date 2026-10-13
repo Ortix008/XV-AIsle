@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { compareAtRejection } from "@/lib/honest-price";
 import { accountFromToken } from "@/lib/server/accounts";
 import { publishForAccount } from "@/lib/server/publish";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
@@ -26,6 +27,9 @@ export async function POST(request: Request) {
   const account = accountFromToken(token);
   if (!account) return Response.json({ error: "Sign in first." }, { status: 401 });
   const body = (await request.json().catch(() => null)) as {
+    checkedBy?: unknown;
+    checkedOn?: unknown;
+    checkedNote?: unknown;
     productId?: string;
     sku?: string;
     title?: string;
@@ -44,8 +48,15 @@ export async function POST(request: Request) {
     shipsFrom?: string;
     deliveryTime?: string;
     whyWePicked?: string;
+    brand?: string;
+    whyItCosts?: string;
   } | null;
   if (!body?.productId) return Response.json({ error: "Name the product." }, { status: 400 });
+  const compareAt = compareAtRejection(body);
+  if (compareAt) return Response.json({ error: compareAt }, { status: 400 });
+  if (body.checkedBy != null || body.checkedOn != null || body.checkedNote != null) {
+    return Response.json({ error: "An operator records a check on its own form." }, { status: 400 });
+  }
   const result = publishForAccount(account, {
     productId: body.productId,
     sku: body.sku ?? "",
@@ -65,6 +76,8 @@ export async function POST(request: Request) {
     shipsFrom: typeof body.shipsFrom === "string" ? body.shipsFrom : undefined,
     deliveryTime: typeof body.deliveryTime === "string" ? body.deliveryTime : undefined,
     whyWePicked: typeof body.whyWePicked === "string" ? body.whyWePicked : undefined,
+    brand: typeof body.brand === "string" ? body.brand : undefined,
+    whyItCosts: typeof body.whyItCosts === "string" ? body.whyItCosts : undefined,
   });
   if (result.status !== 200) return Response.json({ error: result.error }, { status: result.status });
   return Response.json({ listing: result.listing });

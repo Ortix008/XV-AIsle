@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactForm } from "@/components/contact-form";
 import { ShopFrame } from "@/components/shop-frame";
+import { HOW_WE_CHECK_HREF, REPLY_WITHIN_HOURS } from "@/lib/honest-price";
 import { isSupportEmail, readSupportEmail } from "@/lib/server/settings";
 
 export const metadata: Metadata = { title: "Contact · XV-AIsle" };
@@ -15,7 +16,8 @@ export default function ContactPage() {
         <p className="eyebrow">Store</p>
         <h1 className="mt-4 text-4xl sm:text-5xl">Write the seller</h1>
         <p className="mt-2 text-base text-pretty text-foreground">
-          Use this for a question, a return, or a late box. The note goes to the seller.
+          Use this for a question, a return, or a late box. A real person replies within {REPLY_WITHIN_HOURS} hours. The
+          note goes to the seller.
           {supportEmail ? (
             <>
               {" "}
@@ -45,6 +47,10 @@ export default function ContactPage() {
           {" · "}
           <Link href="/shop/privacy" className="underline underline-offset-4">
             Privacy
+          </Link>
+          {" · "}
+          <Link href={HOW_WE_CHECK_HREF} className="underline underline-offset-4">
+            How we check
           </Link>
         </p>
       </article>

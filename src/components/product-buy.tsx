@@ -1,12 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useReveal } from "@/components/reveal";
 import { CheckoutPolicies } from "@/components/shop-footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isStripeCheckoutUrl } from "@/lib/checkout-url";
+import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
 
 export type ProductListing = {
@@ -26,6 +28,11 @@ export type ProductListing = {
   shipsFrom?: string | null;
   deliveryTime?: string | null;
   whyWePicked?: string | null;
+  brand?: string | null;
+  whyItCosts?: string | null;
+  checkedBy?: string | null;
+  checkedOn?: string | null;
+  checkedNote?: string | null;
 };
 
 export function ProductBuy({ listing }: { listing: ProductListing }) {
@@ -39,6 +46,11 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
   const [city, setCity] = useState("");
   const [region, setRegion] = useState("");
   const [postal, setPostal] = useState("");
+  const check =
+    listing.checkedBy && listing.checkedOn && listing.checkedNote
+      ? { by: listing.checkedBy, on: listing.checkedOn, note: listing.checkedNote }
+      : null;
+  const notes = Boolean(listing.shipsFrom || listing.deliveryTime || listing.whyWePicked || listing.whyItCosts || check);
 
   async function checkout(event: FormEvent) {
     event.preventDefault();
@@ -72,7 +84,8 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
     <div className="mx-auto grid max-w-[1280px] gap-8 px-5 py-12 sm:px-10 sm:py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)] lg:items-start lg:gap-x-16">
       <div className="contents lg:order-2 lg:flex lg:flex-col lg:gap-8">
       <div className="order-1">
-        <p className="eyebrow">{listing.sku}</p>
+        <p className="eyebrow">{listing.brand ?? listing.sku}</p>
+        {listing.brand ? <p className="mt-2 text-xs tracking-wide text-muted-foreground">{listing.sku}</p> : null}
         <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl">{listing.title}</h1>
         {listing.sample ? <p className="mt-3 text-sm font-medium text-primary">Sample</p> : null}
         <p className="mt-5 max-w-xl text-2xl font-heading tracking-tight">{money(listing.priceCents / 100)}</p>
@@ -86,7 +99,7 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
           {listing.shelf === "small" ? " This is a small business." : ""}
         </p>
         <p className="mt-2 text-base text-muted-foreground">Shared by an independent reseller. You pay on xvaisle.com.</p>
-        {listing.shipsFrom || listing.deliveryTime || listing.whyWePicked ? (
+        {notes ? (
           <dl className="mt-6 grid gap-3 text-base">
             {listing.shipsFrom ? (
               <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
@@ -106,8 +119,27 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
                 <dd className="mt-1 whitespace-pre-wrap">{listing.whyWePicked}</dd>
               </div>
             ) : null}
+            {listing.whyItCosts ? (
+              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
+                <dt className="text-sm font-medium text-muted-foreground">Why it costs this</dt>
+                <dd className="mt-1 whitespace-pre-wrap">{listing.whyItCosts}</dd>
+              </div>
+            ) : null}
+            {check ? (
+              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
+                <dt className="text-sm font-medium text-muted-foreground">Checked by XV</dt>
+                <dd className="mt-1 whitespace-pre-wrap">
+                  {check.by} on {formatCheckDate(check.on)}. {check.note}
+                </dd>
+              </div>
+            ) : null}
           </dl>
         ) : null}
+        <p className="mt-4 text-sm">
+          <Link href={HOW_WE_CHECK_HREF} className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+            How we check
+          </Link>
+        </p>
       </div>
       <form {...formReveal} onSubmit={checkout} className="order-3 flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:p-6">
         <h2 className="text-xl">Checkout</h2>

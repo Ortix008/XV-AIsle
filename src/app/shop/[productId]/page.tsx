@@ -29,6 +29,11 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
           shipsFrom: listing.shipsFrom,
           deliveryTime: listing.deliveryTime,
           whyWePicked: listing.whyWePicked,
+          brand: listing.brand,
+          whyItCosts: listing.whyItCosts,
+          checkedBy: listing.checkedBy,
+          checkedOn: listing.checkedOn,
+          checkedNote: listing.checkedNote,
         }}
       />
     </ShopFrame>

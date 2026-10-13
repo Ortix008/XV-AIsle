@@ -17,9 +17,11 @@ export type ShopCard = {
   madeInUsa?: boolean;
   shelf?: string;
   sample?: boolean;
+  brand?: string;
 };
 
 function eyebrow(listing: ShopCard) {
+  if (listing.brand) return listing.brand;
   if (listing.sample) return "Sample";
   if (listing.madeInUsa) return "Made in the USA";
   if (listing.shelf === "small") return "Small business";

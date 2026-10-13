@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { compareAtRejection } from "../honest-price";
 import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { changed, getDb } from "./db";
@@ -27,6 +28,11 @@ export type StoreListing = {
   shipsFrom: string | null;
   deliveryTime: string | null;
   whyWePicked: string | null;
+  brand: string | null;
+  whyItCosts: string | null;
+  checkedBy: string | null;
+  checkedOn: string | null;
+  checkedNote: string | null;
 };
 
 export type StoreOrder = {
@@ -102,6 +108,11 @@ type ListingRow = {
   ships_from?: string | null;
   delivery_time?: string | null;
   why_we_picked?: string | null;
+  brand?: string | null;
+  why_it_costs?: string | null;
+  checked_by?: string | null;
+  checked_on?: string | null;
+  checked_note?: string | null;
 };
 
 type OrderRow = {
@@ -179,6 +190,11 @@ function listingFrom(row: ListingRow): StoreListing {
     shipsFrom: row.ships_from?.trim() || null,
     deliveryTime: row.delivery_time?.trim() || null,
     whyWePicked: row.why_we_picked?.trim() || null,
+    brand: row.brand?.trim() || null,
+    whyItCosts: row.why_it_costs?.trim() || null,
+    checkedBy: row.checked_by?.trim() || null,
+    checkedOn: row.checked_on?.trim() || null,
+    checkedNote: row.checked_note?.trim() || null,
   };
 }
 
@@ -201,6 +217,11 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     ...(listing.shipsFrom ? { shipsFrom: listing.shipsFrom } : {}),
     ...(listing.deliveryTime ? { deliveryTime: listing.deliveryTime } : {}),
     ...(listing.whyWePicked ? { whyWePicked: listing.whyWePicked } : {}),
+    ...(listing.brand ? { brand: listing.brand } : {}),
+    ...(listing.whyItCosts ? { whyItCosts: listing.whyItCosts } : {}),
+    ...(listing.checkedBy && listing.checkedOn && listing.checkedNote
+      ? { checkedBy: listing.checkedBy, checkedOn: listing.checkedOn, checkedNote: listing.checkedNote }
+      : {}),
   };
 }
 
@@ -317,6 +338,11 @@ export function publishListing(
     | "shipsFrom"
     | "deliveryTime"
     | "whyWePicked"
+    | "brand"
+    | "whyItCosts"
+    | "checkedBy"
+    | "checkedOn"
+    | "checkedNote"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -329,6 +355,8 @@ export function publishListing(
     shipsFrom?: string | null;
     deliveryTime?: string | null;
     whyWePicked?: string | null;
+    brand?: string | null;
+    whyItCosts?: string | null;
   },
 ) {
   if (!input.title.trim() || !input.sku.trim()) return { error: "The page needs a title." as const };
@@ -353,14 +381,28 @@ export function publishListing(
   if ("error" in deliveryTime) return deliveryTime;
   const whyWePicked = optionalCopy(input.whyWePicked, existing?.whyWePicked ?? null, 800, "why-we-picked note", false);
   if ("error" in whyWePicked) return whyWePicked;
+  const brand = optionalCopy(input.brand, existing?.brand ?? null, 80, "brand", true);
+  if ("error" in brand) return brand;
+  const whyItCosts = optionalCopy(input.whyItCosts, existing?.whyItCosts ?? null, 240, "cost line", false);
+  if ("error" in whyItCosts) return whyItCosts;
+  const struck = compareAtRejection({
+    title: input.title,
+    description: input.description,
+    brand: brand.text,
+    whyItCosts: whyItCosts.text,
+    whyWePicked: whyWePicked.text,
+    shipsFrom: shipsFrom.text,
+    deliveryTime: deliveryTime.text,
+  });
+  if (struck) return { error: struck };
   getDb()
     .prepare(
       `INSERT INTO listings (
          product_id, account_id, sku, title, description, price_cents, image,
          supplier_name, supplier_origin, ship_days_min, ship_days_max, published,
          made_in_usa, shelf, supplier_account_id, supplier_cost_cents, supplier_shipping_cents, fee_bps,
-         catalog_item_id, ships_from, delivery_time, why_we_picked
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         catalog_item_id, ships_from, delivery_time, why_we_picked, brand, why_it_costs
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(product_id) DO UPDATE SET
          account_id = excluded.account_id,
          sku = excluded.sku,
@@ -382,7 +424,9 @@ export function publishListing(
          catalog_item_id = excluded.catalog_item_id,
          ships_from = excluded.ships_from,
          delivery_time = excluded.delivery_time,
-         why_we_picked = excluded.why_we_picked`,
+         why_we_picked = excluded.why_we_picked,
+         brand = excluded.brand,
+         why_it_costs = excluded.why_it_costs`,
     )
     .run(
       input.productId,
@@ -407,8 +451,41 @@ export function publishListing(
       shipsFrom.text,
       deliveryTime.text,
       whyWePicked.text,
+      brand.text,
+      whyItCosts.text,
     );
   return { listing: getListing(input.productId) };
+}
+
+export function saveListingCheck(
+  productId: string,
+  input: { checkedBy: string; checkedOn: string; checkedNote: string },
+) {
+  const listing = getListing(productId);
+  if (!listing) return { error: "That page is not on the store." as const };
+  const checkedBy = input.checkedBy.trim().replace(/\s+/g, " ");
+  const checkedOn = input.checkedOn.trim();
+  const checkedNote = input.checkedNote.replace(/\r\n/g, "\n").trim();
+  if (!checkedBy && !checkedOn && !checkedNote) {
+    getDb()
+      .prepare("UPDATE listings SET checked_by = NULL, checked_on = NULL, checked_note = NULL WHERE product_id = ?")
+      .run(productId);
+    return { listing: getListing(productId) };
+  }
+  if (!checkedBy || checkedBy.length > 80) return { error: "Name who checked it, in 80 characters or fewer." as const };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkedOn)) return { error: "Use the check date as YYYY-MM-DD." as const };
+  const [year, month, day] = checkedOn.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return { error: "That check date is not a real day." as const };
+  }
+  if (!checkedNote || checkedNote.length > 400) return { error: "Write what you noticed, in 400 characters or fewer." as const };
+  const struck = compareAtRejection({ checkedBy, checkedOn, checkedNote });
+  if (struck) return { error: struck };
+  getDb()
+    .prepare("UPDATE listings SET checked_by = ?, checked_on = ?, checked_note = ? WHERE product_id = ?")
+    .run(checkedBy, checkedOn, checkedNote, productId);
+  return { listing: getListing(productId) };
 }
 
 export function getListing(productId: string) {
