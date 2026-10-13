@@ -1,8 +1,8 @@
-import { addBusinessDays, formatISODate, isISODate, shipDeadline } from "../business-days";
+import { addBusinessDays, addBusinessDaysSkipping, formatISODate, isISODate, shipDeadline, storeHolidays } from "../business-days";
 import { BLOCKED_TEST_ORDER_NUMBER, isBlockedTestOrder, PLACE_REMIND_MS } from "../order-flags";
 import { changed, getDb } from "./db";
 import { applyRefund } from "./ledger";
-import { sendDelayNoticeMail, sendOpsAlert } from "./order-mail";
+import { sendDelayNoticeMail, sendOpsAlert, sendUnshippedDelayMail } from "./order-mail";
 import { createRefund } from "./stripe";
 import { getListing, getOrder, issueOrderToken, orderByDelayToken } from "./store";
 
@@ -62,6 +62,69 @@ export function flagShippingDelays(now = Date.now()) {
     const deadline = shipDeadline(order.paidAt, listing?.shipDaysMax ?? 0);
     if (now <= deadline) continue;
     getDb().prepare("UPDATE orders SET delay_flagged_at = ? WHERE id = ? AND delay_flagged_at IS NULL").run(now, order.id);
+  }
+}
+
+let unshippedSweepActive = false;
+
+/**
+ * One buyer email for each paid order still unshipped after 7 business days.
+ * Weekends and `holidays` are skipped. The row is claimed before the send, so a later run does not send again.
+ */
+export async function notifyUnshippedDelays(now = Date.now(), holidays = storeHolidays()) {
+  if (unshippedSweepActive) return { noticed: 0 };
+  unshippedSweepActive = true;
+  try {
+    const rows = getDb()
+      .prepare(
+        `SELECT id
+         FROM orders
+         WHERE paid_at IS NOT NULL
+           AND shipped_at IS NULL
+           AND delivered_at IS NULL
+           AND delay_notice_sent_at IS NULL
+           AND had_refund = 0
+           AND status NOT IN ('pending', 'test', 'refunded', 'fulfilling', 'shipped', 'delivered')
+           AND number != ?`,
+      )
+      .all(BLOCKED_TEST_ORDER_NUMBER) as { id: string }[];
+    let noticed = 0;
+    for (const row of rows) {
+      const order = getOrder(row.id);
+      if (!order || isBlockedTestOrder(order.number) || !order.paidAt) continue;
+      if (order.shippedAt || order.deliveredAt) continue;
+      if (order.status === "pending" || order.status === "test" || order.status === "refunded") continue;
+      if (order.status === "shipped" || order.status === "delivered" || order.status === "fulfilling") continue;
+      const deadline = addBusinessDaysSkipping(order.paidAt, 7, holidays);
+      if (now <= deadline) continue;
+      const claimed = changed(
+        getDb()
+          .prepare(
+            `UPDATE orders
+             SET delay_notice_sent_at = ?,
+                 delay_flagged_at = COALESCE(delay_flagged_at, ?)
+             WHERE id = ?
+               AND delay_notice_sent_at IS NULL
+               AND shipped_at IS NULL
+               AND delivered_at IS NULL
+               AND had_refund = 0
+               AND status NOT IN ('pending', 'test', 'refunded', 'fulfilling', 'shipped', 'delivered')`,
+          )
+          .run(now, now, order.id),
+      );
+      if (claimed !== 1) continue;
+      const refundToken = issueOrderToken(order.id, "delay_refund_token_hash");
+      await sendUnshippedDelayMail({
+        to: order.email,
+        number: order.number,
+        title: order.title ?? "Order",
+        refundToken,
+      });
+      noticed += 1;
+    }
+    return { noticed };
+  } finally {
+    unshippedSweepActive = false;
   }
 }
 

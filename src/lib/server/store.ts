@@ -876,6 +876,14 @@ export function attachStripeSession(orderId: string, sessionId: string) {
   getDb().prepare("UPDATE orders SET stripe_session_id = ? WHERE id = ?").run(sessionId, orderId);
 }
 
+export function orderByStripeSession(sessionId: string) {
+  if (!sessionId) return null;
+  const row = getDb().prepare("SELECT id FROM orders WHERE stripe_session_id = ?").get(sessionId) as
+    | { id: string }
+    | undefined;
+  return row ? getOrder(row.id) : null;
+}
+
 const LINK_COLUMNS = {
   customer_link_hash: "customer_link_hash",
   ship_link_hash: "ship_link_hash",

@@ -1,4 +1,7 @@
 # Public store. Caddy gets the HTTPS certificate after xvaisle.com points here.
+# The store process emails buyers once when a paid order is still unshipped after 7 business days.
+# Weekends are skipped. STORE_HOLIDAYS adds more dates. A checkout on the host can also run:
+# 0 * * * * cd /opt/xvaisle && npx tsx scripts/notify-unshipped-orders.ts
 services:
   store:
     build: .

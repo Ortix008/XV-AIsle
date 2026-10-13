@@ -1,5 +1,6 @@
 import { formatISODate } from "../business-days";
 import { RETURNS_UNSET } from "../return-address";
+import { sampleReceiptFacts } from "../sample-shelf";
 import { buyerShareHref } from "../x-share";
 import { dollars } from "./fees";
 import { sendMail } from "./mail";
@@ -142,17 +143,17 @@ ${share}
 }
 
 export function sampleReceiptHtml() {
-  const productUrl = "https://xvaisle.com/shop/sheet-pan";
+  const sample = sampleReceiptFacts();
+  const productUrl = `https://xvaisle.com/shop/${sample.productId}`;
   return receiptHtml({
     number: "XV-1002",
-    title: "Sheet pan",
+    title: sample.title,
     qty: 1,
-    amountCents: 2000,
-    shipsFrom: "Portland, Oregon",
-    eta: "Arrives in 3 to 5 business days",
+    amountCents: sample.amountCents,
+    eta: sample.eta,
     receiptUrl: "https://xvaisle.com/shop/order?token=sample",
-    returnAddress: "400 Supplier Street\nPortland, OR 97201\nUS",
-    shareUrl: buyerShareHref({ title: "Sheet pan", productUrl }),
+    returnAddress: sample.returnAddress,
+    shareUrl: buyerShareHref({ title: sample.title, productUrl }),
   });
 }
 
@@ -232,6 +233,20 @@ export function brandOrderText(input: {
     `${ship.city}, ${ship.region} ${ship.postal}`,
     ship.country,
     ship.email,
+    "",
+  ].join("\n");
+}
+
+/** Buyer mail after 7 business days with no shipment. No invented ship date. */
+export function unshippedDelayText(input: { number: string; title: string; orderUrl: string }) {
+  return [
+    `Order ${input.number} has not shipped within 7 business days.`,
+    "",
+    input.title,
+    "",
+    "You can wait, or cancel for a full refund.",
+    "",
+    `Your order: ${input.orderUrl}`,
     "",
   ].join("\n");
 }
@@ -352,6 +367,23 @@ export async function sendBrandOrder(input: {
     to: input.to,
     subject: `Order ${input.number} to ship`,
     text: brandOrderText(input),
+  });
+}
+
+export async function sendUnshippedDelayMail(input: {
+  to: string;
+  number: string;
+  title: string;
+  refundToken: string;
+}) {
+  return deliver({
+    to: input.to,
+    subject: `Order ${input.number} has not shipped`,
+    text: unshippedDelayText({
+      number: input.number,
+      title: input.title,
+      orderUrl: delayRefundUrl(input.refundToken),
+    }),
   });
 }
 

@@ -59,6 +59,7 @@ Still manual or sample data:
 - Posts and retailer notes are copied by hand. Nothing is sent to a social network or to a retailer.
 - The product book is a fixed catalog with fictional warehouses. It is not a live feed.
 - Sample products (the sheet pan and bench scraper) publish only when `DEMO_SEED=1`. Leave that unset in production.
+- `DEMO_SEED=1 npx tsx scripts/seed-preview-order.ts` inserts one paid sample order and prints `/shop/return?token=…&session_id=cs_preview_sample_sheet_pan`. It refuses to run unless `DEMO_SEED=1`, refuses a live Stripe key, and does not call Stripe. With SMTP unset, mail is logged and not sent.
 - Small shops are names you type in.
 
 ## How money moves
@@ -163,6 +164,14 @@ The domain is at Porkbun. Point the A record for `xvaisle.com` and `www` at that
 cp .env.example .env
 # fill the file on the server only, then:
 docker compose up -d --build
+```
+
+The store process checks once an hour for paid orders that have not shipped after 7 business days. Weekends are skipped. `STORE_HOLIDAYS` is an optional comma-separated list of `YYYY-MM-DD` dates that are skipped too. Each matching order gets one email: the order has not shipped, the buyer can wait or cancel for a full refund, and the message links to the order page. The send is stored on the order, so a later check does not send it again. If `SMTP_HOST` is empty, the mailer logs the message and does not send it.
+
+Leave the container running and that hourly check is enough. A checkout on the droplet can run the same check from cron:
+
+```
+0 * * * * cd /opt/xvaisle && npx tsx scripts/notify-unshipped-orders.ts
 ```
 
 Promote both owners inside the `store` container. Run the command once per person. The first example creates a new verified admin. The second promotes an account that already signed up. Promotion sets the role and marks the email verified. It leaves the name, password, membership, Stripe ids, listings, and orders in place. Starting the app does not demote existing roles. The command does not print the password.

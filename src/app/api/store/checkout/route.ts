@@ -3,12 +3,27 @@ import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
 import { settleCheckoutSession } from "@/lib/server/ledger";
 import { orderSummary } from "@/lib/server/order-summary";
 import { buyerOrder } from "@/lib/server/order-view";
-import { attachStripeSession, createPendingOrder, getOrder } from "@/lib/server/store";
+import { demoSeedEnabled } from "@/lib/server/starter-shelf";
+import { attachStripeSession, createPendingOrder, getOrder, orderByStripeSession } from "@/lib/server/store";
 import { createCheckoutSession, retrieveCheckoutSession, stripeConfigured } from "@/lib/server/stripe";
+
+const PREVIEW_SESSION = /^cs_preview_[a-z0-9_]{1,80}$/;
+
+/** A DEMO_SEED preview order. Never calls Stripe. */
+function previewPaidOrder(sessionId: string) {
+  if (!demoSeedEnabled() || !PREVIEW_SESSION.test(sessionId)) return null;
+  const order = orderByStripeSession(sessionId);
+  if (!order || order.status === "pending" || order.status === "test") return null;
+  return order;
+}
 
 export async function GET(request: Request) {
   const sessionId = new URL(request.url).searchParams.get("session_id");
   if (!sessionId) return Response.json({ error: "Missing checkout." }, { status: 400 });
+  const preview = previewPaidOrder(sessionId);
+  if (preview) {
+    return Response.json({ kind: "order", order: buyerOrder(preview), summary: orderSummary(preview) });
+  }
   if (!stripeConfigured()) {
     return Response.json({ error: "Stripe is not configured." }, { status: 503 });
   }

@@ -200,7 +200,11 @@ async function main() {
   const sampleHtml = sampleReceiptHtml();
   assert(sampleHtml.includes("https://x.com/intent/post"), "the sample receipt shares through the X web intent");
   assert(sampleHtml.includes("Share your find on X"), "the sample receipt names the share button");
-  assert(sampleHtml.includes("400 Supplier Street"), "the sample receipt includes the return street");
+  assert(sampleHtml.includes("Quarter sheet pan and rack"), "the sample receipt uses the sample product title");
+  assert(sampleHtml.includes("Ships in 2-4 business days."), "the sample receipt uses the sample ship window");
+  assert(sampleHtml.includes("100 Example Street"), "the sample receipt includes the placeholder street");
+  assert(sampleHtml.includes("Sample City") && sampleHtml.includes("00000"), "the sample receipt includes the placeholder city and ZIP");
+  assert(!sampleHtml.includes("Portland") && !sampleHtml.includes("97201") && !sampleHtml.includes("Elizabeth"), "the sample receipt has no real city or ZIP");
 
   const captured = startMailCapture();
   getDb().prepare("UPDATE orders SET status = 'paid', paid_at = ? WHERE id = ?").run(Date.now(), pending.order.id);
@@ -226,6 +230,40 @@ async function main() {
   assert(sample != null && !sample.return_line1 && !sample.return_city, "sample data leaves the return address blank");
   const sampleListing = getListing("sheet-pan");
   assert(sampleListing && returnCopyForListing({ ...sampleListing, supplierAccountId: null }) === RETURNS_UNSET, "a sample with no address uses the fallback");
+
+  getDb()
+    .prepare(
+      "UPDATE listings SET supplier_account_id = ?, supplier_cost_cents = 0, published = 1 WHERE product_id = 'sheet-pan'",
+    )
+    .run(supplierId);
+  const preview = createPendingOrder({
+    productId: "sheet-pan",
+    qty: 1,
+    ship: {
+      name: "Sample Buyer",
+      email: "sample-buyer@example.com",
+      line1: "100 Example Street",
+      city: CITY,
+      region: REGION,
+      postal: POSTAL,
+      country: COUNTRY,
+    },
+  });
+  if ("error" in preview) throw new Error(preview.error);
+  getDb()
+    .prepare("UPDATE orders SET status = 'paid', paid_at = ?, stripe_session_id = ? WHERE id = ?")
+    .run(Date.now(), "cs_preview_sample_sheet_pan", preview.order.id);
+  delete process.env.STRIPE_SECRET_KEY;
+  const { GET: checkoutGet } = await import("../src/app/api/store/checkout/route");
+  const previewResponse = await checkoutGet(
+    new Request("http://127.0.0.1/api/store/checkout?session_id=cs_preview_sample_sheet_pan"),
+  );
+  const previewBody = (await previewResponse.json()) as { summary?: { title?: string; number?: string } };
+  assert(previewResponse.status === 200 && previewBody.summary?.title === "Quarter sheet pan and rack", "a preview session renders without Stripe");
+  assert(previewBody.summary?.number === preview.order.number, "the preview session is the seeded order");
+  delete process.env.DEMO_SEED;
+  const closed = await checkoutGet(new Request("http://127.0.0.1/api/store/checkout?session_id=cs_preview_sample_sheet_pan"));
+  assert(closed.status === 503, "the preview session does not skip Stripe unless DEMO_SEED=1");
 
   closeDb();
   console.log("return address checks ok");

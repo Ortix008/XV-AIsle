@@ -5,6 +5,7 @@ export async function register() {
   const { preferCardCheckout } = await import("./lib/server/card-checkout");
   const { flagRefundDeadlines, sweepStuckFulfillment } = await import("./lib/server/store");
   const { releaseMatured } = await import("./lib/server/ledger");
+  const { notifyUnshippedDelays } = await import("./lib/server/order-routing");
   try {
     ensureStarterShelf();
   } catch (error) {
@@ -15,6 +16,11 @@ export async function register() {
     await sweepStuckFulfillment();
     flagRefundDeadlines();
     await releaseMatured();
+    try {
+      await notifyUnshippedDelays();
+    } catch (error) {
+      console.error("Delay notice sweep did not finish.", error);
+    }
   };
   try {
     await sweep();
