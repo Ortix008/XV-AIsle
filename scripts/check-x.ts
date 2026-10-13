@@ -33,11 +33,12 @@ for (const [name, next] of [
   ["SignInScreen", "SignUpScreen"],
   ["SignUpScreen", "ResetRequestScreen"],
 ] as const) {
-  const slice = authSlice(name, next);
-  const button = slice.indexOf("<ContinueWithX />");
-  const divider = slice.indexOf("<AuthOr />");
-  const email = slice.indexOf("Email");
-  const password = slice.indexOf("Password");
+  const form = authSlice(name, next);
+  const markup = form.slice(form.indexOf("return ("));
+  const button = markup.indexOf("<ContinueWithX />");
+  const divider = markup.indexOf("<AuthOr />");
+  const email = markup.indexOf("Email");
+  const password = markup.indexOf('label="Password"');
   assert(button >= 0 && divider > button && email > divider && password > email, `${name} puts Continue with X, then or, then email and password`);
 }
 assert(authScreens.includes("/brand/logo-official-xo.png"), "Continue with X shows the X mark");
