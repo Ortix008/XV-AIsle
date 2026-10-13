@@ -9,12 +9,9 @@ import { Reveal } from "@/components/reveal";
 import { aisleByTitle } from "@/lib/aisles";
 import { nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
 import { cn } from "cn";
+import { aisleCardArt } from "@/lib/art";
 
-const stallArt: Partial<Record<NightWorld["slug"], string>> = {
-  "build-your-rig": "/art/aisle-headphones.png",
-  "tech-and-desk": "/art/aisle-desklamp.png",
-  "home-and-gifts": "/art/aisle-bags.png",
-};
+const stallArt: Partial<Record<NightWorld["slug"], string>> = aisleCardArt;
 
 function StallFace({ world }: { world: NightWorld }) {
   const art = stallArt[world.slug];

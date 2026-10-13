@@ -17,7 +17,7 @@ export const nightWorlds: readonly NightWorld[] = [
   {
     slug: "build-your-rig",
     title: "Build Your Rig",
-    story: "Headphones and phone cases we placed here because they belong on a setup.",
+    story: "Everything that makes your setup feel like yours: the sound, the glow, and the little things within reach.",
     accent: "#3ddc84",
     glow: "rgba(61, 220, 132, 0.22)",
     wash: "rgba(61, 220, 132, 0.09)",
@@ -25,7 +25,7 @@ export const nightWorlds: readonly NightWorld[] = [
   {
     slug: "tech-and-desk",
     title: "Tech & Desk",
-    story: "A lamp and a cable sleeve for the desk that is already there.",
+    story: "For the desk you actually sit at. Small upgrades that make long days a little easier.",
     accent: "#e7c27a",
     glow: "rgba(231, 194, 122, 0.2)",
     wash: "rgba(231, 194, 122, 0.08)",
@@ -33,7 +33,7 @@ export const nightWorlds: readonly NightWorld[] = [
   {
     slug: "home-and-gifts",
     title: "Home & Gifts",
-    story: "Gifts to give and jars to keep. Pieces chosen for a home that feels lived-in.",
+    story: "Cozy things for your home, and thoughtful gifts for the people in it.",
     accent: "#e3b4c4",
     glow: "rgba(227, 180, 196, 0.2)",
     wash: "rgba(227, 180, 196, 0.08)",
@@ -41,7 +41,7 @@ export const nightWorlds: readonly NightWorld[] = [
   {
     slug: "bundles",
     title: "Bundles",
-    story: "Pieces from one supplier, sold together at the one price an operator set.",
+    story: "Sets that belong together, shipped as one. Easy to give, easy to love.",
     accent: "#7ddec4",
     glow: "rgba(125, 222, 196, 0.2)",
     wash: "rgba(125, 222, 196, 0.08)",

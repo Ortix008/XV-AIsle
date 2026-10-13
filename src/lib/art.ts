@@ -1,4 +1,5 @@
 import type { BotId, Lane } from "./types";
+import type { NightWorldSlug } from "./night-worlds";
 
 export const marketArt = "/art/market-hero.png";
 
@@ -7,6 +8,14 @@ export const botArt: Record<BotId, string> = {
   listings: "/art/bot-draft.png",
   orders: "/art/bot-harbor.png",
   marketing: "/art/bot-cast.png",
+};
+
+/** Homepage aisle-card art, one per aisle (slugs from night-worlds.ts). */
+export const aisleCardArt: Record<NightWorldSlug, string> = {
+  "build-your-rig": "/art/aisle-card-build-your-rig.webp",
+  "tech-and-desk": "/art/aisle-card-tech-and-desk.webp",
+  "home-and-gifts": "/art/aisle-card-home-and-gifts.webp",
+  bundles: "/art/aisle-card-bundles.webp",
 };
 
 export const welcomeHero = "/art/welcome-life.png";
@@ -45,17 +54,17 @@ export const welcomeDepartments = [
   { title: "Electronics", src: "/art/dept-electronics.png", line: "Small gear for the desk and the day." },
   {
     title: "Build Your Rig",
-    src: "/art/aisle-headphones.png",
-    line: "The pieces that make a setup. One supplier, one price when they are bundled.",
+    src: "/art/aisle-card-build-your-rig.webp",
+    line: "Everything for your setup in one place, or grab it all as a set.",
   },
   {
     title: "Tech & Desk",
-    src: "/art/aisle-desklamp.png",
+    src: "/art/aisle-card-tech-and-desk.webp",
     line: "Light and cable care for the desk.",
   },
   {
     title: "Home & Gifts",
-    src: "/art/aisle-bags.png",
+    src: "/art/aisle-card-home-and-gifts.webp",
     line: "Things to keep and things to give.",
   },
 ] as const;
@@ -69,7 +78,7 @@ export const welcomeReach = [
   {
     src: "/art/real-enterprise.png",
     title: "Big companies",
-    line: "A national floor already holds the stock. The demand finds it.",
+    line: "Big brands already have the stock. We help shoppers find it.",
   },
 ] as const;
 
@@ -91,7 +100,7 @@ export const parties = [
   {
     src: "/art/party-supplier-real.png",
     title: "The middleman",
-    body: "The supplier gets a real order and ships it from a US warehouse or a print shop.",
+    body: "The supplier ships your order from a US warehouse or print shop.",
   },
   {
     src: "/art/party-company-real.png",
