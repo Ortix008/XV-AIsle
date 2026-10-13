@@ -85,6 +85,60 @@ function AuthenticatorSetup({ enabled, onChanged }: { enabled: boolean; onChange
   );
 }
 
+function ReceiptEmail() {
+  const { account, refresh } = useAccount();
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [pending, setPending] = useState(false);
+  if (!account?.needsEmail) return null;
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    const response = await fetch("/api/account/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    setPending(false);
+    if (!response.ok) {
+      setError(data?.error ?? "That email did not save.");
+      return;
+    }
+    setSent(true);
+    await refresh();
+  }
+
+  return (
+    <form onSubmit={save} className="auth-subcard">
+      <h2 className="text-base font-medium">Email for receipts</h2>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        X does not share an email. Add one so the shop can send receipts and a verification link.
+      </p>
+      <label className="mt-3 flex flex-col gap-1 text-base">
+        Email
+        <Input
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          autoComplete="email"
+          maxLength={120}
+          required
+          className="h-11"
+        />
+      </label>
+      <Button type="submit" disabled={pending} className="mt-3 h-11">
+        {pending ? "Saving…" : "Save email"}
+      </Button>
+      {sent ? <p className="mt-2 text-sm">Check your inbox for the verification link.</p> : null}
+      {error ? <p className="mt-2 text-sm text-late">{error}</p> : null}
+    </form>
+  );
+}
+
 export function AccountView() {
   const { account, refresh } = useAccount();
   const params = useSearchParams();
@@ -113,6 +167,7 @@ export function AccountView() {
             .
           </p>
         ) : null}
+        <ReceiptEmail />
         <AuthenticatorSetup enabled={account.totpEnabled === true} onChanged={refresh} />
         <div id="payouts">
           <ConnectPayout />

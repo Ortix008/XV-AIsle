@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type CSSProperties, type FormEvent } from "react";
 import { ProductFrame } from "@/components/product-frame";
+import { ShareToX } from "@/components/share-to-x";
 import { useReveal } from "@/components/reveal";
 import { CheckoutPolicies } from "@/components/shop-footer";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,15 @@ export type ProductListing = {
   aisle?: string | null;
 };
 
-export function ProductBuy({ listing, returnNote }: { listing: ProductListing; returnNote: string }) {
+export function ProductBuy({
+  listing,
+  returnNote,
+  shareHref,
+}: {
+  listing: ProductListing;
+  returnNote: string;
+  shareHref: string;
+}) {
   const formReveal = useReveal<HTMLFormElement>(1);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -94,6 +103,7 @@ export function ProductBuy({ listing, returnNote }: { listing: ProductListing; r
         <p className="eyebrow">{listing.brand ?? listing.sku}</p>
         {listing.brand ? <p className="mt-2 text-xs tracking-wide text-muted-foreground">{listing.sku}</p> : null}
         <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl">{listing.title}</h1>
+        <ShareToX href={shareHref} className="mt-5" />
         {listing.sample ? <p className="mt-3 text-sm font-medium text-primary">Sample</p> : null}
         <p className="mt-5 max-w-xl text-2xl font-heading tracking-tight">{money(listing.priceCents / 100)}</p>
         <p className="mt-4 max-w-xl whitespace-pre-wrap text-pretty text-base leading-relaxed text-muted-foreground">

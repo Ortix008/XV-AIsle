@@ -250,6 +250,10 @@ export function getDb() {
   addColumn(next, "orders", "delay_refunded_at", "INTEGER");
   addColumn(next, "orders", "customer_link_hash", "TEXT");
   addColumn(next, "orders", "ship_link_hash", "TEXT");
+  addColumn(next, "accounts", "x_user_id", "TEXT");
+  next.exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS accounts_x_user_id ON accounts (x_user_id) WHERE x_user_id IS NOT NULL",
+  );
   migrateSupplierReturns(next);
   db = next;
   return next;

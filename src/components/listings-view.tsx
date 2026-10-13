@@ -8,8 +8,10 @@ import { ProductReturnForm } from "@/components/supplier-returns-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ShareToX } from "@/components/share-to-x";
 import { getProduct } from "@/lib/catalog";
 import { useAccount } from "@/lib/account-store";
+import { buyerShareHref, resellerShareHref } from "@/lib/x-share";
 import { useDesk } from "@/lib/desk-store";
 import { publishListing } from "@/lib/store-client";
 import { listingText } from "@/lib/engine";
@@ -19,7 +21,8 @@ import type { Listing, PriceId } from "@/lib/types";
 import { cn } from "cn";
 import { useEffect, useState, type FormEvent } from "react";
 
-export function ListingsView() {
+export function ListingsView({ shareOrigin }: { shareOrigin: string }) {
+  const { account } = useAccount();
   const { state, select, updateListing, setListingStatus, rebuildListing } = useDesk();
   const approved = state.pipeline.filter((item) => item.status === "approved");
   const selectedId =
@@ -49,13 +52,18 @@ export function ListingsView() {
               const product = getProduct(item.productId);
               const draft = state.listings.find((listing) => listing.productId === item.productId);
               const active = item.productId === selectedId;
+              const productUrl = `${shareOrigin}/shop/${item.productId}`;
+              const shareHref =
+                account?.role === "reseller"
+                  ? resellerShareHref({ title: product.titleLead, productUrl, accountId: account.id })
+                  : buyerShareHref({ title: product.titleLead, productUrl });
               return (
-                <li key={item.productId} className="border-b">
+                <li key={item.productId} className="flex items-stretch border-b">
                   <button
                     type="button"
                     onClick={() => select("listing", item.productId)}
                     className={cn(
-                      "flex w-full flex-col items-start px-4 py-3 text-left",
+                      "flex min-w-0 flex-1 flex-col items-start px-4 py-3 text-left",
                       active ? "bg-muted/70" : "hover:bg-muted/40",
                     )}
                   >
@@ -64,6 +72,7 @@ export function ListingsView() {
                       {draft ? (draft.status === "ready" ? "Ready to sell" : "Needs you") : "Not written yet"}
                     </span>
                   </button>
+                  <ShareToX href={shareHref} className="mr-3 shrink-0 self-center" />
                 </li>
               );
             })}

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
@@ -48,24 +49,61 @@ function useEnterDeskWhenSignedIn() {
   const router = useRouter();
   const { ready, account } = useAccount();
   useEffect(() => {
-    if (ready && account) router.replace("/");
+    if (ready && account) router.replace(account.needsEmail ? "/account" : "/");
   }, [ready, account, router]);
 }
 
-export function SignInScreen() {
-  const { signIn, totpChallenge, submitTotp } = useAccount();
+function ContinueWithX() {
+  return (
+    <a href="/api/auth/x/start" className="auth-x">
+      <Image src="/brand/logo-official-xo.png" alt="" width={20} height={20} unoptimized className="auth-x-mark" />
+      Continue with X
+    </a>
+  );
+}
+
+function AuthOr() {
+  return (
+    <p className="auth-or">
+      <span>or</span>
+    </p>
+  );
+}
+
+export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolean; xNotice?: "code" | "failed" | null }) {
+  const { signIn, totpChallenge, submitTotp, refresh } = useAccount();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    xNotice === "failed" ? "X sign-in did not finish. Use email, or try Continue with X again." : null,
+  );
   const [pending, setPending] = useState(false);
   const emailId = useId();
   const codeId = useId();
+  const xCode = xNotice === "code" && !totpChallenge;
   useEnterDeskWhenSignedIn();
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setPending(true);
+    if (xCode) {
+      const response = await fetch("/api/auth/x/totp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        const message = data?.error ?? "That code did not match.";
+        setError(message.includes("password") ? "That sign-in step expired. Use Continue with X again." : message);
+        setPending(false);
+        return;
+      }
+      await refresh();
+      setPending(false);
+      return;
+    }
     const message = totpChallenge ? await submitTotp(code) : await signIn({ email, password });
     setError(message);
     setPending(false);
@@ -74,7 +112,7 @@ export function SignInScreen() {
   return (
     <AuthScreen title="Sign in" lede="Sign in to your account. The reseller program is free to join.">
       <form onSubmit={onSubmit} className="auth-form">
-        {totpChallenge ? (
+        {totpChallenge || xCode ? (
           <label className="auth-field" htmlFor={codeId}>
             Authenticator code
             <Input
@@ -90,6 +128,12 @@ export function SignInScreen() {
           </label>
         ) : (
           <>
+            {showX ? (
+              <>
+                <ContinueWithX />
+                <AuthOr />
+              </>
+            ) : null}
             <label className="auth-field" htmlFor={emailId}>
               Email
               <Input
@@ -119,9 +163,9 @@ export function SignInScreen() {
           </p>
         ) : null}
         <Button type="submit" disabled={pending} className="mt-1 h-12 w-full rounded-full px-6">
-          {totpChallenge ? "Confirm code" : pending ? "Signing in…" : "Sign in"}
+          {totpChallenge || xCode ? "Confirm code" : pending ? "Signing in…" : "Sign in"}
         </Button>
-        {totpChallenge ? null : (
+        {totpChallenge || xCode ? null : (
           <Link href="/reset" className="auth-text-link w-fit">
             Forgot password
           </Link>
@@ -134,7 +178,7 @@ export function SignInScreen() {
   );
 }
 
-export function SignUpScreen() {
+export function SignUpScreen({ showX = false }: { showX?: boolean }) {
   const { signUp } = useAccount();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -169,6 +213,12 @@ export function SignUpScreen() {
       lede={`Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. ${resellerPayLine()} If you mention a product, say ${RESELLER_DISCLOSURE}`}
     >
       <form onSubmit={onSubmit} className="auth-form">
+        {showX ? (
+          <>
+            <ContinueWithX />
+            <AuthOr />
+          </>
+        ) : null}
         <label className="auth-field" htmlFor={nameId}>
           Your name
           <Input

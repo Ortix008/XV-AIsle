@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { SignUpScreen } from "@/components/auth-screens";
+import { xSignInConfigured } from "@/lib/x-oauth";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Open an account · XV-AIsle",
@@ -7,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function SignUpPage() {
-  return <SignUpScreen />;
+  return <SignUpScreen showX={xSignInConfigured()} />;
 }
