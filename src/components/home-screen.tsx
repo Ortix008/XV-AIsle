@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BrandMark } from "@/components/brand-mark";
+import { ShopFooter } from "@/components/shop-footer";
 import { botIcon } from "@/components/bot-mark";
 import { DepartmentGrid } from "@/components/department-grid";
 import { HomeScene } from "@/components/home-scene";
@@ -395,18 +396,7 @@ export function JoinScreen() {
         </div>
       </section>
 
-      <footer className="flex flex-wrap gap-x-5 gap-y-2 border-t border-[var(--border)] px-5 py-8 text-sm text-[var(--ink-soft)] sm:px-10">
-        <span className="text-foreground">XV-AIsle</span>
-        <Link href="/shop" className="hover:text-foreground">
-          Store
-        </Link>
-        <Link href="/shop/safety" className="hover:text-foreground">
-          How buying works
-        </Link>
-        <Link href="/shop/privacy" className="hover:text-foreground">
-          Privacy
-        </Link>
-      </footer>
+      <ShopFooter className="flex flex-wrap gap-x-5 gap-y-2 border-t border-[var(--border)] px-5 py-8 text-sm text-[var(--ink-soft)] sm:px-10" />
     </div>
   );
 }

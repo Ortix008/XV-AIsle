@@ -276,7 +276,7 @@ async function main() {
   const { totpCode } = await import("../src/lib/server/totp");
   const { createPendingOrder, publishListing } = await import("../src/lib/server/store");
   const { acceptStripeEvent } = await import("../src/lib/server/stripe-events");
-  const { saveReturnsFor } = await import("../src/lib/server/settings");
+  const { saveReturnsFor, saveSupportFor } = await import("../src/lib/server/settings");
   const { addInquiry, inquiriesFor } = await import("../src/lib/server/inquiries");
   const { deliverFor, approveFor } = await import("../src/lib/server/order-actions");
   const { acceptSupplierDelivery } = await import("../src/lib/server/supplier-callback");
@@ -317,6 +317,15 @@ async function main() {
   assert("error" in deniedReturns && deniedReturns.status === 403, "a reseller cannot change the return address");
   const savedReturns = saveReturnsFor(operator, "100 Example Street, Sample City, ST 00000");
   assert(!("error" in savedReturns) && savedReturns.status === 200, "the operator can save the return address");
+  const deniedEmail = saveSupportFor(resellerRole.account, "support@example.com");
+  assert("error" in deniedEmail && deniedEmail.status === 403, "a reseller cannot change the support email");
+  const savedEmail = saveSupportFor(operator, "support@example.com");
+  assert(
+    !("error" in savedEmail) && savedEmail.status === 200 && savedEmail.supportEmail === "support@example.com",
+    "the operator can save the support email",
+  );
+  const badEmail = saveSupportFor(operator, "not-an-email");
+  assert("error" in badEmail && badEmail.status === 400, "a bad support email is refused");
   const note = addInquiry({ name: "Example Buyer", email: "buyer@example.com", message: "Where is the pan?" });
   if ("error" in note) throw new Error(note.error);
   const hidden = inquiriesFor(resellerRole.account);

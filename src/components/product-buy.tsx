@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { CheckoutPolicies } from "@/components/shop-footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isStripeCheckoutUrl } from "@/lib/checkout-url";
@@ -22,6 +22,9 @@ export type ProductListing = {
   madeInUsa?: boolean;
   shelf?: string;
   sample?: boolean;
+  shipsFrom?: string | null;
+  deliveryTime?: string | null;
+  whyWePicked?: string | null;
 };
 
 export function ProductBuy({ listing }: { listing: ProductListing }) {
@@ -82,6 +85,28 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
           {listing.shelf === "small" ? " This is a small business." : ""}
         </p>
         <p className="mt-2 text-base">Shared by an independent reseller. You pay on xvaisle.com.</p>
+        {listing.shipsFrom || listing.deliveryTime || listing.whyWePicked ? (
+          <dl className="mt-4 max-w-xl space-y-3 text-base">
+            {listing.shipsFrom ? (
+              <div>
+                <dt className="text-sm font-medium">Ships from</dt>
+                <dd>{listing.shipsFrom}</dd>
+              </div>
+            ) : null}
+            {listing.deliveryTime ? (
+              <div>
+                <dt className="text-sm font-medium">Delivery time</dt>
+                <dd>{listing.deliveryTime}</dd>
+              </div>
+            ) : null}
+            {listing.whyWePicked ? (
+              <div>
+                <dt className="text-sm font-medium">Why we picked it</dt>
+                <dd className="whitespace-pre-wrap">{listing.whyWePicked}</dd>
+              </div>
+            ) : null}
+          </dl>
+        ) : null}
       </div>
       <form onSubmit={checkout} className="flex flex-col gap-3 border bg-card p-4">
         <h2 className="text-base font-medium">Ship to</h2>
@@ -118,12 +143,9 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
           {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qty) / 100)}`}
         </Button>
         <p className="text-base text-pretty">
-          You pay on xvaisle.com. Stripe handles the card. We never see your card number.{" "}
-          <Link href="/shop/safety" className="underline underline-offset-4">
-            How buying works
-          </Link>
-          .
+          You pay on xvaisle.com. Stripe handles the card. We never see your card number.
         </p>
+        <CheckoutPolicies />
       </form>
     </div>
   );

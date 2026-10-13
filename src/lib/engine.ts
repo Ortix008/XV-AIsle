@@ -1,4 +1,5 @@
 import { getProduct } from "./catalog";
+import { RESELLER_DISCLOSURE } from "./policies";
 import { addDays, prettyDate, todayISO } from "./dates";
 import {
   AD_RATE,
@@ -426,6 +427,8 @@ export function buildCampaign(product: Product, listing: Listing): Campaign {
         `${money(retail)}. In the box: ${product.box} Ships in ${window} from ${origin}.`,
         "",
         "Share your shop link anywhere. Buyers pay on the store. Paste the listing link under this. Do not promise a faster ship window than the quote.",
+        "",
+        RESELLER_DISCLOSURE,
       ].join("\n"),
     },
     {
@@ -440,6 +443,8 @@ export function buildCampaign(product: Product, listing: Listing): Campaign {
         `Shot: ${product.mockups[0]?.direction ?? product.useLine}`,
         "",
         `Caption: ${product.trend.title}. ${product.useLine} ${money(retail)}. Ships in ${window}, so put the ship window in the listing and do not promise the weekend.`,
+        "",
+        RESELLER_DISCLOSURE,
       ].join("\n"),
     },
     {
@@ -460,6 +465,8 @@ export function buildCampaign(product: Product, listing: Listing): Campaign {
           .slice(0, 5)
           .map((keyword) => `#${keyword.replace(/[^a-z0-9]+/gi, "")}`)
           .join(" "),
+        "",
+        RESELLER_DISCLOSURE,
       ].join("\n"),
     },
     {
@@ -475,6 +482,8 @@ export function buildCampaign(product: Product, listing: Listing): Campaign {
         `Description: ${product.size}. ${product.material}.`,
         "",
         "Run this at people who already visited the store.",
+        "",
+        RESELLER_DISCLOSURE,
       ].join("\n"),
     },
   ];

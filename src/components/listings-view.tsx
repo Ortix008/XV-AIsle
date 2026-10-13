@@ -67,6 +67,7 @@ export function ListingsView() {
             {selectedId && pipelineItem ? (
               listing ? (
                 <ListingEditor
+                  key={listing.productId}
                   listing={listing}
                   onChange={(patch) => updateListing(listing.productId, patch)}
                   onStatus={(status) => setListingStatus(listing.productId, status)}
@@ -118,6 +119,9 @@ function ListingEditor({
     { id: string; title: string; sku: string; costCents: number; shippingCents: number; supplierName: string }[]
   >([]);
   const [catalogItemId, setCatalogItemId] = useState("");
+  const [shipsFrom, setShipsFrom] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState("");
+  const [whyWePicked, setWhyWePicked] = useState("");
   const [quote, setQuote] = useState<{
     priceCents: number;
     supplierCostCents: number;
@@ -184,6 +188,38 @@ function ListingEditor({
   const moneyFields = {
     catalogItemId,
   };
+  function sendToStore(published: boolean) {
+    setStorePending(true);
+    setStoreError(null);
+    void publishListing({
+      productId: listing.productId,
+      sku: product.sku,
+      title: listing.titles[listing.titleIndex] ?? product.titleLead,
+      description: published
+        ? [listing.description, ...listing.bullets].filter(Boolean).join("\n")
+        : listing.description,
+      priceCents,
+      image: product.mockups[0]?.src ?? "",
+      supplierName: shipperName,
+      supplierOrigin: shipperOrigin,
+      shipDaysMin: supplier.shipDaysMin,
+      shipDaysMax: supplier.shipDaysMax,
+      published,
+      madeInUsa: madeInUsa || smallShop?.madeInUsa === true,
+      shelf,
+      shipsFrom,
+      deliveryTime,
+      whyWePicked,
+      ...moneyFields,
+    }).then((message) => {
+      setStorePending(false);
+      if (message) {
+        setStoreError(message);
+        return;
+      }
+      onStatus(published ? "ready" : "draft");
+    });
+  }
   const activeSupplier = supplierId
     ? product.suppliers.find((item) => item.id === supplierId)
     : null;
@@ -205,74 +241,18 @@ function ListingEditor({
         <div className="flex flex-wrap gap-2">
           <CopyButton text={listingText(listing, product)} label="Copy listing" />
           {listing.status === "draft" ? (
-            <Button
-              type="button"
-              disabled={storePending}
-              onClick={() => {
-                setStorePending(true);
-                setStoreError(null);
-                const supplierQuote = supplier;
-                void publishListing({
-                  productId: listing.productId,
-                  sku: product.sku,
-                  title: listing.titles[listing.titleIndex] ?? product.titleLead,
-                  description: [listing.description, ...listing.bullets].filter(Boolean).join("\n"),
-                  priceCents,
-                  image: product.mockups[0]?.src ?? "",
-                  supplierName: shipperName,
-                  supplierOrigin: shipperOrigin,
-                  shipDaysMin: supplierQuote.shipDaysMin,
-                  shipDaysMax: supplierQuote.shipDaysMax,
-                  published: true,
-                  madeInUsa: madeInUsa || smallShop?.madeInUsa === true,
-                  shelf,
-                  ...moneyFields,
-                }).then((message) => {
-                  setStorePending(false);
-                  if (message) {
-                    setStoreError(message);
-                    return;
-                  }
-                  onStatus("ready");
-                });
-              }}
-            >
+            <Button type="button" disabled={storePending} onClick={() => sendToStore(true)}>
               {storePending ? "Putting it on the store…" : "Mark ready"}
             </Button>
           ) : (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={storePending}
-              onClick={() => {
-                setStorePending(true);
-                void publishListing({
-                  productId: listing.productId,
-                  sku: product.sku,
-                  title: listing.titles[listing.titleIndex] ?? product.titleLead,
-                  description: listing.description,
-                  priceCents,
-                  image: product.mockups[0]?.src ?? "",
-                  supplierName: shipperName,
-                  supplierOrigin: shipperOrigin,
-                  shipDaysMin: supplier.shipDaysMin,
-                  shipDaysMax: supplier.shipDaysMax,
-                  published: false,
-                  madeInUsa: madeInUsa || smallShop?.madeInUsa === true,
-                  shelf,
-                  ...moneyFields,
-                }).then((message) => {
-                  setStorePending(false);
-                  if (message) {
-                    setStoreError(message);
-                    return;
-                  }
-                  onStatus("draft");
-                });
-              }}
-            >
-              Return to draft
-            </Button>
+            <>
+              <Button type="button" disabled={storePending} onClick={() => sendToStore(true)}>
+                {storePending ? "Saving…" : "Update the store page"}
+              </Button>
+              <Button type="button" variant="outline" disabled={storePending} onClick={() => sendToStore(false)}>
+                Return to draft
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -364,6 +344,41 @@ function ListingEditor({
           ))}
         </div>
       </div>
+
+      <section className="flex max-w-xl flex-col gap-3">
+        <h3 className="text-sm font-medium">Open info</h3>
+        <p className="text-pretty text-xs text-muted-foreground">
+          The product page shows a line only when you fill it in. Cost, margin, and any fund share stay off the public
+          page.
+        </p>
+        <label className="flex flex-col gap-1 text-sm">
+          Ships from
+          <Input
+            value={shipsFrom}
+            maxLength={120}
+            placeholder="City, ST"
+            onChange={(event) => setShipsFrom(event.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Delivery time
+          <Input
+            value={deliveryTime}
+            maxLength={120}
+            placeholder="2–4 business days"
+            onChange={(event) => setDeliveryTime(event.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Why we picked it
+          <Textarea
+            value={whyWePicked}
+            maxLength={800}
+            rows={4}
+            onChange={(event) => setWhyWePicked(event.target.value)}
+          />
+        </label>
+      </section>
 
       <label className="block">
         <span className="text-sm font-medium">Description</span>

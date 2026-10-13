@@ -181,6 +181,9 @@ export function getDb() {
   addColumn(next, "listings", "supplier_shipping_cents", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "listings", "fee_bps", "INTEGER");
   addColumn(next, "listings", "catalog_item_id", "TEXT");
+  addColumn(next, "listings", "ships_from", "TEXT");
+  addColumn(next, "listings", "delivery_time", "TEXT");
+  addColumn(next, "listings", "why_we_picked", "TEXT");
   addColumn(next, "orders", "payment_intent_id", "TEXT");
   addColumn(next, "orders", "charge_id", "TEXT");
   addColumn(next, "orders", "transfer_group", "TEXT");

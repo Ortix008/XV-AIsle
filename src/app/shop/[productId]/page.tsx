@@ -26,6 +26,9 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
           madeInUsa: listing.madeInUsa,
           shelf: listing.shelf,
           sample: isSampleListing(listing),
+          shipsFrom: listing.shipsFrom,
+          deliveryTime: listing.deliveryTime,
+          whyWePicked: listing.whyWePicked,
         }}
       />
     </ShopFrame>

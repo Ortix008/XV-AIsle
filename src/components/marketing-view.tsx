@@ -6,6 +6,7 @@ import { CopyButton, EmptyNote, PageHeader, Tone } from "@/components/bits";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProduct } from "@/lib/catalog";
+import { RESELLER_DISCLOSURE } from "@/lib/policies";
 import { useDesk } from "@/lib/desk-store";
 import type { Post } from "@/lib/types";
 import { cn } from "cn";
@@ -23,7 +24,7 @@ export function MarketingView() {
       <PageHeader
         kicker="Cast"
         title="Social posts"
-        lede="Cast drafts posts you can copy. Share your shop link anywhere. Saying yes does not publish them."
+        lede={`Cast drafts posts you can copy. Share your shop link anywhere. Saying yes does not publish them. A post that mentions a product includes ${RESELLER_DISCLOSURE}`}
         actions={<BotControls id="marketing" />}
       />
       {ready.length === 0 ? (

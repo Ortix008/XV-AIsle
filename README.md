@@ -2,7 +2,7 @@
 
 Our mission: [MISSION.md](MISSION.md)
 
-[xvaisle.com](https://xvaisle.com) is a dropshipping marketplace. Companies with extra inventory list it. People resell that stock for extra income and never hold the box. A neighborhood shop or a national floor ships the order. You keep the sale, the supplier keeps the fulfillment, and XV-AIsle keeps the market.
+[xvaisle.com](https://xvaisle.com) is a dropshipping marketplace. Companies with extra inventory list it. People resell that stock and never hold the box. A neighborhood shop or a national floor ships the order. You keep the sale, the supplier keeps the fulfillment, and XV-AIsle keeps the market.
 
 An account is required for the seller desk. The first 30 days are free. After that, membership is $10 a month through Stripe, billed to the platform account. Shoppers can browse the public store without an account. Publishing a listing takes an active membership and a finished Stripe payout setup.
 
@@ -136,6 +136,7 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | `SMTP_PASS` | SMTP password. |
 | `MAIL_FROM` | From address. Required when `SMTP_HOST` is set. |
 | `STORE_RETURNS` | Return line shown before the operator saves one at `/shop/safety`. |
+| `STORE_SUPPORT_EMAIL` | Support email shown before the operator saves one at `/shop/safety`. |
 | `STORE_OPERATOR_EMAIL` | Account that receives the two starter products. Empty means nobody does. |
 | `ADMIN_EMAIL` | Email for one run of `admin:create`, `admin:reset-password`, or `admin:status`. Signup ignores it. |
 | `ADMIN_PASSWORD` | Password for a new admin. Leave empty to type it, or omit it when promoting an account that already exists. The reset command never reads this. |

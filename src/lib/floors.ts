@@ -1,3 +1,5 @@
+import { RESELLER_DISCLOSURE } from "./policies";
+
 export type FloorStatus = "open" | "copied" | "talking" | "shipping" | "passed";
 
 export type EnterpriseFloor = {
@@ -118,6 +120,9 @@ export function reachNote(floor: EnterpriseFloor, storeUrl: string) {
 
 export function xTimelinePost(input: { title: string; price: string; url: string; madeInUsa: boolean }) {
   const made = input.madeInUsa ? " Made in the USA." : "";
+  const disclosure = `\n${RESELLER_DISCLOSURE}`;
+  const room = 280 - disclosure.length;
   const text = `${input.title}.${made} ${input.price}. Pay on the store.\n${input.url}`;
-  return text.length <= 280 ? text : `${text.slice(0, 277)}...`;
+  const body = text.length <= room ? text : `${text.slice(0, Math.max(0, room - 3))}...`;
+  return `${body}${disclosure}`;
 }

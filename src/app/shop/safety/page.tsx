@@ -4,10 +4,13 @@ import { ReturnsForm } from "@/components/returns-form";
 import { ShopFrame } from "@/components/shop-frame";
 import { accountFromToken } from "@/lib/server/accounts";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
-import { readReturnsAddress } from "@/lib/server/settings";
+import { RETURN_WINDOW_DAYS } from "@/lib/policies";
+import { isSupportEmail, readReturnsAddress, readSupportEmail } from "@/lib/server/settings";
 
 export default async function ShopSafetyPage() {
   const returns = readReturnsAddress();
+  const storedEmail = readSupportEmail();
+  const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const account = accountFromToken(token);
   return (
@@ -34,7 +37,12 @@ export default async function ShopSafetyPage() {
           <section>
             <h2 className="text-lg font-semibold">Returns</h2>
             <p className="mt-2 text-base leading-relaxed text-foreground">
-              You can start a return within 30 days of delivery. Contact the seller and include your order number.
+              You can start a return within {RETURN_WINDOW_DAYS} days of delivery. Contact the seller and include your
+              order number. The full policy is on the{" "}
+              <Link href="/shop/returns" className="underline underline-offset-4">
+                returns page
+              </Link>
+              .
               {returns ? (
                 <>
                   {" "}
@@ -58,6 +66,12 @@ export default async function ShopSafetyPage() {
             <h2 className="text-lg font-semibold">Questions</h2>
             <p className="mt-2 text-base leading-relaxed text-foreground">
               Something late, missing, or not what you expected? Contact the seller.
+              {supportEmail ? (
+                <>
+                  {" "}
+                  Email <a className="underline underline-offset-4" href={`mailto:${supportEmail}`}>{supportEmail}</a>.
+                </>
+              ) : null}
             </p>
             <p className="mt-3 text-base">
               <Link href="/shop/contact" className="underline underline-offset-4">
@@ -66,7 +80,7 @@ export default async function ShopSafetyPage() {
             </p>
           </section>
         </div>
-        {account?.role === "admin" ? <ReturnsForm initial={returns} /> : null}
+        {account?.role === "admin" ? <ReturnsForm returns={returns} supportEmail={supportEmail} /> : null}
       </article>
     </ShopFrame>
   );
