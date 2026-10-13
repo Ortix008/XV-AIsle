@@ -81,11 +81,65 @@ export function receiptText(input: ReceiptFacts) {
   return lines.join("\n");
 }
 
+const EMAIL_SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+
 function htmlRow(label: string, value: string) {
   return `<tr>
-    <td bgcolor="#15181c" style="padding:8px 0;color:#b7b1a8;font-family:Georgia,serif;font-size:14px;line-height:1.5;">${escapeHtml(label)}</td>
-    <td bgcolor="#15181c" style="padding:8px 0 8px 16px;color:#f4f1ea;font-family:Georgia,serif;font-size:16px;line-height:1.5;">${escapeHtml(value)}</td>
+    <td bgcolor="#15181c" style="padding:8px 0;color:#b7b1a8;font-family:${EMAIL_SANS};font-size:14px;line-height:1.5;">${escapeHtml(label)}</td>
+    <td bgcolor="#15181c" style="padding:8px 0 8px 16px;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:16px;line-height:1.5;">${escapeHtml(value)}</td>
   </tr>`;
+}
+
+/** Table button with a pill radius. Outlook gets a VML roundrect; other clients get the link. */
+function buttonPaint(kind: "primary" | "outline") {
+  switch (kind) {
+    case "primary":
+      return { bg: "#3ddc84", color: "#04140a", border: "#3ddc84" };
+    case "outline":
+      return { bg: "#15181c", color: "#f4f1ea", border: "#23272d" };
+    default: {
+      const _never: never = kind;
+      return _never;
+    }
+  }
+}
+
+function emailButton(input: { href: string; label: string; kind: "primary" | "outline" }) {
+  const paint = buttonPaint(input.kind);
+  const bg = paint.bg;
+  const color = paint.color;
+  const border = paint.border;
+  const href = escapeHtml(input.href);
+  const label = escapeHtml(input.label);
+  return `<table role="presentation" class="btn-table" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;">
+    <tr>
+      <td align="center" bgcolor="${bg}" style="border-radius:999px;background-color:${bg};border:1px solid ${border};">
+        <!--[if mso]>
+        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${href}" style="height:46px;v-text-anchor:middle;width:220px;" arcsize="50%" strokecolor="${border}" strokeweight="1px" fillcolor="${bg}">
+          <w:anchorlock/>
+          <center style="color:${color};font-family:${EMAIL_SANS};font-size:15px;font-weight:bold;">${label}</center>
+        </v:roundrect>
+        <![endif]-->
+        <!--[if !mso]><!-->
+        <a class="btn-link" href="${href}" style="display:inline-block;padding:14px 22px;font-family:${EMAIL_SANS};font-size:15px;font-weight:700;line-height:1;color:${color};text-decoration:none;border-radius:999px;">${label}</a>
+        <!--<![endif]-->
+      </td>
+    </tr>
+  </table>`;
+}
+
+function actionRow(input: { receiptUrl: string; shareUrl?: string | null }) {
+  const receipt = emailButton({ href: input.receiptUrl, label: "Your receipt", kind: "outline" });
+  const share = input.shareUrl
+    ? `<td class="btn-stack" valign="top" style="padding:0;font-family:${EMAIL_SANS};">${emailButton({ href: input.shareUrl, label: "Share your find on X", kind: "primary" })}</td>
+        <td class="btn-gap" width="12" style="width:12px;font-size:0;line-height:0;font-family:${EMAIL_SANS};">&nbsp;</td>`
+    : "";
+  return `<tr><td bgcolor="#15181c" style="padding:22px 28px 0;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+      ${share}
+      <td class="btn-stack" valign="top" style="padding:0;font-family:${EMAIL_SANS};">${receipt}</td>
+    </tr></table>
+  </td></tr>`;
 }
 
 /** Email-safe receipt. Inline styles, tables, dark background, light text, no script. */
@@ -99,11 +153,7 @@ export function receiptHtml(input: ReceiptFacts) {
     input.shipsFrom?.trim() ? htmlRow("Ships from", input.shipsFrom.trim()) : "",
     eta ? htmlRow("Arrival", eta) : "",
   ].join("");
-  const share = input.shareUrl
-    ? `<tr><td colspan="2" bgcolor="#15181c" style="padding:22px 0 0;color:#f4f1ea;">
-        <a href="${escapeHtml(input.shareUrl)}" style="display:inline-block;background-color:#3ddc84;color:#04140a;font-family:Georgia,serif;font-size:15px;font-weight:700;text-decoration:none;padding:12px 18px;">Share your find on X</a>
-      </td></tr>`
-    : "";
+  const logo = `${appOrigin()}/brand/logo-official-xo.png`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -111,28 +161,38 @@ export function receiptHtml(input: ReceiptFacts) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>Order ${escapeHtml(input.number)} received</title>
+<style>
+  @media only screen and (max-width:480px) {
+    .btn-stack { display:block !important; width:100% !important; }
+    .btn-gap { display:block !important; width:100% !important; height:12px !important; line-height:12px !important; }
+    .btn-table { width:100% !important; }
+    .btn-link { display:block !important; }
+  }
+</style>
 </head>
-<body bgcolor="#07080a" style="margin:0;padding:0;background-color:#07080a;color:#f4f1ea;">
-<table role="presentation" width="100%" bgcolor="#07080a" cellpadding="0" cellspacing="0" style="background-color:#07080a;color:#f4f1ea;">
-<tr><td align="center" bgcolor="#07080a" style="padding:28px 16px;background-color:#07080a;color:#f4f1ea;">
-<table role="presentation" width="560" bgcolor="#15181c" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background-color:#15181c;color:#f4f1ea;">
-<tr><td bgcolor="#07080a" style="height:8px;background-color:#3ddc84;color:#f4f1ea;font-size:0;line-height:0;">&nbsp;</td></tr>
-<tr><td bgcolor="#15181c" style="padding:28px 28px 8px;background-color:#15181c;color:#3ddc84;font-family:Georgia,serif;font-size:12px;letter-spacing:0.16em;">ORDER ${escapeHtml(input.number)}</td></tr>
-<tr><td bgcolor="#15181c" style="padding:0 28px 8px;background-color:#15181c;color:#f4f1ea;font-family:Georgia,serif;font-size:28px;line-height:1.2;">Your order is in.</td></tr>
-<tr><td bgcolor="#15181c" style="padding:0 28px 18px;background-color:#15181c;color:#b7b1a8;font-family:Georgia,serif;font-size:15px;line-height:1.5;">Paid on xvaisle.com. The supplier ships the box.</td></tr>
-<tr><td bgcolor="#15181c" style="padding:0 28px;background-color:#15181c;color:#f4f1ea;">
+<body bgcolor="#07080a" style="margin:0;padding:0;background-color:#07080a;color:#f4f1ea;font-family:${EMAIL_SANS};">
+<table role="presentation" width="100%" bgcolor="#07080a" cellpadding="0" cellspacing="0" style="background-color:#07080a;color:#f4f1ea;font-family:${EMAIL_SANS};">
+<tr><td align="center" bgcolor="#07080a" style="padding:28px 16px;background-color:#07080a;color:#f4f1ea;font-family:${EMAIL_SANS};">
+<table role="presentation" width="560" bgcolor="#15181c" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};">
+<tr><td bgcolor="#15181c" style="padding:24px 28px 16px;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};">
+<img src="${escapeHtml(logo)}" alt="XV-AISLE" width="32" height="32" style="display:block;width:32px;height:32px;border:0;outline:none;text-decoration:none;">
+</td></tr>
+<tr><td bgcolor="#07080a" style="height:8px;background-color:#3ddc84;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:0;line-height:0;">&nbsp;</td></tr>
+<tr><td bgcolor="#15181c" style="padding:28px 28px 8px;background-color:#15181c;color:#3ddc84;font-family:${EMAIL_SANS};font-size:12px;letter-spacing:0.16em;">ORDER ${escapeHtml(input.number)}</td></tr>
+<tr><td bgcolor="#15181c" style="padding:0 28px 8px;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:28px;line-height:1.2;">Your order is in.</td></tr>
+<tr><td bgcolor="#15181c" style="padding:0 28px 18px;background-color:#15181c;color:#b7b1a8;font-family:${EMAIL_SANS};font-size:15px;line-height:1.5;">Paid on xvaisle.com. The supplier ships the box.</td></tr>
+<tr><td bgcolor="#15181c" style="padding:0 28px;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
 </td></tr>
-<tr><td bgcolor="#15181c" style="padding:18px 28px 0;background-color:#15181c;color:#b7b1a8;font-family:Georgia,serif;font-size:13px;letter-spacing:0.08em;">RETURNS</td></tr>
-<tr><td bgcolor="#15181c" style="padding:6px 28px 0;background-color:#15181c;color:#f4f1ea;font-family:Georgia,serif;font-size:15px;line-height:1.5;">${escapeHtml(returns).replace(/\n/g, "<br>")}</td></tr>
-<tr><td bgcolor="#15181c" style="padding:18px 28px 0;background-color:#15181c;color:#f4f1ea;font-family:Georgia,serif;font-size:15px;line-height:1.5;"><a href="${escapeHtml(input.receiptUrl)}" style="color:#3ddc84;">Your receipt</a></td></tr>
-${share}
-<tr><td bgcolor="#15181c" style="padding:0 28px 28px;background-color:#15181c;color:#f4f1ea;">
+<tr><td bgcolor="#15181c" style="padding:18px 28px 0;background-color:#15181c;color:#b7b1a8;font-family:${EMAIL_SANS};font-size:13px;letter-spacing:0.08em;">RETURNS</td></tr>
+<tr><td bgcolor="#15181c" style="padding:6px 28px 0;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:15px;line-height:1.5;">${escapeHtml(returns).replace(/\n/g, "<br>")}</td></tr>
+${actionRow({ receiptUrl: input.receiptUrl, shareUrl: input.shareUrl })}
+<tr><td bgcolor="#15181c" style="padding:0 28px 28px;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;"><tr>
-<td bgcolor="#3ddc84" width="25%" style="height:4px;background-color:#3ddc84;font-size:0;line-height:0;">&nbsp;</td>
-<td bgcolor="#e7c27a" width="25%" style="height:4px;background-color:#e7c27a;font-size:0;line-height:0;">&nbsp;</td>
-<td bgcolor="#e3b4c4" width="25%" style="height:4px;background-color:#e3b4c4;font-size:0;line-height:0;">&nbsp;</td>
-<td bgcolor="#7ddec4" width="25%" style="height:4px;background-color:#7ddec4;font-size:0;line-height:0;">&nbsp;</td>
+<td bgcolor="#3ddc84" width="25%" style="height:4px;background-color:#3ddc84;font-family:${EMAIL_SANS};font-size:0;line-height:0;">&nbsp;</td>
+<td bgcolor="#e7c27a" width="25%" style="height:4px;background-color:#e7c27a;font-family:${EMAIL_SANS};font-size:0;line-height:0;">&nbsp;</td>
+<td bgcolor="#e3b4c4" width="25%" style="height:4px;background-color:#e3b4c4;font-family:${EMAIL_SANS};font-size:0;line-height:0;">&nbsp;</td>
+<td bgcolor="#7ddec4" width="25%" style="height:4px;background-color:#7ddec4;font-family:${EMAIL_SANS};font-size:0;line-height:0;">&nbsp;</td>
 </tr></table>
 </td></tr>
 </table>

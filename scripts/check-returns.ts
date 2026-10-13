@@ -197,6 +197,12 @@ async function main() {
   assert(!blankHtml.includes("Ships from") && !blankHtml.includes("Arrival"), "blank receipt html omits empty facts");
   assert(!blankHtml.toLowerCase().includes("<script"), "the receipt html has no script");
   assert(blankHtml.includes('bgcolor="#07080a"') && blankHtml.includes("color:#f4f1ea"), "the receipt html is dark with a light-text fallback");
+  const sans = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+  assert(blankHtml.includes(sans) && !blankHtml.includes("Georgia"), "the receipt html uses the email sans stack");
+  assert(blankHtml.includes('alt="XV-AISLE"') && blankHtml.includes('width="32"'), "the receipt html includes the logo");
+  assert(blankHtml.includes("/brand/logo-official-xo.png"), "the logo is the brand image");
+  assert(blankHtml.includes("border-radius:999px") && blankHtml.includes("Your receipt"), "the receipt link is a pill button");
+  assert(blankHtml.includes("padding:22px 28px 0"), "the receipt button sits in the content padding");
   const sampleHtml = sampleReceiptHtml();
   assert(sampleHtml.includes("https://x.com/intent/post"), "the sample receipt shares through the X web intent");
   assert(sampleHtml.includes("Share your find on X"), "the sample receipt names the share button");
@@ -205,6 +211,11 @@ async function main() {
   assert(sampleHtml.includes("100 Example Street"), "the sample receipt includes the placeholder street");
   assert(sampleHtml.includes("Sample City") && sampleHtml.includes("00000"), "the sample receipt includes the placeholder city and ZIP");
   assert(!sampleHtml.includes("Portland") && !sampleHtml.includes("97201") && !sampleHtml.includes("Elizabeth"), "the sample receipt has no real city or ZIP");
+  assert(sampleHtml.includes(sans) && !sampleHtml.includes("Georgia"), "the sample receipt uses the email sans stack");
+  assert(sampleHtml.includes('src="http://127.0.0.1:4317/brand/logo-official-xo.png"'), "the sample logo is an absolute APP_URL image");
+  assert(sampleHtml.includes("max-width:480px") && sampleHtml.includes("btn-stack"), "the buttons stack on a narrow screen");
+  assert(sampleHtml.includes("border:1px solid #23272d"), "the receipt button is an outline");
+  assert(!sampleHtml.includes("padding:22px 0 0"), "the share button is not flush with the card edge");
 
   const captured = startMailCapture();
   getDb().prepare("UPDATE orders SET status = 'paid', paid_at = ? WHERE id = ?").run(Date.now(), pending.order.id);
@@ -216,6 +227,7 @@ async function main() {
   assert(receiptHtmlSent.includes(STREET), "the receipt html includes the supplier street");
   assert(!receiptHtmlSent.toLowerCase().includes("<script"), "the sent receipt html has no script");
   assert(receiptHtmlSent.includes("https://x.com/intent/post"), "the sent receipt html shares through the X web intent");
+  assert(receiptHtmlSent.includes(sans) && receiptHtmlSent.includes('alt="XV-AISLE"'), "the sent receipt uses the sans stack and the logo");
   assert(ops && !ops.text.includes(STREET) && !ops.text.includes("100 Example Street"), "the ops alert has neither street");
   stopMailCapture();
   const stored = getOrder(pending.order.id);
