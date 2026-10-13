@@ -19,7 +19,7 @@ function ShopCatalog() {
       lede={
         world
           ? world.story
-          : "Payment goes to Stripe. After it clears, the order is sent to the supplier that holds the stock."
+          : "Check out safely, and the supplier ships your order straight to your door."
       }
       query={filter ? `?aisle=${encodeURIComponent(filter)}` : ""}
       empty={

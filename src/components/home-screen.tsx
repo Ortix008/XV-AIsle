@@ -110,9 +110,9 @@ export function JoinScreen() {
             <Reveal className="mb-10 flex items-end justify-between gap-5">
               <div>
                 <p className="eyebrow">Aisles</p>
-                <h2 className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">Four stalls</h2>
+                <h2 className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">Four aisles</h2>
                 <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">
-                  Each stall has its own lamp. The line under the name is what that stall actually holds.
+                  {"Each one has its own glow. Here's what you'll find inside."}
                 </p>
               </div>
               <Link href="/shop" className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary">
@@ -191,7 +191,7 @@ export function JoinScreen() {
                       .
                     </li>
                     <li>Add an approved product to your shop and set a price inside the range the platform set.</li>
-                    <li>Share your shop link anywhere. The supplier ships the order. Buyers pay on xvaisle.com.</li>
+                    <li>Share your shop link anywhere. Buyers check out on xvaisle.com, and the supplier ships it.</li>
                   </ol>
                 </Reveal>
                 <Reveal as="article" index={1} className="rounded-2xl border border-border bg-card p-7">
@@ -201,7 +201,7 @@ export function JoinScreen() {
                     You already hold the goods. The platform decides what can be sold.
                   </p>
                   <ol className="mt-5 list-decimal space-y-3 pl-5 text-base leading-relaxed">
-                    <li>Open an account and choose supplier.</li>
+                    <li>Open an account and pick your supplier.</li>
                     <li>Submit the product, the cost, the shipping, and a photo.</li>
                     <li>Wait for review. Only an approved product can appear in a reseller shop.</li>
                   </ol>

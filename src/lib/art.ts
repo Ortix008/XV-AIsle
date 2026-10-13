@@ -55,7 +55,7 @@ export const welcomeDepartments = [
   {
     title: "Build Your Rig",
     src: "/art/aisle-card-build-your-rig.webp",
-    line: "The pieces that make a setup. One supplier, one price when they are bundled.",
+    line: "Everything for your setup in one place, or grab it all as a set.",
   },
   {
     title: "Tech & Desk",
@@ -78,7 +78,7 @@ export const welcomeReach = [
   {
     src: "/art/real-enterprise.png",
     title: "Big companies",
-    line: "A national floor already holds the stock. The demand finds it.",
+    line: "Big brands already have the stock. We help shoppers find it.",
   },
 ] as const;
 
@@ -100,7 +100,7 @@ export const parties = [
   {
     src: "/art/party-supplier-real.png",
     title: "The middleman",
-    body: "The supplier gets a real order and ships it from a US warehouse or a print shop.",
+    body: "The supplier ships your order from a US warehouse or print shop.",
   },
   {
     src: "/art/party-company-real.png",
