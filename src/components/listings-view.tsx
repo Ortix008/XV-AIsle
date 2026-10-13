@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BundleDesk } from "@/components/bundle-desk";
 import { BotControls } from "@/components/desk-shell";
 import { CopyButton, EmptyNote, MockupFrame, Money, PageHeader, Tone } from "@/components/bits";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ export function ListingsView() {
         lede="The page is written only after you say yes to a product. Mark it ready when you would actually sell it."
         actions={<BotControls id="listings" />}
       />
+      <BundleDesk />
       {approved.length === 0 ? (
         <EmptyNote
           title="No approved products."

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BrandMark } from "@/components/brand-mark";
@@ -118,6 +119,9 @@ export function AisleView({ aisle, onClose }: { aisle: Aisle; onClose: () => voi
         </button>
         <BrandMark wordmark={false} />
         <h2 className="min-w-0 truncate text-sm font-semibold tracking-[0.18em]">{aisle.title}</h2>
+        <Link href={`/shop?aisle=${aisle.slug}`} className="text-xs underline underline-offset-4">
+          Shop this aisle
+        </Link>
         <p className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           <span className="size-1.5 rounded-full bg-live" aria-hidden />
           Signal · {found}

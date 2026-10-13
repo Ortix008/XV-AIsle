@@ -1,8 +1,13 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { aisleBySlug, aisleByTitle, placeProduct } from "../aisles";
+import { bundlePriceRejection } from "../bundles";
+import { getProduct } from "../catalog";
 import { compareAtRejection } from "../honest-price";
+import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseListingRoute, type ListingRoute } from "../order-flags";
 import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { changed, getDb } from "./db";
+import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
 import { requestShipment } from "./supplier";
 
 export type StoreListing = {
@@ -33,6 +38,11 @@ export type StoreListing = {
   checkedBy: string | null;
   checkedOn: string | null;
   checkedNote: string | null;
+  route: ListingRoute;
+  supplierOrderUrl: string | null;
+  supplierEmail: string | null;
+  kind: "single" | "bundle";
+  aisle: string | null;
 };
 
 export type StoreOrder = {
@@ -83,6 +93,17 @@ export type StoreOrder = {
   buyerDisputeNote: string | null;
   refundRequired: boolean;
   fulfillmentFlag: string | null;
+  supplierPaidCents: number | null;
+  placedAt: number | null;
+  placeRemindedAt: number | null;
+  trackingUpdatedAt: number | null;
+  delayFlaggedAt: number | null;
+  delayNoticeSentAt: number | null;
+  delayExpectedOn: string | null;
+  delayRefundRequestedAt: number | null;
+  delayRefundDueAt: number | null;
+  delayRefundedAt: number | null;
+  refundedAt: number | null;
 };
 
 type ListingRow = {
@@ -113,6 +134,11 @@ type ListingRow = {
   checked_by?: string | null;
   checked_on?: string | null;
   checked_note?: string | null;
+  route?: string | null;
+  supplier_order_url?: string | null;
+  supplier_email?: string | null;
+  kind?: string | null;
+  aisle?: string | null;
 };
 
 type OrderRow = {
@@ -161,6 +187,17 @@ type OrderRow = {
   buyer_dispute_note?: string | null;
   refund_required?: number | null;
   fulfillment_flag?: string | null;
+  supplier_paid_cents?: number | null;
+  placed_at?: number | null;
+  place_reminded_at?: number | null;
+  tracking_updated_at?: number | null;
+  delay_flagged_at?: number | null;
+  delay_notice_sent_at?: number | null;
+  delay_expected_on?: string | null;
+  delay_refund_requested_at?: number | null;
+  delay_refund_due_at?: number | null;
+  delay_refunded_at?: number | null;
+  refunded_at?: number | null;
   fulfilling_started_at?: number | null;
   fulfillment_attempts?: number | null;
   receipt_token_hash?: string | null;
@@ -195,7 +232,33 @@ function listingFrom(row: ListingRow): StoreListing {
     checkedBy: row.checked_by?.trim() || null,
     checkedOn: row.checked_on?.trim() || null,
     checkedNote: row.checked_note?.trim() || null,
+    route: parseListingRoute(row.route),
+    supplierOrderUrl: row.supplier_order_url ?? null,
+    supplierEmail: row.supplier_email ?? null,
+    kind: row.kind === "bundle" ? "bundle" : "single",
+    aisle: row.aisle?.trim() || null,
   };
+}
+
+export function bundlePieces(bundleId: string) {
+  const rows = getDb()
+    .prepare(
+      `SELECT listings.product_id, listings.title
+       FROM bundle_items
+       JOIN listings ON listings.product_id = bundle_items.product_id
+       WHERE bundle_items.bundle_id = ?
+       ORDER BY bundle_items.position`,
+    )
+    .all(bundleId) as { product_id: string; title: string }[];
+  return rows.map((row) => ({ productId: row.product_id, title: row.title }));
+}
+
+function routedTitle(order: { title?: string | null; productId: string }, listing: StoreListing | null) {
+  const base = order.title ?? listing?.title ?? "Listing";
+  if (!listing || listing.kind !== "bundle") return base;
+  const pieces = bundlePieces(listing.productId);
+  if (pieces.length === 0) return base;
+  return `${base}. Includes ${pieces.map((piece) => piece.title).join(", ")}`;
 }
 
 /** Shopper-facing listing. Cost, margin, fees, and any fund share stay off this object. */
@@ -222,6 +285,8 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     ...(listing.checkedBy && listing.checkedOn && listing.checkedNote
       ? { checkedBy: listing.checkedBy, checkedOn: listing.checkedOn, checkedNote: listing.checkedNote }
       : {}),
+    ...(listing.aisle ? { aisle: listing.aisle } : {}),
+    ...(listing.kind === "bundle" ? { kind: "bundle" as const, includes: bundlePieces(listing.productId) } : {}),
   };
 }
 
@@ -289,6 +354,17 @@ function orderFrom(row: OrderRow, listing?: ListingRow): StoreOrder {
     buyerDisputeNote: row.buyer_dispute_note ?? null,
     refundRequired: row.refund_required === 1,
     fulfillmentFlag: row.fulfillment_flag ?? null,
+    supplierPaidCents: row.supplier_paid_cents ?? null,
+    placedAt: row.placed_at ?? null,
+    placeRemindedAt: row.place_reminded_at ?? null,
+    trackingUpdatedAt: row.tracking_updated_at ?? null,
+    delayFlaggedAt: row.delay_flagged_at ?? null,
+    delayNoticeSentAt: row.delay_notice_sent_at ?? null,
+    delayExpectedOn: row.delay_expected_on ?? null,
+    delayRefundRequestedAt: row.delay_refund_requested_at ?? null,
+    delayRefundDueAt: row.delay_refund_due_at ?? null,
+    delayRefundedAt: row.delay_refunded_at ?? null,
+    refundedAt: row.refunded_at ?? null,
   };
 }
 
@@ -312,7 +388,9 @@ function allocateOrderNumber() {
     db.prepare("INSERT INTO order_seq (id, next_number) VALUES (1, ?) ON CONFLICT(id) DO NOTHING").run(start);
     db.prepare("UPDATE order_seq SET next_number = ? WHERE id = 1 AND next_number < ?").run(start, start);
     const row = db.prepare("SELECT next_number FROM order_seq WHERE id = 1").get() as { next_number: number | bigint };
-    const next = Number(row.next_number);
+    let next = Number(row.next_number);
+    // XV-1001 is a test purchase and is never issued again.
+    if (next <= 1001) next = 1002;
     db.prepare("UPDATE order_seq SET next_number = ? WHERE id = 1").run(next + 1);
     db.exec("COMMIT");
     return next;
@@ -343,6 +421,11 @@ export function publishListing(
     | "checkedBy"
     | "checkedOn"
     | "checkedNote"
+    | "route"
+    | "supplierOrderUrl"
+    | "supplierEmail"
+    | "kind"
+    | "aisle"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -357,6 +440,10 @@ export function publishListing(
     whyWePicked?: string | null;
     brand?: string | null;
     whyItCosts?: string | null;
+    route?: ListingRoute;
+    supplierOrderUrl?: string | null;
+    supplierEmail?: string | null;
+    aisle?: string | null;
   },
 ) {
   if (!input.title.trim() || !input.sku.trim()) return { error: "The page needs a title." as const };
@@ -395,6 +482,9 @@ export function publishListing(
     deliveryTime: deliveryTime.text,
   });
   if (struck) return { error: struck };
+  const derivedAisle = aisleSlugForProduct(input.productId);
+  const aisle = input.aisle !== undefined ? input.aisle?.trim() || null : (existing?.aisle ?? derivedAisle);
+  if (aisle && !aisleBySlug(aisle)) return { error: "That aisle is not on the store." as const };
   getDb()
     .prepare(
       `INSERT INTO listings (
@@ -454,6 +544,101 @@ export function publishListing(
       brand.text,
       whyItCosts.text,
     );
+  const route = input.route ? parseListingRoute(input.route) : null;
+  const supplierOrderUrl = cleanSupplierOrderUrl(input.supplierOrderUrl);
+  const supplierEmail = cleanSupplierEmail(input.supplierEmail);
+  if (route || supplierOrderUrl || supplierEmail) {
+    getDb()
+      .prepare(
+        `UPDATE listings
+         SET route = COALESCE(?, route),
+             supplier_order_url = COALESCE(?, supplier_order_url),
+             supplier_email = COALESCE(?, supplier_email)
+         WHERE product_id = ?`,
+      )
+      .run(route, supplierOrderUrl, supplierEmail, input.productId);
+  }
+  getDb().prepare("UPDATE listings SET aisle = ? WHERE product_id = ?").run(aisle, input.productId);
+  return { listing: getListing(input.productId) };
+}
+
+function aisleSlugForProduct(productId: string) {
+  try {
+    const place = placeProduct(getProduct(productId));
+    if (!place) return null;
+    return aisleByTitle(place.aisle)?.slug ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function supplierKey(listing: StoreListing) {
+  if (listing.supplierAccountId) return `account:${listing.supplierAccountId}`;
+  return `name:${listing.supplierName.trim().toLowerCase()}`;
+}
+
+export function publishBundle(
+  account: { id: string; role: string },
+  input: {
+    productId: string;
+    sku: string;
+    title: string;
+    description: string;
+    priceCents: number;
+    image: string;
+    itemIds: string[];
+    aisle?: string | null;
+  },
+) {
+  if (account.role !== "admin") return { error: "Only an operator can price a bundle." as const };
+  const struck = bundlePriceRejection({ title: input.title, description: input.description });
+  if (struck) return { error: struck };
+  const itemIds = [...new Set(input.itemIds.map((id) => id.trim()).filter(Boolean))];
+  if (itemIds.length < 2) return { error: "A bundle needs at least two listings." as const };
+  if (itemIds.includes(input.productId)) return { error: "A bundle cannot include itself." as const };
+  const items = itemIds.map((id) => getListing(id));
+  if (items.some((item) => !item || !item.published || item.kind === "bundle")) {
+    return { error: "Every piece has to be a published listing, and not another bundle." as const };
+  }
+  const pieces = items.filter((item): item is StoreListing => item !== null);
+  const first = pieces[0];
+  if (!first || pieces.length < 2) return { error: "A bundle needs at least two listings." as const };
+  const key = supplierKey(first);
+  if (pieces.some((item) => supplierKey(item) !== key)) {
+    return { error: "A bundle can only group listings from one supplier." as const };
+  }
+  const image = input.image.trim() || first.image;
+  const published = publishListing(account.id, {
+    productId: input.productId,
+    sku: input.sku,
+    title: input.title,
+    description: input.description,
+    priceCents: input.priceCents,
+    image,
+    supplierName: first.supplierName,
+    supplierOrigin: first.supplierOrigin,
+    shipDaysMin: Math.min(...pieces.map((item) => item.shipDaysMin)),
+    shipDaysMax: Math.max(...pieces.map((item) => item.shipDaysMax)),
+    published: true,
+    madeInUsa: pieces.every((item) => item.madeInUsa),
+    shelf: pieces.every((item) => item.shelf === "small") ? "small" : "national",
+    supplierAccountId: first.supplierAccountId,
+    supplierCostCents: pieces.reduce((sum, item) => sum + item.supplierCostCents, 0),
+    supplierShippingCents: pieces.reduce((sum, item) => sum + item.supplierShippingCents, 0),
+    feeBps: first.feeBps,
+    catalogItemId: null,
+    route: first.route,
+    supplierOrderUrl: first.supplierOrderUrl,
+    supplierEmail: first.supplierEmail,
+    aisle: input.aisle,
+  });
+  if ("error" in published) return published;
+  if (!published.listing) return { error: "That bundle did not save." as const };
+  const db = getDb();
+  db.prepare("UPDATE listings SET kind = 'bundle' WHERE product_id = ?").run(input.productId);
+  db.prepare("DELETE FROM bundle_items WHERE bundle_id = ?").run(input.productId);
+  const insert = db.prepare("INSERT INTO bundle_items (bundle_id, product_id, position) VALUES (?, ?, ?)");
+  itemIds.forEach((id, index) => insert.run(input.productId, id, index));
   return { listing: getListing(input.productId) };
 }
 
@@ -493,13 +678,17 @@ export function getListing(productId: string) {
   return row ? listingFrom(row) : null;
 }
 
-export function listPublished(filter?: { madeInUsa?: boolean; shelf?: "national" | "small" }) {
+export function listPublished(filter?: { madeInUsa?: boolean; shelf?: "national" | "small"; aisle?: string }) {
   const clauses = ["published = 1"];
   const params: Array<string | number> = [];
   if (filter?.madeInUsa) clauses.push("made_in_usa = 1");
   if (filter?.shelf) {
     clauses.push("shelf = ?");
     params.push(filter.shelf);
+  }
+  if (filter?.aisle) {
+    clauses.push("aisle = ?");
+    params.push(filter.aisle);
   }
   const rows = getDb()
     .prepare(`SELECT * FROM listings WHERE ${clauses.join(" AND ")} ORDER BY title`)
@@ -636,15 +825,44 @@ export function attachStripeSession(orderId: string, sessionId: string) {
   getDb().prepare("UPDATE orders SET stripe_session_id = ? WHERE id = ?").run(sessionId, orderId);
 }
 
+const LINK_COLUMNS = {
+  customer_link_hash: "customer_link_hash",
+  ship_link_hash: "ship_link_hash",
+  delay_refund_token_hash: "delay_refund_token_hash",
+} as const;
+
+export function issueOrderToken(orderId: string, column: keyof typeof LINK_COLUMNS) {
+  const token = randomBytes(32).toString("hex");
+  const name = LINK_COLUMNS[column];
+  getDb().prepare(`UPDATE orders SET ${name} = ? WHERE id = ?`).run(receiptHash(token), orderId);
+  return token;
+}
+
 export function orderByReceiptToken(token: string) {
   if (!token || token.length < 32) return null;
-  const row = getDb().prepare("SELECT id FROM orders WHERE receipt_token_hash = ?").get(receiptHash(token)) as
+  const hash = receiptHash(token);
+  const row = getDb()
+    .prepare(
+      "SELECT id FROM orders WHERE receipt_token_hash = ? OR customer_link_hash = ? OR ship_link_hash = ?",
+    )
+    .get(hash, hash, hash) as { id: string } | undefined;
+  return row ? getOrder(row.id) : null;
+}
+
+export function orderByDelayToken(token: string) {
+  if (!token || token.length < 32) return null;
+  const row = getDb().prepare("SELECT id FROM orders WHERE delay_refund_token_hash = ?").get(receiptHash(token)) as
     | { id: string }
     | undefined;
   return row ? getOrder(row.id) : null;
 }
 
-export function markShipped(orderId: string, carrier: string, tracking: string) {
+export function markShipped(
+  orderId: string,
+  carrier: string,
+  tracking: string,
+  options?: { byAdmin?: boolean },
+) {
   const carrierName = carrier.trim();
   const trackingNumber = tracking.trim();
   if (carrierName.length < 2 || carrierName.length > 40) return { error: "Name the carrier." as const };
@@ -654,11 +872,60 @@ export function markShipped(orderId: string, carrier: string, tracking: string) 
   const order = getOrder(orderId);
   if (!order) return { error: "That order is not on file." as const };
   if (order.status === "pending") return { error: "This order is not paid." as const };
+  if (isBlockedTestOrder(order.number) || order.status === "test") {
+    return { error: "This test order must not be placed with a supplier." as const };
+  }
+  const now = Date.now();
+  const firstShip = !order.shippedAt;
+  const trackingChanged = order.trackingNumber !== trackingNumber;
+  const nextStatus = order.deliveredAt || order.status === "delivered" ? order.status : "shipped";
   getDb()
     .prepare(
-      "UPDATE orders SET carrier = ?, tracking_number = ?, shipped_at = COALESCE(shipped_at, ?) WHERE id = ?",
+      `UPDATE orders
+       SET carrier = ?,
+           tracking_number = ?,
+           shipped_at = COALESCE(shipped_at, ?),
+           tracking_updated_at = CASE WHEN ? = 1 THEN ? ELSE tracking_updated_at END,
+           status = ?
+       WHERE id = ?`,
     )
-    .run(carrierName, trackingNumber, Date.now(), orderId);
+    .run(carrierName, trackingNumber, now, options?.byAdmin ? 1 : 0, now, nextStatus, orderId);
+  if ((firstShip || trackingChanged) && nextStatus === "shipped" && !isBlockedTestOrder(order.number)) {
+    const token = issueOrderToken(orderId, "ship_link_hash");
+    void sendShippedMail({
+      to: order.email,
+      number: order.number,
+      title: order.title ?? "Order",
+      carrier: carrierName,
+      tracking: trackingNumber,
+      token,
+    });
+  }
+  return { order: getOrder(orderId)! };
+}
+
+export function placeSupplierOrder(orderId: string, input: { supplierRef: string; supplierCostCents: number }) {
+  const order = getOrder(orderId);
+  if (!order) return { error: "That order is not on file." as const };
+  if (isBlockedTestOrder(order.number) || order.status === "test") {
+    return { error: "This test order must not be placed with a supplier." as const };
+  }
+  if (order.status !== "needs_placing") return { error: "This order is not waiting to be placed." as const };
+  const supplierRef = input.supplierRef.trim();
+  if (!/^[A-Za-z0-9-]{2,40}$/.test(supplierRef)) return { error: "Enter the supplier order number." as const };
+  if (!Number.isInteger(input.supplierCostCents) || input.supplierCostCents < 0 || input.supplierCostCents > 10_000_000) {
+    return { error: "Enter the amount paid to the supplier." as const };
+  }
+  const updated = changed(
+    getDb()
+      .prepare(
+        `UPDATE orders
+         SET status = 'ordered', supplier_ref = ?, supplier_paid_cents = ?, placed_at = ?, supplier_detail = ?
+         WHERE id = ? AND status = 'needs_placing'`,
+      )
+      .run(supplierRef, input.supplierCostCents, Date.now(), "Ordered with the supplier.", orderId),
+  );
+  if (updated !== 1) return { error: "This order is not waiting to be placed." as const };
   return { order: getOrder(orderId)! };
 }
 
@@ -681,6 +948,83 @@ export function ordersForAccount(accountId: string) {
   });
 }
 
+function paidNotice(order: StoreOrder, listing: StoreListing | null) {
+  return {
+    number: order.number,
+    title: routedTitle(order, listing),
+    sku: order.sku ?? listing?.sku ?? order.productId,
+    qty: order.qty,
+    supplierOrderUrl: isBlockedTestOrder(order.number) ? null : (listing?.supplierOrderUrl ?? null),
+  };
+}
+
+async function finishManual(order: StoreOrder, listing: StoreListing | null) {
+  changed(
+    getDb()
+      .prepare(
+        "UPDATE orders SET status = 'needs_placing', supplier_detail = ? WHERE id = ? AND status = 'fulfilling'",
+      )
+      .run("Paid. We're placing this with the supplier.", order.id),
+  );
+  await sendOpsAlert({ kind: "new", ...paidNotice(order, listing) });
+}
+
+async function finishEmail(order: StoreOrder, listing: StoreListing | null) {
+  if (!listing?.supplierEmail) {
+    await finishManual(order, listing);
+    return;
+  }
+  changed(
+    getDb()
+      .prepare(
+        "UPDATE orders SET status = 'sent_to_supplier', supplier_detail = ? WHERE id = ? AND status = 'fulfilling'",
+      )
+      .run("Sent to the brand.", order.id),
+  );
+  await sendBrandOrder({
+    to: listing.supplierEmail,
+    number: order.number,
+    sku: order.sku ?? listing.sku,
+    title: routedTitle(order, listing),
+    qty: order.qty,
+    shipTo: {
+      name: order.customerName,
+      email: order.email,
+      line1: order.shipLine1,
+      city: order.shipCity,
+      region: order.shipRegion,
+      postal: order.shipPostal,
+      country: order.shipCountry,
+    },
+  });
+  await sendOpsAlert({ kind: "email-copy", ...paidNotice(order, listing) });
+}
+
+async function finishApi(order: StoreOrder, listing: StoreListing | null) {
+  const result = await requestShipment({
+    orderId: order.id,
+    number: order.number,
+    sku: listing?.sku ?? order.productId,
+    title: listing?.title ?? "Listing",
+    qty: order.qty,
+    supplierName: listing?.supplierName ?? "Supplier",
+    shipTo: {
+      name: order.customerName,
+      email: order.email,
+      line1: order.shipLine1,
+      city: order.shipCity,
+      region: order.shipRegion,
+      postal: order.shipPostal,
+      country: order.shipCountry,
+    },
+  });
+  changed(
+    getDb()
+      .prepare("UPDATE orders SET status = ?, supplier_ref = ?, supplier_detail = ? WHERE id = ? AND status = 'fulfilling'")
+      .run(result.status, result.ref, result.detail, order.id),
+  );
+}
+
 export async function fulfillPaidOrder(orderId: string) {
   const db = getDb();
   const claim = changed(
@@ -689,31 +1033,51 @@ export async function fulfillPaidOrder(orderId: string) {
     ).run(Date.now(), orderId),
   );
   if (claim !== 1) return getOrder(orderId);
-  const row = db.prepare("SELECT * FROM orders WHERE id = ?").get(orderId) as OrderRow | undefined;
-  if (!row) return null;
-  const listing = db.prepare("SELECT * FROM listings WHERE product_id = ?").get(row.product_id) as ListingRow | undefined;
-  const result = await requestShipment({
-    orderId: row.id,
-    number: row.number,
-    sku: listing?.sku ?? row.product_id,
-    title: listing?.title ?? "Listing",
-    qty: row.qty,
-    supplierName: listing?.supplier_name ?? "Supplier",
-    shipTo: {
-      name: row.customer_name,
-      email: row.email,
-      line1: row.ship_line1,
-      city: row.ship_city,
-      region: row.ship_region,
-      postal: row.ship_postal,
-      country: row.ship_country,
-    },
-  });
-  changed(
-    db
-      .prepare("UPDATE orders SET status = ?, supplier_ref = ?, supplier_detail = ? WHERE id = ? AND status = 'fulfilling'")
-      .run(result.status, result.ref, result.detail, orderId),
-  );
+  const order = getOrder(orderId);
+  if (!order) return null;
+  const listing = getListing(order.productId);
+  if (isBlockedTestOrder(order.number)) {
+    db.prepare(
+      "UPDATE orders SET status = 'test', supplier_ref = NULL, supplier_detail = ? WHERE id = ? AND status = 'fulfilling'",
+    ).run("Test order. Do not place this with a supplier.", orderId);
+    return getOrder(orderId);
+  }
+  const route = parseListingRoute(listing?.route);
+  try {
+    switch (route) {
+      case "manual":
+        await finishManual(order, listing);
+        break;
+      case "email":
+        await finishEmail(order, listing);
+        break;
+      case "api":
+        await finishApi(order, listing);
+        break;
+      default: {
+        const _never: never = route;
+        throw new Error(`Unknown route ${_never}`);
+      }
+    }
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : "The order was not routed.");
+    db.prepare(
+      "UPDATE orders SET status = 'needs_placing', supplier_detail = ? WHERE id = ? AND status = 'fulfilling'",
+    ).run("Paid. We're placing this with the supplier.", orderId);
+  }
+  const current = getOrder(orderId);
+  if (current && !isBlockedTestOrder(current.number) && current.status !== "test") {
+    const token = issueOrderToken(orderId, "customer_link_hash");
+    await sendCustomerReceipt({
+      to: current.email,
+      number: current.number,
+      title: current.title ?? listing?.title ?? "Order",
+      qty: current.qty,
+      shipDaysMin: listing?.shipDaysMin ?? 0,
+      shipDaysMax: listing?.shipDaysMax ?? 0,
+      token,
+    });
+  }
   return getOrder(orderId);
 }
 

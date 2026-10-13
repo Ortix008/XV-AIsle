@@ -1,4 +1,5 @@
 import { STORE_HOST } from "@/lib/domain";
+import { publicListing } from "@/lib/server/order-view";
 import { ensureStarterShelf, visibleOnShop } from "@/lib/server/starter-shelf";
 import { listPublished } from "@/lib/server/store";
 import { appOrigin } from "@/lib/server/stripe";
@@ -8,19 +9,22 @@ export function GET() {
   const origin = appOrigin();
   const products = listPublished()
     .filter(visibleOnShop)
-    .map((listing) => ({
-      id: listing.productId,
-      title: listing.title,
-      description: listing.description,
-      price: (listing.priceCents / 100).toFixed(2),
-      currency: "USD",
-      link: `${origin}/shop/${listing.productId}`,
-      image: listing.image ? `${origin}${listing.image}` : "",
-      availability: "in stock",
-      brand: listing.supplierName,
-      madeInUsa: listing.madeInUsa,
-      shelf: listing.shelf,
-    }));
+    .map((listing) => {
+      const page = publicListing(listing);
+      return {
+        id: page.productId,
+        title: page.title,
+        description: page.description,
+        price: (page.priceCents / 100).toFixed(2),
+        currency: "USD",
+        link: `${origin}/shop/${page.productId}`,
+        image: page.image ? `${origin}${page.image}` : "",
+        availability: "in stock",
+        brand: page.supplierName,
+        madeInUsa: page.madeInUsa,
+        shelf: page.shelf,
+      };
+    });
   return Response.json({
     domain: STORE_HOST,
     store: `${origin}/shop`,

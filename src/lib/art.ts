@@ -43,6 +43,21 @@ export const welcomeDepartments = [
     line: "Tools for working the garden. Not plants.",
   },
   { title: "Electronics", src: "/art/dept-electronics.png", line: "Small gear for the desk and the day." },
+  {
+    title: "Build Your Rig",
+    src: "/art/aisle-headphones.png",
+    line: "The pieces that make a setup. One supplier, one price when they are bundled.",
+  },
+  {
+    title: "Tech & Desk",
+    src: "/art/aisle-desklamp.png",
+    line: "Light and cable care for the desk.",
+  },
+  {
+    title: "Home & Gifts",
+    src: "/art/aisle-bags.png",
+    line: "Things to keep and things to give.",
+  },
 ] as const;
 
 export const welcomeReach = [

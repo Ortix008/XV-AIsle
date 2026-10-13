@@ -78,6 +78,38 @@ function countSlugs(products) {
   return counts;
 }
 
+function httpsUrl(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed.length < 8 || trimmed.length > 300) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function mailbox(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed.length > 120 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(trimmed)) return null;
+  return trimmed;
+}
+
+function routeOf(value) {
+  if (value === "email" || value === "api" || value === "manual") return value;
+  return "manual";
+}
+
+function ensureColumn(db, table, column, definition) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((col) => col.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 function buildRow(product, priv) {
   const title = typeof product.title === "string" ? product.title.trim() : "";
   if (title.length < 1 || title.length > 180) return { reason: "invalid title" };
@@ -109,6 +141,9 @@ function buildRow(product, priv) {
       image,
       costCents: cost,
       shippingCents: shipping,
+      route: routeOf(priv.route),
+      supplierOrderUrl: httpsUrl(priv.source_url) ?? httpsUrl(product.source_url),
+      supplierEmail: mailbox(priv.supplier_email),
     },
   };
 }
@@ -259,6 +294,10 @@ function main() {
     return;
   }
 
+  ensureColumn(db, "listings", "route", "TEXT NOT NULL DEFAULT 'manual'");
+  ensureColumn(db, "listings", "supplier_order_url", "TEXT");
+  ensureColumn(db, "listings", "supplier_email", "TEXT");
+
   const feeBps = platformFeeBps();
   const insertCatalog = db.prepare(
     `INSERT INTO supplier_catalog (
@@ -278,8 +317,8 @@ function main() {
        product_id, account_id, sku, title, description, price_cents, image,
        supplier_name, supplier_origin, ship_days_min, ship_days_max, published,
        made_in_usa, shelf, supplier_account_id, supplier_cost_cents, supplier_shipping_cents, fee_bps,
-       catalog_item_id
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       catalog_item_id, route, supplier_order_url, supplier_email
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product_id) DO UPDATE SET
        account_id = excluded.account_id,
        sku = excluded.sku,
@@ -298,7 +337,10 @@ function main() {
        supplier_cost_cents = excluded.supplier_cost_cents,
        supplier_shipping_cents = excluded.supplier_shipping_cents,
        fee_bps = excluded.fee_bps,
-       catalog_item_id = excluded.catalog_item_id`,
+       catalog_item_id = excluded.catalog_item_id,
+       route = excluded.route,
+       supplier_order_url = COALESCE(excluded.supplier_order_url, listings.supplier_order_url),
+       supplier_email = COALESCE(excluded.supplier_email, listings.supplier_email)`,
   );
 
   db.exec("BEGIN IMMEDIATE");
@@ -344,6 +386,9 @@ function main() {
         row.shippingCents,
         feeBps,
         `import-${row.slug}`,
+        row.route,
+        row.supplierOrderUrl,
+        row.supplierEmail,
       );
     }
     db.exec("COMMIT");

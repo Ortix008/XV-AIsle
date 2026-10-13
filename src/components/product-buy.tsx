@@ -33,6 +33,8 @@ export type ProductListing = {
   checkedBy?: string | null;
   checkedOn?: string | null;
   checkedNote?: string | null;
+  kind?: "bundle";
+  includes?: { productId: string; title: string }[];
 };
 
 export function ProductBuy({ listing }: { listing: ProductListing }) {
@@ -99,6 +101,21 @@ export function ProductBuy({ listing }: { listing: ProductListing }) {
           {listing.shelf === "small" ? " This is a small business." : ""}
         </p>
         <p className="mt-2 text-base text-muted-foreground">Shared by an independent reseller. You pay on xvaisle.com.</p>
+        {listing.kind === "bundle" && listing.includes && listing.includes.length > 0 ? (
+          <div className="mt-6 max-w-xl rounded-2xl border border-border bg-secondary px-5 py-4">
+            <p className="text-sm font-medium text-muted-foreground">In this bundle</p>
+            <ul className="mt-2 space-y-1">
+              {listing.includes.map((piece) => (
+                <li key={piece.productId}>
+                  <Link href={`/shop/${piece.productId}`} className="underline underline-offset-4">
+                    {piece.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-sm text-muted-foreground">One price for the group. The supplier ships the pieces together.</p>
+          </div>
+        ) : null}
         {notes ? (
           <dl className="mt-6 grid gap-3 text-base">
             {listing.shipsFrom ? (

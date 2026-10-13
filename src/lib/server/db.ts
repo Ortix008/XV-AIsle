@@ -43,6 +43,12 @@ export function getDb() {
       ship_days_max INTEGER NOT NULL,
       published INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS bundle_items (
+      bundle_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      PRIMARY KEY (bundle_id, product_id)
+    );
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY,
       number TEXT NOT NULL UNIQUE,
@@ -189,6 +195,11 @@ export function getDb() {
   addColumn(next, "listings", "checked_by", "TEXT");
   addColumn(next, "listings", "checked_on", "TEXT");
   addColumn(next, "listings", "checked_note", "TEXT");
+  addColumn(next, "listings", "route", "TEXT NOT NULL DEFAULT 'manual'");
+  addColumn(next, "listings", "supplier_order_url", "TEXT");
+  addColumn(next, "listings", "supplier_email", "TEXT");
+  addColumn(next, "listings", "kind", "TEXT NOT NULL DEFAULT 'single'");
+  addColumn(next, "listings", "aisle", "TEXT");
   addColumn(next, "orders", "payment_intent_id", "TEXT");
   addColumn(next, "orders", "charge_id", "TEXT");
   addColumn(next, "orders", "transfer_group", "TEXT");
@@ -226,6 +237,19 @@ export function getDb() {
   addColumn(next, "orders", "dispute_closed_at", "INTEGER");
   addColumn(next, "orders", "reserve_release_flag", "TEXT");
   addColumn(next, "ledger", "created_at", "INTEGER");
+  addColumn(next, "orders", "supplier_paid_cents", "INTEGER");
+  addColumn(next, "orders", "placed_at", "INTEGER");
+  addColumn(next, "orders", "place_reminded_at", "INTEGER");
+  addColumn(next, "orders", "tracking_updated_at", "INTEGER");
+  addColumn(next, "orders", "delay_flagged_at", "INTEGER");
+  addColumn(next, "orders", "delay_notice_sent_at", "INTEGER");
+  addColumn(next, "orders", "delay_expected_on", "TEXT");
+  addColumn(next, "orders", "delay_refund_token_hash", "TEXT");
+  addColumn(next, "orders", "delay_refund_requested_at", "INTEGER");
+  addColumn(next, "orders", "delay_refund_due_at", "INTEGER");
+  addColumn(next, "orders", "delay_refunded_at", "INTEGER");
+  addColumn(next, "orders", "customer_link_hash", "TEXT");
+  addColumn(next, "orders", "ship_link_hash", "TEXT");
   db = next;
   return next;
 }

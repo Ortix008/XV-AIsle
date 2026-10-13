@@ -1,3 +1,4 @@
+import { buyerOrder } from "@/lib/server/order-view";
 import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
 import { acceptSupplierDelivery } from "@/lib/server/supplier-callback";
 
@@ -8,5 +9,5 @@ export async function POST(request: Request) {
   const raw = await request.text();
   const result = await acceptSupplierDelivery(raw, request.headers.get("x-supplier-secret"));
   if ("error" in result) return Response.json({ error: result.error }, { status: result.status });
-  return Response.json({ order: result.order });
+  return Response.json({ order: result.order ? buyerOrder(result.order) : null });
 }

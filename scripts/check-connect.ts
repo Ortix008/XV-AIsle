@@ -465,6 +465,7 @@ async function main() {
   });
   assert("error" in rejectedOrder, "checkout rejects a negative reseller share");
 
+  db.prepare("UPDATE listings SET route = 'api' WHERE product_id = 'pan'").run();
   process.env.SUPPLIER_API_URL = "https://supplier.test/orders";
   process.env.SUPPLIER_API_KEY = "test-key";
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_billing";
