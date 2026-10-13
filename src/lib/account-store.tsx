@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { planStatus, trialDaysLeft, type Account, type PlanStatus } from "./account";
+import type { Account } from "./account";
 
 export type ConnectState = {
   stripeAccountId: string;
@@ -38,17 +38,13 @@ export type ReserveState = {
 type AccountApi = {
   ready: boolean;
   account: Account | null;
-  status: PlanStatus | null;
-  daysLeft: number;
   connect: ConnectState | null;
   reserve: ReserveState | null;
-  billing: boolean;
   signUp: (input: { name: string; email: string; password: string; confirmPassword: string }) => Promise<string | null>;
   totpChallenge: string | null;
   signIn: (input: { email: string; password: string }) => Promise<string | null>;
   submitTotp: (code: string) => Promise<string | null>;
   signOut: () => void;
-  stopMembership: () => Promise<void>;
   chooseRole: (role: "reseller" | "supplier") => Promise<string | null>;
   refresh: () => Promise<void>;
 };
@@ -65,7 +61,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [connect, setConnect] = useState<ConnectState | null>(null);
   const [reserve, setReserve] = useState<ReserveState | null>(null);
-  const [billing, setBilling] = useState(false);
   const [totpChallenge, setTotpChallenge] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -80,12 +75,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       account: Account | null;
       connect: ConnectState | null;
       reserve?: ReserveState | null;
-      billing?: boolean;
     };
     setAccount(data.account);
     setConnect(data.connect);
     setReserve(data.reserve ?? null);
-    setBilling(Boolean(data.billing));
   }, []);
 
   useEffect(() => {
@@ -103,13 +96,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           account: Account | null;
           connect: ConnectState | null;
           reserve?: ReserveState | null;
-          billing?: boolean;
         };
         if (cancel) return;
         setAccount(data.account);
         setConnect(data.connect);
         setReserve(data.reserve ?? null);
-        setBilling(Boolean(data.billing));
       })
       .catch(() => {
         if (!cancel) setAccount(null);
@@ -122,18 +113,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const status = account ? planStatus(account) : null;
-  const daysLeft = account ? trialDaysLeft(account) : 0;
-
   const api = useMemo<AccountApi>(
     () => ({
       ready,
       account,
-      status,
-      daysLeft,
       connect,
       reserve,
-      billing,
       totpChallenge,
       refresh,
       signUp: async ({ name, email, password, confirmPassword }) => {
@@ -185,10 +170,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           setReserve(null);
         });
       },
-      stopMembership: async () => {
-        await fetch("/api/billing/cancel", { method: "POST" });
-        await refresh();
-      },
       chooseRole: async (role) => {
         const response = await fetch("/api/account/role", {
           method: "POST",
@@ -200,7 +181,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         return null;
       },
     }),
-    [ready, account, status, daysLeft, connect, reserve, billing, totpChallenge, refresh],
+    [ready, account, connect, reserve, totpChallenge, refresh],
   );
 
   return <AccountContext.Provider value={api}>{children}</AccountContext.Provider>;

@@ -1,4 +1,4 @@
-import { hasActiveMembership, type AccountRole } from "../account";
+import type { AccountRole } from "../account";
 
 export type Actor = {
   id: string;
@@ -45,9 +45,6 @@ export function inquiryReadDecision(account: Actor | null) {
 export function publishDenial(account: Actor, connectReady: boolean) {
   if (account.role !== "reseller" && account.role !== "admin") {
     return "Only a reseller can publish a listing.";
-  }
-  if (!hasActiveMembership(account)) {
-    return "An active membership is required before a listing can go on the store.";
   }
   if (!connectReady) {
     return "Finish Stripe payout setup before publishing.";

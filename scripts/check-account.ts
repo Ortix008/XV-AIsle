@@ -1,17 +1,29 @@
-import { canKeepBotsRunning, planStatus, trialDaysLeft, TRIAL_MS } from "../src/lib/account";
+import { publishDenial, type Actor } from "../src/lib/server/access";
+import { RESELLER_COMMISSION_BPS, RESELLER_DISCLOSURE, resellerCommissionLabel } from "../src/lib/policies";
 
-const now = Date.UTC(2026, 8, 29);
-const fresh = { createdAt: now - 2 * 24 * 60 * 60 * 1000, memberSince: null };
-const expired = { createdAt: now - TRIAL_MS - 1000, memberSince: null };
-const member = { createdAt: now - TRIAL_MS - 1000, memberSince: now };
+const reseller: Actor = {
+  id: "reseller",
+  role: "reseller",
+  memberSince: null,
+  membershipStatus: null,
+  emailVerified: true,
+  totpEnabled: false,
+};
 
-if (planStatus(fresh, now) !== "trial") throw new Error("fresh account should be in the free month");
-if (trialDaysLeft(fresh, now) < 27) throw new Error("free month should have most days left");
-if (planStatus(expired, now) !== "closed") throw new Error("ended month should close the market");
-if (planStatus(member, now) !== "member") throw new Error("membership should keep a closed month open");
-if (canKeepBotsRunning("trial") || canKeepBotsRunning("closed")) {
-  throw new Error("only members leave the bots on");
+const open = publishDenial(reseller, true);
+if (open !== null) throw new Error("publishing works without a membership");
+
+const payout = publishDenial(reseller, false);
+if (payout !== "Finish Stripe payout setup before publishing.") {
+  throw new Error("payout setup is still required");
 }
-if (!canKeepBotsRunning("member")) throw new Error("members can leave the bots on");
+if (payout.toLowerCase().includes("membership")) throw new Error("publish denial should not mention membership");
 
-console.log("account checks ok", { days: trialDaysLeft(fresh, now) });
+const buyer = publishDenial({ ...reseller, role: "buyer" }, true);
+if (buyer !== "Only a reseller can publish a listing.") throw new Error("a buyer still cannot publish");
+
+if (RESELLER_COMMISSION_BPS !== 500) throw new Error("reseller commission is 5%");
+if (resellerCommissionLabel() !== "5%") throw new Error("the reseller page reads the commission constant");
+if (RESELLER_DISCLOSURE !== "#ad, I earn a commission.") throw new Error("the disclosure line changed");
+
+console.log("account checks ok", { commission: resellerCommissionLabel() });

@@ -14,9 +14,9 @@ export async function GET() {
       try {
         await refreshConnected(row.stripeAccountId);
       } catch {
-        return Response.redirect(`${origin}/membership?connect=retry`);
+        return Response.redirect(`${origin}/account?connect=retry`);
       }
     }
   }
-  return Response.redirect(`${origin}/membership?connect=return`);
+  return Response.redirect(`${origin}/account?connect=return`);
 }

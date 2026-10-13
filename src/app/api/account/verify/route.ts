@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token");
   const result = verifyEmailToken(token);
   if ("error" in result) return new Response(result.error, { status: 400 });
-  return NextResponse.redirect(`${appOrigin()}/membership?verified=1`);
+  return NextResponse.redirect(`${appOrigin()}/account?verified=1`);
 }
 
 export async function POST() {
