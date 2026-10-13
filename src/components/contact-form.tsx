@@ -34,7 +34,7 @@ export function ContactForm() {
   if (sent) return <p className="mt-6 text-sm">The seller has the note.</p>;
 
   return (
-    <form onSubmit={submit} className="mt-6 flex flex-col gap-3">
+    <form onSubmit={submit} className="mt-8 flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
       <label className="flex flex-col gap-1 text-sm">
         Name
         <Input value={name} onChange={(event) => setName(event.target.value)} required />

@@ -17,11 +17,11 @@ export function BrandMark({
         height={32}
         unoptimized
         loading="eager"
-        className="size-8 shrink-0 object-contain"
+        className="size-8 shrink-0 rounded-[7px] object-contain"
       />
       <span className="sr-only">XV-AIsle</span>
       {wordmark ? (
-        <span aria-hidden className="hidden truncate text-sm font-semibold tracking-[0.18em] sm:inline">
+        <span aria-hidden className="truncate font-heading text-[13px] font-bold tracking-[0.16em] uppercase">
           XV-AISLE
         </span>
       ) : null}

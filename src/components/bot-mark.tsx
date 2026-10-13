@@ -20,7 +20,7 @@ export function botIcon(id: BotId): LucideIcon {
 
 export function AiBadge() {
   return (
-    <span className="inline-flex items-center rounded-full border border-[#1a1a1a] px-2.5 py-0.5 text-sm font-medium text-[#1a1a1a]">
+    <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-sm font-medium text-foreground">
       AI assistant
     </span>
   );

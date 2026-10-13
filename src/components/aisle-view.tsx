@@ -107,18 +107,18 @@ export function AisleView({ aisle, onClose }: { aisle: Aisle; onClose: () => voi
       aria-modal="true"
       aria-label={aisle.title}
     >
-      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-3 bg-[#111] px-4 py-2 text-white">
+      <header className="flex min-h-[68px] shrink-0 flex-wrap items-center gap-3 border-b border-border bg-[#07080a]/90 px-4 py-2 text-foreground backdrop-blur-[14px]">
         <button
           ref={closeButtonRef}
           type="button"
-          className="text-xs text-white/70 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-live"
+          className="text-xs text-muted-foreground hover:text-foreground"
           onClick={onClose}
         >
           Close
         </button>
         <BrandMark wordmark={false} />
         <h2 className="min-w-0 truncate text-sm font-semibold tracking-[0.18em]">{aisle.title}</h2>
-        <p className="ml-auto flex items-center gap-2 text-xs text-white/70">
+        <p className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           <span className="size-1.5 rounded-full bg-live" aria-hidden />
           Signal · {found}
         </p>

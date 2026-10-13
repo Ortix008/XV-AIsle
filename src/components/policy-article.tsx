@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Reveal } from "@/components/reveal";
 import { ShopFrame } from "@/components/shop-frame";
 import { isSupportEmail, readReturnsAddress, readSupportEmail } from "@/lib/server/settings";
 
@@ -17,11 +18,11 @@ export function PolicyArticle({
   const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
   return (
     <ShopFrame>
-      <article className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-        <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">{kicker}</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">{title}</h1>
-        <div className="mt-6 space-y-4 text-base leading-relaxed text-foreground">{children}</div>
-        <section className="mt-8 space-y-3 border-t pt-6 text-base leading-relaxed">
+      <Reveal as="article" className="mx-auto max-w-2xl px-5 py-16 sm:px-10 sm:py-24">
+        <p className="eyebrow">{kicker}</p>
+        <h1 className="mt-4 text-4xl sm:text-5xl">{title}</h1>
+        <div className="mt-8 space-y-4 text-base leading-relaxed text-foreground">{children}</div>
+        <section className="mt-10 space-y-3 border-t border-border pt-6 text-base leading-relaxed">
           <h2 className="text-lg font-semibold">Contact</h2>
           {supportEmail ? (
             <p>
@@ -48,7 +49,7 @@ export function PolicyArticle({
             <p>A return address is not published yet. Start a return and the seller will send the address.</p>
           )}
         </section>
-      </article>
+      </Reveal>
     </ShopFrame>
   );
 }

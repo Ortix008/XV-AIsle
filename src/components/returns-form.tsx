@@ -35,7 +35,7 @@ export function ReturnsForm({ returns, supportEmail }: { returns: string; suppor
   }
 
   return (
-    <form onSubmit={submit} className="mt-8 flex flex-col gap-3 border bg-card p-4">
+    <form onSubmit={submit} className="mt-8 flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
       <h2 className="text-sm font-medium text-foreground">Store contact</h2>
       <p className="text-sm text-muted-foreground">
         Signed in as the operator. Buyers see these lines on Returns, Shipping, Terms, and Privacy. Use a business

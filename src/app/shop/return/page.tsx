@@ -41,9 +41,9 @@ function ReturnBody() {
   }, [sessionId]);
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-10">
-      <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">Order</p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight">After payment</h1>
+    <div className="mx-auto max-w-xl px-5 py-16 sm:px-10 sm:py-24">
+      <p className="eyebrow">Order</p>
+      <h1 className="mt-4 text-4xl sm:text-5xl">After payment</h1>
       <p className="mt-3 text-sm text-muted-foreground">{message}</p>
       {token ? (
         <p className="mt-4 text-sm">
