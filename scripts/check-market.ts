@@ -329,6 +329,13 @@ if (!resellerPage.includes('kicker="Earn with xvaisle"')) throw new Error("resel
 if (!resellerPage.includes("Join free") || !resellerPage.includes("Share your link")) {
   throw new Error("reseller steps should include Join free and Share your link");
 }
+for (const line of [
+  "No fee, no recruiting.",
+  "Post a find you'd actually use, with #ad.",
+  "Paid after the 14-day return window.",
+]) {
+  if (!resellerPage.includes(line)) throw new Error("reseller step lines should stay as written");
+}
 for (const sentence of [
   "The reseller program is free to join.",
   "We do not promise income.",

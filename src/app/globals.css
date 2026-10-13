@@ -1364,6 +1364,13 @@ video.auth-plate-media {
   line-height: 1.15;
 }
 
+.earn-step-detail {
+  margin-top: 0.45rem;
+  color: var(--muted-foreground);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
 @media (min-width: 768px) {
   .earn-steps {
     grid-template-columns: repeat(3, minmax(0, 1fr));

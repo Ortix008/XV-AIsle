@@ -5,15 +5,20 @@ import { RESELLER_DISCLOSURE, resellerCommissionLabel, resellerPayLine } from "@
 
 export const metadata: Metadata = { title: "Reseller program · XV-AIsle" };
 
-const earnSteps = ["Join free", "Share your link", `Earn ${resellerCommissionLabel()} monthly`] as const;
+const earnSteps = [
+  { title: "Join free", detail: "No fee, no recruiting." },
+  { title: "Share your link", detail: "Post a find you'd actually use, with #ad." },
+  { title: `Earn ${resellerCommissionLabel()} monthly`, detail: "Paid after the 14-day return window." },
+] as const;
 
 function EarnSteps() {
   return (
     <ol className="earn-steps">
-      {earnSteps.map((label, index) => (
-        <li key={label} className="order-sheet earn-step">
+      {earnSteps.map((step, index) => (
+        <li key={step.title} className="order-sheet earn-step">
           <p className="eyebrow">0{index + 1}</p>
-          <p className="earn-step-title">{label}</p>
+          <p className="earn-step-title">{step.title}</p>
+          <p className="earn-step-detail">{step.detail}</p>
         </li>
       ))}
     </ol>
