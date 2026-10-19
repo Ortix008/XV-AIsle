@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyArticle } from "@/components/policy-article";
-import { RESELLER_DISCLOSURE, RETURN_WINDOW_DAYS } from "@/lib/policies";
+import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
 export const metadata: Metadata = { title: "Terms · XV-AIsle" };
 
@@ -25,17 +25,9 @@ export default function TermsPage() {
         .
       </p>
       <p>
-        An independent reseller may share a product. Commission is paid only when a real sale is completed. We do not
-        promise that anyone will earn money. A public mention of a product has to say{" "}
-        <span className="font-medium">{RESELLER_DISCLOSURE}</span> Read the{" "}
         <Link href="/shop/reseller" className="underline underline-offset-4">
-          reseller program
-        </Link>{" "}
-        and the{" "}
-        <Link href="/shop/reseller/terms" className="underline underline-offset-4">
-          reseller terms
+          Reseller program coming soon.
         </Link>
-        .
       </p>
       <p>
         How we use your name, email, and shipping address is on the{" "}

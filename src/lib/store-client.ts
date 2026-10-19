@@ -19,6 +19,8 @@ export type PublishInput = {
   whyWePicked?: string;
   brand?: string;
   whyItCosts?: string;
+  hiddenFromShop?: boolean;
+  supplierUsConfirmed?: boolean;
 };
 
 export async function publishListing(input: PublishInput) {

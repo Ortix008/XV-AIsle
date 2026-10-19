@@ -1,4 +1,5 @@
-import { etaFromListing } from "@/lib/order-facts";
+import { etaFromListing, usSupplierConfirmed } from "@/lib/order-facts";
+import { RETURNS_EMAILED } from "@/lib/return-address";
 import { formatOrderReturn } from "./supplier-returns";
 import { getListing, type StoreOrder } from "./store";
 
@@ -20,9 +21,9 @@ export function orderSummary(order: StoreOrder): OrderSummary {
     title: order.title ?? listing?.title ?? "Order",
     qty: order.qty,
     amountCents: order.amountCents,
-    shipsFrom: listing?.shipsFrom?.trim() || null,
+    shipsFrom: listing && usSupplierConfirmed(listing) ? listing.shipsFrom?.trim() || null : null,
     eta: etaFromListing(listing),
-    returnAddress: formatOrderReturn(order),
+    returnAddress: listing && usSupplierConfirmed(listing) ? formatOrderReturn(order) : RETURNS_EMAILED,
     productId: order.productId,
   };
 }

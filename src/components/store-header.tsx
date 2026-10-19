@@ -2,9 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { BrandMark } from "@/components/brand-mark";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
+import { useOptionalAccount } from "@/lib/account-store";
 import { cn } from "cn";
+
+function OperatorDeskLink({ className }: { className: string }) {
+  const session = useOptionalAccount();
+  if (session?.account?.role !== "admin") return null;
+  return (
+    <Link href="/desk" className={className}>
+      Desk
+    </Link>
+  );
+}
 
 const nav = [
   { href: "/shop", label: "Shop" },
@@ -12,7 +22,7 @@ const nav = [
   { href: "/shop/small", label: "Small business" },
   { href: "/#aisles", label: "Aisles" },
   { href: HOW_WE_CHECK_HREF, label: "How we check" },
-  { href: "/#account", label: "Account" },
+  { href: "/account", label: "Account" },
 ];
 
 function focusable(button: HTMLButtonElement | null, panel: HTMLElement | null) {
@@ -102,8 +112,10 @@ export function StoreHeader() {
       >
         <div className="store-header-veil" aria-hidden />
         <div className="store-header-bar relative z-[1] mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-3 px-4 min-[900px]:h-[68px] min-[900px]:gap-4 min-[900px]:px-10 sm:px-5">
-          <Link href="/" className="min-w-0">
-            <BrandMark />
+          <Link href="/" className="brand-home shrink-0">
+            {/* Outlined wordmark. Explicit width and height keep the header from shifting. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/xv-aisle-logo.svg" height={32} width={115} alt="XV-AIsle" className="brand-logo" />
           </Link>
           <nav className="hidden items-center gap-[30px] text-sm text-muted-foreground min-[900px]:flex" aria-label="Shop">
             {nav.slice(0, 5).map((item) => (
@@ -112,20 +124,18 @@ export function StoreHeader() {
               </Link>
             ))}
           </nav>
-          <div className="flex shrink-0 items-center gap-3 text-sm text-muted-foreground min-[900px]:gap-4">
-            <Link href="/shop" className="link-slide hover:text-foreground">
+          <div className="header-tools flex shrink-0 items-center text-sm text-muted-foreground">
+            <Link href="/shop" className="tap-link link-slide hover:text-foreground">
               Search
             </Link>
-            <Link href="/#account" className="link-slide hidden hover:text-foreground min-[900px]:inline">
+            <Link href="/account" className="link-slide hidden hover:text-foreground min-[900px]:inline">
               Account
             </Link>
-            <Link href="/shop/cart" className="rounded-full border border-border px-3.5 py-1.5 text-foreground hover:border-primary">
-              Cart
-            </Link>
+            <OperatorDeskLink className="link-slide hidden hover:text-foreground min-[900px]:inline" />
             <button
               ref={buttonRef}
               type="button"
-              className="rounded-full border border-primary/40 px-3.5 py-1.5 text-foreground shadow-[0_0_18px_rgba(61,220,132,0.18)] min-[900px]:hidden"
+              className="min-h-11 rounded-full border border-primary/40 px-3.5 py-1.5 text-foreground shadow-[0_0_18px_rgba(61,220,132,0.18)] min-[900px]:hidden"
               aria-expanded={open}
               aria-controls="shop-menu"
               onClick={() => setOpen((value) => !value)}

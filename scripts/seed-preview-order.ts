@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { PREVIEW_CHECKOUT_SESSION, SAMPLE_ORDER_NUMBER, SAMPLE_RETURN_PARTS } from "../src/lib/sample-shelf";
@@ -14,7 +15,7 @@ function guardPreviewSeed() {
   if (process.env.DEMO_SEED !== "1") {
     refuse("Refusing: set DEMO_SEED=1. This script only inserts a sample order.");
   }
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.VERCEL_ENV === "production" || (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview")) {
     refuse("Refusing: this preview seed does not run in production.");
   }
   const stripeKey = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
@@ -43,7 +44,7 @@ async function main() {
   const { signUp } = await import("../src/lib/server/accounts");
   const { ensureStarterShelf } = await import("../src/lib/server/starter-shelf");
   const { appOrigin } = await import("../src/lib/server/stripe");
-  const { createPendingOrder, issueOrderToken, orderByStripeSession } = await import("../src/lib/server/store");
+  const { issueOrderToken, orderByStripeSession } = await import("../src/lib/server/store");
 
   process.env.STORE_OPERATOR_EMAIL = SAMPLE_SUPPLIER_EMAIL;
   const existingAccount = getDb().prepare("SELECT id FROM accounts WHERE email = ?").get(SAMPLE_SUPPLIER_EMAIL) as
@@ -81,17 +82,17 @@ async function main() {
       Date.now(),
     );
   ensureStarterShelf();
-  getDb()
+  const listing = getDb()
     .prepare(
-      `UPDATE listings
-       SET supplier_account_id = ?, supplier_cost_cents = 0, published = 1
+      `SELECT product_id, account_id, price_cents, supplier_account_id
+       FROM listings
        WHERE product_id = 'sheet-pan' AND supplier_name = 'Northwharf Goods'`,
     )
-    .run(supplierId);
-  const listing = getDb()
-    .prepare("SELECT product_id FROM listings WHERE product_id = 'sheet-pan' AND supplier_name = 'Northwharf Goods'")
-    .get();
+    .get() as
+    | { product_id: string; account_id: string; price_cents: number; supplier_account_id: string | null }
+    | undefined;
   if (!listing) refuse("The sample sheet pan was not published. Set DEMO_SEED=1 and try again.");
+  if (listing.supplier_account_id) refuse("The sample sheet pan must not be linked to a supplier account.");
 
   const already = orderByStripeSession(PREVIEW_CHECKOUT_SESSION);
   let orderId: string;
@@ -100,25 +101,35 @@ async function main() {
     orderId = already.id;
     token = issueOrderToken(already.id, "customer_link_hash");
   } else {
-    const created = createPendingOrder({ productId: "sheet-pan", qty: 1, ship: shipTo });
-    if ("error" in created) refuse(created.error ?? "The sample order was not created.");
-    orderId = created.order.id;
+    orderId = randomUUID();
+    const createdAt = Date.now();
     getDb()
       .prepare(
-        `UPDATE orders
-         SET status = 'paid',
-             paid_at = ?,
-             stripe_session_id = ?,
-             supplier_detail = ?
-         WHERE id = ?`,
+        `INSERT INTO orders (
+           id, number, product_id, account_id, customer_name, email, qty, amount_cents,
+           ship_line1, ship_city, ship_region, ship_postal, ship_country,
+           stripe_session_id, status, supplier_detail, created_at, paid_at
+         ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?, ?)`,
       )
       .run(
-        Date.now(),
+        orderId,
+        `XV-preview-${orderId.slice(0, 8)}`,
+        listing.product_id,
+        listing.account_id,
+        shipTo.name,
+        shipTo.email,
+        listing.price_cents,
+        shipTo.line1,
+        shipTo.city,
+        shipTo.region,
+        shipTo.postal,
+        shipTo.country,
         PREVIEW_CHECKOUT_SESSION,
         "Sample order for the confirmation page. No card was charged.",
-        orderId,
+        createdAt,
+        createdAt,
       );
-    token = created.receiptToken;
+    token = issueOrderToken(orderId, "customer_link_hash");
   }
   const holder = getDb().prepare("SELECT id FROM orders WHERE number = ?").get(SAMPLE_ORDER_NUMBER) as
     | { id: string }

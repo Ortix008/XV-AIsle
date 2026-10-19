@@ -84,6 +84,8 @@ export function sampleReceiptFacts() {
     title: item.title,
     amountCents: samplePriceCents(item),
     eta: etaFromListing(item),
+    shipDaysMin: item.shipDaysMin,
+    shipDaysMax: item.shipDaysMax,
     returnAddress: SAMPLE_RETURN_ADDRESS,
   };
 }

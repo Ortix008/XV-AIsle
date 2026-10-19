@@ -196,8 +196,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   return <AccountContext.Provider value={api}>{children}</AccountContext.Provider>;
 }
 
+export function useOptionalAccount() {
+  return useContext(AccountContext);
+}
+
 export function useAccount() {
-  const value = useContext(AccountContext);
+  const value = useOptionalAccount();
   if (!value) throw new Error("useAccount must be used inside AccountProvider");
   return value;
 }

@@ -8,7 +8,6 @@ import { ConnectPayout } from "@/components/connect-payout";
 import { Input } from "@/components/ui/input";
 import { AuthPane } from "@/components/auth-backdrop";
 import { useAccount } from "@/lib/account-store";
-import { RESELLER_DISCLOSURE, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
 
 function AuthenticatorSetup({ enabled, onChanged }: { enabled: boolean; onChanged: () => Promise<void> }) {
   const [secret, setSecret] = useState<string | null>(null);
@@ -116,7 +115,7 @@ function ReceiptEmail() {
     <form onSubmit={save} className="auth-subcard">
       <h2 className="text-base font-medium">Email for receipts</h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        X does not share an email. Add one so the shop can send receipts and a verification link.
+        {"X doesn't share your email with us. Add one here so we can send your receipts."}
       </p>
       <label className="mt-3 flex flex-col gap-1 text-base">
         Email
@@ -155,16 +154,17 @@ export function AccountView() {
       <div className="flex flex-col gap-4">
         <p className="eyebrow">Account</p>
         <h1 className="auth-title">Your account</h1>
+        {account.role === "admin" ? (
+          <Link href="/desk" className="auth-text-link w-fit">
+            Operator desk
+          </Link>
+        ) : null}
         {params.get("verified") === "1" ? <p className="text-base">Email verified.</p> : null}
         {account.role === "buyer" || account.role === "reseller" ? (
           <p className="text-pretty text-base leading-relaxed text-muted-foreground">
-            The reseller program is free to join. Commission is {resellerCommissionLabel()} of a completed sale.{" "}
-            {resellerPayLine()} If you mention a product, use these words:{" "}
-            <span className="font-medium text-foreground">{RESELLER_DISCLOSURE}</span>{" "}
             <Link href="/shop/reseller" className="auth-text-link">
-              Reseller program
+              Reseller program coming soon.
             </Link>
-            .
           </p>
         ) : null}
         <ReceiptEmail />

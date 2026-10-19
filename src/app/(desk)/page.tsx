@@ -1,5 +1,5 @@
-import { FloorView } from "@/components/floor-view";
+import { JoinScreen } from "@/components/home-screen";
 
 export default function Page() {
-  return <FloorView />;
+  return <JoinScreen />;
 }

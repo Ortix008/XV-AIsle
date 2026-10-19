@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 import { ShopFooter } from "@/components/shop-footer";
 import { StoreHeader } from "@/components/store-header";
+import { AccountProvider } from "@/lib/account-store";
 
 export function ShopFrame({ children }: { children: ReactNode }) {
   return (
+    <AccountProvider>
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <a
         href="#store-main"
@@ -17,5 +19,6 @@ export function ShopFrame({ children }: { children: ReactNode }) {
       </main>
       <ShopFooter />
     </div>
+    </AccountProvider>
   );
 }

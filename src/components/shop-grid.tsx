@@ -6,6 +6,7 @@ import { NightMotif } from "@/components/night-motif";
 import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
 import { money } from "@/lib/money";
+import { shipDaysConfirmed, unconfirmedShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
 
 export type ShopCard = {
@@ -13,7 +14,10 @@ export type ShopCard = {
   title: string;
   priceCents: number;
   image: string;
+  supplierName?: string;
   supplierOrigin: string;
+  shipsFrom?: string | null;
+  supplierUsConfirmed?: boolean;
   shipDaysMin: number;
   shipDaysMax: number;
   madeInUsa?: boolean;
@@ -30,7 +34,8 @@ function eyebrow(listing: ShopCard) {
   if (listing.sample) return "Sample";
   if (listing.madeInUsa) return "Made in the USA";
   if (listing.shelf === "small") return "Small business";
-  return listing.supplierOrigin;
+  if (usSupplierConfirmed(listing) && listing.supplierOrigin.trim()) return listing.supplierOrigin;
+  return "";
 }
 
 export function ShopGrid({
@@ -69,14 +74,14 @@ export function ShopGrid({
   const Heading = level === "page" ? "h1" : "h2";
 
   return (
-    <div className={catalog ? "mx-auto max-w-[1280px] px-5 py-8 sm:px-10 sm:py-10" : "mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]"}>
+    <div className={catalog ? "shop-catalog" : "mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]"}>
       {catalog ? (
         <>
           <header className="shop-band">
             <div className="shop-band-art" aria-hidden />
             <div className="shop-band-copy">
               <p className="eyebrow">Store</p>
-              <Heading className="mt-3 text-4xl sm:text-5xl">What is ready to ship</Heading>
+              <Heading className="page-title">{title}</Heading>
               <p className="mt-3 max-w-xl text-pretty text-base text-muted-foreground">
                 {world ? `${world.title}. ${world.story}` : lede}
               </p>
@@ -165,16 +170,35 @@ export function ShopGrid({
                 href={`/shop/${listing.productId}`}
                 data-world={cardWorld?.slug}
                 style={cardWorld ? (nightWorldVars(cardWorld) as CSSProperties) : undefined}
-                className="product-card block rounded-2xl border border-border bg-card p-2 sm:p-3"
+                className="product-card block border border-border bg-card p-2 sm:p-3"
               >
                 <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
-                <p className="mt-4 px-1 font-heading text-xs tracking-[0.14em] text-muted-foreground uppercase">
-                  {eyebrow(listing)}
-                </p>
+                {eyebrow(listing) ? (
+                  <p className="mt-4 px-1 font-heading text-xs tracking-[0.14em] text-muted-foreground uppercase">
+                    {eyebrow(listing)}
+                  </p>
+                ) : null}
                 <h3 className="mt-1 px-1 text-[15px] font-semibold tracking-[-0.01em] sm:text-[17px]">{listing.title}</h3>
                 <p className="mt-1 px-1 pb-1 text-sm text-muted-foreground">
-                  {money(listing.priceCents / 100)} · ships from {listing.supplierOrigin} in {listing.shipDaysMin}–
-                  {listing.shipDaysMax} days
+                  {money(listing.priceCents / 100)}
+                  {listing.sample ? null : (
+                    <>
+                      {" · "}
+                      {shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax) ? (
+                        usSupplierConfirmed(listing) ? (
+                          <>
+                            ships from {listing.supplierOrigin} in {listing.shipDaysMin}–{listing.shipDaysMax} days
+                          </>
+                        ) : (
+                          <>
+                            in {listing.shipDaysMin}–{listing.shipDaysMax} days
+                          </>
+                        )
+                      ) : (
+                        unconfirmedShipLine(listing)
+                      )}
+                    </>
+                  )}
                 </p>
               </Link>
             </Reveal>

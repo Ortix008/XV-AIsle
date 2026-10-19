@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
+import { MissionValues } from "@/components/mission-values";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
@@ -24,7 +25,7 @@ const columns = [
   {
     title: "Company",
     links: [
-      { href: "/shop/reseller", label: "Reseller program" },
+      { href: "/shop/reseller", label: "Reseller program coming soon." },
       { href: "/shop/reseller/terms", label: "Reseller terms" },
       { href: HOW_WE_CHECK_HREF, label: "How we check" },
       { href: "/shop/privacy", label: "Privacy" },
@@ -35,17 +36,17 @@ const columns = [
 
 export function ShopFooter() {
   return (
-    <footer className="mt-auto border-t border-border bg-[var(--footer)] pt-20 pb-9">
-      <div className="mx-auto max-w-[1280px] px-5 sm:px-10">
+    <footer className="shop-footer mt-auto bg-[var(--footer)] pb-9">
+      <MissionValues />
+      <div className="mx-auto max-w-[1280px] px-5 pt-16 sm:px-10">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
           <div>
             <Link href="/" className="inline-flex">
               <BrandMark />
             </Link>
-            <p className="mt-4 max-w-xs text-sm text-muted-foreground">A curated aisle for goods that earn their place.</p>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
               No fake discounts, countdown timers, spin wheels, or made-up stock counts.{" "}
-              <Link href={HOW_WE_CHECK_HREF} className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+              <Link href={HOW_WE_CHECK_HREF} className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
                 How we check
               </Link>
               .
@@ -56,10 +57,10 @@ export function ShopFooter() {
               <h2 className="font-heading text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
                 {column.title}
               </h2>
-              <ul className="mt-4 space-y-2.5">
+              <ul className="link-row footer-links">
                 {column.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="link-slide text-sm text-[var(--link)] hover:text-foreground">
+                    <Link href={link.href} className="tap-link link-slide text-sm text-[var(--link)] hover:text-foreground">
                       {link.label}
                     </Link>
                   </li>
@@ -79,31 +80,26 @@ export function ShopFooter() {
 
 export function CheckoutPolicies() {
   return (
-    <p className="text-base text-pretty text-muted-foreground">
-      <Link href="/shop/returns" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+    <div className="link-row policy-links">
+      <Link href="/shop/returns" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Returns
-      </Link>{" "}
-      ({RETURN_WINDOW_DAYS} days).{" "}
-      <Link href="/shop/shipping" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+      </Link>
+      <span>({RETURN_WINDOW_DAYS} days).</span>
+      <Link href="/shop/shipping" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Shipping
       </Link>
-      .{" "}
-      <Link href="/shop/terms" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+      <Link href="/shop/terms" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Terms
       </Link>
-      .{" "}
-      <Link href="/shop/privacy" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+      <Link href="/shop/privacy" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Privacy
       </Link>
-      .{" "}
-      <Link href="/shop/contact" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+      <Link href="/shop/contact" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Contact
       </Link>
-      .{" "}
-      <Link href={HOW_WE_CHECK_HREF} className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+      <Link href={HOW_WE_CHECK_HREF} className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         How we check
       </Link>
-      .
-    </p>
+    </div>
   );
 }

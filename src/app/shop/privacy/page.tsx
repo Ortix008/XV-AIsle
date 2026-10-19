@@ -17,12 +17,8 @@ export default function ShopPrivacyPage() {
         you can sign in.
       </p>
       <p>
-        The contact section below shows the support email when the operator has saved one. A return goes to the
-        supplier, and the street is on your order page after you buy. Until a support email is saved, use the{" "}
-        <Link href="/shop/contact" className="underline underline-offset-4">
-          contact form
-        </Link>
-        .
+        You can reach us at xvaisle.team@gmail.com, and we reply within 2 business days. Returns go back to the
+        supplier, and {"we'll"} email the return address when you start a return.
       </p>
       <p>
         <Link href="/shop/returns" className="underline underline-offset-4">

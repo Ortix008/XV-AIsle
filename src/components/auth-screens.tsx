@@ -1,29 +1,29 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
 import { AuthBackdrop } from "@/components/auth-backdrop";
-import { BrandMark } from "@/components/brand-mark";
 import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAccount } from "@/lib/account-store";
-import { REPLY_WITHIN_HOURS } from "@/lib/honest-price";
-import { RESELLER_DISCLOSURE, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
 
 function AuthScreen({
   title,
   lede,
   children,
+  wide = false,
+  signup = false,
 }: {
   title: string;
   lede: string;
   children: ReactNode;
+  wide?: boolean;
+  signup?: boolean;
 }) {
   return (
-    <div className="auth-screen">
+    <div className={signup ? "auth-screen auth-screen-signup" : "auth-screen"}>
       <a href="#auth-main" className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-background focus:px-3 focus:py-2">
         Skip to the form
       </a>
@@ -31,9 +31,10 @@ function AuthScreen({
       <div className="auth-screen-body">
         <div className="auth-stack">
           <Link href="/" className="auth-brand">
-            <BrandMark />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/xv-aisle-mark.svg" width={40} height={40} alt="XV-AIsle" className="auth-mark" />
           </Link>
-          <main id="auth-main" className="auth-glass">
+          <main id="auth-main" className={wide ? "auth-glass auth-glass-wide" : "auth-glass"}>
             <p className="eyebrow">Account</p>
             <h1 className="auth-title">{title}</h1>
             <p className="auth-lede">{lede}</p>
@@ -53,10 +54,29 @@ function useEnterDeskWhenSignedIn() {
   }, [ready, account, router]);
 }
 
-function ContinueWithX() {
+function XMark() {
+  return (
+    <svg className="auth-x-mark" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"
+      />
+    </svg>
+  );
+}
+
+function ContinueWithX({ disabled = false }: { disabled?: boolean }) {
+  if (disabled) {
+    return (
+      <button type="button" className="auth-x" disabled>
+        <XMark />
+        Continue with X
+      </button>
+    );
+  }
   return (
     <a href="/api/auth/x/start" className="auth-x">
-      <Image src="/brand/logo-official-xo.png" alt="" width={20} height={20} unoptimized className="auth-x-mark" />
+      <XMark />
       Continue with X
     </a>
   );
@@ -70,7 +90,15 @@ function AuthOr() {
   );
 }
 
-export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolean; xNotice?: "code" | "failed" | null }) {
+export function SignInScreen({
+  showX = false,
+  xDisabled = false,
+  xNotice = null,
+}: {
+  showX?: boolean;
+  xDisabled?: boolean;
+  xNotice?: "code" | "failed" | null;
+}) {
   const { signIn, totpChallenge, submitTotp, refresh } = useAccount();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -110,7 +138,7 @@ export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolea
   }
 
   return (
-    <AuthScreen title="Sign in" lede="Sign in to your account. The reseller program is free to join.">
+    <AuthScreen title="Sign in" lede="Welcome back. Sign in to your account.">
       <form onSubmit={onSubmit} className="auth-form">
         {totpChallenge || xCode ? (
           <label className="auth-field" htmlFor={codeId}>
@@ -130,7 +158,7 @@ export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolea
           <>
             {showX ? (
               <>
-                <ContinueWithX />
+                <ContinueWithX disabled={xDisabled} />
                 <AuthOr />
               </>
             ) : null}
@@ -162,7 +190,7 @@ export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolea
             {error}
           </p>
         ) : null}
-        <Button type="submit" disabled={pending} className="mt-1 h-12 w-full rounded-full px-6">
+        <Button type="submit" disabled={pending} className="auth-submit mt-1 h-12 w-full rounded-full px-6">
           {totpChallenge || xCode ? "Confirm code" : pending ? "Signing in…" : "Sign in"}
         </Button>
         {totpChallenge || xCode ? null : (
@@ -178,7 +206,7 @@ export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolea
   );
 }
 
-export function SignUpScreen({ showX = false }: { showX?: boolean }) {
+export function SignUpScreen({ showX = false, xDisabled = false }: { showX?: boolean; xDisabled?: boolean }) {
   const { signUp } = useAccount();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -208,14 +236,11 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
   }
 
   return (
-    <AuthScreen
-      title="Open an account"
-      lede={`Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. ${resellerPayLine()} If you mention a product, say ${RESELLER_DISCLOSURE}`}
-    >
-      <form onSubmit={onSubmit} className="auth-form">
+    <AuthScreen wide signup title="Open an account" lede="Welcome in. Let's set up your account.">
+      <form onSubmit={onSubmit} className="auth-form auth-form-signup">
         {showX ? (
           <>
-            <ContinueWithX />
+            <ContinueWithX disabled={xDisabled} />
             <AuthOr />
           </>
         ) : null}
@@ -272,60 +297,143 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
             {error}
           </p>
         ) : null}
-        <Button type="submit" disabled={pending} className="mt-1 h-12 w-full rounded-full px-6">
+        <Button type="submit" disabled={pending} className="auth-submit mt-1 h-12 w-full rounded-full px-6">
           {pending ? "Creating the account…" : "Create an account"}
         </Button>
-        <p className="text-base text-muted-foreground">
+        <div className="auth-signup-links">
           <Link href="/shop/reseller/terms" className="auth-text-link">
             Reseller terms
           </Link>
-        </p>
-        <Link href="/sign-in" className="auth-text-link w-fit">
-          I already have an account
-        </Link>
+          <Link href="/sign-in" className="auth-text-link">
+            I already have an account
+          </Link>
+        </div>
       </form>
     </AuthScreen>
   );
 }
 
 export function ResetRequestScreen() {
+  const emailId = useId();
+  const [email, setEmail] = useState("");
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    setMessage(null);
+    const response = await fetch("/api/account/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = (await response.json().catch(() => null)) as { message?: string; error?: string } | null;
+    setPending(false);
+    if (!response.ok) {
+      setError(data?.error ?? "The reset email did not send. Try again.");
+      return;
+    }
+    setMessage(data?.message ?? "If that email has an account, we'll email you a reset link.");
+  }
+
   return (
     <AuthScreen
       title="Password help"
-      lede={`This shop does not email a reset link, and this page does not change a password. Write from Contact and a person replies within ${REPLY_WITHIN_HOURS} hours.`}
+      lede="Forgot your password? We'll email you a reset link. Still stuck? Reach out from our Contact page. We reply within 2 business days."
     >
-      <div className="auth-form">
-        <p className="text-base leading-relaxed text-muted-foreground">
-          Include the email on the account so the person who replies knows which door to open.
-        </p>
-        <Link href="/shop/contact" className="pill pill-primary">
+      <form onSubmit={onSubmit} className="auth-form">
+        <label className="auth-field" htmlFor={emailId}>
+          Email
+          <Input
+            id={emailId}
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
+            maxLength={254}
+            required
+            className="h-11 md:text-base"
+          />
+        </label>
+        {error ? (
+          <p className="text-base text-late" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {message ? <p className="text-base leading-relaxed">{message}</p> : null}
+        <Button type="submit" disabled={pending} className="mt-1 h-12 w-full rounded-full px-6">
+          {pending ? "Sending the link…" : "Email me a reset link"}
+        </Button>
+        <Link href="/shop/contact" className="auth-text-link w-fit">
           Contact the shop
         </Link>
         <Link href="/sign-in" className="auth-text-link w-fit">
           Back to sign in
         </Link>
-      </div>
+      </form>
     </AuthScreen>
   );
 }
 
-export function ResetConfirmScreen() {
+export function ResetConfirmScreen({ token }: { token: string }) {
+  const [password, setPassword] = useState("");
+  const [pending, setPending] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    const response = await fetch("/api/account/reset/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    });
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    setPending(false);
+    if (!response.ok) {
+      setError(data?.error ?? "That link is not valid.");
+      return;
+    }
+    setDone(true);
+  }
+
   return (
-    <AuthScreen
-      title="Reset"
-      lede={`This page does not set a new password. There is no link to finish here. Write from Contact and a person replies within ${REPLY_WITHIN_HOURS} hours.`}
-    >
-      <div className="auth-form">
-        <Link href="/shop/contact" className="pill pill-primary">
-          Contact the shop
-        </Link>
-        <Link href="/reset" className="auth-text-link w-fit">
-          Password help
-        </Link>
-        <Link href="/sign-in" className="auth-text-link w-fit">
-          Back to sign in
-        </Link>
-      </div>
+    <AuthScreen title="Reset" lede="Choose a new password. This link works once.">
+      {done ? (
+        <div className="auth-form">
+          <p className="text-base leading-relaxed">Your password is updated. Sign in with the new one.</p>
+          <Link href="/sign-in" className="pill pill-primary">
+            Sign in
+          </Link>
+        </div>
+      ) : (
+        <form onSubmit={onSubmit} className="auth-form">
+          <PasswordField
+            label="New password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="new-password"
+            minLength={8}
+            maxLength={200}
+          />
+          {error ? (
+            <p className="text-base text-late" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <Button type="submit" disabled={pending || token.length < 32} className="mt-1 h-12 w-full rounded-full px-6">
+            {pending ? "Saving…" : "Save the new password"}
+          </Button>
+          <Link href="/reset" className="auth-text-link w-fit">
+            Email me a new link
+          </Link>
+        </form>
+      )}
     </AuthScreen>
   );
 }

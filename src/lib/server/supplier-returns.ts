@@ -1,4 +1,4 @@
-import { RETURNS_ON_ORDER, RETURNS_UNSET, formatReturnAddress, parseReturnAddress, returnAddressFromParts, type ReturnAddress } from "../return-address";
+import { RETURNS_EMAILED, formatReturnAddress, parseReturnAddress, returnAddressFromParts, type ReturnAddress } from "../return-address";
 import type { Actor } from "./access";
 import { verifiedAdmin } from "./access";
 import { getDb } from "./db";
@@ -70,8 +70,15 @@ export function resolveReturnAddress(listing: {
   return null;
 }
 
-export function returnCopyForListing(listing: Parameters<typeof resolveReturnAddress>[0]) {
-  return resolveReturnAddress(listing) ? RETURNS_ON_ORDER : RETURNS_UNSET;
+export function returnCopyForListing(
+  listing: Parameters<typeof resolveReturnAddress>[0] & {
+    supplierName?: string | null;
+    shipsFrom?: string | null;
+    supplierUsConfirmed?: boolean | null;
+  },
+) {
+  void listing;
+  return RETURNS_EMAILED;
 }
 
 export function anyReturnAddress() {
@@ -84,7 +91,7 @@ export function anyReturnAddress() {
 }
 
 export function storeReturnCopy() {
-  return anyReturnAddress() ? RETURNS_ON_ORDER : RETURNS_UNSET;
+  return RETURNS_EMAILED;
 }
 
 export function formatOrderReturn(order: {

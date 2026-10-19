@@ -32,3 +32,51 @@ if (accountSupportRef(sampleId) !== "Ref …a3f9c2") throw new Error("support re
 if (accountSupportRef(sampleId).includes("11111111")) throw new Error("support ref leaked the account id");
 
 console.log("account checks ok", { commission: resellerCommissionLabel() });
+
+async function checkPasswordReset() {
+  process.env.DATABASE_PATH = ":memory:";
+  const { signUp, requestPasswordReset, consumePasswordReset, signIn } = await import("../src/lib/server/accounts");
+  const { startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
+  const { getDb } = await import("../src/lib/server/db");
+
+  const created = signUp({ name: "Reset Buyer", email: "reset-buyer@example.com", password: "old-password" });
+  if ("error" in created) throw new Error(created.error);
+  const captured = startMailCapture();
+  const logs: string[] = [];
+  const original = console.info;
+  console.info = (...args: unknown[]) => {
+    logs.push(args.map((part) => String(part)).join(" "));
+  };
+  const asked = await requestPasswordReset("reset-buyer@example.com");
+  const missing = await requestPasswordReset("nobody@example.com");
+  console.info = original;
+  stopMailCapture();
+  if (!asked.ok || !missing.ok) throw new Error("a reset request always answers the same way");
+  const resetMail = captured.filter((message) => message.subject === "Reset your XV-AIsle password");
+  if (resetMail.length !== 1) throw new Error("password reset emails one link");
+  const token = resetMail[0]?.text.match(/token=([a-f0-9]+)/)?.[1] ?? "";
+  if (!resetMail[0]?.text.includes("/reset/confirm?token=") || token.length < 32) {
+    throw new Error("password reset sends an email reset link");
+  }
+  if (logs.some((line) => line.includes(token))) throw new Error("the reset token is not logged");
+  const stored = getDb().prepare("SELECT token_hash FROM password_resets").all() as { token_hash: string }[];
+  if (stored.length !== 1 || stored[0]?.token_hash === token || stored[0]?.token_hash.length !== 64) {
+    throw new Error("the reset token is stored as a hash");
+  }
+  const weak = consumePasswordReset(token, "short");
+  if (!("error" in weak)) throw new Error("a short password is refused");
+  const saved = consumePasswordReset(token, "new-password");
+  if ("error" in saved) throw new Error(saved.error);
+  const reused = consumePasswordReset(token, "another-password");
+  if (!("error" in reused)) throw new Error("a reset link works once");
+  const signedIn = signIn({ email: "reset-buyer@example.com", password: "new-password" });
+  if ("error" in signedIn) throw new Error("the new password signs in");
+  const oldPassword = signIn({ email: "reset-buyer@example.com", password: "old-password" });
+  if (!("error" in oldPassword)) throw new Error("the old password stops working");
+  console.log("password reset emails a one-time link");
+}
+
+checkPasswordReset().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+});

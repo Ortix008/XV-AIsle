@@ -11,8 +11,8 @@ export default function CartPage() {
         <p className="eyebrow">Cart</p>
         <h1 className="page-title">Nothing is waiting here.</h1>
         <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground">
-          This shop checks out one product at a time. Open a product, enter the shipping address, and pay on that page.
-          Stripe handles the card. We never see the card number.
+          Your cart is empty for now. We check out one product at a time. Just open a product, add your shipping address,
+          and pay right on that page.
         </p>
         <Link href="/shop" className="pill pill-primary mt-8">
           Shop the aisles

@@ -134,6 +134,11 @@ export function getDb() {
       account_id TEXT NOT NULL,
       expires_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS password_resets (
+      token_hash TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS supplier_secrets (
       account_id TEXT PRIMARY KEY,
       secret_hash TEXT NOT NULL,
@@ -200,6 +205,8 @@ export function getDb() {
   addColumn(next, "listings", "supplier_email", "TEXT");
   addColumn(next, "listings", "kind", "TEXT NOT NULL DEFAULT 'single'");
   addColumn(next, "listings", "aisle", "TEXT");
+  addColumn(next, "listings", "hidden_from_shop", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "listings", "supplier_us_confirmed", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "orders", "payment_intent_id", "TEXT");
   addColumn(next, "orders", "charge_id", "TEXT");
   addColumn(next, "orders", "transfer_group", "TEXT");
@@ -328,6 +335,10 @@ function migrateMoneyFlow(database: DatabaseSync) {
       amount_cents INTEGER NOT NULL,
       open_cents INTEGER NOT NULL,
       status TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS reseller_waitlist (
+      email TEXT PRIMARY KEY,
       created_at INTEGER NOT NULL
     );
   `);

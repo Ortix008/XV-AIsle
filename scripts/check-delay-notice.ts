@@ -89,14 +89,14 @@ async function main() {
 
   const due = await notifyUnshippedDelays(Date.UTC(2026, 9, 15, 0), new Set());
   assert(due.noticed === 1, "the order is emailed once it is past 7 business days");
-  const mail = captured.filter((message) => message.subject.includes("has not shipped"));
+  const mail = captured.filter((message) => message.subject.startsWith("An update on your order"));
   assert(mail.length === 1, "one delay email is handed to the mailer");
-  assert(mail[0]?.text.includes("within 7 business days"), "the email says the order has not shipped");
+  assert(mail[0]?.text.includes("it's been 7 business days"), "the email says the order has not shipped");
   assert(mail[0]?.text.includes("wait") && mail[0]?.text.includes("full refund"), "the email offers waiting or a full refund");
   assert(mail[0]?.text.includes("/shop/order?delay="), "the email links to the order page");
   assert(!mail[0]?.text.includes("100 Example Street"), "the delay email has no street address");
   const again = await notifyUnshippedDelays(Date.UTC(2026, 9, 16, 0), new Set());
-  assert(again.noticed === 0 && captured.filter((message) => message.subject.includes("has not shipped")).length === 1, "the delay email is not sent twice");
+  assert(again.noticed === 0 && captured.filter((message) => message.subject.startsWith("An update on your order")).length === 1, "the delay email is not sent twice");
   assert(getOrder(waitingId)?.delayNoticeSentAt != null, "the send is recorded on the order");
 
   const shippedId = paid(monday);

@@ -39,6 +39,15 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   allowedDevOrigins: ["127.0.0.1"],
   serverExternalPackages: ["node:sqlite"],
+  async redirects() {
+    return [
+      { source: "/signin", destination: "/sign-in", permanent: false },
+      { source: "/login", destination: "/sign-in", permanent: false },
+      { source: "/signup", destination: "/sign-up", permanent: false },
+      { source: "/returns", destination: "/shop/returns", permanent: false },
+      { source: "/reseller", destination: "/shop/reseller", permanent: false },
+    ];
+  },
   async headers() {
     const headers = process.env.NODE_ENV === "production" ? productionHeaders : baseHeaders;
     return [

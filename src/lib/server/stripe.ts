@@ -37,6 +37,7 @@ export type StripeSession = {
 
 const DEFAULT_VERSION = "2026-07-29.dahlia";
 const LIVE_PREFIXES = [`${["sk", "live"].join("_")}_`, `${["rk", "live"].join("_")}_`];
+const TEST_PREFIXES = [`${["sk", "test"].join("_")}_`, `${["rk", "test"].join("_")}_`];
 
 let stripeFetchImpl: typeof fetch = fetch;
 
@@ -55,6 +56,12 @@ function key() {
 
 export function stripeConfigured() {
   return Boolean(key());
+}
+
+/** True only when the configured Stripe secret is a test key. */
+export function stripeTestMode() {
+  const value = key();
+  return Boolean(value && TEST_PREFIXES.some((prefix) => value.startsWith(prefix)));
 }
 
 export function stripeVersion() {

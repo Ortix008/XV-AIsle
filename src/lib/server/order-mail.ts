@@ -1,5 +1,5 @@
 import { formatISODate } from "../business-days";
-import { RETURNS_UNSET } from "../return-address";
+import { receiptShipWindow, usSupplierConfirmed } from "../order-facts";
 import { SAMPLE_ORDER_NUMBER, sampleReceiptFacts } from "../sample-shelf";
 import { buyerShareHref } from "../x-share";
 import { dollars } from "./fees";
@@ -44,18 +44,27 @@ export type ReceiptFacts = {
   eta?: string | null;
   shipDaysMin?: number;
   shipDaysMax?: number;
+  supplierName?: string | null;
+  supplierUsConfirmed?: boolean | null;
   receiptUrl: string;
   returnAddress?: string | null;
   shareUrl?: string | null;
 };
 
-function receiptEta(input: ReceiptFacts) {
-  if (input.eta?.trim()) return input.eta.trim();
-  const max = input.shipDaysMax ?? 0;
-  const min = input.shipDaysMin ?? 0;
-  if (max <= 0) return null;
-  if (min > 0 && min !== max) return `Ships in ${min}-${max} business days.`;
-  return `Ships in ${max} business days.`;
+function shippingWindow(input: ReceiptFacts) {
+  return receiptShipWindow(input.shipDaysMin, input.shipDaysMax, input);
+}
+
+/** A place is shown only for a confirmed US supplier. The words stay the same. */
+function visibleShipsFrom(input: ReceiptFacts) {
+  const place = input.shipsFrom?.trim() ?? "";
+  if (!place || !usSupplierConfirmed(input)) return "";
+  return place;
+}
+
+function confirmedReturnAddress(address: string | null | undefined) {
+  const place = address?.trim() ?? "";
+  return place || null;
 }
 
 function escapeHtml(value: string) {
@@ -67,15 +76,15 @@ function escapeHtml(value: string) {
 }
 
 export function receiptText(input: ReceiptFacts) {
-  const eta = receiptEta(input);
-  const returns = input.returnAddress?.trim()
-    ? ["Returns ship back to the supplier at:", input.returnAddress.trim()]
-    : [RETURNS_UNSET];
-  const lines = [`Order ${input.number} received.`, "", input.title, `Qty ${input.qty}`];
+  const eta = shippingWindow(input);
+  const returns = confirmedReturnAddress(input.returnAddress);
+  const lines = [`Thanks for your order! Your order number is ${input.number}.`, "", input.title, `Qty ${input.qty}`];
   if (input.amountCents != null) lines.push(dollars(input.amountCents));
-  if (input.shipsFrom?.trim()) lines.push(`Ships from ${input.shipsFrom.trim()}`);
-  if (eta) lines.push(eta);
-  lines.push("", ...returns, "", `Your receipt: ${input.receiptUrl}`);
+  const shipsFrom = visibleShipsFrom(input);
+  if (shipsFrom) lines.push(`Ships from ${shipsFrom}`);
+  lines.push(`Shipping: ${eta}`);
+  if (returns) lines.push("", "Need to send it back? Returns go to:", returns);
+  lines.push("", `See your receipt: ${input.receiptUrl}`);
   if (input.shareUrl) lines.push(`Share your find on X: ${input.shareUrl}`);
   lines.push("");
   return lines.join("\n");
@@ -129,7 +138,7 @@ function emailButton(input: { href: string; label: string; kind: "primary" | "ou
 }
 
 function actionRow(input: { receiptUrl: string; shareUrl?: string | null }) {
-  const receipt = emailButton({ href: input.receiptUrl, label: "Your receipt", kind: "outline" });
+  const receipt = emailButton({ href: input.receiptUrl, label: "See your receipt:", kind: "outline" });
   const share = input.shareUrl
     ? `<td class="btn-stack" valign="top" style="padding:0;font-family:${EMAIL_SANS};">${emailButton({ href: input.shareUrl, label: "Share your find on X", kind: "primary" })}</td>
         <td class="btn-gap" width="12" style="width:12px;font-size:0;line-height:0;font-family:${EMAIL_SANS};">&nbsp;</td>`
@@ -144,15 +153,20 @@ function actionRow(input: { receiptUrl: string; shareUrl?: string | null }) {
 
 /** Email-safe receipt. Inline styles, tables, dark background, light text, no script. */
 export function receiptHtml(input: ReceiptFacts) {
-  const eta = receiptEta(input);
-  const returns = input.returnAddress?.trim() || RETURNS_UNSET;
+  const eta = shippingWindow(input);
+  const shipsFrom = visibleShipsFrom(input);
+  const returns = confirmedReturnAddress(input.returnAddress);
   const rows = [
     htmlRow("Item", input.title),
     htmlRow("Qty", String(input.qty)),
     input.amountCents != null ? htmlRow("Paid", dollars(input.amountCents)) : "",
-    input.shipsFrom?.trim() ? htmlRow("Ships from", input.shipsFrom.trim()) : "",
-    eta ? htmlRow("Arrival", eta) : "",
+    shipsFrom ? htmlRow("Ships from", shipsFrom) : "",
+    htmlRow("Shipping", eta),
   ].join("");
+  const returnsBlock = returns
+    ? `<tr><td bgcolor="#15181c" style="padding:18px 28px 0;background-color:#15181c;color:#b7b1a8;font-family:${EMAIL_SANS};font-size:13px;letter-spacing:0.08em;">RETURNS</td></tr>
+<tr><td bgcolor="#15181c" style="padding:6px 28px 0;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:15px;line-height:1.5;">Need to send it back? Returns go to:<br>${escapeHtml(returns).replace(/\n/g, "<br>")}</td></tr>`
+    : "";
   const logo = `${appOrigin()}/brand/logo-official-xo.png`;
   return `<!DOCTYPE html>
 <html lang="en">
@@ -180,12 +194,11 @@ export function receiptHtml(input: ReceiptFacts) {
 <tr><td bgcolor="#07080a" style="height:8px;background-color:#3ddc84;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:0;line-height:0;">&nbsp;</td></tr>
 <tr><td bgcolor="#15181c" style="padding:28px 28px 8px;background-color:#15181c;color:#3ddc84;font-family:${EMAIL_SANS};font-size:12px;letter-spacing:0.16em;">ORDER ${escapeHtml(input.number)}</td></tr>
 <tr><td bgcolor="#15181c" style="padding:0 28px 8px;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:28px;line-height:1.2;">Your order is in.</td></tr>
-<tr><td bgcolor="#15181c" style="padding:0 28px 18px;background-color:#15181c;color:#b7b1a8;font-family:${EMAIL_SANS};font-size:15px;line-height:1.5;">Paid on xvaisle.com. The supplier ships the box.</td></tr>
+<tr><td bgcolor="#15181c" style="padding:0 28px 18px;background-color:#15181c;color:#b7b1a8;font-family:${EMAIL_SANS};font-size:15px;line-height:1.5;">You're all paid up. The supplier who has your item will pack it up and send it your way.</td></tr>
 <tr><td bgcolor="#15181c" style="padding:0 28px;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
 </td></tr>
-<tr><td bgcolor="#15181c" style="padding:18px 28px 0;background-color:#15181c;color:#b7b1a8;font-family:${EMAIL_SANS};font-size:13px;letter-spacing:0.08em;">RETURNS</td></tr>
-<tr><td bgcolor="#15181c" style="padding:6px 28px 0;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:15px;line-height:1.5;">${escapeHtml(returns).replace(/\n/g, "<br>")}</td></tr>
+${returnsBlock}
 ${actionRow({ receiptUrl: input.receiptUrl, shareUrl: input.shareUrl })}
 <tr><td bgcolor="#15181c" style="padding:0 28px 28px;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;"><tr>
@@ -210,7 +223,8 @@ export function sampleReceiptHtml() {
     title: sample.title,
     qty: 1,
     amountCents: sample.amountCents,
-    eta: sample.eta,
+    shipDaysMin: sample.shipDaysMin,
+    shipDaysMax: sample.shipDaysMax,
     receiptUrl: "https://xvaisle.com/shop/order?token=sample",
     returnAddress: sample.returnAddress,
     shareUrl: buyerShareHref({ title: sample.title, productUrl }),
@@ -226,13 +240,13 @@ export function shippedText(input: {
 }) {
   const link = trackingUrl(input.carrier, input.tracking);
   const lines = [
-    `Order ${input.number} shipped.`,
+    `Good news, your order ${input.number} is on its way!`,
     "",
     input.title,
     `Carrier: ${input.carrier}`,
     `Tracking: ${input.tracking}`,
   ];
-  if (link) lines.push(`Track: ${link}`);
+  if (link) lines.push(`Track your package: ${link}`);
   lines.push("", `Your receipt: ${input.receiptUrl}`, "");
   return lines.join("\n");
 }
@@ -300,11 +314,11 @@ export function brandOrderText(input: {
 /** Buyer mail after 7 business days with no shipment. No invented ship date. */
 export function unshippedDelayText(input: { number: string; title: string; orderUrl: string }) {
   return [
-    `Order ${input.number} has not shipped within 7 business days.`,
+    `We're sorry, your order ${input.number} hasn't shipped yet, and it's been 7 business days.`,
     "",
     input.title,
     "",
-    "You can wait, or cancel for a full refund.",
+    "You're welcome to wait, or you can cancel for a full refund. It's your call.",
     "",
     `Your order: ${input.orderUrl}`,
     "",
@@ -319,15 +333,15 @@ export function delayNoticeText(input: {
   receiptUrl: string;
 }) {
   return [
-    `Order ${input.number} has not shipped within the time we promised.`,
+    `We're sorry, your order ${input.number} is taking longer than we expected.`,
     "",
     input.title,
-    `The new expected date is ${formatISODate(input.expectedOn)}.`,
+    `It should now ship by ${formatISODate(input.expectedOn)}.`,
     "",
-    "You can choose a full refund instead. If you do, we refund the charge in Stripe within 7 working days.",
+    "If you'd rather not wait, you can get a full refund instead.",
     "",
     `Request a refund: ${input.refundUrl}`,
-    `Your receipt: ${input.receiptUrl}`,
+    `See your receipt: ${input.receiptUrl}`,
     "",
   ].join("\n");
 }
@@ -354,6 +368,8 @@ export async function sendCustomerReceipt(input: {
   eta?: string | null;
   shipDaysMin: number;
   shipDaysMax: number;
+  supplierName?: string | null;
+  supplierUsConfirmed?: boolean | null;
   token: string;
   productId?: string | null;
   returnAddress?: string | null;
@@ -365,7 +381,7 @@ export async function sendCustomerReceipt(input: {
   const facts: ReceiptFacts = { ...input, receiptUrl: link, shareUrl };
   return deliver({
     to: input.to,
-    subject: `Order ${input.number} received`,
+    subject: `Thanks! We've got your XV-AIsle order (${input.number})`,
     text: receiptText(facts),
     html: receiptHtml(facts),
   });
@@ -381,7 +397,7 @@ export async function sendShippedMail(input: {
 }) {
   return deliver({
     to: input.to,
-    subject: `Order ${input.number} shipped`,
+    subject: `Good news, your order ${input.number} is on its way!`,
     text: shippedText({ ...input, receiptUrl: receiptUrl(input.token) }),
   });
 }
@@ -438,7 +454,7 @@ export async function sendUnshippedDelayMail(input: {
 }) {
   return deliver({
     to: input.to,
-    subject: `Order ${input.number} has not shipped`,
+    subject: `An update on your order ${input.number}`,
     text: unshippedDelayText({
       number: input.number,
       title: input.title,
@@ -457,7 +473,7 @@ export async function sendDelayNoticeMail(input: {
 }) {
   return deliver({
     to: input.to,
-    subject: `Order ${input.number} delayed`,
+    subject: `Your order ${input.number} is running late`,
     text: delayNoticeText({
       number: input.number,
       title: input.title,

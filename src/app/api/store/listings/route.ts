@@ -49,6 +49,8 @@ export async function POST(request: Request) {
     whyWePicked?: string;
     brand?: string;
     whyItCosts?: string;
+    hiddenFromShop?: boolean;
+    supplierUsConfirmed?: boolean;
     kind?: string;
     itemIds?: unknown;
     aisle?: string;
@@ -83,6 +85,8 @@ export async function POST(request: Request) {
     whyWePicked: typeof body.whyWePicked === "string" ? body.whyWePicked : undefined,
     brand: typeof body.brand === "string" ? body.brand : undefined,
     whyItCosts: typeof body.whyItCosts === "string" ? body.whyItCosts : undefined,
+    ...(typeof body.hiddenFromShop === "boolean" ? { hiddenFromShop: body.hiddenFromShop } : {}),
+    ...(typeof body.supplierUsConfirmed === "boolean" ? { supplierUsConfirmed: body.supplierUsConfirmed } : {}),
   });
   if (result.status !== 200 || !result.listing) {
     const status = result.status === 200 ? 400 : result.status;

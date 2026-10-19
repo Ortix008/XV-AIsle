@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { isAccountRole, type AccountRole } from "../account";
 import { changed, getDb } from "./db";
-import { sendVerificationLink } from "./mail";
+import { sendMail, sendVerificationLink } from "./mail";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password";
 import { authSecretReady, decryptSecret, encryptSecret, generateTotpSecret, verifyTotp } from "./totp";
 
@@ -171,6 +171,61 @@ export function verifyEmailToken(token: string | null | undefined) {
   db.prepare("UPDATE accounts SET email_verified = 1 WHERE id = ?").run(row.account_id);
   db.prepare("DELETE FROM email_verifications WHERE account_id = ?").run(row.account_id);
   return { account: getAccount(row.account_id) };
+}
+
+const RESET_MS = 60 * 60 * 1000;
+
+function resetOrigin() {
+  return (process.env.APP_URL ?? "http://127.0.0.1:4317").replace(/\/$/, "");
+}
+
+/** Always resolves the same way, whether or not that email has an account. */
+export async function requestPasswordReset(email: string) {
+  const normalized = email.trim().toLowerCase();
+  if (normalized.length > 120 || !normalized.includes("@") || !normalized.includes(".") || pendingReceiptEmail(normalized)) {
+    return { ok: true as const };
+  }
+  const row = getDb().prepare("SELECT id, email FROM accounts WHERE email = ?").get(normalized) as
+    | { id: string; email: string }
+    | undefined;
+  if (!row || pendingReceiptEmail(row.email)) return { ok: true as const };
+  const token = randomBytes(32).toString("hex");
+  const expires = Date.now() + RESET_MS;
+  const db = getDb();
+  db.prepare("DELETE FROM password_resets WHERE account_id = ?").run(row.id);
+  db.prepare("INSERT INTO password_resets (token_hash, account_id, expires_at) VALUES (?, ?, ?)").run(
+    tokenHash(token),
+    row.id,
+    expires,
+  );
+  const link = `${resetOrigin()}/reset/confirm?token=${token}`;
+  await sendMail({
+    to: row.email,
+    subject: "Reset your XV-AIsle password",
+    text: `Choose a new password:\n${link}\n\nThis link works once and then expires. If you didn't ask for it, you can ignore this email.\n`,
+  });
+  return { ok: true as const };
+}
+
+export function consumePasswordReset(token: string, password: string) {
+  if (!token || token.length < 32 || token.length > 200) return { error: "That link is not valid." as const };
+  if (password.length < 8) return { error: "Use at least 8 characters." as const };
+  if (password.length > 200) return { error: "Use a shorter password." as const };
+  const db = getDb();
+  const row = db.prepare("SELECT account_id, expires_at FROM password_resets WHERE token_hash = ?").get(tokenHash(token)) as
+    | { account_id: string; expires_at: number }
+    | undefined;
+  if (!row || row.expires_at < Date.now()) {
+    if (row) db.prepare("DELETE FROM password_resets WHERE token_hash = ?").run(tokenHash(token));
+    return { error: "That link is not valid." as const };
+  }
+  const { salt, hash } = hashPassword(password);
+  db.prepare(
+    "UPDATE accounts SET password_hash = ?, password_salt = ?, failed_logins = 0, locked_until = NULL WHERE id = ?",
+  ).run(hash, salt, row.account_id);
+  db.prepare("DELETE FROM password_resets WHERE account_id = ?").run(row.account_id);
+  db.prepare("DELETE FROM sessions WHERE account_id = ?").run(row.account_id);
+  return { ok: true as const };
 }
 
 /**

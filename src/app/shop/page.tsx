@@ -15,17 +15,17 @@ function ShopCatalog() {
   return (
     <ShopGrid
       kicker={world || aisle ? "Aisle" : "Store"}
-      title={world ? world.title : aisle ? aisle.title : "What is ready to ship"}
+      title={world ? world.title : aisle ? aisle.title : "What's on the shelves"}
       lede={
         world
           ? world.story
-          : "Payment goes to Stripe. After it clears, the order is sent to the supplier that holds the stock."
+          : "Pay safely with Stripe, and your order ships straight to your door."
       }
       query={filter ? `?aisle=${encodeURIComponent(filter)}` : ""}
       empty={
         world || aisle
-          ? "This stall is quiet for now. The next pieces show up here when they are ready."
-          : "Nothing is marked ready yet."
+          ? "This aisle is quiet for now. Every piece is reviewed before it's listed, and new ones will show up here."
+          : "Nothing's on the shelves yet. We're picking the first pieces now."
       }
       world={world}
       catalog
