@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -156,9 +157,9 @@ export function ConnectPayout() {
       ) : null}
       {account.role === "buyer" ? (
         <div className="flex flex-wrap gap-2">
-          <Button type="button" disabled={pending !== null} onClick={() => void pick("reseller")}>
-            {pending === "reseller" ? "Saving…" : "I resell"}
-          </Button>
+          <Link href="/shop/reseller" className="pill pill-ghost">
+            Resellers coming soon
+          </Link>
           <Button type="button" variant="outline" disabled={pending !== null} onClick={() => void pick("supplier")}>
             {pending === "supplier" ? "Saving…" : "I supply"}
           </Button>

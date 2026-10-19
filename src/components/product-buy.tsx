@@ -45,10 +45,12 @@ export function ProductBuy({
   listing,
   returnNote,
   shareHref,
+  testMode = false,
 }: {
   listing: ProductListing;
   returnNote: string;
   shareHref: string;
+  testMode?: boolean;
 }) {
   const formReveal = useReveal<HTMLFormElement>(1);
   const [error, setError] = useState<string | null>(null);
@@ -162,6 +164,11 @@ export function ProductBuy({
         </p>
       </div>
       <form {...formReveal} onSubmit={checkout} className="order-3 flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:p-6">
+        {testMode ? (
+          <p className="rounded-xl border border-primary bg-primary/15 px-3 py-2 text-center text-sm font-semibold tracking-wide text-primary" role="status">
+            Test mode
+          </p>
+        ) : null}
         <h2 className="text-xl">Checkout</h2>
         <label className="flex flex-col gap-1 text-base">
           Quantity

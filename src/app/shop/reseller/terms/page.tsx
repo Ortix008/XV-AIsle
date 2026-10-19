@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Reseller terms · XV-AIsle" };
 export default function ResellerTermsPage() {
   return (
     <PolicyArticle kicker="Store" title="Affiliate and reseller terms">
-      <p>The reseller program is free to join. There is no fee to open an account or to publish a listing.</p>
+      <p>Resellers coming soon.</p>
       <p>
         Commission is {resellerCommissionLabel()} of a completed sale on xvaisle.com. A signup, a click, or a post is
         not a sale. Commission is paid only when a customer completes a purchase.

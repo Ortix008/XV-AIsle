@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
+import { MissionValues } from "@/components/mission-values";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
@@ -35,14 +36,14 @@ const columns = [
 
 export function ShopFooter() {
   return (
-    <footer className="mt-auto border-t border-border bg-[var(--footer)] pt-20 pb-9">
-      <div className="mx-auto max-w-[1280px] px-5 sm:px-10">
+    <footer className="mt-auto bg-[var(--footer)] pb-9">
+      <MissionValues />
+      <div className="mx-auto max-w-[1280px] px-5 pt-16 sm:px-10">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
           <div>
             <Link href="/" className="inline-flex">
               <BrandMark />
             </Link>
-            <p className="mt-4 max-w-xs text-sm text-muted-foreground">A curated aisle for goods that earn their place.</p>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
               No fake discounts, countdown timers, spin wheels, or made-up stock counts.{" "}
               <Link href={HOW_WE_CHECK_HREF} className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">

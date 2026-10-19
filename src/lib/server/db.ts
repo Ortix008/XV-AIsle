@@ -330,6 +330,10 @@ function migrateMoneyFlow(database: DatabaseSync) {
       status TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS reseller_waitlist (
+      email TEXT PRIMARY KEY,
+      created_at INTEGER NOT NULL
+    );
   `);
 }
 

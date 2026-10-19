@@ -1,45 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ResellerWaitlist } from "@/components/reseller-waitlist";
 import { PolicyArticle } from "@/components/policy-article";
-import { RESELLER_DISCLOSURE, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
+import { RESELLER_DISCLOSURE } from "@/lib/policies";
 
 export const metadata: Metadata = { title: "Reseller program · XV-AIsle" };
 
-const earnSteps = [
-  { title: "Join free", detail: "No fee, no recruiting." },
-  { title: "Share your link", detail: "Post a find you'd actually use, with #ad." },
-  { title: `Earn ${resellerCommissionLabel()} monthly`, detail: "Paid after the 14-day return window." },
-] as const;
-
-function EarnSteps() {
-  return (
-    <ol className="earn-steps">
-      {earnSteps.map((step, index) => (
-        <li key={step.title} className="order-sheet earn-step">
-          <p className="eyebrow">0{index + 1}</p>
-          <p className="earn-step-title">{step.title}</p>
-          <p className="earn-step-detail">{step.detail}</p>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 export default function ResellerPage() {
   return (
-    <PolicyArticle kicker="Earn with xvaisle" title="Reseller program" story underHero={<EarnSteps />}>
-      <p>
-        The reseller program is free to join. There is no sign-up fee and no payment for recruiting other people.
-        Commission is {resellerCommissionLabel()} of a completed sale. {resellerPayLine()}
-      </p>
-      <p>
-        Commission is paid only when a customer completes a real purchase on xvaisle.com. A signup, a click, or a post
-        is not a sale. There are no recruiting tiers.
-      </p>
-      <p>
-        We do not promise income. A listing can sell, or it can sell nothing. We do not quote example earnings, and we
-        do not say what you will make.
-      </p>
+    <PolicyArticle kicker="Earn with xvaisle" title="Resellers coming soon">
+      <ResellerWaitlist />
+      <p>We do not promise income. A listing can sell, or it can sell nothing. We do not quote example earnings, and we do not say what you will make.</p>
       <p>
         If you mention a product in a post, video, or message, say that you earn a commission. Use these words:{" "}
         <span className="font-medium">{RESELLER_DISCLOSURE}</span>

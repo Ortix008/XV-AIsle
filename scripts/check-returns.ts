@@ -218,7 +218,8 @@ async function main() {
   assert(sampleHtml.includes("Share your find on X"), "the sample receipt names the share button");
   assert(sampleHtml.includes("Quarter sheet pan and rack"), "the sample receipt uses the sample product title");
   assert(sampleHtml.includes(SAMPLE_ORDER_NUMBER), "the sample receipt uses the shared order number");
-  assert(sampleHtml.includes("Ships in 2-4 business days."), "the sample receipt uses the sample ship window");
+  assert(sampleHtml.includes("Usually ships in 2-4 business days"), "the sample receipt uses the sample ship window");
+  assert(sampleHtml.includes(">Shipping<"), "the receipt labels the ship window Shipping");
   assert(sampleHtml.includes("100 Example Street"), "the sample receipt includes the placeholder street");
   assert(sampleHtml.includes("Sample City") && sampleHtml.includes("00000"), "the sample receipt includes the placeholder city and ZIP");
   assert(!sampleHtml.includes("Portland") && !sampleHtml.includes("97201") && !sampleHtml.includes("Elizabeth"), "the sample receipt has no real city or ZIP");

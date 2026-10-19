@@ -9,7 +9,8 @@ import { StoreHeader } from "@/components/store-header";
 import { botIcon } from "@/components/bot-mark";
 import { DepartmentGrid } from "@/components/department-grid";
 import { NightStalls } from "@/components/night-stalls";
-import { AisleParallax, XvAisleFlow } from "@/components/xvaisle-flow";
+import { ShelfHero } from "@/components/shelf-hero";
+import { ResellerWaitlist } from "@/components/reseller-waitlist";
 import { ShopGrid } from "@/components/shop-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +18,7 @@ import { PasswordField } from "@/components/password-field";
 import { useAccount } from "@/lib/account-store";
 import { welcomeReach } from "@/lib/art";
 import { bots } from "@/lib/bots";
-import { HERO_EYEBROW } from "@/lib/hero-copy";
-import { RESELLER_DISCLOSURE, RETURN_WINDOW_DAYS, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
+import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
 export function JoinScreen() {
   const { signUp, signIn, totpChallenge, submitTotp } = useAccount();
@@ -64,46 +64,7 @@ export function JoinScreen() {
       </a>
       <StoreHeader />
       <main id="home-main" className="page-enter">
-        <section className="hero-aisle">
-          <div className="hero-aisle-stage" aria-hidden>
-            <AisleParallax>
-              <Image
-                src="/brand/hero-aisle-pedestals.webp"
-                alt=""
-                fill
-                priority
-                sizes="100vw"
-                className="hero-aisle-photo"
-              />
-            </AisleParallax>
-            <div className="hero-aisle-grade" />
-            <XvAisleFlow />
-            <div className="hero-aisle-scrim" />
-          </div>
-          <div className="relative z-[1] mx-auto flex min-h-[inherit] max-w-[1280px] flex-col justify-center px-5 py-16 sm:px-10 lg:py-24">
-            <div className="hero-glow" aria-hidden />
-            <div className="relative z-[1] max-w-xl">
-              <p className="eyebrow hero-eyebrow">{HERO_EYEBROW}</p>
-              <h1 className="mt-5 text-[3.25rem] leading-[0.95] font-bold tracking-[-0.045em] sm:text-7xl lg:text-[5.5rem]">
-                Goods that
-                <br />
-                earn their <span className="text-primary">place.</span>
-              </h1>
-              <p className="mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                Everyday things for your home, your desk, and the people you love, picked one by one. Every item shows
-                where it ships from and when it&apos;ll reach your door. No guessing.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-4">
-                <Link href="/shop" className="pill pill-primary max-[899px]:flex-1">
-                  Shop the aisles
-                </Link>
-                <a href="#account" className="pill pill-ghost max-[899px]:flex-1">
-                  {mode === "join" ? "Open an account" : "Sign in"}
-                </a>
-              </div>
-            </div>
-          </div>
-        </section>
+        <ShelfHero />
 
         <section id="aisles" className="scroll-mt-24">
           <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]">
@@ -178,21 +139,9 @@ export function JoinScreen() {
                 <Reveal as="article" index={0} className="rounded-2xl border border-border bg-card p-7">
                   <p className="font-heading text-sm text-primary">01</p>
                   <h3 className="mt-2 text-2xl">Sell</h3>
-                  <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-                    You choose products the platform has already approved. You do not buy the stock.
-                  </p>
-                  <ol className="mt-5 list-decimal space-y-3 pl-5 text-base leading-relaxed">
-                    <li>
-                      Open an account. Joining is free. Commission is {resellerCommissionLabel()} of a completed sale.{" "}
-                      {resellerPayLine()} If you mention a product, say {RESELLER_DISCLOSURE}{" "}
-                      <Link href="/shop/reseller/terms" className="underline underline-offset-4">
-                        Read the reseller terms
-                      </Link>
-                      .
-                    </li>
-                    <li>Add an approved product to your shop and set a price inside the range the platform set.</li>
-                    <li>Share your shop link anywhere. Buyers check out on xvaisle.com, and the supplier ships it.</li>
-                  </ol>
+                  <div className="mt-4">
+                    <ResellerWaitlist />
+                  </div>
                 </Reveal>
                 <Reveal as="article" index={1} className="rounded-2xl border border-border bg-card p-7">
                   <p className="font-heading text-sm text-primary">02</p>
@@ -284,8 +233,8 @@ export function JoinScreen() {
               <h2 className="text-4xl sm:text-5xl">{mode === "join" ? "Open an account" : "Sign in"}</h2>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
                 {mode === "join"
-                  ? `Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. ${resellerPayLine()} If you mention a product, say ${RESELLER_DISCLOSURE}`
-                  : "Sign in to your account. The reseller program is free to join."}
+                  ? "Open an account."
+                  : "Sign in to your account."}
               </p>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
                 <Link href="/shop/reseller/terms" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">

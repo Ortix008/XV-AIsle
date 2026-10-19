@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAccount } from "@/lib/account-store";
 import { REPLY_WITHIN_HOURS } from "@/lib/honest-price";
-import { RESELLER_DISCLOSURE, resellerCommissionLabel, resellerPayLine } from "@/lib/policies";
 
 function AuthScreen({
   title,
@@ -110,7 +109,7 @@ export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolea
   }
 
   return (
-    <AuthScreen title="Sign in" lede="Sign in to your account. The reseller program is free to join.">
+    <AuthScreen title="Sign in" lede="Sign in to your account.">
       <form onSubmit={onSubmit} className="auth-form">
         {totpChallenge || xCode ? (
           <label className="auth-field" htmlFor={codeId}>
@@ -210,7 +209,7 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
   return (
     <AuthScreen
       title="Open an account"
-      lede={`Joining is free. Commission is ${resellerCommissionLabel()} of a completed sale. ${resellerPayLine()} If you mention a product, say ${RESELLER_DISCLOSURE}`}
+      lede="Create an account."
     >
       <form onSubmit={onSubmit} className="auth-form">
         {showX ? (

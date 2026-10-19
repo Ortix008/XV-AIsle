@@ -326,21 +326,17 @@ if (supportEmailForDisplay() !== "support@example.com") throw new Error("a saved
 saveSupportEmail("");
 const resellerPage = readFileSync(join(process.cwd(), "src/app/shop/reseller/page.tsx"), "utf8");
 if (!resellerPage.includes('kicker="Earn with xvaisle"')) throw new Error("reseller eyebrow should say Earn with xvaisle");
-if (!resellerPage.includes("Join free") || !resellerPage.includes("Share your link")) {
-  throw new Error("reseller steps should include Join free and Share your link");
+if (!resellerPage.includes("Resellers coming soon")) {
+  throw new Error("reseller page should say resellers are coming soon");
 }
-for (const line of [
-  "No fee, no recruiting.",
-  "Post a find you'd actually use, with #ad.",
-  "Paid after the 14-day return window.",
-]) {
-  if (!resellerPage.includes(line)) throw new Error("reseller step lines should stay as written");
+if (
+  resellerPage.includes("Join free") ||
+  resellerPage.includes("Earn 5%") ||
+  resellerPage.includes("no fee to open an account")
+) {
+  throw new Error("reseller page should not sell a live commission plan");
 }
-for (const sentence of [
-  "The reseller program is free to join.",
-  "We do not promise income.",
-  "Buyers pay on xvaisle.com.",
-]) {
+for (const sentence of ["We do not promise income.", "Buyers pay on xvaisle.com."]) {
   if (!resellerPage.includes(sentence)) throw new Error("honest reseller copy should stay");
 }
 for (const file of ["src/components/policy-article.tsx", "src/app/shop/contact/page.tsx"]) {

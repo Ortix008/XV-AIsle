@@ -4,7 +4,18 @@ import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BrandMark } from "@/components/brand-mark";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
+import { useOptionalAccount } from "@/lib/account-store";
 import { cn } from "cn";
+
+function OperatorDeskLink({ className }: { className: string }) {
+  const session = useOptionalAccount();
+  if (session?.account?.role !== "admin") return null;
+  return (
+    <Link href="/desk" className={className}>
+      Desk
+    </Link>
+  );
+}
 
 const nav = [
   { href: "/shop", label: "Shop" },
@@ -116,12 +127,10 @@ export function StoreHeader() {
             <Link href="/shop" className="link-slide hover:text-foreground">
               Search
             </Link>
-            <Link href="/#account" className="link-slide hidden hover:text-foreground min-[900px]:inline">
+            <Link href="/account" className="link-slide hidden hover:text-foreground min-[900px]:inline">
               Account
             </Link>
-            <Link href="/shop/cart" className="rounded-full border border-border px-3.5 py-1.5 text-foreground hover:border-primary">
-              Cart
-            </Link>
+            <OperatorDeskLink className="link-slide hidden hover:text-foreground min-[900px]:inline" />
             <button
               ref={buttonRef}
               type="button"

@@ -6,27 +6,27 @@ export const metadata: Metadata = { title: "Shipping · XV-AIsle" };
 
 export default function ShippingPage() {
   return (
-    <PolicyArticle kicker="Store" title="Shipping">
-      <p>We ship to addresses in the United States. Checkout will not take an order for another country.</p>
+    <PolicyArticle kicker="Store" title="Shipping, plain and simple">
+      <p>For now we ship only to US addresses.</p>
+      <p>Each item comes straight from the company that makes it, so items in one order may arrive in separate boxes.</p>
+      <p>Every product page shows that item&apos;s own shipping window.</p>
+      <p>TODO: each supplier still has to confirm that item&apos;s shipping window. There is no store-wide number yet.</p>
+      <p>{"That window is our best estimate, so we can't promise a specific delivery day."}</p>
+      <p>{"Once your order is on its way, we'll email you tracking."}</p>
       <p>
-        You pay on xvaisle.com. After the payment clears, the supplier ships the box. You do not pick it up from a
-        store counter.
+        {
+          "If something's running late, we'll let you know before the date we gave you. You can wait a little longer or cancel for a full refund."
+        }
       </p>
+      <p>Questions? Just reach out and a real person will help.</p>
       <p>
-        A product page shows where the box ships from, and the delivery time, when the seller has filled those in. If
-        they are blank, the page still shows the ship window in days. That window is an estimate. It is not a promise
-        that the box arrives on a named day.
-      </p>
-      <p>
-        If a box is late, missing, or not what you ordered,{" "}
         <Link href="/shop/contact" className="underline underline-offset-4">
-          write the seller
-        </Link>{" "}
-        and include the order number. Returns are covered on the{" "}
-        <Link href="/shop/returns" className="underline underline-offset-4">
-          returns page
+          Contact
         </Link>
-        .
+        {" · "}
+        <Link href="/shop/returns" className="underline underline-offset-4">
+          Returns
+        </Link>
       </p>
     </PolicyArticle>
   );

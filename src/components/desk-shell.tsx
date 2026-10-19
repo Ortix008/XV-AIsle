@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { JoinScreen } from "@/components/home-screen";
 import { BrandMark } from "@/components/brand-mark";
 import { botIcon } from "@/components/bot-mark";
@@ -49,7 +49,7 @@ const memberLinks = [
   { href: "/account#payouts", label: "I resell / I supply" },
 ];
 
-const operatorPaths = new Set(["/", "/scout", "/listings", "/marketing", "/floors", "/catalog"]);
+const operatorPaths = new Set(["/desk", "/scout", "/listings", "/marketing", "/floors", "/catalog"]);
 
 function isOperator(role: AccountRole) {
   return role === "admin";
@@ -62,6 +62,8 @@ export function DeskShell({ children }: { children: ReactNode }) {
   const latest = state.log[0];
   const anyRunning = bots.some((bot) => state.bots[bot.id].running);
 
+  if (pathname === "/") return <>{children}</>;
+
   if (!accountReady || !ready) {
     return (
       <div className="grid h-dvh place-items-center bg-background px-6 text-sm text-muted-foreground">
@@ -73,6 +75,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
   if (!account) return <JoinScreen />;
 
   const operator = isOperator(account.role);
+  if (!operator && operatorPaths.has(pathname)) return <SendHome />;
   const desk = operator || !operatorPaths.has(pathname) ? children : <DeskGate />;
 
   return (
@@ -129,7 +132,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
       <PhoneTabRow label={operator ? "Desk" : "Account"}>
         {operator ? (
           <>
-            <DeskLink href="/" pathname={pathname} mobile>
+            <DeskLink href="/desk" pathname={pathname} mobile>
               Market
             </DeskLink>
             <DeskLink href="/shop" pathname={pathname} mobile>
@@ -157,7 +160,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
           <div className="px-2 pt-3">
             {operator ? (
               <>
-                <DeskLink href="/" pathname={pathname}>
+                <DeskLink href="/desk" pathname={pathname}>
                   Market
                 </DeskLink>
                 <DeskLink href="/shop" pathname={pathname}>
@@ -297,6 +300,18 @@ function DeskLink({
     >
       {children}
     </Link>
+  );
+}
+
+function SendHome() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/");
+  }, [router]);
+  return (
+    <div className="grid h-dvh place-items-center bg-background px-6 text-sm text-muted-foreground">
+      Opening the market…
+    </div>
   );
 }
 

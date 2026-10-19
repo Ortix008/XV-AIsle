@@ -49,13 +49,13 @@ export type ReceiptFacts = {
   shareUrl?: string | null;
 };
 
-function receiptEta(input: ReceiptFacts) {
-  if (input.eta?.trim()) return input.eta.trim();
-  const max = input.shipDaysMax ?? 0;
+function shippingWindow(input: ReceiptFacts) {
   const min = input.shipDaysMin ?? 0;
-  if (max <= 0) return null;
-  if (min > 0 && min !== max) return `Ships in ${min}-${max} business days.`;
-  return `Ships in ${max} business days.`;
+  const max = input.shipDaysMax ?? 0;
+  if (min > 0 && max > 0 && min !== max) return `Usually ships in ${min}-${max} business days`;
+  if (max > 0) return `Usually ships in ${max} business days`;
+  if (min > 0) return `Usually ships in ${min} business days`;
+  return null;
 }
 
 function escapeHtml(value: string) {
@@ -67,14 +67,14 @@ function escapeHtml(value: string) {
 }
 
 export function receiptText(input: ReceiptFacts) {
-  const eta = receiptEta(input);
+  const eta = shippingWindow(input);
   const returns = input.returnAddress?.trim()
     ? ["Returns ship back to the supplier at:", input.returnAddress.trim()]
     : [RETURNS_UNSET];
   const lines = [`Order ${input.number} received.`, "", input.title, `Qty ${input.qty}`];
   if (input.amountCents != null) lines.push(dollars(input.amountCents));
   if (input.shipsFrom?.trim()) lines.push(`Ships from ${input.shipsFrom.trim()}`);
-  if (eta) lines.push(eta);
+  if (eta) lines.push(`Shipping: ${eta}`);
   lines.push("", ...returns, "", `Your receipt: ${input.receiptUrl}`);
   if (input.shareUrl) lines.push(`Share your find on X: ${input.shareUrl}`);
   lines.push("");
@@ -144,14 +144,14 @@ function actionRow(input: { receiptUrl: string; shareUrl?: string | null }) {
 
 /** Email-safe receipt. Inline styles, tables, dark background, light text, no script. */
 export function receiptHtml(input: ReceiptFacts) {
-  const eta = receiptEta(input);
+  const eta = shippingWindow(input);
   const returns = input.returnAddress?.trim() || RETURNS_UNSET;
   const rows = [
     htmlRow("Item", input.title),
     htmlRow("Qty", String(input.qty)),
     input.amountCents != null ? htmlRow("Paid", dollars(input.amountCents)) : "",
     input.shipsFrom?.trim() ? htmlRow("Ships from", input.shipsFrom.trim()) : "",
-    eta ? htmlRow("Arrival", eta) : "",
+    eta ? htmlRow("Shipping", eta) : "",
   ].join("");
   const logo = `${appOrigin()}/brand/logo-official-xo.png`;
   return `<!DOCTYPE html>
@@ -210,7 +210,8 @@ export function sampleReceiptHtml() {
     title: sample.title,
     qty: 1,
     amountCents: sample.amountCents,
-    eta: sample.eta,
+    shipDaysMin: sample.shipDaysMin,
+    shipDaysMax: sample.shipDaysMax,
     receiptUrl: "https://xvaisle.com/shop/order?token=sample",
     returnAddress: sample.returnAddress,
     shareUrl: buyerShareHref({ title: sample.title, productUrl }),
