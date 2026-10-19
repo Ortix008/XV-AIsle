@@ -101,13 +101,53 @@ async function main() {
   assert(QA_TEST_BANNER === "Test mode. No real money moves on this page.", "the test banner is the approved line");
   assert(SAMPLE_UNAVAILABLE === "Not available yet. Check back soon.", "the sample note is the approved line");
   const sheet = getListing("sheet-pan");
-  if (!sheet || !isHeldSample(sheet)) throw new Error("the seeded sheet pan has no real supplier");
+  const scraper = getListing("bench-scraper");
+  if (!sheet || !scraper || !isHeldSample(sheet) || !isHeldSample(scraper)) {
+    throw new Error("the seeded samples stay held");
+  }
+  assert(sheet.supplierAccountId == null && scraper.supplierAccountId == null, "seeded samples are not linked to a supplier account");
   assert(sheet.supplierName === "Northwharf Goods", "the database still knows the seeded supplier");
   const shownSheet = publicShopListing(sheet, true);
   assert(shownSheet.supplierName === "" && shownSheet.supplierOrigin === "", "the shopper listing drops the seeded supplier");
   const heldOrder = createPendingOrder({ productId: "sheet-pan", qty: 1, ship });
   assert("error" in heldOrder, "checkout refuses a sample with no real supplier");
   assert(getListing("sheet-pan")?.published === true, "refusing the sample does not delete it");
+  assert(
+    isHeldSample({ productId: "sheet-pan", supplierName: "Northwharf Goods", supplierAccountId: "linked-account" }),
+    "the sample marker holds a sheet pan even when an account is linked",
+  );
+  assert(
+    isHeldSample({ productId: "bench-scraper", supplierName: "Northwharf Goods", supplierAccountId: "linked-account" }),
+    "the sample marker holds the bench scraper even when an account is linked",
+  );
+  assert(
+    isHeldSample({
+      productId: QA_CHECKOUT_PRODUCT_ID,
+      supplierName: "QA Test Supplier",
+      supplierAccountId: supplier?.id,
+    }) === false,
+    "qa-checkout stays buyable",
+  );
+  getDb()
+    .prepare("UPDATE listings SET supplier_account_id = ? WHERE product_id IN ('sheet-pan', 'bench-scraper')")
+    .run(supplier?.id);
+  const linkedSheet = getListing("sheet-pan");
+  const linkedScraper = getListing("bench-scraper");
+  if (!linkedSheet || !linkedScraper || !isHeldSample(linkedSheet) || !isHeldSample(linkedScraper)) {
+    throw new Error("a sample stays held when an account is linked");
+  }
+  assert(publicShopListing(linkedSheet, true).supplierName === "", "a linked sample still hides the supplier");
+  const linkedOrder = createPendingOrder({ productId: "sheet-pan", qty: 1, ship });
+  const linkedScraperOrder = createPendingOrder({ productId: "bench-scraper", qty: 1, ship });
+  assert("error" in linkedOrder && "error" in linkedScraperOrder, "checkout refuses a sample that has a supplier account");
+  assert(getListing("sheet-pan")?.published === true, "refusing a linked sample does not unpublish it");
+  ensureStarterShelf();
+  assert(getListing("sheet-pan")?.supplierAccountId == null, "the shelf clears a linked sheet pan account");
+  assert(getListing("bench-scraper")?.supplierAccountId == null, "the shelf clears a linked bench scraper account");
+  const qaKept = getListing(QA_CHECKOUT_PRODUCT_ID);
+  assert(qaKept?.published === true && qaKept.supplierAccountId === supplier?.id, "qa-checkout keeps its test supplier");
+  const qaStill = createPendingOrder({ productId: QA_CHECKOUT_PRODUCT_ID, qty: 1, ship });
+  if ("error" in qaStill) throw new Error(qaStill.error);
 
   const wood = publishListing("qa-operator-test", {
     productId: "serving-board",

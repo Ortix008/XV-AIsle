@@ -1,21 +1,31 @@
 import { usSupplierConfirmed } from "../order-facts";
 import { QA_CHECKOUT_PRODUCT_ID, QA_SUPPLIER_EMAIL, isQaCheckoutListing, qaCheckoutSeedAllowed } from "../qa-checkout";
-import { WOOD_TRAY_PRODUCT_ID, isWoodTrayListing } from "../shelf-holds";
+import { SEEDED_SUPPLIER_NAME, WOOD_TRAY_PRODUCT_ID, isDemoSample, isWoodTrayListing, seededSampleProductIds } from "../shelf-holds";
 import { RETURNS_EMAILED } from "../return-address";
 import { samplePriceCents, sampleStarters } from "../sample-shelf";
 import { getDb } from "./db";
 import { platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { getListing, publishListing } from "./store";
 
-const SAMPLE_IDS = new Set(["sheet-pan", "bench-scraper"]);
-
 /** Preview and local checks only. Production never seeds, even when the flag is set. */
 export function demoSeedEnabled() {
   return qaCheckoutSeedAllowed(process.env);
 }
 
-export function isSampleListing(listing: { productId: string; supplierName: string }) {
-  return SAMPLE_IDS.has(listing.productId) && listing.supplierName === "Northwharf Goods";
+export function isSampleListing(listing: { productId: string; supplierName: string; sample?: boolean | null }) {
+  return isDemoSample(listing);
+}
+
+/** Seeded samples never keep a supplier account. A later link is cleared on the next boot. */
+function unlinkSeededSamples() {
+  const ids = seededSampleProductIds();
+  if (ids.length === 0) return;
+  getDb()
+    .prepare(
+      `UPDATE listings SET supplier_account_id = NULL
+       WHERE supplier_name = ? AND product_id IN (${ids.map(() => "?").join(", ")})`,
+    )
+    .run(SEEDED_SUPPLIER_NAME, ...ids);
 }
 
 /** Unconfirmed preview samples use the emailed return line. Confirmed listings keep their own. */
@@ -64,12 +74,17 @@ export function unpublishWoodTray() {
 /** Publish the two sample pages only when DEMO_SEED=1 and an operator account exists. */
 export function ensureStarterShelf() {
   unpublishWoodTray();
+  unlinkSeededSamples();
+  const sampleIds = seededSampleProductIds();
   if (!demoSeedEnabled()) {
-    getDb()
-      .prepare(
-        "UPDATE listings SET published = 0 WHERE product_id IN ('sheet-pan', 'bench-scraper') AND supplier_name = 'Northwharf Goods'",
-      )
-      .run();
+    if (sampleIds.length > 0) {
+      getDb()
+        .prepare(
+          `UPDATE listings SET published = 0
+           WHERE supplier_name = ? AND product_id IN (${sampleIds.map(() => "?").join(", ")})`,
+        )
+        .run(SEEDED_SUPPLIER_NAME, ...sampleIds);
+    }
     getDb().prepare("UPDATE listings SET published = 0 WHERE product_id = ?").run(QA_CHECKOUT_PRODUCT_ID);
     return;
   }
@@ -79,9 +94,9 @@ export function ensureStarterShelf() {
     if (getListing(item.productId)) {
       getDb()
         .prepare(
-          "UPDATE listings SET published = 1 WHERE product_id = ? AND supplier_name = 'Northwharf Goods' AND published = 0",
+          "UPDATE listings SET published = 1, supplier_account_id = NULL WHERE product_id = ? AND supplier_name = ?",
         )
-        .run(item.productId);
+        .run(item.productId, SEEDED_SUPPLIER_NAME);
       continue;
     }
     publishListing(accountId, {

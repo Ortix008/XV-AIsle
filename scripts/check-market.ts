@@ -27,7 +27,7 @@ const published = publishListing(joined.account.id, {
   description: "One pan, one rack.",
   priceCents: 2695,
   image: "/art/mock-sheet-pan-1.png",
-  supplierName: "Northwharf Goods",
+  supplierName: "Example Seller",
   supplierOrigin: "Elizabeth, NJ",
   shipDaysMin: 2,
   shipDaysMax: 4,

@@ -377,7 +377,7 @@ async function main() {
       "UPDATE listings SET supplier_account_id = ?, supplier_cost_cents = 0, published = 1 WHERE product_id = 'sheet-pan'",
     )
     .run(supplierId);
-  const preview = createPendingOrder({
+  const heldSample = createPendingOrder({
     productId: "sheet-pan",
     qty: 1,
     ship: {
@@ -390,24 +390,27 @@ async function main() {
       country: COUNTRY,
     },
   });
-  if ("error" in preview) throw new Error(preview.error);
-  getDb()
-    .prepare("UPDATE orders SET status = 'paid', paid_at = ?, stripe_session_id = ? WHERE id = ?")
-    .run(Date.now(), "cs_preview_sample_sheet_pan", preview.order.id);
+  assert("error" in heldSample, "a linked sample stays off checkout");
+  ensureStarterShelf();
+  const unlinked = getDb().prepare("SELECT supplier_account_id FROM listings WHERE product_id = 'sheet-pan'").get() as
+    | { supplier_account_id: string | null }
+    | undefined;
+  assert(unlinked != null && unlinked.supplier_account_id == null, "the starter shelf drops the sample's supplier account");
   delete process.env.STRIPE_SECRET_KEY;
   const { GET: checkoutGet } = await import("../src/app/api/store/checkout/route");
+  const { seedPreviewOrder } = await import("./seed-preview-order");
+  await seedPreviewOrder();
   const previewResponse = await checkoutGet(
     new Request("http://127.0.0.1/api/store/checkout?session_id=cs_preview_sample_sheet_pan"),
   );
   const previewBody = (await previewResponse.json()) as { summary?: { title?: string; number?: string } };
   assert(previewResponse.status === 200 && previewBody.summary?.title === "Quarter sheet pan and rack", "a preview session renders without Stripe");
-  assert(previewBody.summary?.number === preview.order.number, "the preview session is the seeded order");
+  assert(previewBody.summary?.number === SAMPLE_ORDER_NUMBER, "the preview session is the seeded order");
   delete process.env.DEMO_SEED;
   const closed = await checkoutGet(new Request("http://127.0.0.1/api/store/checkout?session_id=cs_preview_sample_sheet_pan"));
   assert(closed.status === 503, "the preview session does not skip Stripe unless DEMO_SEED=1");
 
   process.env.DEMO_SEED = "1";
-  const { seedPreviewOrder } = await import("./seed-preview-order");
   await seedPreviewOrder();
   const seededResponse = await checkoutGet(
     new Request("http://127.0.0.1/api/store/checkout?session_id=cs_preview_sample_sheet_pan"),
