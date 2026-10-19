@@ -72,7 +72,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!account) return <JoinScreen />;
+  if (!account) return operatorPaths.has(pathname) ? <SendHome /> : <JoinScreen />;
 
   const operator = isOperator(account.role);
   if (!operator && operatorPaths.has(pathname)) return <SendHome />;
