@@ -19,7 +19,7 @@ import { DELIVERY_WARN_BUSINESS_DAYS, deliveryExceedsWindow } from "@/lib/honest
 import { costStack, landedCost, money, pct } from "@/lib/money";
 import type { Listing, PriceId } from "@/lib/types";
 import { cn } from "cn";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 export function ListingsView({ shareOrigin }: { shareOrigin: string }) {
   const { account } = useAccount();
@@ -140,6 +140,10 @@ function ListingEditor({
   const [whyWePicked, setWhyWePicked] = useState("");
   const [brand, setBrand] = useState("");
   const [whyItCosts, setWhyItCosts] = useState("");
+  const [hiddenFromShop, setHiddenFromShop] = useState(false);
+  const [supplierUsConfirmed, setSupplierUsConfirmed] = useState(false);
+  const [shelfReady, setShelfReady] = useState(false);
+  const shelfTouched = useRef(false);
   const [quote, setQuote] = useState<{
     priceCents: number;
     supplierCostCents?: number;
@@ -163,6 +167,18 @@ function ListingEditor({
         setCatalog(data.items ?? []);
       })
       .catch(() => setCatalog([]));
+    if (operator) {
+      fetch(`/api/store/listings/${encodeURIComponent(listing.productId)}/check`)
+        .then(async (response) => {
+          if (!response.ok) return;
+          const data = (await response.json()) as { hiddenFromShop?: boolean; supplierUsConfirmed?: boolean };
+          if (shelfTouched.current) return;
+          setHiddenFromShop(data.hiddenFromShop === true);
+          setSupplierUsConfirmed(data.supplierUsConfirmed === true);
+          setShelfReady(true);
+        })
+        .catch(() => undefined);
+    }
     fetch("/api/shops/small")
       .then(async (response) => {
         if (!response.ok) return;
@@ -170,7 +186,7 @@ function ListingEditor({
         setSmallShops(data.shops ?? []);
       })
       .catch(() => setSmallShops([]));
-  }, []);
+  }, [listing.productId, operator]);
   const agreedFloor = shipFloors.find((floor) => floor.id === floorId) ?? null;
   const smallShop = smallShops.find((shop) => shop.id === smallId) ?? null;
   const price = listing.prices.find((item) => item.id === listing.priceId) ?? listing.prices[0];
@@ -230,6 +246,7 @@ function ListingEditor({
       whyWePicked,
       brand,
       whyItCosts,
+      ...(operator && shelfReady ? { hiddenFromShop, supplierUsConfirmed } : {}),
       ...moneyFields,
     }).then((message) => {
       setStorePending(false);
@@ -606,6 +623,34 @@ function ListingEditor({
           <input type="checkbox" checked={madeInUsa} onChange={(event) => setMadeInUsa(event.target.checked)} />
           Made in the USA. Use this only when the goods are made here.
         </label>
+        {operator ? (
+          <>
+            <label className="mt-4 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={hiddenFromShop}
+                onChange={(event) => {
+                  shelfTouched.current = true;
+                  setShelfReady(true);
+                  setHiddenFromShop(event.target.checked);
+                }}
+              />
+              Hidden from shop. The listing stays saved and stays off the public shelf.
+            </label>
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={supplierUsConfirmed}
+                onChange={(event) => {
+                  shelfTouched.current = true;
+                  setShelfReady(true);
+                  setSupplierUsConfirmed(event.target.checked);
+                }}
+              />
+              Supplier confirmed in the US. Use this only when the shipper is a real US supplier, not XV-AIsle.
+            </label>
+          </>
+        ) : null}
       </div>
     </div>
   );

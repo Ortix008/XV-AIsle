@@ -41,7 +41,10 @@ async function main() {
   const { buyerOrder, presentOrder, publicListing, resellerListing } = await import("../src/lib/server/order-view");
   const { saveReturnsAddress } = await import("../src/lib/server/settings");
   const { ensureStarterShelf } = await import("../src/lib/server/starter-shelf");
-  const { createPendingOrder, fulfillPaidOrder, getListing, getOrder, publishListing } = await import("../src/lib/server/store");
+  const { createPendingOrder, fulfillPaidOrder, getListing, getOrder, listPublished, publishListing } = await import(
+    "../src/lib/server/store"
+  );
+  const { visibleOnShop } = await import("../src/lib/server/starter-shelf");
   const {
     listSupplierReturns,
     resolveReturnAddress,
@@ -63,6 +66,42 @@ async function main() {
 
   const columns = getDb().prepare("PRAGMA table_info(listings)").all() as { name: string }[];
   assert(columns.some((column) => column.name === "return_line1"), "listings gain a return street column");
+  assert(columns.some((column) => column.name === "hidden_from_shop"), "listings can be hidden from the shop");
+  assert(columns.some((column) => column.name === "supplier_us_confirmed"), "listings can record a confirmed US supplier");
+  const { TRACKING_SHIP, US_SUPPLIER_SHIP, productShipLine, receiptShipWindow, unconfirmedShipLine } = await import(
+    "../src/lib/order-facts"
+  );
+  assert(
+    unconfirmedShipLine({ supplierName: "Northwharf Goods", shipsFrom: "Elizabeth, NJ", supplierUsConfirmed: true }) ===
+      US_SUPPLIER_SHIP,
+    "a confirmed US supplier uses the US line",
+  );
+  assert(
+    unconfirmedShipLine({ supplierName: "XV-AIsle", shipsFrom: "Elizabeth, NJ", supplierUsConfirmed: true }) === TRACKING_SHIP,
+    "the store itself is not a US supplier line",
+  );
+  assert(
+    unconfirmedShipLine({ supplierName: "Northwharf Goods", shipsFrom: "Elizabeth, NJ", supplierUsConfirmed: false }) ===
+      TRACKING_SHIP,
+    "an unflagged supplier uses tracking only",
+  );
+  assert(
+    unconfirmedShipLine({ supplierName: "Northwharf Goods", shipsFrom: "Toronto, ON", supplierUsConfirmed: true }) ===
+      TRACKING_SHIP,
+    "a non-US ships-from uses tracking only",
+  );
+  assert(
+    unconfirmedShipLine({ supplierName: "Northwharf Goods", shipsFrom: "Sample City, ST", supplierUsConfirmed: true }) ===
+      TRACKING_SHIP,
+    "a sample region is not a US location",
+  );
+  assert(
+    productShipLine({ supplierName: "Northwharf Goods", shipDaysMin: 2, shipDaysMax: 4 }) ===
+      "Northwharf Goods ships it to you. Our best estimate is 2–4 days after you pay.",
+    "a confirmed window names the product days",
+  );
+  assert(receiptShipWindow(2, 2) === "Usually ships in 2 business days.", "equal days collapse to one number");
+  assert(receiptShipWindow(0, 0) === TRACKING_SHIP, "a receipt without days and without a US supplier uses tracking only");
   assert(getDb().prepare("SELECT name FROM sqlite_master WHERE name = 'supplier_returns'").get(), "supplier_returns exists");
 
   const joined = signUp({ name: "Example Supply", email: "returns-supplier@example.com", password: "market-test" });
@@ -111,7 +150,59 @@ async function main() {
   const publicJson = JSON.stringify(publicListing(published.listing));
   const resellerJson = JSON.stringify(resellerListing(published.listing));
   assert(!publicJson.includes(STREET) && !publicJson.includes("returnLine1"), "the public listing omits the street");
+  assert(!publicJson.includes("hiddenFromShop"), "the public listing omits the hide flag");
+  assert(publicJson.includes('"supplierUsConfirmed":false'), "the public listing includes the US confirmation");
   assert(!resellerJson.includes(STREET), "a reseller listing omits the street");
+  const hidden = publishListing(supplierId, {
+    productId: "hidden-pan",
+    sku: "RTN-H",
+    title: "Hidden pan",
+    description: "A pan kept off the shelf.",
+    priceCents: 2000,
+    image: "",
+    supplierName: "Northwharf Goods",
+    supplierOrigin: "Elizabeth, NJ",
+    shipsFrom: "Elizabeth, NJ",
+    shipDaysMin: 0,
+    shipDaysMax: 0,
+    supplierAccountId: supplierId,
+    supplierCostCents: 500,
+    hiddenFromShop: true,
+    supplierUsConfirmed: true,
+  });
+  if ("error" in hidden || !hidden.listing) throw new Error("hidden listing");
+  assert(hidden.listing.hiddenFromShop === true && hidden.listing.supplierUsConfirmed === true, "the shelf flags save");
+  assert(!listPublished().some((item) => item.productId === "hidden-pan"), "a hidden listing stays off the public shelf");
+  assert(visibleOnShop(hidden.listing) === false, "the shop gate hides a flagged listing");
+  const hiddenOrder = createPendingOrder({
+    productId: "hidden-pan",
+    qty: 1,
+    ship: { name: "Example Buyer", email: "buyer@example.com", line1: STREET, city: CITY, region: REGION, postal: POSTAL, country: COUNTRY },
+  });
+  assert("error" in hiddenOrder, "checkout does not sell a hidden listing");
+  const kept = publishListing(supplierId, {
+    productId: "hidden-pan",
+    sku: "RTN-H",
+    title: "Hidden pan",
+    description: "A pan kept off the shelf.",
+    priceCents: 2000,
+    image: "",
+    supplierName: "Northwharf Goods",
+    supplierOrigin: "Elizabeth, NJ",
+    shipsFrom: "Elizabeth, NJ",
+    shipDaysMin: 0,
+    shipDaysMax: 0,
+    supplierAccountId: supplierId,
+    supplierCostCents: 500,
+  });
+  if ("error" in kept || !kept.listing) throw new Error("kept listing");
+  assert(kept.listing.hiddenFromShop === true && kept.listing.supplierUsConfirmed === true, "republish keeps omitted shelf flags");
+  assert(
+    productShipLine(kept.listing) === US_SUPPLIER_SHIP,
+    "a confirmed US supplier with no day window uses the US line",
+  );
+  const hiddenPublic = JSON.stringify(publicListing(kept.listing));
+  assert(!hiddenPublic.includes("hiddenFromShop"), "a hidden listing's public shape still omits the hide flag");
 
   saveReturnsAddress("100 Example Street, Sample City, ST 00000");
   assert(resolveReturnAddress(getListing("return-pan")!)?.line1 === STREET, "the old store line is not the supplier address");
@@ -206,7 +297,8 @@ async function main() {
     returnAddress: null,
   });
   assert(!blankHtml.includes(RETURNS_UNSET) && !blankHtml.includes(">RETURNS<"), "the receipt html omits returns when there is no address");
-  assert(blankHtml.includes("Ships from a US supplier. Tracking emailed when it ships."), "a receipt without ship days uses the unconfirmed line");
+  assert(blankHtml.includes(TRACKING_SHIP), "a receipt without ship days uses the tracking line");
+  assert(!blankHtml.includes(US_SUPPLIER_SHIP), "a receipt without a confirmed US supplier omits the US line");
   assert(!blankHtml.includes(">Ships from<") && !blankHtml.includes("Arrival"), "blank receipt html omits an empty origin row");
   assert(!blankHtml.toLowerCase().includes("<script"), "the receipt html has no script");
   assert(blankHtml.includes('bgcolor="#07080a"') && blankHtml.includes("color:#f4f1ea"), "the receipt html is dark with a light-text fallback");

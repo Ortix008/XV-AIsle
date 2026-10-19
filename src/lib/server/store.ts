@@ -46,6 +46,8 @@ export type StoreListing = {
   supplierEmail: string | null;
   kind: "single" | "bundle";
   aisle: string | null;
+  hiddenFromShop: boolean;
+  supplierUsConfirmed: boolean;
   returnLine1: string | null;
   returnCity: string | null;
   returnRegion: string | null;
@@ -160,6 +162,8 @@ type ListingRow = {
   return_postal?: string | null;
   return_country?: string | null;
   wholesale_cost?: number | null;
+  hidden_from_shop?: number | null;
+  supplier_us_confirmed?: number | null;
 };
 
 type OrderRow = {
@@ -269,6 +273,8 @@ function listingFrom(row: ListingRow): StoreListing {
     returnPostal: row.return_postal?.trim() || null,
     returnCountry: row.return_country?.trim() || null,
     wholesaleCost: row.wholesale_cost ?? null,
+    hiddenFromShop: row.hidden_from_shop === 1,
+    supplierUsConfirmed: row.supplier_us_confirmed === 1,
   };
 }
 
@@ -314,6 +320,7 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     madeInUsa: listing.madeInUsa,
     shelf: listing.shelf,
     sample,
+    supplierUsConfirmed: listing.supplierUsConfirmed,
     ...(listing.shipsFrom ? { shipsFrom: listing.shipsFrom } : {}),
     ...(listing.deliveryTime ? { deliveryTime: listing.deliveryTime } : {}),
     ...(whyWePicked ? { whyWePicked } : {}),
@@ -474,6 +481,8 @@ export function publishListing(
     | "returnPostal"
     | "returnCountry"
     | "wholesaleCost"
+    | "hiddenFromShop"
+    | "supplierUsConfirmed"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -492,6 +501,8 @@ export function publishListing(
     supplierOrderUrl?: string | null;
     supplierEmail?: string | null;
     aisle?: string | null;
+    hiddenFromShop?: boolean;
+    supplierUsConfirmed?: boolean;
   },
 ) {
   if (!input.title.trim() || !input.sku.trim()) return { error: "The page needs a title." as const };
@@ -537,14 +548,17 @@ export function publishListing(
   const derivedAisle = aisleSlugForProduct(input.productId);
   const aisle = input.aisle !== undefined ? input.aisle?.trim() || null : (existing?.aisle ?? derivedAisle);
   if (aisle && !aisleBySlug(aisle)) return { error: "That aisle is not on the store." as const };
+  const hiddenFromShop = input.hiddenFromShop ?? existing?.hiddenFromShop ?? false;
+  const supplierUsConfirmed = input.supplierUsConfirmed ?? existing?.supplierUsConfirmed ?? false;
   getDb()
     .prepare(
       `INSERT INTO listings (
          product_id, account_id, sku, title, description, price_cents, image,
          supplier_name, supplier_origin, ship_days_min, ship_days_max, published,
          made_in_usa, shelf, supplier_account_id, supplier_cost_cents, supplier_shipping_cents, fee_bps,
-         catalog_item_id, ships_from, delivery_time, why_we_picked, brand, why_it_costs
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         catalog_item_id, ships_from, delivery_time, why_we_picked, brand, why_it_costs,
+         hidden_from_shop, supplier_us_confirmed
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(product_id) DO UPDATE SET
          account_id = excluded.account_id,
          sku = excluded.sku,
@@ -568,7 +582,9 @@ export function publishListing(
          delivery_time = excluded.delivery_time,
          why_we_picked = excluded.why_we_picked,
          brand = excluded.brand,
-         why_it_costs = excluded.why_it_costs`,
+         why_it_costs = excluded.why_it_costs,
+         hidden_from_shop = excluded.hidden_from_shop,
+         supplier_us_confirmed = excluded.supplier_us_confirmed`,
     )
     .run(
       input.productId,
@@ -595,6 +611,8 @@ export function publishListing(
       whyWePicked.text,
       brand.text,
       whyItCosts.text,
+      hiddenFromShop ? 1 : 0,
+      supplierUsConfirmed ? 1 : 0,
     );
   const route = input.route ? parseListingRoute(input.route) : null;
   const supplierOrderUrl = cleanSupplierOrderUrl(input.supplierOrderUrl);
@@ -731,7 +749,7 @@ export function getListing(productId: string) {
 }
 
 export function listPublished(filter?: { madeInUsa?: boolean; shelf?: "national" | "small"; aisle?: string }) {
-  const clauses = ["published = 1"];
+  const clauses = ["published = 1", "COALESCE(hidden_from_shop, 0) = 0"];
   const params: Array<string | number> = [];
   if (filter?.madeInUsa) clauses.push("made_in_usa = 1");
   if (filter?.shelf) {
@@ -800,7 +818,9 @@ export type ShipTo = {
 };
 
 export function createPendingOrder(input: { productId: string; qty: number; ship: ShipTo }) {
-  const listing = getDb().prepare("SELECT * FROM listings WHERE product_id = ? AND published = 1").get(input.productId) as
+  const listing = getDb()
+    .prepare("SELECT * FROM listings WHERE product_id = ? AND published = 1 AND COALESCE(hidden_from_shop, 0) = 0")
+    .get(input.productId) as
     | ListingRow
     | undefined;
   if (!listing) return { error: "That page is not on the store." as const };
@@ -1159,6 +1179,8 @@ export async function fulfillPaidOrder(orderId: string) {
       eta: etaFromListing(listing),
       shipDaysMin: listing?.shipDaysMin ?? 0,
       shipDaysMax: listing?.shipDaysMax ?? 0,
+      supplierName: listing?.supplierName ?? null,
+      supplierUsConfirmed: listing?.supplierUsConfirmed ?? false,
       token,
       productId: current.productId,
       returnAddress: formatOrderReturn(current),

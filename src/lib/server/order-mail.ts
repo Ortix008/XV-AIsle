@@ -44,13 +44,15 @@ export type ReceiptFacts = {
   eta?: string | null;
   shipDaysMin?: number;
   shipDaysMax?: number;
+  supplierName?: string | null;
+  supplierUsConfirmed?: boolean | null;
   receiptUrl: string;
   returnAddress?: string | null;
   shareUrl?: string | null;
 };
 
 function shippingWindow(input: ReceiptFacts) {
-  return receiptShipWindow(input.shipDaysMin, input.shipDaysMax);
+  return receiptShipWindow(input.shipDaysMin, input.shipDaysMax, input);
 }
 
 function confirmedReturnAddress(address: string | null | undefined) {
@@ -357,6 +359,8 @@ export async function sendCustomerReceipt(input: {
   eta?: string | null;
   shipDaysMin: number;
   shipDaysMax: number;
+  supplierName?: string | null;
+  supplierUsConfirmed?: boolean | null;
   token: string;
   productId?: string | null;
   returnAddress?: string | null;

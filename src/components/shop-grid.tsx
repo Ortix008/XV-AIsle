@@ -6,6 +6,7 @@ import { NightMotif } from "@/components/night-motif";
 import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
 import { money } from "@/lib/money";
+import { shipDaysConfirmed, unconfirmedShipLine } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
 
 export type ShopCard = {
@@ -13,7 +14,10 @@ export type ShopCard = {
   title: string;
   priceCents: number;
   image: string;
+  supplierName?: string;
   supplierOrigin: string;
+  shipsFrom?: string | null;
+  supplierUsConfirmed?: boolean;
   shipDaysMin: number;
   shipDaysMax: number;
   madeInUsa?: boolean;
@@ -173,8 +177,15 @@ export function ShopGrid({
                 </p>
                 <h3 className="mt-1 px-1 text-[15px] font-semibold tracking-[-0.01em] sm:text-[17px]">{listing.title}</h3>
                 <p className="mt-1 px-1 pb-1 text-sm text-muted-foreground">
-                  {money(listing.priceCents / 100)} · ships from {listing.supplierOrigin} in {listing.shipDaysMin}–
-                  {listing.shipDaysMax} days
+                  {money(listing.priceCents / 100)}
+                  {" · "}
+                  {shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax) ? (
+                    <>
+                      ships from {listing.supplierOrigin} in {listing.shipDaysMin}–{listing.shipDaysMax} days
+                    </>
+                  ) : (
+                    unconfirmedShipLine(listing)
+                  )}
                 </p>
               </Link>
             </Reveal>

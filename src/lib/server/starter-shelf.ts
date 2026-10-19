@@ -17,8 +17,13 @@ export function isSampleListing(listing: { productId: string; supplierName: stri
 }
 
 /** Sample rows stay out of the public shop unless DEMO_SEED=1. */
-export function visibleOnShop(listing: { productId: string; supplierName: string; published: boolean }) {
-  if (!listing.published) return false;
+export function visibleOnShop(listing: {
+  productId: string;
+  supplierName: string;
+  published: boolean;
+  hiddenFromShop?: boolean;
+}) {
+  if (!listing.published || listing.hiddenFromShop) return false;
   if (isSampleListing(listing) && !demoSeedEnabled()) return false;
   return true;
 }

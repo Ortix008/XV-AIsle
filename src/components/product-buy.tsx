@@ -30,6 +30,7 @@ export type ProductListing = {
   shelf?: string;
   sample?: boolean;
   shipsFrom?: string | null;
+  supplierUsConfirmed?: boolean;
   deliveryTime?: string | null;
   whyWePicked?: string | null;
   brand?: string | null;

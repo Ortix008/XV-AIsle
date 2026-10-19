@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { FindShare } from "@/components/find-share";
+import { TRACKING_SHIP } from "@/lib/order-facts";
 import { RETURNS_UNSET } from "@/lib/return-address";
 
 export type OrderCardFacts = {
@@ -48,7 +49,7 @@ export function OrderCard({ facts, children }: { facts: OrderCardFacts; children
         ) : null}
         <div>
           <dt className="text-xs tracking-wide text-muted-foreground">Shipping</dt>
-          <dd className="mt-1">{eta ?? "Ships from a US supplier. Tracking emailed when it ships."}</dd>
+          <dd className="mt-1">{eta ?? TRACKING_SHIP}</dd>
         </div>
       </dl>
       <p className="mt-5 text-xs tracking-wide text-muted-foreground">Returns</p>

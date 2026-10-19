@@ -22,6 +22,8 @@ export async function GET(_request: Request, context: { params: Promise<{ produc
     checkedBy: listing.checkedBy ?? "",
     checkedOn: listing.checkedOn ?? "",
     checkedNote: listing.checkedNote ?? "",
+    hiddenFromShop: listing.hiddenFromShop,
+    supplierUsConfirmed: listing.supplierUsConfirmed,
   });
 }
 

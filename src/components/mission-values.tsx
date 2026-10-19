@@ -3,7 +3,7 @@ import Link from "next/link";
 const mission =
   "XV-AIsle exists to remove one of retail's oldest barriers, the cost of holding stock.";
 const missionBody =
-  "We connect established brands, independent resellers and everyday shoppers in one trusted US marketplace. Brands reach customers beyond their own channels. Resellers build a business on curation and service, not inventory. Shoppers buy products that are reviewed before they're listed. Every listing, order and partnership is held to the same standard: trust that is earned, not assumed.";
+  "We connect established brands, independent resellers and everyday shoppers in one trusted US marketplace. Brands reach customers beyond their own channels. Resellers build a business on curation and service, not inventory. Shoppers buy products that are reviewed before they're listed, from their shelf to your home. Every listing, order and partnership is held to the same standard: trust that is earned, not assumed.";
 const vision =
   "Commerce where opportunity isn't limited to those who can afford inventory, and where anyone, from any background, can build a business of their own.";
 
@@ -20,7 +20,6 @@ export function MissionValues() {
           {mission.split("the cost of holding stock.")[0]}
           <em>the cost of holding stock.</em>
         </h2>
-        <p className="vm-shelf-line">From their shelf to your home.</p>
         <p className="vm-body">{missionBody}</p>
         <div className="vm-vision">
           <div className="vm-eye">Our vision</div>
@@ -34,7 +33,7 @@ export function MissionValues() {
               <path d="M11.5 16l3 3 6-6" />
             </svg>
             <b>Integrity</b>
-            <p>We state only what we can back up, and we correct what we get wrong.</p>
+            <p>we state only what we can back up, and we correct what we get wrong.</p>
           </article>
           <article className="vm-card">
             <svg viewBox="0 0 32 32" aria-hidden>
@@ -42,7 +41,7 @@ export function MissionValues() {
               <path d="M12 28v-9h8v9" />
             </svg>
             <b>Access</b>
-            <p>Starting a business should take a decision, not a warehouse.</p>
+            <p>starting a business should take a decision, not a warehouse.</p>
           </article>
           <article className="vm-card">
             <svg viewBox="0 0 32 32" aria-hidden>
@@ -50,7 +49,7 @@ export function MissionValues() {
               <circle cx="21" cy="16" r="6" />
             </svg>
             <b>Partnership</b>
-            <p>We shape every policy so brands, resellers and shoppers all benefit.</p>
+            <p>we shape every policy so brands, resellers and shoppers all benefit.</p>
           </article>
           <article className="vm-card">
             <svg viewBox="0 0 32 32" aria-hidden>
@@ -60,7 +59,7 @@ export function MissionValues() {
               <path d="M11 22h10" />
             </svg>
             <b>Accountability</b>
-            <p>We stand behind every order, from listing to doorstep.</p>
+            <p>we stand behind every order, from listing to doorstep.</p>
           </article>
           <article className="vm-card">
             <svg viewBox="0 0 32 32" aria-hidden>
@@ -68,7 +67,7 @@ export function MissionValues() {
               <circle cx="16" cy="16" r="4" />
             </svg>
             <b>Transparency</b>
-            <p>Plain terms and visible pricing, with nothing hidden in the fine print.</p>
+            <p>plain terms and visible pricing, with nothing hidden in the fine print.</p>
           </article>
         </div>
       </div>

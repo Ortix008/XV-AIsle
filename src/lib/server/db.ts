@@ -205,6 +205,8 @@ export function getDb() {
   addColumn(next, "listings", "supplier_email", "TEXT");
   addColumn(next, "listings", "kind", "TEXT NOT NULL DEFAULT 'single'");
   addColumn(next, "listings", "aisle", "TEXT");
+  addColumn(next, "listings", "hidden_from_shop", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "listings", "supplier_us_confirmed", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "orders", "payment_intent_id", "TEXT");
   addColumn(next, "orders", "charge_id", "TEXT");
   addColumn(next, "orders", "transfer_group", "TEXT");
