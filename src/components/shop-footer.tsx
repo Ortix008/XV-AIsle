@@ -57,7 +57,7 @@ export function ShopFooter() {
               <h2 className="font-heading text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
                 {column.title}
               </h2>
-              <ul className="mt-4 space-y-2.5">
+              <ul className="link-row footer-links">
                 {column.links.map((link) => (
                   <li key={link.href}>
                     <Link href={link.href} className="tap-link link-slide text-sm text-[var(--link)] hover:text-foreground">
@@ -80,31 +80,26 @@ export function ShopFooter() {
 
 export function CheckoutPolicies() {
   return (
-    <p className="text-base text-pretty text-muted-foreground">
+    <div className="link-row policy-links">
       <Link href="/shop/returns" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Returns
-      </Link>{" "}
-      ({RETURN_WINDOW_DAYS} days).{" "}
+      </Link>
+      <span>({RETURN_WINDOW_DAYS} days).</span>
       <Link href="/shop/shipping" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Shipping
       </Link>
-      .{" "}
       <Link href="/shop/terms" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Terms
       </Link>
-      .{" "}
       <Link href="/shop/privacy" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Privacy
       </Link>
-      .{" "}
       <Link href="/shop/contact" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Contact
       </Link>
-      .{" "}
       <Link href={HOW_WE_CHECK_HREF} className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         How we check
       </Link>
-      .
-    </p>
+    </div>
   );
 }

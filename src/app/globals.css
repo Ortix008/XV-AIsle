@@ -384,6 +384,16 @@
     url("/brand/hero-aisle-pedestals.webp") 72% 42% / cover no-repeat;
 }
 
+.shop-band .shop-band-art {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--page) 90%, transparent) 0%, color-mix(in srgb, var(--page) 60%, transparent) 60%, transparent),
+    url("/brand/hero-aisle-pedestals.webp") 72% 42% / cover no-repeat;
+}
+
+.shop-band-copy > p:not(.eyebrow) {
+  color: var(--body);
+}
+
 .shop-band-copy {
   position: relative;
   z-index: 1;
@@ -1957,10 +1967,28 @@ video.auth-plate-media {
   height: 32px;
 }
 
-.tap-link {
+a.tap-link,
+.product-links a,
+.link-row a {
   display: inline-flex;
   align-items: center;
+  box-sizing: border-box;
   min-height: 44px;
+}
+
+.link-row,
+.header-tools,
+.policy-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-links {
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 16px;
 }
 
 .hero-actions {
@@ -2053,7 +2081,7 @@ video.auth-plate-media {
 .policy-contact > p::before {
   content: "";
   position: absolute;
-  top: 0.55em;
+  top: 0.6em;
   left: 0;
   width: 6px;
   height: 6px;
@@ -2093,12 +2121,15 @@ video.auth-plate-media {
   background: var(--surface);
 }
 
-.contact-submit {
+button.contact-submit {
   width: fit-content;
+  height: 48px;
   min-height: 48px;
   padding: 0 24px;
   font-size: 16px;
   font-weight: 600;
+  line-height: 1;
+  box-sizing: border-box;
 }
 
 .product-page {
@@ -2307,8 +2338,24 @@ video.auth-plate-media {
     width: 100%;
   }
 
-  .contact-submit {
+  button.contact-submit {
     width: 100%;
+  }
+
+  .shop-band .shop-band-art {
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--page) 94%, transparent) 0%, color-mix(in srgb, var(--page) 88%, transparent) 100%),
+      url("/brand/hero-aisle-pedestals.webp") center 42% / cover no-repeat;
+  }
+
+  .product-page .product-photo,
+  .product-page .product-stage,
+  .product-page .product-frame {
+    aspect-ratio: 4 / 3;
+  }
+
+  .product-page .product-stage {
+    padding: 0;
   }
 
   .aisle-tile:focus-visible,
@@ -2341,7 +2388,41 @@ video.auth-plate-media {
   }
 }
 
+.product-checkout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.product-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--em-line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.auth-mark {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
+.auth-x-mark {
+  width: 18px;
+  height: 18px;
+  color: var(--heading);
+}
+
 @media (min-width: 1280px) {
+  .product-photo {
+    position: sticky;
+    top: 88px;
+    align-self: start;
+  }
+
   .page-title,
   .product-title {
     font-size: 44px;

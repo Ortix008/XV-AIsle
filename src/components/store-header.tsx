@@ -124,7 +124,7 @@ export function StoreHeader() {
               </Link>
             ))}
           </nav>
-          <div className="flex shrink-0 items-center gap-3 text-sm text-muted-foreground min-[900px]:gap-4">
+          <div className="header-tools flex shrink-0 items-center text-sm text-muted-foreground">
             <Link href="/shop" className="tap-link link-slide hover:text-foreground">
               Search
             </Link>

@@ -1,11 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
 import { AuthBackdrop } from "@/components/auth-backdrop";
-import { BrandMark } from "@/components/brand-mark";
 import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +29,8 @@ function AuthScreen({
       <div className="auth-screen-body">
         <div className="auth-stack">
           <Link href="/" className="auth-brand">
-            <BrandMark />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/xv-aisle-mark.svg" width={40} height={40} alt="XV-AIsle" className="auth-mark" />
           </Link>
           <main id="auth-main" className={wide ? "auth-glass auth-glass-wide" : "auth-glass"}>
             <p className="eyebrow">Account</p>
@@ -56,7 +55,12 @@ function useEnterDeskWhenSignedIn() {
 function ContinueWithX() {
   return (
     <a href="/api/auth/x/start" className="auth-x">
-      <Image src="/brand/logo-official-xo.png" alt="" width={20} height={20} unoptimized className="auth-x-mark" />
+      <svg className="auth-x-mark" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"
+        />
+      </svg>
       Continue with X
     </a>
   );

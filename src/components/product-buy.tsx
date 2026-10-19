@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { ProductFrame } from "@/components/product-frame";
 import { ShareToX } from "@/components/share-to-x";
 import { useReveal } from "@/components/reveal";
@@ -75,6 +75,8 @@ export function ProductBuy({
   const [city, setCity] = useState("");
   const [region, setRegion] = useState("");
   const [postal, setPostal] = useState("");
+  const [details, setDetails] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
   const check =
     listing.checkedBy && listing.checkedOn && listing.checkedNote
       ? { by: listing.checkedBy, on: listing.checkedOn, note: listing.checkedNote }
@@ -83,8 +85,16 @@ export function ProductBuy({
   const world = nightWorldForListing(listing);
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
 
+  useEffect(() => {
+    if (details) nameRef.current?.focus();
+  }, [details]);
+
   async function checkout(event: FormEvent) {
     event.preventDefault();
+    if (!details) {
+      setDetails(true);
+      return;
+    }
     setPending(true);
     setError(null);
     const response = await fetch("/api/store/checkout", {
@@ -127,54 +137,56 @@ export function ProductBuy({
           {listing.sample ? <span className="product-sample">Sample</span> : null}
         </div>
         <p className="product-desc">{listing.description}</p>
-        <form {...formReveal} onSubmit={checkout} className="product-buy">
-          {testMode ? (
-            <p className="product-test" role="status">
-              Test mode
-            </p>
-          ) : null}
-          <p className="product-ship">
-            <TruckIcon />
-            <span>{productShipLine(listing)}</span>
+        {testMode ? (
+          <p className="product-test" role="status">
+            Test mode
           </p>
-          <label className="product-qty-field">
-            Quantity
-            <Input className="product-qty" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
-          </label>
-          <div className="product-fields">
-            <h2 className="product-checkout-label">Checkout</h2>
-            <label className="product-field">
-              Name
-              <Input className="h-12" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required />
+        ) : null}
+        <form {...formReveal} onSubmit={checkout} className="product-checkout">
+          <div className="product-buy">
+            <p className="product-ship">
+              <TruckIcon />
+              <span>{productShipLine(listing)}</span>
+            </p>
+            <label className="product-qty-field">
+              Quantity
+              <Input className="product-qty" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
             </label>
-            <label className="product-field">
-              Email
-              <Input className="h-12" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
-            </label>
-            <label className="product-field">
-              Street
-              <Input className="h-12" value={line1} onChange={(event) => setLine1(event.target.value)} autoComplete="address-line1" required />
-            </label>
-            <label className="product-field">
-              City
-              <Input className="h-12" value={city} onChange={(event) => setCity(event.target.value)} autoComplete="address-level2" required />
-            </label>
-            <label className="product-field">
-              State
-              <Input className="h-12" value={region} onChange={(event) => setRegion(event.target.value)} autoComplete="address-level1" required />
-            </label>
-            <label className="product-field">
-              Postal code
-              <Input className="h-12" value={postal} onChange={(event) => setPostal(event.target.value)} autoComplete="postal-code" required />
-            </label>
+            <Button type="submit" disabled={pending} className="product-pay">
+              {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qty) / 100)}`}
+            </Button>
           </div>
-          {error ? <p className="text-base text-late">{error}</p> : null}
-          <Button type="submit" disabled={pending} className="product-pay">
-            {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qty) / 100)}`}
-          </Button>
           <p className="product-pay-line">You pay right here on xvaisle.com.</p>
-          <p className="product-stripe">You pay on xvaisle.com. Stripe handles the card. We never see your card number.</p>
-          <CheckoutPolicies />
+          {details ? (
+            <div className="product-details">
+              <h2 className="product-checkout-label">Checkout</h2>
+              <label className="product-field">
+                Name
+                <Input ref={nameRef} className="h-12" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required />
+              </label>
+              <label className="product-field">
+                Email
+                <Input className="h-12" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+              </label>
+              <label className="product-field">
+                Street
+                <Input className="h-12" value={line1} onChange={(event) => setLine1(event.target.value)} autoComplete="address-line1" required />
+              </label>
+              <label className="product-field">
+                City
+                <Input className="h-12" value={city} onChange={(event) => setCity(event.target.value)} autoComplete="address-level2" required />
+              </label>
+              <label className="product-field">
+                State
+                <Input className="h-12" value={region} onChange={(event) => setRegion(event.target.value)} autoComplete="address-level1" required />
+              </label>
+              <label className="product-field">
+                Postal code
+                <Input className="h-12" value={postal} onChange={(event) => setPostal(event.target.value)} autoComplete="postal-code" required />
+              </label>
+              {error ? <p className="text-base text-late">{error}</p> : null}
+            </div>
+          ) : null}
         </form>
         {usSupplierConfirmed(listing) && !listing.shipsFrom?.trim() && listing.supplierOrigin.trim() ? (
           <p className="product-note">Ships from {listing.supplierOrigin}.</p>
@@ -243,12 +255,13 @@ export function ProductBuy({
             </div>
           </dl>
         </section>
-        <div className="product-links">
+        <div className="product-links link-row">
           <Link href={HOW_WE_CHECK_HREF} className="tap-link">
             How we check
           </Link>
           <ShareToX href={shareHref} />
         </div>
+        <CheckoutPolicies />
       </div>
     </div>
   );
