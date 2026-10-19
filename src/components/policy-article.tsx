@@ -5,7 +5,6 @@ import { Reveal } from "@/components/reveal";
 import { ShopFrame } from "@/components/shop-frame";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { supportEmailForDisplay } from "@/lib/server/settings";
-import { storeReturnCopy } from "@/lib/server/supplier-returns";
 
 export function PolicyArticle({
   kicker,
@@ -47,7 +46,7 @@ export function PolicyArticle({
             </a>
             .
           </p>
-          <p>{storeReturnCopy()}</p>
+          <p>{"We'll email the return address when you start a return. Contact support to start a return."}</p>
         </section>
       </Reveal>
     </ShopFrame>

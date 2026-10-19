@@ -18,7 +18,7 @@ export default function ShopPrivacyPage() {
       </p>
       <p>
         You can reach us at xvaisle.team@gmail.com, and we reply within 2 business days. Returns go back to the
-        supplier, and their return address is on your order page after you buy.
+        supplier, and {"we'll"} email the return address when you start a return.
       </p>
       <p>
         <Link href="/shop/returns" className="underline underline-offset-4">

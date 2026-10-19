@@ -11,7 +11,7 @@ export default function ReturnsPage() {
     <PolicyArticle kicker="Store" title="Need to send something back?">
       <p>You have 14 days from delivery to start a return.</p>
       <p>
-        {"Just reach out to us and we'll help you start it. Returns go straight back to the company that shipped your item, and you'll find that address on your order page."}
+        {"Just reach out to us and we'll help you start it. We'll email the return address when you start a return."}
       </p>
       <p>
         Unused, in original packaging. Damaged, defective or wrong items: send a photo within 7 days of delivery and we
