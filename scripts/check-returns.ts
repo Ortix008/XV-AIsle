@@ -40,7 +40,7 @@ async function main() {
   const { receiptHtml, receiptText, sampleReceiptHtml } = await import("../src/lib/server/order-mail");
   const { buyerOrder, presentOrder, publicListing, resellerListing } = await import("../src/lib/server/order-view");
   const { saveReturnsAddress } = await import("../src/lib/server/settings");
-  const { ensureStarterShelf } = await import("../src/lib/server/starter-shelf");
+  const { ensureStarterShelf, sampleProductReturnNote } = await import("../src/lib/server/starter-shelf");
   const { createPendingOrder, fulfillPaidOrder, getListing, getOrder, listPublished, publishListing } = await import(
     "../src/lib/server/store"
   );
@@ -349,6 +349,14 @@ async function main() {
   assert(sample != null && !sample.return_line1 && !sample.return_city, "sample data leaves the return address blank");
   const sampleListing = getListing("sheet-pan");
   assert(sampleListing && returnCopyForListing({ ...sampleListing, supplierAccountId: null }) === RETURNS_UNSET, "a sample with no address uses the fallback");
+  const scraper = getListing("bench-scraper");
+  assert(
+    sampleListing &&
+      scraper &&
+      sampleProductReturnNote(sampleListing, returnCopyForListing(sampleListing)) === RETURNS_ON_ORDER &&
+      sampleProductReturnNote(scraper, returnCopyForListing(scraper)) === RETURNS_ON_ORDER,
+    "both samples use the order-page return line",
+  );
 
   getDb()
     .prepare(

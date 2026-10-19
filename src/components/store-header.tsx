@@ -23,7 +23,7 @@ const nav = [
   { href: "/shop/small", label: "Small business" },
   { href: "/#aisles", label: "Aisles" },
   { href: HOW_WE_CHECK_HREF, label: "How we check" },
-  { href: "/#account", label: "Account" },
+  { href: "/account", label: "Account" },
 ];
 
 function focusable(button: HTMLButtonElement | null, panel: HTMLElement | null) {

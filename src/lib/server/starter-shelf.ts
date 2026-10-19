@@ -1,3 +1,4 @@
+import { RETURNS_ON_ORDER } from "../return-address";
 import { samplePriceCents, sampleStarters } from "../sample-shelf";
 import { getDb } from "./db";
 import { getListing, publishListing } from "./store";
@@ -14,6 +15,12 @@ export function demoSeedEnabled() {
 
 export function isSampleListing(listing: { productId: string; supplierName: string }) {
   return SAMPLE_IDS.has(listing.productId) && listing.supplierName === "Northwharf Goods";
+}
+
+/** Preview samples share one existing return line. Other listings keep their own. */
+export function sampleProductReturnNote(listing: { productId: string; supplierName: string }, fallback: string) {
+  if (demoSeedEnabled() && isSampleListing(listing)) return RETURNS_ON_ORDER;
+  return fallback;
 }
 
 /** Sample rows stay out of the public shop unless DEMO_SEED=1. */

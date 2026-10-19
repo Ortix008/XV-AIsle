@@ -299,13 +299,9 @@ function routedTitle(order: { title?: string | null; productId: string }, listin
   return `${base}. Includes ${pieces.map((piece) => piece.title).join(", ")}`;
 }
 
-/** Generic preview copy. It is attached only when the caller marks the row as a sample. */
-export const SAMPLE_EARNED_PLACE =
-  "Sample preview. This sentence is generic placeholder copy so the card can be seen. A product on the shop uses the note written for that product.";
-
 /** Shopper-facing listing. Cost, margin, fees, and any fund share stay off this object. */
 export function publicShopListing(listing: StoreListing, sample: boolean) {
-  const whyWePicked = listing.whyWePicked?.trim() || (sample ? SAMPLE_EARNED_PLACE : "");
+  const whyWePicked = listing.whyWePicked?.trim() || "";
   return {
     productId: listing.productId,
     sku: listing.sku,
