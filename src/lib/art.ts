@@ -37,7 +37,7 @@ export const welcomeDepartments = [
   {
     title: "Home",
     src: "/art/dept-home-wide.png",
-    line: "What a home uses, from storage to the lamp, the broom, and the table.",
+    line: "Everything a home uses, from storage to lamps, brooms and tables.",
   },
   { title: "Sports", src: "/art/real-sport.png", line: "Gear for the hour after work." },
   {

@@ -22,8 +22,8 @@ export default function SmallBusinessPage() {
         <p className="eyebrow">Small business</p>
         <h1 className="mt-4 text-4xl sm:text-5xl">Neighborhood shops</h1>
         <p className="mt-2 max-w-xl text-pretty text-sm text-muted-foreground">
-          A small business keeps its own name on the store. National floors are a different list. If they make the goods
-          in the USA, the page says so.
+          Every small business here keeps its own name. Bigger national brands have their own list. If an item is made in
+          the USA, its page will say so.
         </p>
         {shops === null ? <p className="mt-6 text-sm text-muted-foreground">Opening the shops…</p> : null}
         {shops?.length === 0 ? (

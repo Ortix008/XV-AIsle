@@ -48,8 +48,8 @@ export function JoinScreen() {
                 <span className="hero-break">Goods that </span>earn their <span className="text-primary">place.</span>
               </h1>
               <p className="mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                A night market of home, kitchen, and everyday goods. Every product page tells you how long it takes, and,
-                when we wrote one, why it earned its place.
+                A night market of home, kitchen, and everyday goods.{" "}
+                {"When we've confirmed ship days with the supplier, the product page shows our best estimate."}
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <Link href="/shop" className="pill pill-primary max-[899px]:flex-1">
