@@ -1,10 +1,4 @@
-/** Buyer-facing return copy. A street is never part of these sentences. */
-
-export const RETURNS_ON_ORDER = "Returns ship back to the supplier at the address on your order page.";
-
-export const RETURNS_UNSET = "Return address will be shown on your order page. Contact support to start a return.";
-
-/** Unconfirmed suppliers. The order page and the product line use this instead of RETURNS_ON_ORDER. */
+/** Buyer-facing return copy. A street is never part of this sentence. */
 export const RETURNS_EMAILED = "We'll email the return address when you start a return.";
 
 export type ReturnAddress = {

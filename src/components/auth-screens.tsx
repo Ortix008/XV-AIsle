@@ -15,10 +15,12 @@ function AuthScreen({
   title,
   lede,
   children,
+  wide = false,
 }: {
   title: string;
   lede: string;
   children: ReactNode;
+  wide?: boolean;
 }) {
   return (
     <div className="auth-screen">
@@ -31,7 +33,7 @@ function AuthScreen({
           <Link href="/" className="auth-brand">
             <BrandMark />
           </Link>
-          <main id="auth-main" className="auth-glass">
+          <main id="auth-main" className={wide ? "auth-glass auth-glass-wide" : "auth-glass"}>
             <p className="eyebrow">Account</p>
             <h1 className="auth-title">{title}</h1>
             <p className="auth-lede">{lede}</p>
@@ -160,7 +162,7 @@ export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolea
             {error}
           </p>
         ) : null}
-        <Button type="submit" disabled={pending} className="mt-1 h-12 w-full rounded-full px-6">
+        <Button type="submit" disabled={pending} className="auth-submit mt-1 h-12 w-full rounded-full px-6">
           {totpChallenge || xCode ? "Confirm code" : pending ? "Signing in…" : "Sign in"}
         </Button>
         {totpChallenge || xCode ? null : (
@@ -206,11 +208,8 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
   }
 
   return (
-    <AuthScreen
-      title="Open an account"
-      lede="Welcome in. Let's set up your account."
-    >
-      <form onSubmit={onSubmit} className="auth-form">
+    <AuthScreen wide title="Open an account" lede="Welcome in. Let's set up your account.">
+      <form onSubmit={onSubmit} className="auth-form auth-form-signup">
         {showX ? (
           <>
             <ContinueWithX />
@@ -270,7 +269,7 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
             {error}
           </p>
         ) : null}
-        <Button type="submit" disabled={pending} className="mt-1 h-12 w-full rounded-full px-6">
+        <Button type="submit" disabled={pending} className="auth-submit mt-1 h-12 w-full rounded-full px-6">
           {pending ? "Creating the account…" : "Create an account"}
         </Button>
         <p className="text-base text-muted-foreground">

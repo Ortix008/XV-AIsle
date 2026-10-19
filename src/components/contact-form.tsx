@@ -34,7 +34,7 @@ export function ContactForm() {
   if (sent) return <p className="mt-6 text-sm">The seller has the note.</p>;
 
   return (
-    <form onSubmit={submit} className="mt-8 flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
+    <form onSubmit={submit} className="contact-form">
       <label className="flex flex-col gap-1 text-sm">
         Name
         <Input value={name} onChange={(event) => setName(event.target.value)} required />
@@ -48,7 +48,7 @@ export function ContactForm() {
         <Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={5} required />
       </label>
       {error ? <p className="text-sm text-late">{error}</p> : null}
-      <Button type="submit" disabled={pending} className="w-fit">
+      <Button type="submit" disabled={pending} className="contact-submit">
         {pending ? "Sending…" : "Send the note"}
       </Button>
     </form>

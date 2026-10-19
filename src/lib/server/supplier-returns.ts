@@ -1,5 +1,4 @@
-import { usSupplierConfirmed } from "../order-facts";
-import { RETURNS_EMAILED, RETURNS_ON_ORDER, RETURNS_UNSET, formatReturnAddress, parseReturnAddress, returnAddressFromParts, type ReturnAddress } from "../return-address";
+import { RETURNS_EMAILED, formatReturnAddress, parseReturnAddress, returnAddressFromParts, type ReturnAddress } from "../return-address";
 import type { Actor } from "./access";
 import { verifiedAdmin } from "./access";
 import { getDb } from "./db";
@@ -78,8 +77,8 @@ export function returnCopyForListing(
     supplierUsConfirmed?: boolean | null;
   },
 ) {
-  if (!usSupplierConfirmed(listing)) return RETURNS_EMAILED;
-  return resolveReturnAddress(listing) ? RETURNS_ON_ORDER : RETURNS_UNSET;
+  void listing;
+  return RETURNS_EMAILED;
 }
 
 export function anyReturnAddress() {
@@ -92,7 +91,7 @@ export function anyReturnAddress() {
 }
 
 export function storeReturnCopy() {
-  return anyReturnAddress() ? RETURNS_ON_ORDER : RETURNS_UNSET;
+  return RETURNS_EMAILED;
 }
 
 export function formatOrderReturn(order: {

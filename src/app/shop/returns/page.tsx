@@ -8,21 +8,20 @@ export const metadata: Metadata = { title: "Returns · XV-AIsle" };
 export default function ReturnsPage() {
   const supportEmail = supportEmailForDisplay();
   return (
-    <PolicyArticle kicker="Store" title="Need to send something back?">
+    <PolicyArticle band kicker="Store" title="Need to send something back?">
       <p>You have 14 days from delivery to start a return.</p>
       <p>
-        {"Just reach out to us and we'll help you start it. We'll email the return address when you start a return."}
+        {"Just email us and we'll help you start it. We'll email the return address when you start a return."}
       </p>
       <p>
-        Unused, in original packaging. Damaged, defective or wrong items: send a photo within 7 days of delivery and we
-        cover return shipping.
+        {"Please send items back in the condition they arrived. If a product can't be returned, its page will say so."}
       </p>
       <p>Return shipping is on you, unless your item arrived damaged, defective or wrong. Then it&apos;s on us.</p>
       <p>{"Some items have their own return rules, and you'll see them in a short note on that product's page."}</p>
-      <p>{"Once your return arrives back, we'll refund the card you paid with."}</p>
       <p>
-        Once we accept your return, the refund goes back to the card you paid with. Stripe handles the card, so we never
-        see your number.
+        {
+          "Once the supplier confirms they have your item back, we'll refund the card you paid with. How fast it shows up depends on your bank. Stripe handles your card, so we never see your number."
+        }
       </p>
       <p>{"Something arrived damaged or wrong? Send us a photo within 7 days of delivery and we'll help make it right."}</p>
       <p>

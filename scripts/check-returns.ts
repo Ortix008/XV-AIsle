@@ -32,7 +32,7 @@ async function main() {
   assert(brandBlock.includes('{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }'), "brand images can load in an email client");
   assert(!brandBlock.includes("X-Frame-Options") && !brandBlock.includes("Content-Security-Policy"), "the brand rule only changes CORP");
 
-  const { RETURNS_EMAILED, RETURNS_ON_ORDER, RETURNS_UNSET, parseReturnAddress } = await import("../src/lib/return-address");
+  const { RETURNS_EMAILED, parseReturnAddress } = await import("../src/lib/return-address");
   const { closeDb, getDb } = await import("../src/lib/server/db");
   const { signUp } = await import("../src/lib/server/accounts");
   const { startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
@@ -120,11 +120,11 @@ async function main() {
 
   const denied = saveSupplierReturn(reseller, `id:${supplierId}`, address);
   assert("error" in denied && denied.status === 403, "a reseller cannot save a supplier return address");
-  assert(storeReturnCopy() === RETURNS_UNSET, "no address yet uses the fallback");
+  assert(storeReturnCopy() === RETURNS_EMAILED, "no address yet uses the emailed line");
 
   const saved = saveSupplierReturn(admin, `id:${supplierId}`, address);
   assert(!("error" in saved) && saved.address?.line1 === STREET, "an operator can save a supplier return address");
-  assert(storeReturnCopy() === RETURNS_ON_ORDER, "a saved supplier address changes the policy line");
+  assert(storeReturnCopy() === RETURNS_EMAILED, "a saved supplier address still uses the emailed line");
   const listed = listSupplierReturns().find((item) => item.key === `id:${supplierId}`);
   assert(listed?.line1 === STREET && listed.postal === POSTAL, "admin can read the supplier address back");
 
@@ -267,8 +267,8 @@ async function main() {
   getDb().prepare("UPDATE listings SET supplier_us_confirmed = 1, ships_from = ? WHERE product_id = 'return-pan'").run("Elizabeth, NJ");
   const confirmedListing = getListing("return-pan");
   assert(
-    confirmedListing && returnCopyForListing(confirmedListing) === RETURNS_ON_ORDER,
-    "a confirmed supplier keeps the order-page return line",
+    confirmedListing && returnCopyForListing(confirmedListing) === RETURNS_EMAILED,
+    "a confirmed product still emails the return address",
   );
   const confirmedReceipt = await GET(new Request(`http://127.0.0.1/api/store/receipt?token=${pending.receiptToken}`));
   const confirmedBody = (await confirmedReceipt.json()) as { order?: { returnAddress?: string } };
@@ -291,7 +291,7 @@ async function main() {
     receiptUrl: "http://127.0.0.1/shop/order?token=example",
     returnAddress: null,
   });
-  assert(!blankReceipt.includes(RETURNS_UNSET), "the receipt email omits the fallback when there is no address");
+  assert(!blankReceipt.includes(RETURNS_EMAILED), "the receipt email omits the return line when there is no address");
   assert(!blankReceipt.includes("Need to send it back"), "a receipt without a return address omits the returns line");
   assert(blankReceipt.includes("Usually ships in 2-4 business days."), "a confirmed window names the days");
   assert(!blankReceipt.includes(STREET), "the fallback email has no street");
@@ -307,7 +307,7 @@ async function main() {
     receiptUrl: "http://127.0.0.1/shop/order?token=example",
     returnAddress: null,
   });
-  assert(!blankHtml.includes(RETURNS_UNSET) && !blankHtml.includes(">RETURNS<"), "the receipt html omits returns when there is no address");
+  assert(!blankHtml.includes(RETURNS_EMAILED) && !blankHtml.includes(">RETURNS<"), "the receipt html omits returns when there is no address");
   assert(blankHtml.includes(TRACKING_SHIP), "a receipt without ship days uses the tracking line");
   assert(!blankHtml.includes(US_SUPPLIER_SHIP), "a receipt without a confirmed US supplier omits the US line");
   assert(!blankHtml.includes(">Ships from<") && !blankHtml.includes("Arrival"), "blank receipt html omits an empty origin row");

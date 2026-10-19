@@ -43,6 +43,17 @@ export type ProductListing = {
   aisle?: string | null;
 };
 
+function TruckIcon() {
+  return (
+    <svg className="product-truck" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M3 7.5h11.2v8.2H3V7.5zm12.2 1.6h2.4l2.9 3.1v3.5h-5.3V9.1zM7.1 16.2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4zm9.2 0a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4z"
+      />
+    </svg>
+  );
+}
+
 export function ProductBuy({
   listing,
   returnNote,
@@ -101,32 +112,82 @@ export function ProductBuy({
   }
 
   return (
-    <div className="mx-auto grid max-w-[1280px] gap-8 px-5 py-12 sm:px-10 sm:py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)] lg:items-start lg:gap-x-16">
-      <div className="contents lg:order-2 lg:flex lg:flex-col lg:gap-8">
-      <div className="order-1">
-        <p className="eyebrow">{listing.brand ?? listing.sku}</p>
-        {listing.brand ? <p className="mt-2 text-xs tracking-wide text-muted-foreground">{listing.sku}</p> : null}
-        <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl">{listing.title}</h1>
-        <ShareToX href={shareHref} className="mt-5" />
-        {listing.sample ? <p className="mt-3 text-sm font-medium text-primary">Sample</p> : null}
-        <p className="mt-5 max-w-xl text-2xl font-heading tracking-tight">{money(listing.priceCents / 100)}</p>
-        <p className="mt-4 max-w-xl whitespace-pre-wrap text-pretty text-base leading-relaxed text-muted-foreground">
-          {listing.description}
-        </p>
-        <p className="mt-4 max-w-xl text-base leading-relaxed">{productShipLine(listing)}</p>
+    <div className="product-page">
+      <div className="product-photo">
+        <div className="product-stage" data-world={world?.slug} style={worldStyle}>
+          <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 560px, 100vw" priority />
+        </div>
+      </div>
+      <div className="product-copy">
+        <p className="product-sku">{listing.sku}</p>
+        {listing.brand ? <p className="product-brand">{listing.brand}</p> : null}
+        <h1 className="product-title">{listing.title}</h1>
+        <div className="product-price-row">
+          <p className="product-price">{money(listing.priceCents / 100)}</p>
+          {listing.sample ? <span className="product-sample">Sample</span> : null}
+        </div>
+        <p className="product-desc">{listing.description}</p>
+        <form {...formReveal} onSubmit={checkout} className="product-buy">
+          {testMode ? (
+            <p className="product-test" role="status">
+              Test mode
+            </p>
+          ) : null}
+          <p className="product-ship">
+            <TruckIcon />
+            <span>{productShipLine(listing)}</span>
+          </p>
+          <label className="product-qty-field">
+            Quantity
+            <Input className="product-qty" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
+          </label>
+          <div className="product-fields">
+            <h2 className="product-checkout-label">Checkout</h2>
+            <label className="product-field">
+              Name
+              <Input className="h-12" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required />
+            </label>
+            <label className="product-field">
+              Email
+              <Input className="h-12" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+            </label>
+            <label className="product-field">
+              Street
+              <Input className="h-12" value={line1} onChange={(event) => setLine1(event.target.value)} autoComplete="address-line1" required />
+            </label>
+            <label className="product-field">
+              City
+              <Input className="h-12" value={city} onChange={(event) => setCity(event.target.value)} autoComplete="address-level2" required />
+            </label>
+            <label className="product-field">
+              State
+              <Input className="h-12" value={region} onChange={(event) => setRegion(event.target.value)} autoComplete="address-level1" required />
+            </label>
+            <label className="product-field">
+              Postal code
+              <Input className="h-12" value={postal} onChange={(event) => setPostal(event.target.value)} autoComplete="postal-code" required />
+            </label>
+          </div>
+          {error ? <p className="text-base text-late">{error}</p> : null}
+          <Button type="submit" disabled={pending} className="product-pay">
+            {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qty) / 100)}`}
+          </Button>
+          <p className="product-pay-line">You pay right here on xvaisle.com.</p>
+          <p className="product-stripe">You pay on xvaisle.com. Stripe handles the card. We never see your card number.</p>
+          <CheckoutPolicies />
+        </form>
         {usSupplierConfirmed(listing) && !listing.shipsFrom?.trim() && listing.supplierOrigin.trim() ? (
-          <p className="mt-2 max-w-xl text-base leading-relaxed">Ships from {listing.supplierOrigin}.</p>
+          <p className="product-note">Ships from {listing.supplierOrigin}.</p>
         ) : null}
-        {listing.madeInUsa ? <p className="mt-2 max-w-xl text-base leading-relaxed">Made in the USA.</p> : null}
-        {listing.shelf === "small" ? <p className="mt-2 max-w-xl text-base leading-relaxed">This is a small business.</p> : null}
-        <p className="mt-2 text-base text-muted-foreground">You pay right here on xvaisle.com.</p>
+        {listing.madeInUsa ? <p className="product-note">Made in the USA.</p> : null}
+        {listing.shelf === "small" ? <p className="product-note">This is a small business.</p> : null}
         {listing.kind === "bundle" && listing.includes && listing.includes.length > 0 ? (
-          <div className="mt-6 max-w-xl rounded-2xl border border-border bg-secondary px-5 py-4">
+          <div className="product-extra">
             <p className="text-sm font-medium text-muted-foreground">In this bundle</p>
             <ul className="mt-2 space-y-1">
               {listing.includes.map((piece) => (
                 <li key={piece.productId}>
-                  <Link href={`/shop/${piece.productId}`} className="underline underline-offset-4">
+                  <Link href={`/shop/${piece.productId}`} className="tap-link underline underline-offset-4">
                     {piece.title}
                   </Link>
                 </li>
@@ -136,21 +197,21 @@ export function ProductBuy({
           </div>
         ) : null}
         {listing.whyWePicked ? (
-          <aside className="earned-card mt-6 max-w-xl" style={worldStyle}>
+          <aside className="earned-card" style={worldStyle}>
             <h2 className="text-xl">Why it earned its place</h2>
             <p className="mt-2 whitespace-pre-wrap text-base leading-relaxed">{listing.whyWePicked}</p>
           </aside>
         ) : null}
         {notes ? (
-          <dl className="mt-6 grid gap-3 text-base">
+          <dl className="product-notes">
             {listing.whyItCosts ? (
-              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
+              <div className="product-extra">
                 <dt className="text-sm font-medium text-muted-foreground">Why it costs this</dt>
                 <dd className="mt-1 whitespace-pre-wrap">{listing.whyItCosts}</dd>
               </div>
             ) : null}
             {check ? (
-              <div className="rounded-2xl border border-border bg-secondary px-5 py-4">
+              <div className="product-extra">
                 <dt className="text-sm font-medium text-muted-foreground">Checked by XV</dt>
                 <dd className="mt-1 whitespace-pre-wrap">
                   {check.by} on {formatCheckDate(check.on)}. {check.note}
@@ -159,62 +220,7 @@ export function ProductBuy({
             ) : null}
           </dl>
         ) : null}
-        <p className="mt-4 text-sm">
-          <Link href={HOW_WE_CHECK_HREF} className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
-            How we check
-          </Link>
-        </p>
-      </div>
-      <form {...formReveal} onSubmit={checkout} className="order-3 flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:p-6">
-        {testMode ? (
-          <p className="rounded-xl border border-primary bg-primary/15 px-3 py-2 text-center text-sm font-semibold tracking-wide text-primary" role="status">
-            Test mode
-          </p>
-        ) : null}
-        <h2 className="text-xl">Checkout</h2>
-        <label className="flex flex-col gap-1 text-base">
-          Quantity
-          <Input className="h-11" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
-        </label>
-        <label className="flex flex-col gap-1 text-base">
-          Name
-          <Input className="h-11" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required />
-        </label>
-        <label className="flex flex-col gap-1 text-base">
-          Email
-          <Input className="h-11" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
-        </label>
-        <label className="flex flex-col gap-1 text-base">
-          Street
-          <Input className="h-11" value={line1} onChange={(event) => setLine1(event.target.value)} autoComplete="address-line1" required />
-        </label>
-        <label className="flex flex-col gap-1 text-base">
-          City
-          <Input className="h-11" value={city} onChange={(event) => setCity(event.target.value)} autoComplete="address-level2" required />
-        </label>
-        <label className="flex flex-col gap-1 text-base">
-          State
-          <Input className="h-11" value={region} onChange={(event) => setRegion(event.target.value)} autoComplete="address-level1" required />
-        </label>
-        <label className="flex flex-col gap-1 text-base">
-          Postal code
-          <Input className="h-11" value={postal} onChange={(event) => setPostal(event.target.value)} autoComplete="postal-code" required />
-        </label>
-        {error ? <p className="text-base text-late">{error}</p> : null}
-        <Button type="submit" disabled={pending} className="mt-2 h-12 w-full rounded-full text-[15px]">
-          {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qty) / 100)}`}
-        </Button>
-        <p className="text-base text-pretty text-muted-foreground">
-          You pay on xvaisle.com. Stripe handles the card. We never see your card number.
-        </p>
-        <CheckoutPolicies />
-      </form>
-      </div>
-      <div className="order-2 flex flex-col gap-4 lg:order-1">
-        <div className="product-stage" data-world={world?.slug} style={worldStyle}>
-          <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 50vw, 100vw" priority />
-        </div>
-        <section className="rounded-2xl border border-border bg-card px-5 py-4">
+        <section className="product-extra">
           <h2 className="text-lg">Shipping & returns</h2>
           <dl className="mt-3 space-y-3 text-base">
             {usSupplierConfirmed(listing) && listing.shipsFrom?.trim() ? (
@@ -237,6 +243,12 @@ export function ProductBuy({
             </div>
           </dl>
         </section>
+        <div className="product-links">
+          <Link href={HOW_WE_CHECK_HREF} className="tap-link">
+            How we check
+          </Link>
+          <ShareToX href={shareHref} />
+        </div>
       </div>
     </div>
   );

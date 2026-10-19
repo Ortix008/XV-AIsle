@@ -51,11 +51,11 @@ export function JoinScreen() {
                 A night market of home, kitchen, and everyday goods.{" "}
                 {"When we've confirmed ship days with the supplier, the product page shows our best estimate."}
               </p>
-              <div className="mt-8 flex flex-wrap gap-4">
-                <Link href="/shop" className="pill pill-primary max-[899px]:flex-1">
+              <div className="hero-actions">
+                <Link href="/shop" className="pill pill-primary">
                   Shop the aisles
                 </Link>
-                <Link href="/shop/reseller" className="pill pill-ghost max-[899px]:flex-1">
+                <Link href="/shop/reseller" className="status-chip">
                   Reseller program coming soon.
                 </Link>
               </div>

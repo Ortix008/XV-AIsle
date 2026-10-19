@@ -36,7 +36,7 @@ const columns = [
 
 export function ShopFooter() {
   return (
-    <footer className="mt-auto bg-[var(--footer)] pb-9">
+    <footer className="shop-footer mt-auto bg-[var(--footer)] pb-9">
       <MissionValues />
       <div className="mx-auto max-w-[1280px] px-5 pt-16 sm:px-10">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
@@ -46,7 +46,7 @@ export function ShopFooter() {
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
               No fake discounts, countdown timers, spin wheels, or made-up stock counts.{" "}
-              <Link href={HOW_WE_CHECK_HREF} className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+              <Link href={HOW_WE_CHECK_HREF} className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
                 How we check
               </Link>
               .
@@ -60,7 +60,7 @@ export function ShopFooter() {
               <ul className="mt-4 space-y-2.5">
                 {column.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="link-slide text-sm text-[var(--link)] hover:text-foreground">
+                    <Link href={link.href} className="tap-link link-slide text-sm text-[var(--link)] hover:text-foreground">
                       {link.label}
                     </Link>
                   </li>
@@ -81,27 +81,27 @@ export function ShopFooter() {
 export function CheckoutPolicies() {
   return (
     <p className="text-base text-pretty text-muted-foreground">
-      <Link href="/shop/returns" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+      <Link href="/shop/returns" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Returns
       </Link>{" "}
       ({RETURN_WINDOW_DAYS} days).{" "}
-      <Link href="/shop/shipping" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+      <Link href="/shop/shipping" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Shipping
       </Link>
       .{" "}
-      <Link href="/shop/terms" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+      <Link href="/shop/terms" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Terms
       </Link>
       .{" "}
-      <Link href="/shop/privacy" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+      <Link href="/shop/privacy" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Privacy
       </Link>
       .{" "}
-      <Link href="/shop/contact" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+      <Link href="/shop/contact" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Contact
       </Link>
       .{" "}
-      <Link href={HOW_WE_CHECK_HREF} className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
+      <Link href={HOW_WE_CHECK_HREF} className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         How we check
       </Link>
       .

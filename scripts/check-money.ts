@@ -327,7 +327,7 @@ async function main() {
   const html = renderToStaticMarkup(
     createElement(ProductBuy, {
       listing: { ...publicListing(hidden), image: "" },
-      returnNote: "Returns ship back to the supplier at the address on your order page.",
+      returnNote: "We'll email the return address when you start a return.",
       shareHref: buyerShareHref({ title: "Public pan", productUrl: "http://127.0.0.1/shop/public-pan" }),
     }),
   );

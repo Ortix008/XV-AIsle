@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { FindShare } from "@/components/find-share";
 import { TRACKING_SHIP } from "@/lib/order-facts";
-import { RETURNS_UNSET } from "@/lib/return-address";
+import { RETURNS_EMAILED } from "@/lib/return-address";
 
 export type OrderCardFacts = {
   number: string;
@@ -23,7 +23,7 @@ function money(cents: number) {
 export function OrderCard({ facts, children }: { facts: OrderCardFacts; children?: ReactNode }) {
   const shipsFrom = facts.shipsFrom?.trim() || null;
   const eta = facts.eta?.trim() || null;
-  const returns = facts.returnAddress?.trim() || RETURNS_UNSET;
+  const returns = facts.returnAddress?.trim() || RETURNS_EMAILED;
   return (
     <section className="order-sheet">
       <p className="font-mono text-xs tracking-wide text-primary">{facts.number}</p>

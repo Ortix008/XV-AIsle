@@ -74,14 +74,14 @@ export function ShopGrid({
   const Heading = level === "page" ? "h1" : "h2";
 
   return (
-    <div className={catalog ? "mx-auto max-w-[1280px] px-5 py-8 sm:px-10 sm:py-10" : "mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]"}>
+    <div className={catalog ? "shop-catalog" : "mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]"}>
       {catalog ? (
         <>
           <header className="shop-band">
             <div className="shop-band-art" aria-hidden />
             <div className="shop-band-copy">
               <p className="eyebrow">Store</p>
-              <Heading className="mt-3 text-4xl sm:text-5xl">{title}</Heading>
+              <Heading className="page-title">{title}</Heading>
               <p className="mt-3 max-w-xl text-pretty text-base text-muted-foreground">
                 {world ? `${world.title}. ${world.story}` : lede}
               </p>
@@ -170,7 +170,7 @@ export function ShopGrid({
                 href={`/shop/${listing.productId}`}
                 data-world={cardWorld?.slug}
                 style={cardWorld ? (nightWorldVars(cardWorld) as CSSProperties) : undefined}
-                className="product-card block rounded-2xl border border-border bg-card p-2 sm:p-3"
+                className="product-card block border border-border bg-card p-2 sm:p-3"
               >
                 <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
                 {eyebrow(listing) ? (
