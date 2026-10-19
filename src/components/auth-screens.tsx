@@ -14,14 +14,16 @@ function AuthScreen({
   lede,
   children,
   wide = false,
+  signup = false,
 }: {
   title: string;
   lede: string;
   children: ReactNode;
   wide?: boolean;
+  signup?: boolean;
 }) {
   return (
-    <div className="auth-screen">
+    <div className={signup ? "auth-screen auth-screen-signup" : "auth-screen"}>
       <a href="#auth-main" className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-background focus:px-3 focus:py-2">
         Skip to the form
       </a>
@@ -212,7 +214,7 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
   }
 
   return (
-    <AuthScreen wide title="Open an account" lede="Welcome in. Let's set up your account.">
+    <AuthScreen wide signup title="Open an account" lede="Welcome in. Let's set up your account.">
       <form onSubmit={onSubmit} className="auth-form auth-form-signup">
         {showX ? (
           <>
@@ -276,14 +278,14 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
         <Button type="submit" disabled={pending} className="auth-submit mt-1 h-12 w-full rounded-full px-6">
           {pending ? "Creating the account…" : "Create an account"}
         </Button>
-        <p className="text-base text-muted-foreground">
+        <div className="auth-signup-links">
           <Link href="/shop/reseller/terms" className="auth-text-link">
             Reseller terms
           </Link>
-        </p>
-        <Link href="/sign-in" className="auth-text-link w-fit">
-          I already have an account
-        </Link>
+          <Link href="/sign-in" className="auth-text-link">
+            I already have an account
+          </Link>
+        </div>
       </form>
     </AuthScreen>
   );

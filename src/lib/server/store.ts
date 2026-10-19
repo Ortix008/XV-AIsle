@@ -3,6 +3,7 @@ import { aisleBySlug, aisleByTitle, placeProduct } from "../aisles";
 import { bundlePriceRejection } from "../bundles";
 import { getProduct } from "../catalog";
 import { compareAtRejection } from "../honest-price";
+import { isQaCheckoutListing, qaCheckoutSeedAllowed } from "../qa-checkout";
 import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseListingRoute, type ListingRoute } from "../order-flags";
 import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
@@ -841,6 +842,9 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   const number = `XV-${allocateOrderNumber()}`;
   const receiptToken = randomBytes(32).toString("hex");
   const page = listingFrom(listing);
+  if (isQaCheckoutListing(page) && !qaCheckoutSeedAllowed()) {
+    return { error: "That page is not on the store." as const };
+  }
   if (page.wholesaleCost != null) {
     const guarded = marginGuard(page.priceCents, page.wholesaleCost);
     if (guarded) {

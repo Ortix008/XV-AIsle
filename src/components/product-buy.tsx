@@ -152,9 +152,11 @@ export function ProductBuy({
               Quantity
               <Input className="product-qty" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
             </label>
-            <Button type="submit" disabled={pending} className="product-pay">
-              {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qty) / 100)}`}
-            </Button>
+            {details ? null : (
+              <Button type="submit" className="product-pay">
+                Continue to checkout
+              </Button>
+            )}
           </div>
           <p className="product-pay-line">You pay right here on xvaisle.com.</p>
           {details ? (
@@ -185,6 +187,9 @@ export function ProductBuy({
                 <Input className="h-12" value={postal} onChange={(event) => setPostal(event.target.value)} autoComplete="postal-code" required />
               </label>
               {error ? <p className="text-base text-late">{error}</p> : null}
+              <Button type="submit" disabled={pending} className="product-pay">
+                {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qty) / 100)}`}
+              </Button>
             </div>
           ) : null}
         </form>

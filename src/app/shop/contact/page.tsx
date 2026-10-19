@@ -21,7 +21,7 @@ export default function ContactPage() {
           <h1 className="page-title contact-title">{"We're here to help"}</h1>
           <div className="policy-copy">
             <p>Have a question about an order, a return or anything else? Reach out and a real person will get back to you.</p>
-            <p>
+            <p className="policy-email">
               Email:{" "}
               <a className="tap-link underline underline-offset-4" href={`mailto:${supportEmail}`}>
                 {supportEmail}

@@ -41,7 +41,11 @@ for (const [name, next] of [
   const password = markup.indexOf('label="Password"');
   assert(button >= 0 && divider > button && email > divider && password > email, `${name} puts Continue with X, then or, then email and password`);
 }
-assert(authScreens.includes("/brand/logo-official-xo.png"), "Continue with X shows the X mark");
+assert(
+  authScreens.includes('className="auth-x-mark"') && authScreens.includes('aria-hidden="true"') && authScreens.includes("Continue with X"),
+  "Continue with X shows the X mark",
+);
+assert(!authScreens.includes("/brand/logo-official-xo.png"), "Continue with X does not use the old logo");
 assert(!authScreens.includes("auth-email-row"), "Continue with X is not beside the email field");
 
 const saved = {
