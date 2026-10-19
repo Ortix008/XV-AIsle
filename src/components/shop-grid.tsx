@@ -181,19 +181,23 @@ export function ShopGrid({
                 <h3 className="mt-1 px-1 text-[15px] font-semibold tracking-[-0.01em] sm:text-[17px]">{listing.title}</h3>
                 <p className="mt-1 px-1 pb-1 text-sm text-muted-foreground">
                   {money(listing.priceCents / 100)}
-                  {" · "}
-                  {shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax) ? (
-                    usSupplierConfirmed(listing) ? (
-                      <>
-                        ships from {listing.supplierOrigin} in {listing.shipDaysMin}–{listing.shipDaysMax} days
-                      </>
-                    ) : (
-                      <>
-                        in {listing.shipDaysMin}–{listing.shipDaysMax} days
-                      </>
-                    )
-                  ) : (
-                    unconfirmedShipLine(listing)
+                  {listing.sample ? null : (
+                    <>
+                      {" · "}
+                      {shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax) ? (
+                        usSupplierConfirmed(listing) ? (
+                          <>
+                            ships from {listing.supplierOrigin} in {listing.shipDaysMin}–{listing.shipDaysMax} days
+                          </>
+                        ) : (
+                          <>
+                            in {listing.shipDaysMin}–{listing.shipDaysMax} days
+                          </>
+                        )
+                      ) : (
+                        unconfirmedShipLine(listing)
+                      )}
+                    </>
                   )}
                 </p>
               </Link>

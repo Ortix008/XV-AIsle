@@ -16,6 +16,7 @@ import {
   xOauthCookieOptions,
   xScopesAllowed,
   xSignInConfigured,
+  xSignInReviewable,
 } from "../src/lib/x-oauth";
 
 function assert(condition: unknown, message: string) {
@@ -35,7 +36,7 @@ for (const [name, next] of [
 ] as const) {
   const form = authSlice(name, next);
   const markup = form.slice(form.indexOf("return ("));
-  const button = markup.indexOf("<ContinueWithX />");
+  const button = markup.indexOf("<ContinueWithX");
   const divider = markup.indexOf("<AuthOr />");
   const email = markup.indexOf("Email");
   const password = markup.indexOf('label="Password"');
@@ -140,6 +141,12 @@ delete process.env.X_CLIENT_ID;
 delete process.env.X_CLIENT_SECRET;
 delete process.env.X_REDIRECT_URI;
 assert(!xSignInConfigured(), "missing env hides X sign-in");
+assert(xSignInReviewable({ NODE_ENV: "development" }), "local dev can review the X button");
+assert(xSignInReviewable({ NODE_ENV: "production", VERCEL_ENV: "preview" }), "a preview deploy can review the X button");
+assert(!xSignInReviewable({ NODE_ENV: "production" }), "production without X stays hidden");
+assert(!xSignInReviewable({ NODE_ENV: "development", VERCEL_ENV: "production" }), "a production deploy does not show a disabled X button");
+assert(authScreens.includes("disabled={xDisabled}"), "an unconfigured preview disables Continue with X");
+assert(!authScreens.includes("sk_test") && !authScreens.includes("X_CLIENT_SECRET"), "the auth screen does not embed credentials");
 process.env.X_CLIENT_ID = "  ";
 process.env.X_CLIENT_SECRET = "secret";
 process.env.X_REDIRECT_URI = "https://xvaisle.com/api/auth/x/callback";

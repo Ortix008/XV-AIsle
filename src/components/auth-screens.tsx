@@ -54,15 +54,29 @@ function useEnterDeskWhenSignedIn() {
   }, [ready, account, router]);
 }
 
-function ContinueWithX() {
+function XMark() {
+  return (
+    <svg className="auth-x-mark" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"
+      />
+    </svg>
+  );
+}
+
+function ContinueWithX({ disabled = false }: { disabled?: boolean }) {
+  if (disabled) {
+    return (
+      <button type="button" className="auth-x" disabled>
+        <XMark />
+        Continue with X
+      </button>
+    );
+  }
   return (
     <a href="/api/auth/x/start" className="auth-x">
-      <svg className="auth-x-mark" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"
-        />
-      </svg>
+      <XMark />
       Continue with X
     </a>
   );
@@ -76,7 +90,15 @@ function AuthOr() {
   );
 }
 
-export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolean; xNotice?: "code" | "failed" | null }) {
+export function SignInScreen({
+  showX = false,
+  xDisabled = false,
+  xNotice = null,
+}: {
+  showX?: boolean;
+  xDisabled?: boolean;
+  xNotice?: "code" | "failed" | null;
+}) {
   const { signIn, totpChallenge, submitTotp, refresh } = useAccount();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -136,7 +158,7 @@ export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolea
           <>
             {showX ? (
               <>
-                <ContinueWithX />
+                <ContinueWithX disabled={xDisabled} />
                 <AuthOr />
               </>
             ) : null}
@@ -184,7 +206,7 @@ export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolea
   );
 }
 
-export function SignUpScreen({ showX = false }: { showX?: boolean }) {
+export function SignUpScreen({ showX = false, xDisabled = false }: { showX?: boolean; xDisabled?: boolean }) {
   const { signUp } = useAccount();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -218,7 +240,7 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
       <form onSubmit={onSubmit} className="auth-form auth-form-signup">
         {showX ? (
           <>
-            <ContinueWithX />
+            <ContinueWithX disabled={xDisabled} />
             <AuthOr />
           </>
         ) : null}

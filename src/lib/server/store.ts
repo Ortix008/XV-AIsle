@@ -4,6 +4,7 @@ import { bundlePriceRejection } from "../bundles";
 import { getProduct } from "../catalog";
 import { compareAtRejection } from "../honest-price";
 import { isQaCheckoutListing, qaCheckoutSeedAllowed } from "../qa-checkout";
+import { isHeldSample, isWoodTrayListing } from "../shelf-holds";
 import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseListingRoute, type ListingRoute } from "../order-flags";
 import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
@@ -310,8 +311,8 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     description: listing.description,
     priceCents: listing.priceCents,
     image: listing.image,
-    supplierName: listing.supplierName,
-    supplierOrigin: listing.supplierOrigin,
+    supplierName: isHeldSample(listing) ? "" : listing.supplierName,
+    supplierOrigin: isHeldSample(listing) ? "" : listing.supplierOrigin,
     shipDaysMin: listing.shipDaysMin,
     shipDaysMax: listing.shipDaysMax,
     madeInUsa: listing.madeInUsa,
@@ -842,7 +843,7 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   const number = `XV-${allocateOrderNumber()}`;
   const receiptToken = randomBytes(32).toString("hex");
   const page = listingFrom(listing);
-  if (isQaCheckoutListing(page) && !qaCheckoutSeedAllowed()) {
+  if (isWoodTrayListing(page) || isHeldSample(page) || (isQaCheckoutListing(page) && !qaCheckoutSeedAllowed())) {
     return { error: "That page is not on the store." as const };
   }
   if (page.wholesaleCost != null) {

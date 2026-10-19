@@ -46,7 +46,7 @@ function mainGuard() {
 async function main() {
   mainGuard();
   const { closeDb, getDb } = await import("../src/lib/server/db");
-  const { createPendingOrder, getListing } = await import("../src/lib/server/store");
+  const { createPendingOrder, getListing, publicShopListing, publishListing } = await import("../src/lib/server/store");
   const { ensureStarterShelf, visibleOnShop } = await import("../src/lib/server/starter-shelf");
   const { setStripeFetch } = await import("../src/lib/server/stripe");
   const { POST } = await import("../src/app/api/store/checkout/route");
@@ -95,6 +95,47 @@ async function main() {
   const pending = createPendingOrder({ productId: ship.productId, qty: ship.qty, ship });
   if ("error" in pending) throw new Error(pending.error);
   assert(pending.order.supplierAccountId === supplier?.id, "checkout keeps the test supplier");
+
+  const { isHeldSample } = await import("../src/lib/shelf-holds");
+  const { QA_TEST_BANNER, SAMPLE_UNAVAILABLE } = await import("../src/lib/shelf-copy");
+  assert(QA_TEST_BANNER === "Test mode. No real money moves on this page.", "the test banner is the approved line");
+  assert(SAMPLE_UNAVAILABLE === "Not available yet. Check back soon.", "the sample note is the approved line");
+  const sheet = getListing("sheet-pan");
+  if (!sheet || !isHeldSample(sheet)) throw new Error("the seeded sheet pan has no real supplier");
+  assert(sheet.supplierName === "Northwharf Goods", "the database still knows the seeded supplier");
+  const shownSheet = publicShopListing(sheet, true);
+  assert(shownSheet.supplierName === "" && shownSheet.supplierOrigin === "", "the shopper listing drops the seeded supplier");
+  const heldOrder = createPendingOrder({ productId: "sheet-pan", qty: 1, ship });
+  assert("error" in heldOrder, "checkout refuses a sample with no real supplier");
+  assert(getListing("sheet-pan")?.published === true, "refusing the sample does not delete it");
+
+  const wood = publishListing("qa-operator-test", {
+    productId: "serving-board",
+    sku: "QA-TRY-1",
+    title: "Wood Tray",
+    description: "A tray.",
+    priceCents: 2695,
+    image: "/art/mock-sheet-pan-1.png",
+    supplierName: "QA Test Supplier",
+    supplierOrigin: "Sample City, ST",
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    supplierAccountId: supplier?.id,
+    supplierCostCents: 500,
+  });
+  if ("error" in wood) throw new Error(wood.error);
+  ensureStarterShelf();
+  const tray = getListing("serving-board");
+  if (!tray || tray.published !== false) throw new Error("Wood Tray is unpublished on boot");
+  assert(tray.title === "Wood Tray", "Wood Tray is kept, not deleted");
+  getDb().prepare("UPDATE listings SET published = 1 WHERE product_id = ?").run("serving-board");
+  assert(
+    visibleOnShop({ productId: "serving-board", title: "Wood Tray", supplierName: "QA Test Supplier", published: true }) === false,
+    "Wood Tray stays off the shelf even if the row is marked published",
+  );
+  const trayOrder = createPendingOrder({ productId: "serving-board", qty: 1, ship });
+  assert("error" in trayOrder, "checkout refuses Wood Tray");
+  assert(getListing("serving-board"), "the Wood Tray row is still in the database");
 
   env.STRIPE_SECRET_KEY = "sk_test_qa_shelf";
   setStripeFetch(async () =>

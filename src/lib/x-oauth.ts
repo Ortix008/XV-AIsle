@@ -42,6 +42,18 @@ export function xSignInConfigured() {
   return redirectUriAllowed(redirectUri);
 }
 
+type ReviewEnv = {
+  VERCEL_ENV?: string;
+  NODE_ENV?: string;
+};
+
+/** Preview and local dev only. Production stays hidden when X is not configured. */
+export function xSignInReviewable(env: ReviewEnv = process.env) {
+  if (env.VERCEL_ENV === "production") return false;
+  if (env.VERCEL_ENV === "preview" || env.VERCEL_ENV === "development") return true;
+  return env.NODE_ENV !== "production";
+}
+
 function appUrlIsHttps() {
   return (process.env.APP_URL ?? "").trim().toLowerCase().startsWith("https://");
 }

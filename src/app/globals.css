@@ -2011,6 +2011,31 @@ a.tap-link,
   line-height: 1.2;
 }
 
+.qa-test-band {
+  display: flex;
+  grid-column: 1 / -1;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: center;
+  margin: 0;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.sample-hold {
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: center;
+}
+
+button.auth-x:disabled {
+  opacity: 1;
+  color: var(--heading);
+  background: var(--surface);
+  border-color: var(--em-line-x);
+  cursor: not-allowed;
+}
+
 .shop-catalog {
   max-width: 1216px;
   margin-inline: auto;

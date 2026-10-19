@@ -9,6 +9,7 @@ import { accountFromToken } from "@/lib/server/accounts";
 import { publicListing } from "@/lib/server/order-view";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { ensureStarterShelf, isSampleListing, sampleProductReturnNote, visibleOnShop } from "@/lib/server/starter-shelf";
+import { isHeldSample } from "@/lib/shelf-holds";
 import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
 import { appOrigin, stripeTestMode } from "@/lib/server/stripe";
@@ -85,6 +86,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
         returnNote={sampleProductReturnNote(listing, returnCopyForListing(listing))}
         shareHref={shareHref}
         testMode={stripeTestMode()}
+        held={isHeldSample(listing)}
       />
       <AislePicks aisle={aisle} picks={picks} />
     </ShopFrame>

@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { isStripeCheckoutUrl } from "@/lib/checkout-url";
 import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
+import { QA_CHECKOUT_PRODUCT_ID } from "@/lib/qa-checkout";
+import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE } from "@/lib/shelf-copy";
 import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
@@ -59,11 +61,13 @@ export function ProductBuy({
   returnNote,
   shareHref,
   testMode = false,
+  held = false,
 }: {
   listing: ProductListing;
   returnNote: string;
   shareHref: string;
   testMode?: boolean;
+  held?: boolean;
 }) {
   const formReveal = useReveal<HTMLFormElement>(1);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +95,7 @@ export function ProductBuy({
 
   async function checkout(event: FormEvent) {
     event.preventDefault();
+    if (held) return;
     if (!details) {
       setDetails(true);
       return;
@@ -121,8 +126,15 @@ export function ProductBuy({
     window.location.assign(data.url);
   }
 
+  const qaCheckout = listing.productId === QA_CHECKOUT_PRODUCT_ID;
+
   return (
     <div className="product-page">
+      {qaCheckout ? (
+        <p className="status-chip qa-test-band" role="status">
+          {QA_TEST_BANNER}
+        </p>
+      ) : null}
       <div className="product-photo">
         <div className="product-stage" data-world={world?.slug} style={worldStyle}>
           <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 560px, 100vw" priority />
@@ -137,29 +149,35 @@ export function ProductBuy({
           {listing.sample ? <span className="product-sample">Sample</span> : null}
         </div>
         <p className="product-desc">{listing.description}</p>
-        {testMode ? (
+        {testMode && !qaCheckout ? (
           <p className="product-test" role="status">
             Test mode
           </p>
         ) : null}
         <form {...formReveal} onSubmit={checkout} className="product-checkout">
           <div className="product-buy">
-            <p className="product-ship">
-              <TruckIcon />
-              <span>{productShipLine(listing)}</span>
-            </p>
+            {held ? null : (
+              <p className="product-ship">
+                <TruckIcon />
+                <span>{productShipLine(listing)}</span>
+              </p>
+            )}
             <label className="product-qty-field">
               Quantity
               <Input className="product-qty" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
             </label>
-            {details ? null : (
+            {held ? (
+              <p className="status-chip sample-hold" role="status">
+                {SAMPLE_UNAVAILABLE}
+              </p>
+            ) : details ? null : (
               <Button type="submit" className="product-pay">
                 Continue to checkout
               </Button>
             )}
           </div>
           <p className="product-pay-line">You pay right here on xvaisle.com.</p>
-          {details ? (
+          {details && !held ? (
             <div className="product-details">
               <h2 className="product-checkout-label">Checkout</h2>
               <label className="product-field">
@@ -246,10 +264,12 @@ export function ProductBuy({
                 <dd className="mt-1">{listing.shipsFrom}</dd>
               </div>
             ) : null}
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Shipping</dt>
-              <dd className="mt-1">{productShipLine(listing)}</dd>
-            </div>
+            {held ? null : (
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">Shipping</dt>
+                <dd className="mt-1">{productShipLine(listing)}</dd>
+              </div>
+            )}
             <div>
               <dt className="text-sm font-medium text-muted-foreground">Returns</dt>
               <dd className="mt-1">You can start a return within {RETURN_WINDOW_DAYS} days of delivery.</dd>
