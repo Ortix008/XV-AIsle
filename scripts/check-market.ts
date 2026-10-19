@@ -304,6 +304,33 @@ const hidden = getDb()
   .prepare("SELECT published FROM listings WHERE product_id = 'bench-scraper'")
   .get() as { published: number } | undefined;
 if (hidden?.published !== 0) throw new Error("turning DEMO_SEED off unpublishes sample products");
+const env = process.env as Record<string, string | undefined>;
+const previousNode = env.NODE_ENV;
+const previousVercel = env.VERCEL_ENV;
+env.DEMO_SEED = "1";
+env.NODE_ENV = "production";
+delete env.VERCEL_ENV;
+ensureStarterShelf();
+const blocked = getDb().prepare("SELECT published FROM listings WHERE product_id = 'bench-scraper'").get() as {
+  published: number;
+};
+if (blocked.published !== 0) throw new Error("DEMO_SEED does not publish samples in production");
+env.VERCEL_ENV = "preview";
+ensureStarterShelf();
+const previewShelf = getDb().prepare("SELECT published FROM listings WHERE product_id = 'bench-scraper'").get() as {
+  published: number;
+};
+if (previewShelf.published !== 1) throw new Error("DEMO_SEED publishes samples on a preview deploy");
+delete env.DEMO_SEED;
+ensureStarterShelf();
+if (previousNode === undefined) delete env.NODE_ENV;
+else env.NODE_ENV = previousNode;
+if (previousVercel === undefined) delete env.VERCEL_ENV;
+else env.VERCEL_ENV = previousVercel;
+const closedShelf = getDb().prepare("SELECT published FROM listings WHERE product_id = 'bench-scraper'").get() as {
+  published: number;
+};
+if (closedShelf.published !== 0) throw new Error("turning DEMO_SEED off unpublishes sample products");
 const savedReturns = saveReturnsAddress("100 Example Street, Sample City, ST 00000");
 if ("error" in savedReturns || readReturnsAddress() !== "100 Example Street, Sample City, ST 00000") {
   throw new Error("return address should save");
@@ -325,9 +352,11 @@ saveSupportEmail("support@example.com");
 if (supportEmailForDisplay() !== "support@example.com") throw new Error("a saved support email replaces the published address");
 saveSupportEmail("");
 const resellerPage = readFileSync(join(process.cwd(), "src/app/shop/reseller/page.tsx"), "utf8");
-if (!resellerPage.includes('kicker="Earn with xvaisle"')) throw new Error("reseller eyebrow should say Earn with xvaisle");
-if (!resellerPage.includes("Resellers coming soon")) {
-  throw new Error("reseller page should say resellers are coming soon");
+if (!resellerPage.includes('title="Reseller program coming soon."')) {
+  throw new Error("reseller page should say the program is coming soon");
+}
+if (resellerPage.includes("Earn with xvaisle") || resellerPage.includes("Resellers coming soon")) {
+  throw new Error("reseller page should use the launch line");
 }
 if (
   resellerPage.includes("Join free") ||

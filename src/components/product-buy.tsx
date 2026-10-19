@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { isStripeCheckoutUrl } from "@/lib/checkout-url";
 import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
+import { productShipLine } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
@@ -91,7 +92,7 @@ export function ProductBuy({
     });
     const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
     if (!response.ok || !data?.url || !isStripeCheckoutUrl(data.url)) {
-      setError(data?.error ?? "Checkout did not open. Check the form and try again.");
+      setError(data?.error ?? "Checkout didn't open. Take a quick look at the form and try again.");
       setPending(false);
       return;
     }
@@ -111,13 +112,13 @@ export function ProductBuy({
         <p className="mt-4 max-w-xl whitespace-pre-wrap text-pretty text-base leading-relaxed text-muted-foreground">
           {listing.description}
         </p>
-        <p className="mt-4 max-w-xl text-base leading-relaxed">
-          {listing.supplierName} in {listing.supplierOrigin} ships it in {listing.shipDaysMin}–{listing.shipDaysMax}{" "}
-          days after you pay.
-          {listing.madeInUsa ? " Made in the USA." : ""}
-          {listing.shelf === "small" ? " This is a small business." : ""}
-        </p>
-        <p className="mt-2 text-base text-muted-foreground">Shared by an independent reseller. You pay on xvaisle.com.</p>
+        <p className="mt-4 max-w-xl text-base leading-relaxed">{productShipLine(listing)}</p>
+        {listing.shipsFrom?.trim() || !listing.supplierOrigin.trim() ? null : (
+          <p className="mt-2 max-w-xl text-base leading-relaxed">Ships from {listing.supplierOrigin}.</p>
+        )}
+        {listing.madeInUsa ? <p className="mt-2 max-w-xl text-base leading-relaxed">Made in the USA.</p> : null}
+        {listing.shelf === "small" ? <p className="mt-2 max-w-xl text-base leading-relaxed">This is a small business.</p> : null}
+        <p className="mt-2 text-base text-muted-foreground">You pay right here on xvaisle.com.</p>
         {listing.kind === "bundle" && listing.includes && listing.includes.length > 0 ? (
           <div className="mt-6 max-w-xl rounded-2xl border border-border bg-secondary px-5 py-4">
             <p className="text-sm font-medium text-muted-foreground">In this bundle</p>
@@ -130,7 +131,7 @@ export function ProductBuy({
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-sm text-muted-foreground">One price for the group. The supplier ships the pieces together.</p>
+            <p className="mt-3 text-sm text-muted-foreground">One price for the whole bundle. The pieces ship to you together.</p>
           </div>
         ) : null}
         {listing.whyWePicked ? (
@@ -221,12 +222,10 @@ export function ProductBuy({
                 <dd className="mt-1">{listing.shipsFrom}</dd>
               </div>
             ) : null}
-            {listing.deliveryTime ? (
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">Delivery</dt>
-                <dd className="mt-1">{listing.deliveryTime}</dd>
-              </div>
-            ) : null}
+            <div>
+              <dt className="text-sm font-medium text-muted-foreground">Shipping</dt>
+              <dd className="mt-1">{productShipLine(listing)}</dd>
+            </div>
             <div>
               <dt className="text-sm font-medium text-muted-foreground">Returns</dt>
               <dd className="mt-1">You can start a return within {RETURN_WINDOW_DAYS} days of delivery.</dd>

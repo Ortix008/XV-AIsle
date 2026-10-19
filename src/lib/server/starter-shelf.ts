@@ -4,8 +4,12 @@ import { getListing, publishListing } from "./store";
 
 const SAMPLE_IDS = new Set(["sheet-pan", "bench-scraper"]);
 
+/** Preview and local checks only. Production never seeds, even when the flag is set. */
 export function demoSeedEnabled() {
-  return process.env.DEMO_SEED === "1";
+  if (process.env.DEMO_SEED !== "1") return false;
+  if (process.env.VERCEL_ENV === "production") return false;
+  if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") return false;
+  return true;
 }
 
 export function isSampleListing(listing: { productId: string; supplierName: string }) {
@@ -39,7 +43,14 @@ export function ensureStarterShelf() {
   const accountId = shelfOperatorId();
   if (!accountId) return;
   for (const item of sampleStarters) {
-    if (getListing(item.productId)) continue;
+    if (getListing(item.productId)) {
+      getDb()
+        .prepare(
+          "UPDATE listings SET published = 1 WHERE product_id = ? AND supplier_name = 'Northwharf Goods' AND published = 0",
+        )
+        .run(item.productId);
+      continue;
+    }
     publishListing(accountId, {
       productId: item.productId,
       sku: item.sku,

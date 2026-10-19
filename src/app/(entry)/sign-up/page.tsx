@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Open an account · XV-AIsle",
-  description: "Open a free XV-AIsle account. Commission is 5% of a completed sale.",
+  description: "Open a free XV-AIsle account.",
 };
 
 export default function SignUpPage() {

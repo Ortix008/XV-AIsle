@@ -23,7 +23,7 @@ export default function ContactPage() {
           </a>
         </p>
         <p className="mt-4 text-base">Please include your order number so we can help faster.</p>
-        <p className="mt-4 text-base">TODO: reply time is not confirmed yet.</p>
+        <p className="mt-4 text-base">We reply within 2 business days.</p>
         <ContactForm />
         <p className="mt-8 text-sm">
           <Link href="/shop/returns" className="underline underline-offset-4">

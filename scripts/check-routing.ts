@@ -107,7 +107,7 @@ async function main() {
   const placed = await fulfillPaidOrder(manualId);
   assert(placed?.status === "needs_placing", "a manual route waits to be placed");
   const ops = captured.filter((message) => message.subject.startsWith("New paid order"));
-  const receipts = captured.filter((message) => message.subject.endsWith("received"));
+  const receipts = captured.filter((message) => message.subject.startsWith("Thanks! We've got your XV-AIsle order"));
   assert(ops.length === 1, "a manual route sends one ops email");
   assert(receipts.length === 1, "the customer gets a receipt");
   assert(!ops[0]?.text.includes(STREET) && !ops[0]?.text.includes(CITY) && !ops[0]?.text.includes(POSTAL), "the ops alert has no street address");
@@ -232,7 +232,7 @@ async function main() {
   assert("error" in notice && notice.status === 403, "the delay notice needs an authenticator");
   const sent = await delayFor(admin, openId, "2026-10-21");
   assert(!("error" in sent), "an admin can send the delay notice");
-  const delayMail = captured.find((message) => message.subject.includes("delayed") && message.text.includes("XV-"));
+  const delayMail = captured.find((message) => message.subject.includes("running late") && message.text.includes("XV-"));
   assert(delayMail?.text.includes("October 21, 2026"), "the delay notice gives the new date");
   assert(delayMail?.text.includes("full refund"), "the delay notice offers a full refund");
   assert(!delayMail?.text.includes(STREET), "the delay notice has no street address");
@@ -265,7 +265,7 @@ async function main() {
   flagShippingDelays(Date.UTC(2026, 9, 20, 12));
   const liveNotice = await delayFor(admin, liveId, "2026-10-21");
   assert(!("error" in liveNotice), "the live-key order can be noticed");
-  const liveToken = captured.filter((message) => message.subject.includes("delayed")).at(-1)?.text.match(/delay=([a-f0-9]+)/)?.[1] ?? "";
+  const liveToken = captured.filter((message) => message.subject.includes("running late")).at(-1)?.text.match(/delay=([a-f0-9]+)/)?.[1] ?? "";
   process.env.STRIPE_SECRET_KEY = "sk_live_routing";
   delete process.env.STRIPE_ALLOW_LIVE;
   const beforeLive = refundCalls;
@@ -284,7 +284,7 @@ async function main() {
   if (!("order" in shipped) || !shipped.order) throw new Error("expected tracking to mark the order shipped");
   assert(shipped.order.status === "shipped", "saving tracking marks the order shipped");
   assert(shipped.order.trackingUpdatedAt != null, "an admin tracking save records the time");
-  const shippedMail = captured.find((message) => message.subject.includes("shipped") && message.text.includes("1Z999AA10123456784"));
+  const shippedMail = captured.find((message) => message.subject.includes("on its way") && message.text.includes("1Z999AA10123456784"));
   assert(shippedMail?.text.includes("https://www.ups.com/track"), "the shipped email includes the tracking link");
   const fresh = Date.now();
   const freshView = presentOrder(admin, shipped.order, hidden, fresh);

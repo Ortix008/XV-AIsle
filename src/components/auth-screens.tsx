@@ -10,7 +10,6 @@ import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAccount } from "@/lib/account-store";
-import { REPLY_WITHIN_HOURS } from "@/lib/honest-price";
 
 function AuthScreen({
   title,
@@ -109,7 +108,7 @@ export function SignInScreen({ showX = false, xNotice = null }: { showX?: boolea
   }
 
   return (
-    <AuthScreen title="Sign in" lede="Sign in to your account.">
+    <AuthScreen title="Sign in" lede="Welcome back. Sign in to your account.">
       <form onSubmit={onSubmit} className="auth-form">
         {totpChallenge || xCode ? (
           <label className="auth-field" htmlFor={codeId}>
@@ -209,7 +208,7 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
   return (
     <AuthScreen
       title="Open an account"
-      lede="Create an account."
+      lede="Welcome in. Let's set up your account."
     >
       <form onSubmit={onSubmit} className="auth-form">
         {showX ? (
@@ -288,43 +287,126 @@ export function SignUpScreen({ showX = false }: { showX?: boolean }) {
 }
 
 export function ResetRequestScreen() {
+  const emailId = useId();
+  const [email, setEmail] = useState("");
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    setMessage(null);
+    const response = await fetch("/api/account/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = (await response.json().catch(() => null)) as { message?: string; error?: string } | null;
+    setPending(false);
+    if (!response.ok) {
+      setError(data?.error ?? "The reset email did not send. Try again.");
+      return;
+    }
+    setMessage(data?.message ?? "If that email has an account, we'll email you a reset link.");
+  }
+
   return (
     <AuthScreen
       title="Password help"
-      lede={`This shop does not email a reset link, and this page does not change a password. Write from Contact and a person replies within ${REPLY_WITHIN_HOURS} hours.`}
+      lede="Forgot your password? We'll email you a reset link. Still stuck? Reach out from our Contact page. We reply within 2 business days."
     >
-      <div className="auth-form">
-        <p className="text-base leading-relaxed text-muted-foreground">
-          Include the email on the account so the person who replies knows which door to open.
-        </p>
-        <Link href="/shop/contact" className="pill pill-primary">
+      <form onSubmit={onSubmit} className="auth-form">
+        <label className="auth-field" htmlFor={emailId}>
+          Email
+          <Input
+            id={emailId}
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
+            maxLength={254}
+            required
+            className="h-11 md:text-base"
+          />
+        </label>
+        {error ? (
+          <p className="text-base text-late" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {message ? <p className="text-base leading-relaxed">{message}</p> : null}
+        <Button type="submit" disabled={pending} className="mt-1 h-12 w-full rounded-full px-6">
+          {pending ? "Sending the link…" : "Email me a reset link"}
+        </Button>
+        <Link href="/shop/contact" className="auth-text-link w-fit">
           Contact the shop
         </Link>
         <Link href="/sign-in" className="auth-text-link w-fit">
           Back to sign in
         </Link>
-      </div>
+      </form>
     </AuthScreen>
   );
 }
 
-export function ResetConfirmScreen() {
+export function ResetConfirmScreen({ token }: { token: string }) {
+  const [password, setPassword] = useState("");
+  const [pending, setPending] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    const response = await fetch("/api/account/reset/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    });
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    setPending(false);
+    if (!response.ok) {
+      setError(data?.error ?? "That link is not valid.");
+      return;
+    }
+    setDone(true);
+  }
+
   return (
-    <AuthScreen
-      title="Reset"
-      lede={`This page does not set a new password. There is no link to finish here. Write from Contact and a person replies within ${REPLY_WITHIN_HOURS} hours.`}
-    >
-      <div className="auth-form">
-        <Link href="/shop/contact" className="pill pill-primary">
-          Contact the shop
-        </Link>
-        <Link href="/reset" className="auth-text-link w-fit">
-          Password help
-        </Link>
-        <Link href="/sign-in" className="auth-text-link w-fit">
-          Back to sign in
-        </Link>
-      </div>
+    <AuthScreen title="Reset" lede="Choose a new password. This link works once.">
+      {done ? (
+        <div className="auth-form">
+          <p className="text-base leading-relaxed">Your password is updated. Sign in with the new one.</p>
+          <Link href="/sign-in" className="pill pill-primary">
+            Sign in
+          </Link>
+        </div>
+      ) : (
+        <form onSubmit={onSubmit} className="auth-form">
+          <PasswordField
+            label="New password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="new-password"
+            minLength={8}
+            maxLength={200}
+          />
+          {error ? (
+            <p className="text-base text-late" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <Button type="submit" disabled={pending || token.length < 32} className="mt-1 h-12 w-full rounded-full px-6">
+            {pending ? "Saving…" : "Save the new password"}
+          </Button>
+          <Link href="/reset" className="auth-text-link w-fit">
+            Email me a new link
+          </Link>
+        </form>
+      )}
     </AuthScreen>
   );
 }

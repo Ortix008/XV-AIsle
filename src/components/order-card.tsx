@@ -46,12 +46,10 @@ export function OrderCard({ facts, children }: { facts: OrderCardFacts; children
             <dd className="mt-1">{shipsFrom}</dd>
           </div>
         ) : null}
-        {eta ? (
-          <div>
-            <dt className="text-xs tracking-wide text-muted-foreground">Arrival</dt>
-            <dd className="mt-1">{eta}</dd>
-          </div>
-        ) : null}
+        <div>
+          <dt className="text-xs tracking-wide text-muted-foreground">Shipping</dt>
+          <dd className="mt-1">{eta ?? "Ships from a US supplier. Tracking emailed when it ships."}</dd>
+        </div>
       </dl>
       <p className="mt-5 text-xs tracking-wide text-muted-foreground">Returns</p>
       <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{returns}</p>

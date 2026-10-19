@@ -14,7 +14,7 @@ function guardPreviewSeed() {
   if (process.env.DEMO_SEED !== "1") {
     refuse("Refusing: set DEMO_SEED=1. This script only inserts a sample order.");
   }
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.VERCEL_ENV === "production" || (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview")) {
     refuse("Refusing: this preview seed does not run in production.");
   }
   const stripeKey = process.env.STRIPE_SECRET_KEY?.trim() ?? "";

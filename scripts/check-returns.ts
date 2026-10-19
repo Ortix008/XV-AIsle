@@ -189,7 +189,9 @@ async function main() {
     receiptUrl: "http://127.0.0.1/shop/order?token=example",
     returnAddress: null,
   });
-  assert(blankReceipt.includes(RETURNS_UNSET), "the receipt email uses the fallback");
+  assert(!blankReceipt.includes(RETURNS_UNSET), "the receipt email omits the fallback when there is no address");
+  assert(!blankReceipt.includes("Need to send it back"), "a receipt without a return address omits the returns line");
+  assert(blankReceipt.includes("Usually ships in 2-4 business days."), "a confirmed window names the days");
   assert(!blankReceipt.includes(STREET), "the fallback email has no street");
   assert(!blankReceipt.includes("Ships from"), "a receipt with no origin omits ships-from");
   const blankHtml = receiptHtml({
@@ -203,15 +205,16 @@ async function main() {
     receiptUrl: "http://127.0.0.1/shop/order?token=example",
     returnAddress: null,
   });
-  assert(blankHtml.includes(RETURNS_UNSET), "the receipt html uses the fallback");
-  assert(!blankHtml.includes("Ships from") && !blankHtml.includes("Arrival"), "blank receipt html omits empty facts");
+  assert(!blankHtml.includes(RETURNS_UNSET) && !blankHtml.includes(">RETURNS<"), "the receipt html omits returns when there is no address");
+  assert(blankHtml.includes("Ships from a US supplier. Tracking emailed when it ships."), "a receipt without ship days uses the unconfirmed line");
+  assert(!blankHtml.includes(">Ships from<") && !blankHtml.includes("Arrival"), "blank receipt html omits an empty origin row");
   assert(!blankHtml.toLowerCase().includes("<script"), "the receipt html has no script");
   assert(blankHtml.includes('bgcolor="#07080a"') && blankHtml.includes("color:#f4f1ea"), "the receipt html is dark with a light-text fallback");
   const sans = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
   assert(blankHtml.includes(sans) && !blankHtml.includes("Georgia"), "the receipt html uses the email sans stack");
   assert(blankHtml.includes('alt="XV-AISLE"') && blankHtml.includes('width="32"'), "the receipt html includes the logo");
   assert(blankHtml.includes("/brand/logo-official-xo.png"), "the logo is the brand image");
-  assert(blankHtml.includes("border-radius:999px") && blankHtml.includes("Your receipt"), "the receipt link is a pill button");
+  assert(blankHtml.includes("border-radius:999px") && blankHtml.includes("See your receipt:"), "the receipt link is a pill button");
   assert(blankHtml.includes("padding:22px 28px 0"), "the receipt button sits in the content padding");
   const sampleHtml = sampleReceiptHtml();
   assert(sampleHtml.includes("https://x.com/intent/post"), "the sample receipt shares through the X web intent");
@@ -232,7 +235,7 @@ async function main() {
   const captured = startMailCapture();
   getDb().prepare("UPDATE orders SET status = 'paid', paid_at = ? WHERE id = ?").run(Date.now(), pending.order.id);
   await fulfillPaidOrder(pending.order.id);
-  const customer = captured.find((message) => message.subject.endsWith("received"));
+  const customer = captured.find((message) => message.subject.startsWith("Thanks! We've got your XV-AIsle order"));
   const ops = captured.find((message) => message.subject.startsWith("New paid order"));
   const receiptHtmlSent = customer?.html ?? "";
   assert(customer?.text.includes(STREET), "the order email includes the supplier street");

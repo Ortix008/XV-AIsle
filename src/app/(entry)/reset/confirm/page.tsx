@@ -3,9 +3,15 @@ import { ResetConfirmScreen } from "@/components/auth-screens";
 
 export const metadata: Metadata = {
   title: "Reset · XV-AIsle",
-  description: "This page does not set a new password. Write from Contact and a person replies within 24 hours.",
+  description: "Choose a new password from the link we emailed you.",
 };
 
-export default function ResetConfirmPage() {
-  return <ResetConfirmScreen />;
+export default async function ResetConfirmPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const token = Array.isArray(params.token) ? (params.token[0] ?? "") : (params.token ?? "");
+  return <ResetConfirmScreen token={token} />;
 }

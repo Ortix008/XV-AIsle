@@ -134,6 +134,11 @@ export function getDb() {
       account_id TEXT NOT NULL,
       expires_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS password_resets (
+      token_hash TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS supplier_secrets (
       account_id TEXT PRIMARY KEY,
       secret_hash TEXT NOT NULL,

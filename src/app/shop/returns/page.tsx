@@ -13,11 +13,18 @@ export default function ReturnsPage() {
       <p>
         {"Just reach out to us and we'll help you start it. Returns go straight back to the company that shipped your item, and you'll find that address on your order page."}
       </p>
-      <p>TODO: item condition rules, and anything that can&apos;t be returned, are not confirmed yet.</p>
+      <p>
+        Unused, in original packaging. Damaged, defective or wrong items: send a photo within 7 days of delivery and we
+        cover return shipping.
+      </p>
       <p>Return shipping is on you, unless your item arrived damaged, defective or wrong. Then it&apos;s on us.</p>
       <p>{"Some items have their own return rules, and you'll see them in a short note on that product's page."}</p>
-      <p>{"Once the supplier receives the item, we'll refund your original payment method."}</p>
-      <p>{"Something arrived damaged or wrong? Send us a photo within 7 days and we'll make it right."}</p>
+      <p>{"Once your return arrives back, we'll refund the card you paid with."}</p>
+      <p>
+        Once we accept your return, the refund goes back to the card you paid with. Stripe handles the card, so we never
+        see your number.
+      </p>
+      <p>{"Something arrived damaged or wrong? Send us a photo within 7 days of delivery and we'll help make it right."}</p>
       <p>
         Email{" "}
         <a className="underline underline-offset-4" href={`mailto:${supportEmail}`}>

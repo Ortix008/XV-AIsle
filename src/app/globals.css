@@ -1240,6 +1240,10 @@ video.auth-plate-media {
   inset: -6%;
 }
 
+.hero-break {
+  display: block;
+}
+
 .hero-aisle-photo {
   object-fit: cover;
   object-position: center 58%;
@@ -1821,6 +1825,12 @@ video.auth-plate-media {
   text-wrap: wrap;
 }
 .vm-title em { font-style: normal; color: #2ee59d; }
+.vm-shelf-line {
+  margin: -8px 0 22px;
+  color: #f5f8f6;
+  font-size: 20px;
+  line-height: 1.4;
+}
 .vm-body { max-width: 62ch; color: #c2cec8; font-size: 18px; line-height: 1.7; }
 .vm-vision {
   display: grid;

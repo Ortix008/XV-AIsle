@@ -31,9 +31,9 @@ export const welcomeDepartments = [
   {
     title: "Kitchen",
     src: "/art/dept-kitchen-tools.png",
-    line: "Cooking gadgets and what organizes the kitchen. Not fresh food.",
+    line: "Cooking gadgets and things to keep the kitchen tidy. (No fresh food here.)",
   },
-  { title: "Clothing", src: "/art/real-clothes.png", line: "Clothes that ship from here." },
+  { title: "Clothing", src: "/art/real-clothes.png", line: "Clothes for the whole family." },
   {
     title: "Home",
     src: "/art/dept-home-wide.png",

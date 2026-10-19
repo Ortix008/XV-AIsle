@@ -6,10 +6,9 @@ import { useState } from "react";
 import { Reveal } from "@/components/reveal";
 import { ShopFooter } from "@/components/shop-footer";
 import { StoreHeader } from "@/components/store-header";
-import { botIcon } from "@/components/bot-mark";
 import { DepartmentGrid } from "@/components/department-grid";
 import { NightStalls } from "@/components/night-stalls";
-import { ShelfHero } from "@/components/shelf-hero";
+import { AisleParallax, XvAisleFlow } from "@/components/xvaisle-flow";
 import { ResellerWaitlist } from "@/components/reseller-waitlist";
 import { ShopGrid } from "@/components/shop-grid";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordField } from "@/components/password-field";
 import { useAccount } from "@/lib/account-store";
 import { welcomeReach } from "@/lib/art";
-import { bots } from "@/lib/bots";
+import { HERO_EYEBROW } from "@/lib/hero-copy";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
 export function JoinScreen() {
@@ -64,7 +63,44 @@ export function JoinScreen() {
       </a>
       <StoreHeader />
       <main id="home-main" className="page-enter">
-        <ShelfHero />
+        <section className="hero-aisle">
+          <div className="hero-aisle-stage" aria-hidden>
+            <AisleParallax>
+              <Image
+                src="/brand/hero-aisle-pedestals.webp"
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                className="hero-aisle-photo"
+              />
+            </AisleParallax>
+            <div className="hero-aisle-grade" />
+            <XvAisleFlow />
+            <div className="hero-aisle-scrim" />
+          </div>
+          <div className="relative z-[1] mx-auto flex min-h-[inherit] max-w-[1280px] flex-col justify-center px-5 py-16 sm:px-10 lg:py-24">
+            <div className="hero-glow" aria-hidden />
+            <div className="relative z-[1] max-w-xl">
+              <p className="eyebrow hero-eyebrow">{HERO_EYEBROW}</p>
+              <h1 className="mt-5 text-[3.25rem] leading-[0.95] font-bold tracking-[-0.045em] sm:text-7xl lg:text-[5.5rem]">
+                <span className="hero-break">Goods that </span>earn their <span className="text-primary">place.</span>
+              </h1>
+              <p className="mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+                A night market of home, kitchen, and everyday goods. Every product page tells you where it ships from,
+                how long it takes, and, when we wrote one, why it earned its place.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-4">
+                <Link href="/shop" className="pill pill-primary max-[899px]:flex-1">
+                  Shop the aisles
+                </Link>
+                <Link href="/shop/reseller" className="pill pill-ghost max-[899px]:flex-1">
+                  Reseller program coming soon.
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section id="aisles" className="scroll-mt-24">
           <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]">
@@ -81,7 +117,7 @@ export function JoinScreen() {
               </Link>
             </Reveal>
             <NightStalls />
-            <h3 className="mt-16 mb-8 text-3xl sm:text-4xl">The rest of the floor</h3>
+            <h3 className="mt-16 mb-8 text-3xl sm:text-4xl">More aisles to wander.</h3>
             <DepartmentGrid />
           </div>
         </section>
@@ -90,9 +126,9 @@ export function JoinScreen() {
           <ShopGrid
             kicker="Featured"
             title="In the store"
-            lede="Check out safely, and the supplier ships your order straight to your door."
+            lede="Pay safely with Stripe, and your order ships straight to your door."
             query=""
-            empty="Nothing is marked ready yet."
+            empty="Nothing's on the shelves yet. We're picking the first pieces now."
             limit={4}
             seeAllHref="/shop"
             level="section"
@@ -105,7 +141,7 @@ export function JoinScreen() {
               <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
               <h2 className="text-lg">Open product info</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Ships from, delivery time, and why we picked it, on every page that has those facts.
+                Each product page tells you why we picked it and our best estimate for delivery.
               </p>
             </Reveal>
             <Reveal as="article" index={1} className="rounded-2xl border border-border bg-secondary p-7">
@@ -119,7 +155,7 @@ export function JoinScreen() {
               <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
               <h2 className="text-lg">Secure checkout</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Payments handled by Stripe. Questions answered by a real person.
+                Stripe handles your payment. A real person answers your questions.
               </p>
             </Reveal>
           </div>
@@ -144,16 +180,9 @@ export function JoinScreen() {
                   </div>
                 </Reveal>
                 <Reveal as="article" index={1} className="rounded-2xl border border-border bg-card p-7">
-                  <p className="font-heading text-sm text-primary">02</p>
-                  <h3 className="mt-2 text-2xl">Supply</h3>
-                  <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-                    You already hold the goods. The platform decides what can be sold.
+                  <p className="text-base leading-relaxed text-muted-foreground">
+                    {"Every product earns its place. We pick from real companies and review each one before it's listed."}
                   </p>
-                  <ol className="mt-5 list-decimal space-y-3 pl-5 text-base leading-relaxed">
-                    <li>Open an account and pick your supplier.</li>
-                    <li>Submit the product, the cost, the shipping, and a photo.</li>
-                    <li>Wait for review. Only an approved product can appear in a reseller shop.</li>
-                  </ol>
                 </Reveal>
               </div>
             </div>
@@ -163,35 +192,10 @@ export function JoinScreen() {
         <section className="border-t border-border">
           <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10">
             <Reveal>
-            <h2 className="text-4xl sm:text-5xl">SI Team</h2>
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
-              These are AI tools, not people. Signal finds a product people already want and a supplier in the US. Draft
-              writes the page, Harbor watches the order, and Cast drafts a post you can copy. You still say yes. Nothing
-              is posted for you.
-            </p>
+              <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
+                We take a close look at every product before it reaches our aisles.
+              </p>
             </Reveal>
-            <ul className="mt-8 grid gap-5 sm:grid-cols-2">
-              {bots.map((member, index) => {
-                const Icon = botIcon(member.id);
-                return (
-                  <Reveal key={member.id} as="li" index={index % 5} className="rounded-2xl border border-border bg-card p-6">
-                    <div className="flex items-center gap-3">
-                      <span className="grid size-12 shrink-0 place-items-center rounded-xl border border-border bg-secondary">
-                        <Icon aria-hidden className="size-6" />
-                      </span>
-                      <div>
-                        <p className="font-heading text-lg">{member.name}</p>
-                        <span className="mt-1 inline-flex rounded-full border border-border px-2.5 py-0.5 text-sm text-muted-foreground">
-                          AI assistant
-                        </span>
-                      </div>
-                    </div>
-                    <p className="mt-4 text-base leading-relaxed">{member.does}</p>
-                    <p className="mt-1 text-base leading-relaxed text-muted-foreground">{member.job}</p>
-                  </Reveal>
-                );
-              })}
-            </ul>
           </div>
         </section>
 
@@ -208,7 +212,7 @@ export function JoinScreen() {
             <Reveal className="relative z-10 flex min-h-[360px] flex-col justify-end px-5 py-12 sm:px-10">
               <h2 className="text-4xl text-white sm:text-5xl">Who ships</h2>
               <p className="mt-3 max-w-xl text-base leading-relaxed text-white/90">
-                A neighborhood shop or a national floor packs the order. You do not hold the box.
+                Your order is sent straight to your door.
               </p>
             </Reveal>
           </div>
@@ -233,8 +237,8 @@ export function JoinScreen() {
               <h2 className="text-4xl sm:text-5xl">{mode === "join" ? "Open an account" : "Sign in"}</h2>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
                 {mode === "join"
-                  ? "Open an account."
-                  : "Sign in to your account."}
+                  ? "Welcome in. Let's set up your account."
+                  : "Welcome back. Sign in to your account."}
               </p>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
                 <Link href="/shop/reseller/terms" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">

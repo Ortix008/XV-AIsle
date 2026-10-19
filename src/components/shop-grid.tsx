@@ -76,7 +76,7 @@ export function ShopGrid({
             <div className="shop-band-art" aria-hidden />
             <div className="shop-band-copy">
               <p className="eyebrow">Store</p>
-              <Heading className="mt-3 text-4xl sm:text-5xl">What is ready to ship</Heading>
+              <Heading className="mt-3 text-4xl sm:text-5xl">{title}</Heading>
               <p className="mt-3 max-w-xl text-pretty text-base text-muted-foreground">
                 {world ? `${world.title}. ${world.story}` : lede}
               </p>

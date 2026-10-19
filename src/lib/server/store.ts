@@ -303,7 +303,7 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
   return {
     productId: listing.productId,
     sku: listing.sku,
-    title: listing.title,
+    title: sample && !listing.title.endsWith(" (Sample)") ? `${listing.title} (Sample)` : listing.title,
     description: listing.description,
     priceCents: listing.priceCents,
     image: listing.image,

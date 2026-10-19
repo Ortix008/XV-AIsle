@@ -19,7 +19,7 @@ function reservePercent(bps: number) {
 }
 
 export function ConnectPayout() {
-  const { account, connect, sellerLedger, reserve, chooseRole, refresh } = useAccount();
+  const { account, connect, sellerLedger, reserve, refresh } = useAccount();
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
@@ -57,14 +57,6 @@ export function ConnectPayout() {
       return;
     }
     window.location.assign(data.url);
-  }
-
-  async function pick(role: "reseller" | "supplier") {
-    setPending(role);
-    setError(null);
-    const message = await chooseRole(role);
-    setPending(null);
-    if (message) setError(message);
   }
 
   async function rotateSecret() {
@@ -158,11 +150,8 @@ export function ConnectPayout() {
       {account.role === "buyer" ? (
         <div className="flex flex-wrap gap-2">
           <Link href="/shop/reseller" className="pill pill-ghost">
-            Resellers coming soon
+            Reseller program coming soon.
           </Link>
-          <Button type="button" variant="outline" disabled={pending !== null} onClick={() => void pick("supplier")}>
-            {pending === "supplier" ? "Saving…" : "I supply"}
-          </Button>
         </div>
       ) : (
         <p className="text-sm">

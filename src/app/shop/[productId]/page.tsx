@@ -31,19 +31,20 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
   ensureStarterShelf();
   const listing = getListing(productId);
   if (!listing || !visibleOnShop(listing) || listingLoss(listing)) return { title: "Shop · XV-AIsle" };
+  const shown = publicListing(listing, isSampleListing(listing));
   const origin = appOrigin();
   const canonical = `${origin}/shop/${listing.productId}`;
   const description = `${money(listing.priceCents / 100)}. ${listing.description}`.slice(0, 200);
   const image = absoluteImage(origin, listing.image);
   return {
-    title: `${listing.title} · XV-AIsle`,
+    title: `${shown.title} · XV-AIsle`,
     description,
     alternates: { canonical },
-    openGraph: { title: listing.title, description, url: canonical, images: [{ url: image, alt: listing.title }] },
+    openGraph: { title: shown.title, description, url: canonical, images: [{ url: image, alt: shown.title }] },
     twitter: {
       card: "summary_large_image",
       site: "@xvaisle",
-      title: listing.title,
+      title: shown.title,
       description,
       images: [image],
     },
@@ -62,7 +63,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
         .slice(0, 4)
         .map((item) => ({
           productId: item.productId,
-          title: item.title,
+          title: publicListing(item, isSampleListing(item)).title,
           priceCents: item.priceCents,
           image: item.image,
           aisle: item.aisle,
