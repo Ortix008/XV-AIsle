@@ -6,7 +6,7 @@ import { NightMotif } from "@/components/night-motif";
 import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
 import { money } from "@/lib/money";
-import { shipDaysConfirmed, unconfirmedShipLine } from "@/lib/order-facts";
+import { shipDaysConfirmed, unconfirmedShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
 
 export type ShopCard = {
@@ -34,7 +34,8 @@ function eyebrow(listing: ShopCard) {
   if (listing.sample) return "Sample";
   if (listing.madeInUsa) return "Made in the USA";
   if (listing.shelf === "small") return "Small business";
-  return listing.supplierOrigin;
+  if (usSupplierConfirmed(listing) && listing.supplierOrigin.trim()) return listing.supplierOrigin;
+  return "";
 }
 
 export function ShopGrid({
@@ -172,17 +173,25 @@ export function ShopGrid({
                 className="product-card block rounded-2xl border border-border bg-card p-2 sm:p-3"
               >
                 <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
-                <p className="mt-4 px-1 font-heading text-xs tracking-[0.14em] text-muted-foreground uppercase">
-                  {eyebrow(listing)}
-                </p>
+                {eyebrow(listing) ? (
+                  <p className="mt-4 px-1 font-heading text-xs tracking-[0.14em] text-muted-foreground uppercase">
+                    {eyebrow(listing)}
+                  </p>
+                ) : null}
                 <h3 className="mt-1 px-1 text-[15px] font-semibold tracking-[-0.01em] sm:text-[17px]">{listing.title}</h3>
                 <p className="mt-1 px-1 pb-1 text-sm text-muted-foreground">
                   {money(listing.priceCents / 100)}
                   {" · "}
                   {shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax) ? (
-                    <>
-                      ships from {listing.supplierOrigin} in {listing.shipDaysMin}–{listing.shipDaysMax} days
-                    </>
+                    usSupplierConfirmed(listing) ? (
+                      <>
+                        ships from {listing.supplierOrigin} in {listing.shipDaysMin}–{listing.shipDaysMax} days
+                      </>
+                    ) : (
+                      <>
+                        in {listing.shipDaysMin}–{listing.shipDaysMax} days
+                      </>
+                    )
                   ) : (
                     unconfirmedShipLine(listing)
                   )}

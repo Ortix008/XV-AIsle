@@ -1,5 +1,5 @@
 import { formatISODate } from "../business-days";
-import { receiptShipWindow } from "../order-facts";
+import { receiptShipWindow, usSupplierConfirmed } from "../order-facts";
 import { SAMPLE_ORDER_NUMBER, sampleReceiptFacts } from "../sample-shelf";
 import { buyerShareHref } from "../x-share";
 import { dollars } from "./fees";
@@ -55,6 +55,13 @@ function shippingWindow(input: ReceiptFacts) {
   return receiptShipWindow(input.shipDaysMin, input.shipDaysMax, input);
 }
 
+/** A place is shown only for a confirmed US supplier. The words stay the same. */
+function visibleShipsFrom(input: ReceiptFacts) {
+  const place = input.shipsFrom?.trim() ?? "";
+  if (!place || !usSupplierConfirmed(input)) return "";
+  return place;
+}
+
 function confirmedReturnAddress(address: string | null | undefined) {
   const place = address?.trim() ?? "";
   return place || null;
@@ -73,7 +80,8 @@ export function receiptText(input: ReceiptFacts) {
   const returns = confirmedReturnAddress(input.returnAddress);
   const lines = [`Thanks for your order! Your order number is ${input.number}.`, "", input.title, `Qty ${input.qty}`];
   if (input.amountCents != null) lines.push(dollars(input.amountCents));
-  if (input.shipsFrom?.trim()) lines.push(`Ships from ${input.shipsFrom.trim()}`);
+  const shipsFrom = visibleShipsFrom(input);
+  if (shipsFrom) lines.push(`Ships from ${shipsFrom}`);
   lines.push(`Shipping: ${eta}`);
   if (returns) lines.push("", "Need to send it back? Returns go to:", returns);
   lines.push("", `See your receipt: ${input.receiptUrl}`);
@@ -146,12 +154,13 @@ function actionRow(input: { receiptUrl: string; shareUrl?: string | null }) {
 /** Email-safe receipt. Inline styles, tables, dark background, light text, no script. */
 export function receiptHtml(input: ReceiptFacts) {
   const eta = shippingWindow(input);
+  const shipsFrom = visibleShipsFrom(input);
   const returns = confirmedReturnAddress(input.returnAddress);
   const rows = [
     htmlRow("Item", input.title),
     htmlRow("Qty", String(input.qty)),
     input.amountCents != null ? htmlRow("Paid", dollars(input.amountCents)) : "",
-    input.shipsFrom?.trim() ? htmlRow("Ships from", input.shipsFrom.trim()) : "",
+    shipsFrom ? htmlRow("Ships from", shipsFrom) : "",
     htmlRow("Shipping", eta),
   ].join("");
   const returnsBlock = returns

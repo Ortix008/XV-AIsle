@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { isStripeCheckoutUrl } from "@/lib/checkout-url";
 import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
-import { productShipLine } from "@/lib/order-facts";
+import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
@@ -114,9 +114,9 @@ export function ProductBuy({
           {listing.description}
         </p>
         <p className="mt-4 max-w-xl text-base leading-relaxed">{productShipLine(listing)}</p>
-        {listing.shipsFrom?.trim() || !listing.supplierOrigin.trim() ? null : (
+        {usSupplierConfirmed(listing) && !listing.shipsFrom?.trim() && listing.supplierOrigin.trim() ? (
           <p className="mt-2 max-w-xl text-base leading-relaxed">Ships from {listing.supplierOrigin}.</p>
-        )}
+        ) : null}
         {listing.madeInUsa ? <p className="mt-2 max-w-xl text-base leading-relaxed">Made in the USA.</p> : null}
         {listing.shelf === "small" ? <p className="mt-2 max-w-xl text-base leading-relaxed">This is a small business.</p> : null}
         <p className="mt-2 text-base text-muted-foreground">You pay right here on xvaisle.com.</p>
@@ -217,7 +217,7 @@ export function ProductBuy({
         <section className="rounded-2xl border border-border bg-card px-5 py-4">
           <h2 className="text-lg">Shipping & returns</h2>
           <dl className="mt-3 space-y-3 text-base">
-            {listing.shipsFrom ? (
+            {usSupplierConfirmed(listing) && listing.shipsFrom?.trim() ? (
               <div>
                 <dt className="text-sm font-medium text-muted-foreground">Ships from</dt>
                 <dd className="mt-1">{listing.shipsFrom}</dd>
