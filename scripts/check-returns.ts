@@ -32,11 +32,11 @@ async function main() {
   assert(brandBlock.includes('{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }'), "brand images can load in an email client");
   assert(!brandBlock.includes("X-Frame-Options") && !brandBlock.includes("Content-Security-Policy"), "the brand rule only changes CORP");
 
-  const { RETURNS_ON_ORDER, RETURNS_UNSET, parseReturnAddress } = await import("../src/lib/return-address");
+  const { RETURNS_EMAILED, RETURNS_ON_ORDER, RETURNS_UNSET, parseReturnAddress } = await import("../src/lib/return-address");
   const { closeDb, getDb } = await import("../src/lib/server/db");
   const { signUp } = await import("../src/lib/server/accounts");
   const { startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
-  const { SAMPLE_ORDER_NUMBER, SAMPLE_RETURN_ADDRESS, SAMPLE_RETURN_PARTS } = await import("../src/lib/sample-shelf");
+  const { SAMPLE_ORDER_NUMBER, SAMPLE_RETURN_PARTS } = await import("../src/lib/sample-shelf");
   const { receiptHtml, receiptText, sampleReceiptHtml } = await import("../src/lib/server/order-mail");
   const { buyerOrder, presentOrder, publicListing, resellerListing } = await import("../src/lib/server/order-view");
   const { saveReturnsAddress } = await import("../src/lib/server/settings");
@@ -146,7 +146,7 @@ async function main() {
   assert(published.listing.returnLine1 == null, "a new listing does not invent a return address");
   const resolved = resolveReturnAddress(published.listing);
   assert(resolved?.line1 === STREET, "the listing uses the supplier address");
-  assert(returnCopyForListing(published.listing) === RETURNS_ON_ORDER, "the product page points at the order page");
+  assert(returnCopyForListing(published.listing) === RETURNS_EMAILED, "an unconfirmed product emails the return address later");
   const publicJson = JSON.stringify(publicListing(published.listing));
   const resellerJson = JSON.stringify(resellerListing(published.listing));
   assert(!publicJson.includes(STREET) && !publicJson.includes("returnLine1"), "the public listing omits the street");
@@ -235,7 +235,7 @@ async function main() {
   });
   if ("error" in named || !named.listing) throw new Error("named");
   assert(resolveReturnAddress(named.listing) === null, "a supplier without an address stays blank");
-  assert(returnCopyForListing(named.listing) === RETURNS_UNSET, "a blank supplier uses the fallback");
+  assert(returnCopyForListing(named.listing) === RETURNS_EMAILED, "an unconfirmed supplier emails the return address later");
   const nameKey = listSupplierReturns().find((item) => item.label === "Name Only Supply")?.key;
   if (!nameKey) throw new Error("the listing name is a supplier choice");
   const namedSave = saveSupplierReturn(admin, nameKey, { ...address, line1: "400 Example Avenue" });
@@ -261,8 +261,19 @@ async function main() {
   const { GET } = await import("../src/app/api/store/receipt/route");
   const receipt = await GET(new Request(`http://127.0.0.1/api/store/receipt?token=${pending.receiptToken}`));
   const receiptBody = (await receipt.json()) as { order?: { returnAddress?: string } };
-  assert(receiptBody.order?.returnAddress?.includes(STREET), "the order page includes the street");
+  assert(receiptBody.order?.returnAddress === RETURNS_EMAILED, "an unconfirmed order page emails the return address later");
+  assert(!receiptBody.order?.returnAddress?.includes(STREET), "an unconfirmed order page hides the supplier street");
   assert(!receiptBody.order?.returnAddress?.includes("100 Example Street"), "the order page does not swap in the ship-to street");
+  getDb().prepare("UPDATE listings SET supplier_us_confirmed = 1, ships_from = ? WHERE product_id = 'return-pan'").run("Elizabeth, NJ");
+  const confirmedListing = getListing("return-pan");
+  assert(
+    confirmedListing && returnCopyForListing(confirmedListing) === RETURNS_ON_ORDER,
+    "a confirmed supplier keeps the order-page return line",
+  );
+  const confirmedReceipt = await GET(new Request(`http://127.0.0.1/api/store/receipt?token=${pending.receiptToken}`));
+  const confirmedBody = (await confirmedReceipt.json()) as { order?: { returnAddress?: string } };
+  assert(confirmedBody.order?.returnAddress?.includes(STREET), "a confirmed order page shows the supplier street");
+  getDb().prepare("UPDATE listings SET supplier_us_confirmed = 0, ships_from = NULL WHERE product_id = 'return-pan'").run();
 
   const blankOrder = createPendingOrder({
     productId: "named-pan",
@@ -348,14 +359,17 @@ async function main() {
     | undefined;
   assert(sample != null && !sample.return_line1 && !sample.return_city, "sample data leaves the return address blank");
   const sampleListing = getListing("sheet-pan");
-  assert(sampleListing && returnCopyForListing({ ...sampleListing, supplierAccountId: null }) === RETURNS_UNSET, "a sample with no address uses the fallback");
+  assert(
+    sampleListing && returnCopyForListing({ ...sampleListing, supplierAccountId: null }) === RETURNS_EMAILED,
+    "an unconfirmed sample emails the return address later",
+  );
   const scraper = getListing("bench-scraper");
   assert(
     sampleListing &&
       scraper &&
-      sampleProductReturnNote(sampleListing, returnCopyForListing(sampleListing)) === RETURNS_ON_ORDER &&
-      sampleProductReturnNote(scraper, returnCopyForListing(scraper)) === RETURNS_ON_ORDER,
-    "both samples use the order-page return line",
+      sampleProductReturnNote(sampleListing, returnCopyForListing(sampleListing)) === RETURNS_EMAILED &&
+      sampleProductReturnNote(scraper, returnCopyForListing(scraper)) === RETURNS_EMAILED,
+    "both samples use the emailed return line",
   );
 
   getDb()
@@ -403,7 +417,7 @@ async function main() {
     seededResponse.status === 200 && seededBody.summary?.number === SAMPLE_ORDER_NUMBER,
     "the seeded order uses the sample receipt number",
   );
-  assert(seededBody.summary?.returnAddress === SAMPLE_RETURN_ADDRESS, "the confirmation page shows the placeholder return address");
+  assert(seededBody.summary?.returnAddress === RETURNS_EMAILED, "an unconfirmed confirmation page emails the return address later");
   const sampleSupplier = getDb().prepare("SELECT id FROM accounts WHERE email = ?").get("sample-supplier@example.com") as
     | { id: string }
     | undefined;

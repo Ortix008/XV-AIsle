@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "XV-AIsle",
   description:
-    "A curated aisle of goods. Every product page tells you where it ships from, how long it takes, and why we picked it. Buyers pay on xvaisle.com.",
+    "A curated aisle of goods. Every product page tells you how long it takes, and why we picked it. Buyers pay on xvaisle.com.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

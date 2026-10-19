@@ -2,57 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
 import { Reveal } from "@/components/reveal";
 import { ShopFooter } from "@/components/shop-footer";
 import { StoreHeader } from "@/components/store-header";
 import { DepartmentGrid } from "@/components/department-grid";
 import { NightStalls } from "@/components/night-stalls";
 import { AisleParallax, XvAisleFlow } from "@/components/xvaisle-flow";
-import { ResellerWaitlist } from "@/components/reseller-waitlist";
 import { ShopGrid } from "@/components/shop-grid";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { PasswordField } from "@/components/password-field";
-import { useAccount } from "@/lib/account-store";
 import { welcomeReach } from "@/lib/art";
 import { HERO_EYEBROW } from "@/lib/hero-copy";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
 export function JoinScreen() {
-  const { signUp, signIn, totpChallenge, submitTotp } = useAccount();
-  const [mode, setMode] = useState<"join" | "sign-in">("join");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  const [code, setCode] = useState("");
-
-  const mismatchMessage = "Those passwords do not match.";
-  const confirmError =
-    mode === "join" && password !== confirmPassword && (confirmPassword.length > 0 || error === mismatchMessage)
-      ? mismatchMessage
-      : null;
-  const staleMismatch = error === mismatchMessage && password === confirmPassword;
-
-  async function onSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (mode === "join" && password !== confirmPassword) {
-      setError(mismatchMessage);
-      return;
-    }
-    setPending(true);
-    const message = totpChallenge
-      ? await submitTotp(code)
-      : mode === "join"
-        ? await signUp({ name, email, password, confirmPassword })
-        : await signIn({ email, password });
-    setError(message);
-    setPending(false);
-  }
-
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <a
@@ -87,8 +48,8 @@ export function JoinScreen() {
                 <span className="hero-break">Goods that </span>earn their <span className="text-primary">place.</span>
               </h1>
               <p className="mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                A night market of home, kitchen, and everyday goods. Every product page tells you where it ships from,
-                how long it takes, and, when we wrote one, why it earned its place.
+                A night market of home, kitchen, and everyday goods. Every product page tells you how long it takes, and,
+                when we wrote one, why it earned its place.
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <Link href="/shop" className="pill pill-primary max-[899px]:flex-1">
@@ -161,34 +122,6 @@ export function JoinScreen() {
           </div>
         </section>
 
-        {mode === "join" ? (
-          <section className="border-t border-border">
-            <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 lg:py-24">
-              <Reveal>
-              <h2 className="text-4xl sm:text-5xl">Two ways in</h2>
-              <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
-                Share your shop link anywhere. Buyers pay on xvaisle.com. Payouts go through Stripe Connect, to a bank
-                account you add there.
-              </p>
-              </Reveal>
-              <div className="mt-10 grid gap-5 md:grid-cols-2">
-                <Reveal as="article" index={0} className="rounded-2xl border border-border bg-card p-7">
-                  <p className="font-heading text-sm text-primary">01</p>
-                  <h3 className="mt-2 text-2xl">Sell</h3>
-                  <div className="mt-4">
-                    <ResellerWaitlist />
-                  </div>
-                </Reveal>
-                <Reveal as="article" index={1} className="rounded-2xl border border-border bg-card p-7">
-                  <p className="text-base leading-relaxed text-muted-foreground">
-                    {"Every product earns its place. We pick from real companies and review each one before it's listed."}
-                  </p>
-                </Reveal>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
         <section className="border-t border-border">
           <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10">
             <Reveal>
@@ -229,120 +162,6 @@ export function JoinScreen() {
               </Reveal>
             ))}
           </ul>
-        </section>
-
-        <section id="account" className="scroll-mt-24 px-5 py-16 sm:px-10 lg:py-24">
-          <Reveal className="mx-auto grid max-w-[1280px] gap-8 rounded-[18px] border border-border bg-card p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:p-10">
-            <div>
-              <h2 className="text-4xl sm:text-5xl">{mode === "join" ? "Open an account" : "Sign in"}</h2>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-                {mode === "join"
-                  ? "Welcome in. Let's set up your account."
-                  : "Welcome back. Sign in to your account."}
-              </p>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-                <Link href="/shop/reseller/terms" className="text-[var(--link)] underline underline-offset-4 hover:text-foreground">
-                  Reseller terms
-                </Link>
-              </p>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-                Your account is kept on the server. Payouts are Stripe Connect only.
-              </p>
-            </div>
-            <form onSubmit={onSubmit} className="flex flex-col gap-3">
-              {totpChallenge ? (
-                <label className="flex flex-col gap-1 text-base">
-                  Authenticator code
-                  <Input
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    value={code}
-                    onChange={(event) => setCode(event.target.value)}
-                    required
-                    className="h-11 md:text-base"
-                  />
-                  <span className="text-base text-muted-foreground">Enter the 6-digit code from your authenticator app.</span>
-                </label>
-              ) : mode === "join" ? (
-                <label className="flex flex-col gap-1 text-base">
-                  Your name
-                  <Input
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    autoComplete="name"
-                    maxLength={80}
-                    required
-                    className="h-11 md:text-base"
-                  />
-                </label>
-              ) : null}
-              {totpChallenge ? null : (
-                <>
-                  <label className="flex flex-col gap-1 text-base">
-                    Email
-                    <Input
-                      type="email"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      autoComplete="email"
-                      maxLength={254}
-                      required
-                      className="h-11 md:text-base"
-                    />
-                  </label>
-                  <PasswordField
-                    label="Password"
-                    value={password}
-                    onChange={setPassword}
-                    autoComplete={mode === "join" ? "new-password" : "current-password"}
-                    minLength={8}
-                    maxLength={200}
-                  />
-                  {mode === "join" ? (
-                    <div className="flex flex-col gap-1">
-                      <PasswordField
-                        label="Confirm password"
-                        value={confirmPassword}
-                        onChange={setConfirmPassword}
-                        autoComplete="new-password"
-                        minLength={8}
-                        maxLength={200}
-                      />
-                      {confirmError ? (
-                        <p className="text-base text-late" role="alert">
-                          {confirmError}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </>
-              )}
-              {error && error !== confirmError && !staleMismatch ? (
-                <p className="text-base text-late" role="alert">
-                  {error}
-                </p>
-              ) : null}
-              <Button type="submit" disabled={pending} className="mt-1 h-12 w-fit rounded-full px-6">
-                {totpChallenge ? "Confirm code" : mode === "join" ? "Create an account" : "Sign in"}
-              </Button>
-              {mode === "sign-in" && !totpChallenge ? (
-                <Link href="/reset" className="w-fit text-base text-[var(--link)] underline underline-offset-4 hover:text-foreground">
-                  Forgot password
-                </Link>
-              ) : null}
-              <button
-                type="button"
-                className="w-fit text-base text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                onClick={() => {
-                  setMode(mode === "join" ? "sign-in" : "join");
-                  setError(null);
-                  setConfirmPassword("");
-                }}
-              >
-                {mode === "join" ? "I already have an account" : "Create an account"}
-              </button>
-            </form>
-          </Reveal>
         </section>
       </main>
       <ShopFooter />

@@ -433,6 +433,14 @@
   transform: translate3d(0, -3px, 0);
 }
 
+@media (max-width: 390px) {
+  .aisle-tile:focus-visible,
+  .stall-tab:focus-visible {
+    outline: none;
+    box-shadow: var(--glow);
+  }
+}
+
 .shop-fill {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
