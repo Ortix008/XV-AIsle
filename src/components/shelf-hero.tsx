@@ -48,9 +48,7 @@ export function ShelfHero() {
       <div className="up1-copy">
         <p className="up1-eye">{HERO_EYEBROW}</p>
         <h1 id="home-hero" className="up1-h1">
-          From their shelf
-          <br />
-          to your home.
+          <span className="up1-h1-line">From their shelf</span> to your home.
         </h1>
         <p className="up1-sub">
           Everyday things for your home, your desk, and the people you love, picked one by one. See where each item

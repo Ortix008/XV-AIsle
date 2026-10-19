@@ -1519,13 +1519,15 @@ video.auth-plate-media {
 }
 .up1-h1 {
   margin-top: 14px;
-  max-width: 12ch;
+  max-width: 100%;
   font-size: 58px;
   font-weight: 700;
   line-height: 1.04;
   letter-spacing: -0.03em;
   color: #f7f4ee;
+  text-wrap: wrap;
 }
+.up1-h1-line { display: block; }
 .up1-sub {
   margin-top: 18px;
   max-width: 42ch;
