@@ -1928,21 +1928,6 @@ video.auth-plate-media {
 }
 .vm-card b { display: block; color: #f2f6f4; font-size: 16px; font-weight: 600; }
 .vm-card p { margin-top: 8px; color: #a7b6af; font-size: 14px; line-height: 1.55; }
-.vm-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 22px 40px 26px;
-  border-top: 1px solid #ffffff10;
-  background: #050807;
-  color: #93a39c;
-  font: 13px/1.6 var(--font-sans);
-}
-.vm-foot b { color: #fff; letter-spacing: 0.02em; }
-.vm-foot .vm-tag { color: #d3dcd8; }
-.vm-foot a { color: inherit; }
 @media (max-width: 640px) {
   .vm { padding: 72px 0 64px; }
   .vm-in { padding: 0 22px; }
@@ -1965,7 +1950,6 @@ video.auth-plate-media {
   .vm-card:last-child svg { grid-row: 1 / 3; margin: 2px 0 0; }
   .vm-card:last-child p { margin-top: 4px; }
   .vm-pool { width: 700px; height: 900px; }
-  .vm-foot { flex-direction: column; align-items: flex-start; gap: 4px; padding: 20px 22px; }
 }
 
 .hero-aisle h1 {
@@ -2062,6 +2046,67 @@ button.auth-x:disabled {
 
 .product-card {
   border-radius: var(--r-lg);
+}
+
+.shop-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 4px 4px;
+}
+
+.shop-card-eyebrow {
+  height: 16px;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.shop-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.shop-card-price {
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+@media (min-width: 640px) {
+  .shop-card-title {
+    font-size: 17px;
+  }
+}
+
+.mark-tile {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  width: 100%;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.mark-tile-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.mark-tile-fallback img {
+  width: 32px;
+  height: 32px;
+  opacity: 0.4;
 }
 
 .stall-tab {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
+import { MarkTile } from "@/components/mark-tile";
 import { NightMotif } from "@/components/night-motif";
 import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
@@ -49,6 +50,9 @@ export function ShopGrid({
   level = "page",
   world = null,
   catalog = false,
+  hideWhenEmpty = false,
+  tiles = false,
+  band = false,
 }: {
   kicker: string;
   title: string;
@@ -60,6 +64,9 @@ export function ShopGrid({
   level?: "page" | "section";
   world?: NightWorld | null;
   catalog?: boolean;
+  hideWhenEmpty?: boolean;
+  tiles?: boolean;
+  band?: boolean;
 }) {
   const [listings, setListings] = useState<ShopCard[] | null>(null);
 
@@ -72,8 +79,9 @@ export function ShopGrid({
 
   const visible = listings === null ? null : limit === undefined ? listings : listings.slice(0, limit);
   const Heading = level === "page" ? "h1" : "h2";
+  if (hideWhenEmpty && (visible === null || visible.length === 0)) return null;
 
-  return (
+  const grid = (
     <div className={catalog ? "shop-catalog" : "mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]"}>
       {catalog ? (
         <>
@@ -172,14 +180,17 @@ export function ShopGrid({
                 style={cardWorld ? (nightWorldVars(cardWorld) as CSSProperties) : undefined}
                 className="product-card block border border-border bg-card p-2 sm:p-3"
               >
-                <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
-                {eyebrow(listing) ? (
-                  <p className="mt-4 px-1 font-heading text-xs tracking-[0.14em] text-muted-foreground uppercase">
+                {tiles ? (
+                  <MarkTile src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
+                ) : (
+                  <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
+                )}
+                <div className="shop-card-text">
+                  <p className="shop-card-eyebrow" aria-hidden={eyebrow(listing) ? undefined : true}>
                     {eyebrow(listing)}
                   </p>
-                ) : null}
-                <h3 className="mt-1 px-1 text-[15px] font-semibold tracking-[-0.01em] sm:text-[17px]">{listing.title}</h3>
-                <p className="mt-1 px-1 pb-1 text-sm text-muted-foreground">
+                  <h3 className="shop-card-title">{listing.title}</h3>
+                  <p className="shop-card-price">
                   {money(listing.priceCents / 100)}
                   {listing.sample ? null : (
                     <>
@@ -199,7 +210,8 @@ export function ShopGrid({
                       )}
                     </>
                   )}
-                </p>
+                  </p>
+                </div>
               </Link>
             </Reveal>
           );
@@ -207,4 +219,6 @@ export function ShopGrid({
       </ul>
     </div>
   );
+  if (!band) return grid;
+  return <section className="border-y border-border bg-secondary">{grid}</section>;
 }

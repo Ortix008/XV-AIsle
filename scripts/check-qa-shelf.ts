@@ -47,7 +47,7 @@ async function main() {
   mainGuard();
   const { closeDb, getDb } = await import("../src/lib/server/db");
   const { createPendingOrder, getListing, publicShopListing, publishListing } = await import("../src/lib/server/store");
-  const { ensureStarterShelf, visibleOnShop } = await import("../src/lib/server/starter-shelf");
+  const { ensureStarterShelf, listedOnGrid, visibleOnShop } = await import("../src/lib/server/starter-shelf");
   const { setStripeFetch } = await import("../src/lib/server/stripe");
   const { POST } = await import("../src/app/api/store/checkout/route");
 
@@ -84,14 +84,36 @@ async function main() {
     | { id: string; role: string; email: string }
     | undefined;
   assert(supplier?.role === "supplier" && supplier.id === seeded?.supplierAccountId, "the supplier account is the test supplier");
+  const fixtureCard = {
+    productId: QA_CHECKOUT_PRODUCT_ID,
+    supplierName: "QA Test Supplier",
+    published: true,
+  };
+  assert(visibleOnShop(fixtureCard), "the fixture stays reachable by its product URL while the demo shelf is on");
+  assert(listedOnGrid(fixtureCard) === false, "the fixture is excluded from shop and aisle grids");
+  const { GET: listingsGet } = await import("../src/app/api/store/listings/route");
+  const { GET: catalogGet } = await import("../src/app/api/store/catalog/route");
+  const { GET: productGet } = await import("../src/app/api/store/listings/[productId]/route");
+  const shopGrid = (await (await listingsGet(new Request("http://127.0.0.1/api/store/listings"))).json()) as {
+    listings: { productId: string }[];
+  };
+  const aisleGrid = (await (
+    await listingsGet(new Request("http://127.0.0.1/api/store/listings?aisle=kitchen"))
+  ).json()) as { listings: { productId: string }[] };
+  const catalog = (await (await catalogGet()).json()) as { products: { id: string }[] };
   assert(
-    visibleOnShop({
-      productId: QA_CHECKOUT_PRODUCT_ID,
-      supplierName: "QA Test Supplier",
-      published: true,
-    }),
-    "the fixture is visible while the demo shelf is on",
+    !shopGrid.listings.some((item) => item.productId === QA_CHECKOUT_PRODUCT_ID),
+    "the shop grid leaves the fixture out",
   );
+  assert(
+    !aisleGrid.listings.some((item) => item.productId === QA_CHECKOUT_PRODUCT_ID),
+    "an aisle grid leaves the fixture out",
+  );
+  assert(!catalog.products.some((item) => item.id === QA_CHECKOUT_PRODUCT_ID), "the public catalog leaves the fixture out");
+  const direct = await productGet(new Request("http://127.0.0.1/api/store/listings/qa-checkout"), {
+    params: Promise.resolve({ productId: QA_CHECKOUT_PRODUCT_ID }),
+  });
+  assert(direct.ok, "the fixture stays reachable by its direct product URL");
   const pending = createPendingOrder({ productId: ship.productId, qty: ship.qty, ship });
   if ("error" in pending) throw new Error(pending.error);
   assert(pending.order.supplierAccountId === supplier?.id, "checkout keeps the test supplier");

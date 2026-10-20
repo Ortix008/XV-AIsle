@@ -39,8 +39,11 @@ export function AislePicks({ aisle, picks }: { aisle: string | null; picks: Aisl
                 className="product-card block h-full rounded-2xl border border-border bg-card p-2"
               >
                 <ProductFrame src={pick.image} alt="" sizes="(min-width: 1024px) 240px, 50vw" />
-                <h3 className="mt-3 px-1 text-[15px] font-semibold tracking-[-0.01em]">{pick.title}</h3>
-                <p className="mt-1 px-1 pb-1 text-sm text-muted-foreground">{money(pick.priceCents / 100)}</p>
+                <div className="shop-card-text">
+                  <p className="shop-card-eyebrow" aria-hidden />
+                  <h3 className="shop-card-title">{pick.title}</h3>
+                  <p className="shop-card-price">{money(pick.priceCents / 100)}</p>
+                </div>
               </Link>
             </li>
           );

@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 const mission =
   "XV-AIsle exists to remove one of retail's oldest barriers, the cost of holding stock.";
 const missionBody =
@@ -72,18 +70,6 @@ export function MissionValues() {
         </div>
       </div>
     </section>
-    <div className="vm-foot">
-      <b>XV-AIsle</b>
-      <span>
-        <Link href="/shop/returns">Returns</Link>
-        {" · "}
-        <Link href="/shop/contact">Contact</Link>
-        {" · "}
-        <Link href="/shop/terms">Terms</Link>
-        {" · "}
-        <Link href="/shop/privacy">Privacy</Link>
-      </span>
-    </div>
     </>
   );
 }

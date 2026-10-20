@@ -1,6 +1,6 @@
 import { STORE_HOST } from "@/lib/domain";
 import { publicListing } from "@/lib/server/order-view";
-import { ensureStarterShelf, isSampleListing, visibleOnShop } from "@/lib/server/starter-shelf";
+import { ensureStarterShelf, isSampleListing, listedOnGrid } from "@/lib/server/starter-shelf";
 import { listPublished } from "@/lib/server/store";
 import { appOrigin } from "@/lib/server/stripe";
 
@@ -8,7 +8,7 @@ export function GET() {
   ensureStarterShelf();
   const origin = appOrigin();
   const products = listPublished()
-    .filter(visibleOnShop)
+    .filter(listedOnGrid)
     .map((listing) => {
       const page = publicListing(listing, isSampleListing(listing));
       return {

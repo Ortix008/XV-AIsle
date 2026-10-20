@@ -65,6 +65,21 @@ export function visibleOnShop(listing: {
   return true;
 }
 
+/**
+ * Public shop and aisle grids. The QA checkout fixture is never one of these
+ * cards. Its product page stays available when the demo shelf published it.
+ */
+export function listedOnGrid(listing: {
+  productId: string;
+  supplierName: string;
+  published: boolean;
+  hiddenFromShop?: boolean;
+  title?: string | null;
+}) {
+  if (isQaCheckoutListing(listing)) return false;
+  return visibleOnShop(listing);
+}
+
 function shelfOperatorId() {
   const preferred = process.env.STORE_OPERATOR_EMAIL?.trim().toLowerCase();
   if (!preferred) return null;

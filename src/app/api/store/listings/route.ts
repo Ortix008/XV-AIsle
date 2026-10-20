@@ -4,7 +4,7 @@ import { accountFromToken } from "@/lib/server/accounts";
 import { publicListing, resellerListing } from "@/lib/server/order-view";
 import { publishForAccount } from "@/lib/server/publish";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
-import { ensureStarterShelf, isSampleListing, visibleOnShop } from "@/lib/server/starter-shelf";
+import { ensureStarterShelf, isSampleListing, listedOnGrid } from "@/lib/server/starter-shelf";
 import { listPublished } from "@/lib/server/store";
 
 export async function GET(request: Request) {
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     madeInUsa: madeInUsa || undefined,
     shelf: shelf === "small" || shelf === "national" ? shelf : undefined,
     aisle,
-  }).filter(visibleOnShop);
+  }).filter(listedOnGrid);
   return Response.json({ listings: listings.map((listing) => publicListing(listing, isSampleListing(listing))) });
 }
 
