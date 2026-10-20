@@ -755,9 +755,16 @@
   }
 }
 
-html.motion [data-reveal]:not(.is-in) {
-  opacity: 0;
-  transform: translate3d(0, 16px, 0);
+[data-reveal] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.motion [data-reveal]:not(.is-in) {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
 }
 
 html.motion [data-reveal].is-in {
@@ -787,8 +794,10 @@ html.motion [data-reveal].is-in {
     animation-name: hero-drift-soft;
   }
 
-  html.motion [data-reveal]:not(.is-in) {
-    transform: translate3d(0, 10px, 0);
+  @media (prefers-reduced-motion: no-preference) {
+    html.motion [data-reveal]:not(.is-in) {
+      transform: translate3d(0, 10px, 0);
+    }
   }
 
   html.motion [data-reveal].is-in {
@@ -841,6 +850,15 @@ html.motion [data-reveal].is-in {
   .hero-band .hero-aisle-photo,
   .stall-lamp {
     animation: none !important;
+  }
+  .page-enter,
+  [data-reveal],
+  [data-reveal]:not(.is-in),
+  html.motion [data-reveal],
+  html.motion [data-reveal]:not(.is-in) {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
   }
   .hero-glow {
     opacity: 0.28;
@@ -2190,6 +2208,57 @@ button.contact-submit {
   min-width: 0;
 }
 
+.product-crumb {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.product-crumb a,
+.product-crumb-aisle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 0;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.product-crumb-shop {
+  flex: none;
+}
+
+.product-crumb-aisle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-crumb-sep {
+  flex: none;
+  color: #ffffff40;
+}
+
+.product-crumb a:hover,
+.product-crumb a:focus-visible {
+  color: var(--em);
+}
+
+.product-crumb a:focus-visible {
+  outline: 2px solid var(--em);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
 .product-title {
   margin-top: 0;
 }
@@ -2229,7 +2298,7 @@ button.contact-submit {
   border: 1px solid var(--em-line);
   border-radius: 999px;
   color: var(--em);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 

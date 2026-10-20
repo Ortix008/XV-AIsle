@@ -177,6 +177,39 @@ async function main() {
   assert("error" in trayOrder, "checkout refuses Wood Tray");
   assert(getListing("serving-board"), "the Wood Tray row is still in the database");
 
+  const candle = publishListing("qa-operator-test", {
+    productId: "scented-candle-16-oz",
+    sku: "QA-CND-1",
+    title: "Scented Candle 16 oz",
+    description: "A candle.",
+    priceCents: 2695,
+    image: "/art/products/scented-candle-16-oz.jpg",
+    supplierName: "QA Test Supplier",
+    supplierOrigin: "Sample City, ST",
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    supplierAccountId: supplier?.id,
+    supplierCostCents: 500,
+  });
+  if ("error" in candle) throw new Error(candle.error);
+  ensureStarterShelf();
+  const hiddenCandle = getListing("scented-candle-16-oz");
+  if (!hiddenCandle || hiddenCandle.published !== false) throw new Error("Scented Candle 16 oz is unpublished on boot");
+  assert(hiddenCandle.title === "Scented Candle 16 oz", "Scented Candle 16 oz is kept, not deleted");
+  getDb().prepare("UPDATE listings SET published = 1 WHERE product_id = ?").run("scented-candle-16-oz");
+  assert(
+    visibleOnShop({
+      productId: "scented-candle-16-oz",
+      title: "Scented Candle 16 oz",
+      supplierName: "QA Test Supplier",
+      published: true,
+    }) === false,
+    "Scented Candle 16 oz stays off the shelf even if the row is marked published",
+  );
+  const candleOrder = createPendingOrder({ productId: "scented-candle-16-oz", qty: 1, ship });
+  assert("error" in candleOrder, "checkout refuses Scented Candle 16 oz");
+  assert(getListing("scented-candle-16-oz"), "the Scented Candle row is still in the database");
+
   env.STRIPE_SECRET_KEY = "sk_test_qa_shelf";
   setStripeFetch(async () =>
     Response.json({

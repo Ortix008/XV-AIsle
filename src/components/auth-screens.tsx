@@ -107,10 +107,10 @@ export function SignInScreen({
     xNotice === "failed" ? "X sign-in did not finish. Use email, or try Continue with X again." : null,
   );
   const [pending, setPending] = useState(false);
+  const router = useRouter();
   const emailId = useId();
   const codeId = useId();
   const xCode = xNotice === "code" && !totpChallenge;
-  useEnterDeskWhenSignedIn();
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -129,11 +129,21 @@ export function SignInScreen({
         return;
       }
       await refresh();
-      setPending(false);
+      router.replace("/account");
       return;
     }
     const message = totpChallenge ? await submitTotp(code) : await signIn({ email, password });
-    setError(message);
+    if (message) {
+      setError(message);
+      setPending(false);
+      return;
+    }
+    const session = await fetch("/api/account");
+    const body = (await session.json().catch(() => null)) as { account?: unknown } | null;
+    if (body?.account) {
+      router.replace("/account");
+      return;
+    }
     setPending(false);
   }
 

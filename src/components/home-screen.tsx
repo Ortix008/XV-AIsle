@@ -114,9 +114,9 @@ export function JoinScreen() {
             </Reveal>
             <Reveal as="article" index={2} className="rounded-2xl border border-border bg-secondary p-7">
               <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
-              <h2 className="text-lg">Secure checkout</h2>
+              <h2 className="text-lg">Checkout opens soon</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Stripe handles your payment. A real person answers your questions.
+                When it opens, Stripe will handle your payment, so we never see your card number. Questions? We reply within 2 business days.
               </p>
             </Reveal>
           </div>

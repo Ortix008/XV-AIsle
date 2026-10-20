@@ -14,7 +14,7 @@ export default function TermsPage() {
       </p>
       <p>Orders ship to United States addresses. The supplier sends the box after payment clears.</p>
       <p>
-        You can start a return within {RETURN_WINDOW_DAYS} days of delivery. The{" "}
+        You can start a return within {RETURN_WINDOW_DAYS} days of delivery, unless a product page says otherwise. The{" "}
         <Link href="/shop/returns" className="underline underline-offset-4">
           returns page
         </Link>{" "}

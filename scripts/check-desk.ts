@@ -1,9 +1,22 @@
-import { getProduct } from "../src/lib/catalog";
+import { getProduct, products } from "../src/lib/catalog";
 import { todayISO } from "../src/lib/dates";
 import { emptyDesk } from "../src/lib/desk-state";
 import { applyPass, assess } from "../src/lib/engine";
 import { buildDeskFixture } from "./fixtures/desk-fixture";
 import type { BotId } from "../src/lib/types";
+
+for (const product of products) {
+  for (const quote of product.suppliers) {
+    if (quote.name === "Northwharf Goods" || quote.name === "Harborkit") {
+      if (quote.returnWindowDays !== 14) {
+        throw new Error(`${product.id} ${quote.name} return window is ${quote.returnWindowDays}`);
+      }
+    }
+    if (quote.name === "Paperlane Direct" && quote.returnWindowDays !== 7) {
+      throw new Error(`${product.id} Paperlane return window is ${quote.returnWindowDays}`);
+    }
+  }
+}
 
 const today = todayISO();
 const pan = assess(getProduct("sheet-pan"), today, null);

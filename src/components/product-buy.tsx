@@ -14,7 +14,8 @@ import { money } from "@/lib/money";
 import { QA_CHECKOUT_PRODUCT_ID } from "@/lib/qa-checkout";
 import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE } from "@/lib/shelf-copy";
 import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
-import { nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
+import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
+import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
 export type ProductListing = {
@@ -44,6 +45,16 @@ export type ProductListing = {
   includes?: { productId: string; title: string }[];
   aisle?: string | null;
 };
+
+function productAisleCrumb(listing: ProductListing) {
+  const slug = listing.kind === "bundle" ? "bundles" : listing.aisle?.trim() ?? "";
+  if (!slug) return null;
+  const aisle = aisleBySlug(slug) ?? aisleByTitle(slug);
+  if (aisle) return { name: aisle.title, href: `/shop?aisle=${aisle.slug}` };
+  const world = nightWorldBySlug(slug) ?? nightWorldByTitle(slug);
+  if (world) return { name: world.title, href: `/shop?aisle=${world.slug}` };
+  return { name: slug, href: null };
+}
 
 function TruckIcon() {
   return (
@@ -88,6 +99,7 @@ export function ProductBuy({
   const notes = Boolean(listing.whyItCosts || check);
   const world = nightWorldForListing(listing);
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
+  const aisleCrumb = productAisleCrumb(listing);
 
   useEffect(() => {
     if (details) nameRef.current?.focus();
@@ -141,6 +153,25 @@ export function ProductBuy({
         </div>
       </div>
       <div className="product-copy">
+        <nav className="product-crumb" aria-label="Breadcrumb">
+          <Link href="/shop" className="product-crumb-shop">
+            ‹ Shop
+          </Link>
+          {aisleCrumb ? (
+            <>
+              <span className="product-crumb-sep" aria-hidden="true">
+                /
+              </span>
+              {aisleCrumb.href ? (
+                <Link href={aisleCrumb.href} className="product-crumb-aisle">
+                  {aisleCrumb.name}
+                </Link>
+              ) : (
+                <span className="product-crumb-aisle">{aisleCrumb.name}</span>
+              )}
+            </>
+          ) : null}
+        </nav>
         <p className="product-sku">{listing.sku}</p>
         {listing.brand ? <p className="product-brand">{listing.brand}</p> : null}
         <h1 className="product-title">{listing.title}</h1>
@@ -176,7 +207,7 @@ export function ProductBuy({
               </Button>
             )}
           </div>
-          <p className="product-pay-line">You pay right here on xvaisle.com.</p>
+          {held ? null : <p className="product-pay-line">You pay right here on xvaisle.com.</p>}
           {details && !held ? (
             <div className="product-details">
               <h2 className="product-checkout-label">Checkout</h2>
@@ -204,7 +235,11 @@ export function ProductBuy({
                 Postal code
                 <Input className="h-12" value={postal} onChange={(event) => setPostal(event.target.value)} autoComplete="postal-code" required />
               </label>
-              {error ? <p className="text-base text-late">{error}</p> : null}
+              {error ? (
+                <p className="text-base text-late" role="alert" aria-live="assertive">
+                  {error}
+                </p>
+              ) : null}
               <Button type="submit" disabled={pending} className="product-pay">
                 {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qty) / 100)}`}
               </Button>

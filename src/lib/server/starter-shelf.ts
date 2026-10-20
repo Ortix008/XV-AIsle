@@ -1,6 +1,14 @@
 import { usSupplierConfirmed } from "../order-facts";
 import { QA_CHECKOUT_PRODUCT_ID, QA_SUPPLIER_EMAIL, isQaCheckoutListing, qaCheckoutSeedAllowed } from "../qa-checkout";
-import { SEEDED_SUPPLIER_NAME, WOOD_TRAY_PRODUCT_ID, isDemoSample, isWoodTrayListing, seededSampleProductIds } from "../shelf-holds";
+import {
+  SCENTED_CANDLE_PRODUCT_ID,
+  SEEDED_SUPPLIER_NAME,
+  WOOD_TRAY_PRODUCT_ID,
+  isDemoSample,
+  isScentedCandleListing,
+  isWoodTrayListing,
+  seededSampleProductIds,
+} from "../shelf-holds";
 import { RETURNS_EMAILED } from "../return-address";
 import { samplePriceCents, sampleStarters } from "../sample-shelf";
 import { getDb } from "./db";
@@ -50,7 +58,7 @@ export function visibleOnShop(listing: {
   hiddenFromShop?: boolean;
   title?: string | null;
 }) {
-  if (isWoodTrayListing(listing)) return false;
+  if (isWoodTrayListing(listing) || isScentedCandleListing(listing)) return false;
   if (!listing.published || listing.hiddenFromShop) return false;
   if (isSampleListing(listing) && !demoSeedEnabled()) return false;
   if (isQaCheckoutListing(listing) && !demoSeedEnabled()) return false;
@@ -71,9 +79,17 @@ export function unpublishWoodTray() {
     .run(WOOD_TRAY_PRODUCT_ID);
 }
 
+/** Take Scented Candle 16 oz off the shelf without deleting the row. Runs on every boot. */
+export function unpublishScentedCandle() {
+  getDb()
+    .prepare("UPDATE listings SET published = 0 WHERE product_id = ? OR lower(trim(title)) = 'scented candle 16 oz'")
+    .run(SCENTED_CANDLE_PRODUCT_ID);
+}
+
 /** Publish the two sample pages only when DEMO_SEED=1 and an operator account exists. */
 export function ensureStarterShelf() {
   unpublishWoodTray();
+  unpublishScentedCandle();
   unlinkSeededSamples();
   const sampleIds = seededSampleProductIds();
   if (!demoSeedEnabled()) {

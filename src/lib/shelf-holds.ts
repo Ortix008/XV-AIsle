@@ -5,8 +5,10 @@ import { sampleStarters } from "./sample-shelf";
 export const SEEDED_SUPPLIER_NAME = "Northwharf Goods";
 
 export const WOOD_TRAY_PRODUCT_ID = "wood-tray";
+export const SCENTED_CANDLE_PRODUCT_ID = "scented-candle-16-oz";
 
 const WOOD_TRAY_TITLE = "wood tray";
+const SCENTED_CANDLE_TITLE = "scented candle 16 oz";
 
 export function isSeededSupplier(name?: string | null) {
   return (name ?? "").trim() === SEEDED_SUPPLIER_NAME;
@@ -45,4 +47,9 @@ export function isHeldSample(listing: {
 export function isWoodTrayListing(listing: { productId?: string | null; title?: string | null }) {
   if (listing.productId === WOOD_TRAY_PRODUCT_ID) return true;
   return (listing.title ?? "").trim().toLowerCase() === WOOD_TRAY_TITLE;
+}
+
+export function isScentedCandleListing(listing: { productId?: string | null; title?: string | null }) {
+  if (listing.productId === SCENTED_CANDLE_PRODUCT_ID) return true;
+  return (listing.title ?? "").trim().toLowerCase() === SCENTED_CANDLE_TITLE;
 }

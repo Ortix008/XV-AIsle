@@ -30,7 +30,7 @@ function suppliers(id: string, unitCost: number): SupplierQuote[] {
       rating: 4.7,
       reviews: 180,
       moq: 1,
-      returnWindowDays: 30,
+      returnWindowDays: 14,
       note: "In the NJ warehouse. Ships after the order.",
     },
     {
@@ -46,7 +46,7 @@ function suppliers(id: string, unitCost: number): SupplierQuote[] {
       rating: 4.6,
       reviews: 90,
       moq: 1,
-      returnWindowDays: 30,
+      returnWindowDays: 14,
       note: "Same article on the West Coast, if NJ runs thin.",
     },
     {
