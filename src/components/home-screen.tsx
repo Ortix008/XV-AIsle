@@ -171,7 +171,7 @@ export function JoinScreen() {
         </section>
         ) : null}
       </main>
-      <ShopFooter />
+      <ShopFooter showReseller={false} />
     </div>
   );
 }

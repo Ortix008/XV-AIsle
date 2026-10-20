@@ -45,7 +45,6 @@ function reviewCount(
 const memberLinks = [
   { href: "/orders", label: "Orders" },
   { href: "/account", label: "Profile" },
-  { href: "/shop/reseller", label: "Reseller program coming soon." },
 ];
 
 const operatorPaths = new Set(["/desk", "/scout", "/listings", "/marketing", "/floors", "/catalog"]);

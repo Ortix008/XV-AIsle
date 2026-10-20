@@ -89,6 +89,7 @@ async function main() {
   ensureStarterShelf();
   const seeded = getListing(QA_CHECKOUT_PRODUCT_ID);
   assert(seeded?.published, "preview seed publishes the QA listing");
+  assert(seeded?.aisle === "kitchen", "the QA fixture breadcrumb uses the kitchen aisle");
   assert(Boolean(seeded?.supplierAccountId), "the QA listing has a test supplier account");
   const supplier = getDb().prepare("SELECT id, role, email FROM accounts WHERE email = ?").get(QA_SUPPLIER_EMAIL) as
     | { id: string; role: string; email: string }

@@ -87,10 +87,12 @@ export function XvAisleFlow({ density = "full" }: { density?: "full" | "light" }
     const trails: Point[][] = RUNS.map(() => []);
 
     const resize = () => {
-      const rect = canvas.getBoundingClientRect();
+      const box = (canvas.parentElement ?? canvas).getBoundingClientRect();
       dpr = Math.min(window.devicePixelRatio || 1, 2);
-      width = Math.max(1, rect.width);
-      height = Math.max(1, rect.height);
+      width = Math.max(1, box.width);
+      height = Math.max(1, box.height);
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

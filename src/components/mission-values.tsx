@@ -9,9 +9,11 @@ export function MissionValues() {
   return (
     <>
     <section className="vm" aria-labelledby="mission">
-      <div className="vm-floor" />
-      <div className="vm-pool" />
-      <div className="vm-haze" />
+      <div className="vm-bleed" aria-hidden>
+        <div className="vm-floor" />
+        <div className="vm-pool" />
+        <div className="vm-haze" />
+      </div>
       <div className="vm-in">
         <div className="vm-eye">Our mission</div>
         <h2 className="vm-title" id="mission">
