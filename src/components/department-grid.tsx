@@ -11,6 +11,30 @@ import { cn } from "cn";
 
 const floorDepartments = welcomeDepartments.filter((dept) => !nightWorldByTitle(dept.title));
 
+function DepartmentArt({ src, large, marked }: { src: string; large: boolean; marked: boolean }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-[14px] border border-border",
+        large ? "aspect-[4/5] min-h-72 lg:min-h-[520px] lg:flex-1" : "aspect-[16/10]",
+        marked ? "mark-underlay" : "media-well frame-glow",
+      )}
+    >
+      {failed ? null : (
+        <Image
+          src={src}
+          alt=""
+          fill
+          sizes={large ? "(min-width: 1024px) 50vw, 100vw" : "(min-width: 1024px) 30vw, 100vw"}
+          className="media-zoom object-cover"
+          onError={marked ? () => setFailed(true) : undefined}
+        />
+      )}
+    </div>
+  );
+}
+
 export function DepartmentGrid() {
   const [open, setOpen] = useState<string | null>(null);
   const aisle = open ? aisleByTitle(open) : null;
@@ -25,20 +49,7 @@ export function DepartmentGrid() {
               className="aisle-tile flex h-full w-full flex-col rounded-[18px] border border-border bg-secondary p-3.5 text-left"
               onClick={() => setOpen(dept.title)}
             >
-              <div
-                className={cn(
-                  "media-well frame-glow relative overflow-hidden rounded-[14px] border border-border",
-                  index === 0 ? "aspect-[4/5] min-h-72 lg:min-h-[520px] lg:flex-1" : "aspect-[16/10]",
-                )}
-              >
-                <Image
-                  src={dept.src}
-                  alt=""
-                  fill
-                  sizes={index === 0 ? "(min-width: 1024px) 50vw, 100vw" : "(min-width: 1024px) 30vw, 100vw"}
-                  className="media-zoom object-cover"
-                />
-              </div>
+              <DepartmentArt src={dept.src} large={index === 0} marked={dept.title === "Electronics"} />
               <h3 className="mt-4 px-1.5 text-2xl font-semibold tracking-[-0.02em]">{dept.title}</h3>
               <p className="mt-1 px-1.5 pb-1.5 text-sm text-muted-foreground">{dept.line}</p>
             </button>
