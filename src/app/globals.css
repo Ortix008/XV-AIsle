@@ -1335,12 +1335,6 @@ video.auth-plate-media {
     linear-gradient(180deg, rgba(7, 8, 10, 0.2), transparent 18%, rgba(7, 8, 10, 0.34));
 }
 
-@media (max-width: 767px) {
-  .hero-aisle-scrim {
-    background: linear-gradient(180deg, rgba(7, 8, 10, 0.25) 0%, rgba(7, 8, 10, 0.85) 28%, rgba(7, 8, 10, 0.85) 62%, rgba(7, 8, 10, 0.35) 100%);
-  }
-}
-
 @media (min-width: 768px) {
   .hero-aisle-scrim {
     background:
@@ -2705,5 +2699,21 @@ button.contact-submit {
   padding: 0 24px;
   font-size: 16px;
   line-height: 1;
+}
+
+.hero-aisle-photo {
+  object-position: 60% 58%;
+}
+
+@media (max-width: 767px) {
+  .hero-aisle .hero-aisle-photo {
+    transform: scale(2.6);
+    transform-origin: 60% 70%;
+  }
+
+  /* Last in the file so it wins over the earlier 90deg .hero-aisle-scrim rule. */
+  .hero-aisle-scrim {
+    background: linear-gradient(180deg, rgba(7, 8, 10, 0.25) 0%, rgba(7, 8, 10, 0.85) 28%, rgba(7, 8, 10, 0.85) 62%, rgba(7, 8, 10, 0.35) 100%);
+  }
 }
 

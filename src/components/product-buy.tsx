@@ -283,6 +283,10 @@ export function ProductBuy({
               </div>
             ) : null}
             <div>
+              <dt className="text-sm font-medium text-muted-foreground">Shipping</dt>
+              <dd className="mt-1">Tracking is emailed when it ships.</dd>
+            </div>
+            <div>
               <dt className="text-sm font-medium text-muted-foreground">Returns</dt>
               <dd className="mt-1">You can start a return within {RETURN_WINDOW_DAYS} days of delivery.</dd>
             </div>
