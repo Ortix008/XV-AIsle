@@ -20,7 +20,7 @@ export function MissionValues() {
           {mission.split("the cost of holding stock.")[0]}
           <em>the cost of holding stock.</em>
         </h2>
-        <p className="vm-body">{missionBody}</p>
+        <p className="vm-body text-pretty">{missionBody}</p>
         <div className="vm-vision">
           <div className="vm-eye">Our vision</div>
           <p>{vision}</p>
