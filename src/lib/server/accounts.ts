@@ -399,14 +399,21 @@ export function finishTotpSignIn(challenge: string, code: string) {
   return { account: publicAccount(account), token: openSession(account.id) };
 }
 
+const TOTP_NOT_READY = "Two-step sign-in isn't available yet. You can keep signing in the usual way." as const;
+
+function totpNotReady() {
+  console.error("Missing server setting AUTH_SECRET");
+  return { error: TOTP_NOT_READY };
+}
+
 export function startTotp(accountId: string) {
-  if (!authSecretReady()) return { error: "Set AUTH_SECRET on the server before turning on an authenticator." as const };
+  if (!authSecretReady()) return totpNotReady();
   const row = getDb().prepare("SELECT * FROM accounts WHERE id = ?").get(accountId) as AccountRow | undefined;
   if (!row) return { error: "That account is not on file." as const };
   if (row.totp_enabled === 1) return { error: "An authenticator is already on for this account." as const };
   const secret = generateTotpSecret();
   const stored = encryptSecret(secret);
-  if (!stored) return { error: "Set AUTH_SECRET on the server before turning on an authenticator." as const };
+  if (!stored) return totpNotReady();
   getDb().prepare("UPDATE accounts SET totp_secret = ?, totp_enabled = 0 WHERE id = ?").run(stored, accountId);
   const label = encodeURIComponent(pendingReceiptEmail(row.email) ? row.name : row.email);
   return {

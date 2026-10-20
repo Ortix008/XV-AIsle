@@ -54,7 +54,7 @@ export function JoinScreen() {
                 <span className="hero-break">Goods that </span>earn their <span className="text-primary">place.</span>
               </h1>
               <p className="mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                A night market of home, kitchen, and everyday goods.{" "}
+                A curated market of home, kitchen, and everyday goods.{" "}
                 {"When we've confirmed ship days with the supplier, the product page shows our best estimate."}
               </p>
               <div className="hero-actions">
