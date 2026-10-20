@@ -50,6 +50,16 @@ async function main() {
   const { ensureStarterShelf, listedOnGrid, visibleOnShop } = await import("../src/lib/server/starter-shelf");
   const { setStripeFetch } = await import("../src/lib/server/stripe");
   const { POST } = await import("../src/app/api/store/checkout/route");
+  const closedCheckout = await POST(
+    new Request("http://127.0.0.1/api/store/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId: QA_CHECKOUT_PRODUCT_ID, qty: 1 }),
+    }),
+  );
+  const closedBody = (await closedCheckout.json()) as { error?: string };
+  assert(closedCheckout.status === 503 && closedBody.error === "Card checkout isn't open yet.", "shoppers hear that card checkout is not open yet");
+  assert(!JSON.stringify(closedBody).includes("STRIPE_"), "the checkout error does not name an environment variable");
 
   const env = process.env as Record<string, string | undefined>;
   getDb()

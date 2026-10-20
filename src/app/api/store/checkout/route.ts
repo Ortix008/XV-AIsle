@@ -50,10 +50,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "Too many checkout tries. Wait a few minutes." }, { status: 429 });
   }
   if (!stripeConfigured()) {
-    return Response.json(
-      { error: "Card checkout is not connected. Set STRIPE_SECRET_KEY before the store can take payment." },
-      { status: 503 },
-    );
+    console.error("Card checkout refused because STRIPE_SECRET_KEY is unset.");
+    return Response.json({ error: "Card checkout isn't open yet." }, { status: 503 });
   }
   const body = (await request.json().catch(() => null)) as {
     productId?: string;
