@@ -13,7 +13,7 @@ import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
 import { QA_CHECKOUT_PRODUCT_ID } from "@/lib/qa-checkout";
 import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE } from "@/lib/shelf-copy";
-import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
+import { usSupplierConfirmed } from "@/lib/order-facts";
 import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
@@ -54,17 +54,6 @@ function productAisleCrumb(listing: ProductListing) {
   const world = nightWorldBySlug(slug) ?? nightWorldByTitle(slug);
   if (world) return { name: world.title, href: `/shop?aisle=${world.slug}` };
   return { name: slug, href: null };
-}
-
-function TruckIcon() {
-  return (
-    <svg className="product-truck" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M3 7.5h11.2v8.2H3V7.5zm12.2 1.6h2.4l2.9 3.1v3.5h-5.3V9.1zM7.1 16.2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4zm9.2 0a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4z"
-      />
-    </svg>
-  );
 }
 
 export function ProductBuy({
@@ -187,12 +176,6 @@ export function ProductBuy({
         ) : null}
         <form {...formReveal} onSubmit={checkout} className="product-checkout">
           <div className="product-buy">
-            {held ? null : (
-              <p className="product-ship">
-                <TruckIcon />
-                <span>{productShipLine(listing)}</span>
-              </p>
-            )}
             <label className="product-qty-field">
               Quantity
               <Input className="product-qty" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
@@ -299,12 +282,6 @@ export function ProductBuy({
                 <dd className="mt-1">{listing.shipsFrom}</dd>
               </div>
             ) : null}
-            {held ? null : (
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">Shipping</dt>
-                <dd className="mt-1">{productShipLine(listing)}</dd>
-              </div>
-            )}
             <div>
               <dt className="text-sm font-medium text-muted-foreground">Returns</dt>
               <dd className="mt-1">You can start a return within {RETURN_WINDOW_DAYS} days of delivery.</dd>
