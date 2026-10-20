@@ -1262,7 +1262,7 @@ video.auth-plate-media {
   position: relative;
   min-height: 92vh;
   overflow: clip;
-  background: #07080a;
+  background: #07080a url("/brand/hero-aisle-pedestals.webp") center 58% / cover no-repeat;
 }
 
 .hero-eyebrow {
@@ -1333,6 +1333,12 @@ video.auth-plate-media {
       transparent 100%
     ),
     linear-gradient(180deg, rgba(7, 8, 10, 0.2), transparent 18%, rgba(7, 8, 10, 0.34));
+}
+
+@media (max-width: 767px) {
+  .hero-aisle-scrim {
+    background: linear-gradient(180deg, rgba(7, 8, 10, 0.55) 0%, rgba(7, 8, 10, 0.88) 30%, rgba(7, 8, 10, 0.88) 70%, rgba(7, 8, 10, 0.6) 100%);
+  }
 }
 
 @media (min-width: 768px) {
