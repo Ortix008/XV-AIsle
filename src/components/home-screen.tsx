@@ -55,7 +55,7 @@ export function JoinScreen() {
               </h1>
               <p className="mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
                 A curated market of home, kitchen, and everyday goods.{" "}
-                {"When we've confirmed ship days with the supplier, the product page shows our best estimate."}
+                {"Shipping details are added to each product once its supplier confirms them."}
               </p>
               <div className="hero-actions">
                 <Link href="/shop" className="pill pill-primary">
