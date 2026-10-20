@@ -8,7 +8,7 @@ import { money } from "@/lib/money";
 import { accountFromToken } from "@/lib/server/accounts";
 import { publicListing } from "@/lib/server/order-view";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
-import { ensureStarterShelf, isSampleListing, sampleProductReturnNote, visibleOnShop } from "@/lib/server/starter-shelf";
+import { ensureStarterShelf, isSampleListing, listedOnGrid, sampleProductReturnNote, visibleOnShop } from "@/lib/server/starter-shelf";
 import { isHeldSample } from "@/lib/shelf-holds";
 import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
@@ -60,7 +60,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
   const aisle = aisleKey(listing);
   const picks: AislePick[] = aisle
     ? listPublished({ aisle })
-        .filter((item) => item.productId !== listing.productId && visibleOnShop(item))
+        .filter((item) => item.productId !== listing.productId && listedOnGrid(item))
         .slice(0, 4)
         .map((item) => ({
           productId: item.productId,

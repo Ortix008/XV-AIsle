@@ -755,9 +755,16 @@
   }
 }
 
-html.motion [data-reveal]:not(.is-in) {
-  opacity: 0;
-  transform: translate3d(0, 16px, 0);
+[data-reveal] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.motion [data-reveal]:not(.is-in) {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
 }
 
 html.motion [data-reveal].is-in {
@@ -787,8 +794,10 @@ html.motion [data-reveal].is-in {
     animation-name: hero-drift-soft;
   }
 
-  html.motion [data-reveal]:not(.is-in) {
-    transform: translate3d(0, 10px, 0);
+  @media (prefers-reduced-motion: no-preference) {
+    html.motion [data-reveal]:not(.is-in) {
+      transform: translate3d(0, 10px, 0);
+    }
   }
 
   html.motion [data-reveal].is-in {
@@ -841,6 +850,15 @@ html.motion [data-reveal].is-in {
   .hero-band .hero-aisle-photo,
   .stall-lamp {
     animation: none !important;
+  }
+  .page-enter,
+  [data-reveal],
+  [data-reveal]:not(.is-in),
+  html.motion [data-reveal],
+  html.motion [data-reveal]:not(.is-in) {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
   }
   .hero-glow {
     opacity: 0.28;
@@ -1910,21 +1928,6 @@ video.auth-plate-media {
 }
 .vm-card b { display: block; color: #f2f6f4; font-size: 16px; font-weight: 600; }
 .vm-card p { margin-top: 8px; color: #a7b6af; font-size: 14px; line-height: 1.55; }
-.vm-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 22px 40px 26px;
-  border-top: 1px solid #ffffff10;
-  background: #050807;
-  color: #93a39c;
-  font: 13px/1.6 var(--font-sans);
-}
-.vm-foot b { color: #fff; letter-spacing: 0.02em; }
-.vm-foot .vm-tag { color: #d3dcd8; }
-.vm-foot a { color: inherit; }
 @media (max-width: 640px) {
   .vm { padding: 72px 0 64px; }
   .vm-in { padding: 0 22px; }
@@ -1947,7 +1950,6 @@ video.auth-plate-media {
   .vm-card:last-child svg { grid-row: 1 / 3; margin: 2px 0 0; }
   .vm-card:last-child p { margin-top: 4px; }
   .vm-pool { width: 700px; height: 900px; }
-  .vm-foot { flex-direction: column; align-items: flex-start; gap: 4px; padding: 20px 22px; }
 }
 
 .hero-aisle h1 {
@@ -2044,6 +2046,61 @@ button.auth-x:disabled {
 
 .product-card {
   border-radius: var(--r-lg);
+}
+
+.shop-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 4px 4px;
+}
+
+.shop-card-eyebrow {
+  height: 16px;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.shop-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.shop-card-price {
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+@media (min-width: 640px) {
+  .shop-card-title {
+    font-size: 17px;
+  }
+}
+
+.mark-underlay {
+  background: var(--surface) center / 32px 32px no-repeat url("data:image/svg+xml,%3Csvg%20opacity%3D%220.4%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%23f2f5f3%22%2F%3E%3Crect%20x%3D%222.5%22%20y%3D%222.5%22%20width%3D%2227%22%20height%3D%2227%22%20rx%3D%226%22%20fill%3D%22%230a0d0c%22%2F%3E%3Cpath%20d%3D%22M10.05%2023.22%20L10.05%2023.30%20L10.15%2023.36%20L16.73%2023.37%20L16.86%2023.27%20L16.80%2023.09%20L14.84%2020.32%20L13.59%2018.45%20L13.47%2018.35%20L13.29%2018.45%20L13.18%2018.68%20L11.39%2021.18Z%20M7.51%208.46%20L7.43%208.56%20L7.47%2020.26%20L7.43%2021.54%20L7.47%2021.64%20L7.57%2021.65%20L8.38%2020.50%20L8.53%2020.34%20L11.59%2015.85%20L11.53%2015.62%20L10.68%2014.49%20L9.42%2012.60%20L7.82%2010.47%20L7.81%2010.35%20L7.96%2010.22%20L11.13%2010.28%20L11.27%2010.33%20L11.59%2010.71%20L12.79%2012.49%20L13.18%2012.97%20L13.73%2013.87%20L14.08%2014.29%20L14.68%2015.23%20L15.71%2016.61%20L16.47%2017.74%20L16.86%2018.21%20L17.19%2018.77%20L18.36%2020.40%20L18.43%2020.41%20L18.57%2020.30%20L19.86%2018.27%20L21.10%2016.44%20L21.10%2016.33%20L20.97%2016.26%20L19.98%2016.24%20L19.87%2016.15%20L19.93%2016.02%20L20.07%2015.97%20L20.72%2015.91%20L24.30%2015.87%20L24.49%2015.91%20L24.56%2015.98%20L24.58%2016.17%20L24.22%2016.84%20L22.92%2018.73%20L22.16%2019.98%20L21.56%2020.82%20L20.37%2022.69%20L20.32%2022.84%20L20.37%2023.05%20L20.80%2023.37%20L20.99%2023.33%20L22.09%2021.68%20L22.38%2021.15%20L23.02%2020.25%20L23.55%2019.34%20L25.10%2017.08%20L25.55%2016.34%20L25.74%2015.88%20L25.32%2015.20%20L25.17%2015.04%20L24.04%2013.40%20L23.93%2013.16%20L22.88%2011.77%20L22.31%2010.89%20L21.75%2010.19%20L20.62%208.56%20L20.54%208.49%20L20.41%208.49%20L18.74%2010.94%20L18.14%2011.75%20L17.53%2012.73%20L16.97%2013.48%20L15.94%2015.09%20L15.81%2015.10%20L14.14%2012.94%20L14.10%2012.69%20L15.74%2010.18%20L16.83%208.70%20L16.83%208.49%20L16.77%208.45Z%22%20fill%3D%22%23f2f5f3%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.mark-underlay img {
+  background-color: transparent;
+}
+
+.mark-tile {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  width: 100%;
+  overflow: hidden;
 }
 
 .stall-tab {
@@ -2190,6 +2247,57 @@ button.contact-submit {
   min-width: 0;
 }
 
+.product-crumb {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.product-crumb a,
+.product-crumb-aisle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 0;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.product-crumb-shop {
+  flex: none;
+}
+
+.product-crumb-aisle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-crumb-sep {
+  flex: none;
+  color: #ffffff40;
+}
+
+.product-crumb a:hover,
+.product-crumb a:focus-visible {
+  color: var(--em);
+}
+
+.product-crumb a:focus-visible {
+  outline: 2px solid var(--em);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
 .product-title {
   margin-top: 0;
 }
@@ -2229,7 +2337,7 @@ button.contact-submit {
   border: 1px solid var(--em-line);
   border-radius: 999px;
   color: var(--em);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 

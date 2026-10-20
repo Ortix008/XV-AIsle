@@ -9,7 +9,7 @@ export default function ReturnsPage() {
   const supportEmail = supportEmailForDisplay();
   return (
     <PolicyArticle band kicker="Store" title="Need to send something back?">
-      <p>You have 14 days from delivery to start a return.</p>
+      <p>You have 14 days from delivery to start a return, unless a product page says otherwise.</p>
       <p>
         {"Just email us and we'll help you start it. We'll email the return address when you start a return."}
       </p>

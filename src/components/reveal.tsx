@@ -53,7 +53,7 @@ function motionObserver() {
 }
 
 function arm(node: HTMLElement) {
-  if (!canObserve()) {
+  if (reducedMotion() || !canObserve()) {
     show(node);
     return;
   }

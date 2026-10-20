@@ -39,7 +39,7 @@ export default async function ShopSafetyPage() {
           <section>
             <h2 className="text-lg font-semibold">Returns</h2>
             <p className="mt-2 text-base leading-relaxed text-foreground">
-              You can start a return within {RETURN_WINDOW_DAYS} days of delivery. Contact the seller and include your
+              You can start a return within {RETURN_WINDOW_DAYS} days of delivery, unless a product page says otherwise. Email us and include your
               order number. The full policy is on the{" "}
               <Link href="/shop/returns" className="underline underline-offset-4">
                 returns page

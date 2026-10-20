@@ -85,7 +85,7 @@ const catalogProducts: Product[] = [
         rating: 4.8,
         reviews: 640,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "In the NJ warehouse. The rack fits this pan, checked on the sample.",
       }),
       quote("sheet-pan", "harborkit", {
@@ -100,7 +100,7 @@ const catalogProducts: Product[] = [
         rating: 4.7,
         reviews: 210,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Same pan, West Coast. Use it if NJ is thin.",
       }),
       quote("sheet-pan", "paperlane", {
@@ -181,7 +181,7 @@ const catalogProducts: Product[] = [
         rating: 4.8,
         reviews: 410,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Stiff enough. The sample did not flex on a cold dough.",
       }),
       quote("bench-scraper", "harborkit", {
@@ -196,7 +196,7 @@ const catalogProducts: Product[] = [
         rating: 4.6,
         reviews: 90,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Fine backup. Shelf price is a dollar higher.",
       }),
       quote("bench-scraper", "paperlane", {
@@ -292,7 +292,7 @@ const catalogProducts: Product[] = [
         rating: 4.6,
         reviews: 70,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Preprinted stock. Less flexible if you change the fields.",
       }),
       quote("lid-labels", "paperlane", {
@@ -373,7 +373,7 @@ const catalogProducts: Product[] = [
         rating: 4.7,
         reviews: 280,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Mesh is tight. Handle lock held on the sample.",
       }),
       quote("splatter", "harborkit", {
@@ -388,7 +388,7 @@ const catalogProducts: Product[] = [
         rating: 4.6,
         reviews: 60,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Same screen, slower only by a day from the coast.",
       }),
       quote("splatter", "paperlane", {
@@ -469,7 +469,7 @@ const catalogProducts: Product[] = [
         rating: 4.7,
         reviews: 150,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Weight matched a restaurant side towel. Hem is double turned.",
       }),
       quote("shift-towel", "northwharf", {
@@ -484,7 +484,7 @@ const catalogProducts: Product[] = [
         rating: 4.6,
         reviews: 80,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Same cloth, East Coast, slightly higher unit.",
       }),
       quote("shift-towel", "paperlane", {
@@ -580,7 +580,7 @@ const catalogProducts: Product[] = [
         rating: 4.6,
         reviews: 40,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Blank stock, no mark. Fine if you do not want print.",
       }),
       quote("apron", "paperlane", {
@@ -661,7 +661,7 @@ const catalogProducts: Product[] = [
         rating: 4.8,
         reviews: 330,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Flex is right. Tip did not bend on the sample fillet.",
       }),
       quote("fish-spatula", "harborkit", {
@@ -676,7 +676,7 @@ const catalogProducts: Product[] = [
         rating: 4.6,
         reviews: 55,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Same tool, higher freight from LA.",
       }),
       quote("fish-spatula", "paperlane", {
@@ -757,7 +757,7 @@ const catalogProducts: Product[] = [
         rating: 4.8,
         reviews: 510,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Spring is not brutal. Lock engages. Sample passed.",
       }),
       quote("tongs", "harborkit", {
@@ -772,7 +772,7 @@ const catalogProducts: Product[] = [
         rating: 4.7,
         reviews: 120,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "West Coast pair. Slightly dearer.",
       }),
       quote("tongs", "paperlane", {
@@ -853,7 +853,7 @@ const catalogProducts: Product[] = [
         rating: 4.6,
         reviews: 40,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "In stock, and the shelf price to hold margin is over the comp.",
       }),
       quote("garlic-press", "harborkit", {
@@ -868,7 +868,7 @@ const catalogProducts: Product[] = [
         rating: 4.5,
         reviews: 22,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Same problem, higher cost.",
       }),
       quote("garlic-press", "paperlane", {
@@ -949,7 +949,7 @@ const catalogProducts: Product[] = [
         rating: 4.7,
         reviews: 190,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "GSM is heavy enough to matter. Label is woven.",
       }),
       quote("court-towel", "northwharf", {
@@ -964,7 +964,7 @@ const catalogProducts: Product[] = [
         rating: 4.6,
         reviews: 60,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "East Coast. A bit more money.",
       }),
       quote("court-towel", "paperlane", {
@@ -1045,7 +1045,7 @@ const catalogProducts: Product[] = [
         rating: 4.7,
         reviews: 260,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Adhesive held on painted wood in the sample. Not on brick.",
       }),
       quote("cord-clips", "harborkit", {
@@ -1060,7 +1060,7 @@ const catalogProducts: Product[] = [
         rating: 4.6,
         reviews: 80,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Same clip. Use if NJ sells through.",
       }),
       quote("cord-clips", "paperlane", {
@@ -1141,7 +1141,7 @@ const catalogProducts: Product[] = [
         rating: 4.8,
         reviews: 240,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Hinge is tight. A lemon half fits. A grapefruit does not. Say that.",
       }),
       quote("citrus-press", "harborkit", {
@@ -1156,7 +1156,7 @@ const catalogProducts: Product[] = [
         rating: 4.6,
         reviews: 50,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Backup stock.",
       }),
       quote("citrus-press", "paperlane", {
@@ -1237,7 +1237,7 @@ const catalogProducts: Product[] = [
         rating: 4.7,
         reviews: 140,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Rigid enough to hold a cookie. No print. Lands before a two-week event.",
       }),
       quote("favor-boxes", "pressroom", {
@@ -1348,7 +1348,7 @@ const catalogProducts: Product[] = [
         rating: 4.6,
         reviews: 30,
         moq: 1,
-        returnWindowDays: 30,
+        returnWindowDays: 14,
         note: "Blank, no hem mark. Faster, and you hold the size.",
       }),
       quote("heavy-tee", "paperlane", {

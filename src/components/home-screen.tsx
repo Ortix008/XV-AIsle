@@ -8,10 +8,16 @@ import { StoreHeader } from "@/components/store-header";
 import { DepartmentGrid } from "@/components/department-grid";
 import { NightStalls } from "@/components/night-stalls";
 import { AisleParallax, XvAisleFlow } from "@/components/xvaisle-flow";
+import { MarkTile } from "@/components/mark-tile";
 import { ShopGrid } from "@/components/shop-grid";
 import { welcomeReach } from "@/lib/art";
 import { HERO_EYEBROW } from "@/lib/hero-copy";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
+
+/** Const lists have a fixed length type, so the empty check takes a number. */
+function hasCards(count: number) {
+  return count > 0;
+}
 
 export function JoinScreen() {
   return (
@@ -83,18 +89,19 @@ export function JoinScreen() {
           </div>
         </section>
 
-        <section className="border-y border-border bg-secondary">
-          <ShopGrid
-            kicker="Featured"
-            title="In the store"
-            lede="Pay safely with Stripe, and your order ships straight to your door."
-            query=""
-            empty="Nothing's on the shelves yet. We're picking the first pieces now."
-            limit={4}
-            seeAllHref="/shop"
-            level="section"
-          />
-        </section>
+        <ShopGrid
+          kicker="Featured"
+          title="In the store"
+          lede="Pay safely with Stripe, and your order ships straight to your door."
+          query=""
+          empty="Nothing's on the shelves yet. We're picking the first pieces now."
+          limit={4}
+          seeAllHref="/shop"
+          level="section"
+          hideWhenEmpty
+          tiles
+          band
+        />
 
         <section>
           <div className="mx-auto grid max-w-[1280px] gap-5 px-5 py-16 sm:px-10 sm:py-[72px] lg:grid-cols-3 lg:py-[110px]">
@@ -114,9 +121,9 @@ export function JoinScreen() {
             </Reveal>
             <Reveal as="article" index={2} className="rounded-2xl border border-border bg-secondary p-7">
               <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
-              <h2 className="text-lg">Secure checkout</h2>
+              <h2 className="text-lg">Checkout opens soon</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Stripe handles your payment. A real person answers your questions.
+                When it opens, Stripe will handle your payment, so we never see your card number. Questions? We reply within 2 business days.
               </p>
             </Reveal>
           </div>
@@ -132,6 +139,7 @@ export function JoinScreen() {
           </div>
         </section>
 
+        {hasCards(welcomeReach.length) ? (
         <section className="border-t border-border">
           <div className="relative isolate min-h-[360px] overflow-hidden">
             <Image
@@ -152,9 +160,7 @@ export function JoinScreen() {
           <ul className="mx-auto grid max-w-[1280px] gap-5 px-5 py-8 sm:px-10 md:grid-cols-2">
             {welcomeReach.map((place, index) => (
               <Reveal key={place.title} as="li" index={index} className="product-card overflow-hidden rounded-2xl border border-border bg-card">
-                <div className="relative aspect-[16/10]">
-                  <Image src={place.src} alt="" fill sizes="(min-width: 768px) 50vw, 100vw" className="media-zoom object-cover" />
-                </div>
+                <MarkTile src={place.src} alt="" sizes="(min-width: 768px) 50vw, 100vw" zoom />
                 <div className="px-5 py-4">
                   <p className="font-heading text-lg">{place.title}</p>
                   <p className="mt-1 text-pretty text-sm text-muted-foreground">{place.line}</p>
@@ -163,6 +169,7 @@ export function JoinScreen() {
             ))}
           </ul>
         </section>
+        ) : null}
       </main>
       <ShopFooter />
     </div>

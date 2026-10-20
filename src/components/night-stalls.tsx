@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 import { AisleView } from "@/components/aisle-view";
+import { MarkUnderlay } from "@/components/mark-tile";
 import { NightMotif } from "@/components/night-motif";
 import { Reveal } from "@/components/reveal";
 import { aisleByTitle } from "@/lib/aisles";
@@ -17,20 +17,22 @@ function StallFace({ world }: { world: NightWorld }) {
   const art = stallArt[world.slug];
   return (
     <>
-      <div className="night-well media-well relative overflow-hidden rounded-[14px] border border-border">
+      <MarkUnderlay
+        src={art}
+        sizes="(min-width: 640px) 40vw, 100vw"
+        zoom
+        className="night-well rounded-[14px] border border-border"
+      >
         {art ? (
-          <Image src={art} alt="" fill sizes="(min-width: 640px) 40vw, 100vw" className="media-zoom object-cover" />
+          <span className="night-badge">
+            <NightMotif slug={world.slug} />
+          </span>
         ) : (
           <div className="night-motif-well">
             <NightMotif slug={world.slug} />
           </div>
         )}
-        {art ? (
-          <span className="night-badge">
-            <NightMotif slug={world.slug} />
-          </span>
-        ) : null}
-      </div>
+      </MarkUnderlay>
       <h3 className="mt-4 px-1.5 text-2xl font-semibold tracking-[-0.02em]">{world.title}</h3>
       <p className="mt-1 px-1.5 pb-1.5 text-sm leading-relaxed text-muted-foreground">{world.story}</p>
     </>

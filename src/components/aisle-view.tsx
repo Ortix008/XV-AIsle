@@ -175,7 +175,7 @@ export function AisleView({ aisle, onClose }: { aisle: Aisle; onClose: () => voi
                 key={section.name}
                 type="button"
                 className={cn(
-                  "shrink-0 rounded-full border px-3 py-1 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
+                  "shrink-0 rounded-full border px-3 py-1 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
                   active === section.name ? "border-foreground bg-foreground text-background" : "bg-card text-foreground",
                 )}
                 onClick={() => jump(section.name)}
