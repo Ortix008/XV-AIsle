@@ -96,12 +96,12 @@ export function DeskShell({ children }: { children: ReactNode }) {
           >
             Shop
           </Link>
-          <Link href="/account" className="text-xs text-muted-foreground hover:text-foreground">
+          <Link href="/account" className="desk-header-action text-xs text-muted-foreground hover:text-foreground">
             Account
           </Link>
           <button
             type="button"
-            className="text-xs text-muted-foreground hover:text-foreground md:hidden"
+            className="desk-header-action text-xs text-muted-foreground hover:text-foreground md:hidden"
             onClick={signOut}
           >
             Sign out

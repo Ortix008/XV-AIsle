@@ -198,9 +198,9 @@ export function ProductBuy({
               <Input className="product-qty" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
             </label>
             {held ? (
-              <p className="status-chip sample-hold" role="status">
+              <button type="button" className="sample-hold" disabled aria-disabled="true">
                 {SAMPLE_UNAVAILABLE}
-              </p>
+              </button>
             ) : details ? null : (
               <Button type="submit" className="product-pay">
                 Continue to checkout

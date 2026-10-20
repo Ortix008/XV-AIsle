@@ -1337,7 +1337,7 @@ video.auth-plate-media {
 
 @media (max-width: 767px) {
   .hero-aisle-scrim {
-    background: linear-gradient(180deg, rgba(7, 8, 10, 0.55) 0%, rgba(7, 8, 10, 0.88) 30%, rgba(7, 8, 10, 0.88) 70%, rgba(7, 8, 10, 0.6) 100%);
+    background: linear-gradient(180deg, rgba(7, 8, 10, 0.25) 0%, rgba(7, 8, 10, 0.85) 28%, rgba(7, 8, 10, 0.85) 62%, rgba(7, 8, 10, 0.35) 100%);
   }
 }
 
@@ -2041,10 +2041,32 @@ a.tap-link,
   background: var(--surface);
 }
 
-.sample-hold {
+button.sample-hold {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   box-sizing: border-box;
-  justify-content: center;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--em-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--body);
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+button.sample-hold:disabled {
+  opacity: 1;
+  background: var(--surface);
+  color: var(--body);
+  border-color: var(--em-line);
 }
 
 button.auth-x:disabled {
@@ -2494,6 +2516,30 @@ button.contact-submit {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+@media (max-width: 767px) {
+  .product-page .policy-links,
+  .shop-footer .footer-links {
+    gap: 8px;
+  }
+
+  .product-page .policy-links a,
+  .shop-footer .footer-links a,
+  .shop-footer p a.tap-link {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: 44px;
+  }
+
+  .desk-header-action {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    height: 44px;
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 390px) {
