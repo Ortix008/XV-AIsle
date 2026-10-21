@@ -2067,6 +2067,17 @@ a.tap-link,
   background: color-mix(in srgb, var(--surface) 92%, transparent);
 }
 
+.qa-test-band {
+  display: flex;
+  grid-column: 1 / -1;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: center;
+  margin: 0;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
 button.sample-hold {
   display: flex;
   align-items: center;
@@ -2427,6 +2438,18 @@ button.contact-submit {
   border: 1px solid var(--em-line);
   border-radius: var(--r-lg);
   background: var(--surface);
+}
+
+.product-test {
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  padding: 8px 12px;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
 }
 
 .product-qty-field,
