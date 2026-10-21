@@ -14,6 +14,7 @@ import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
 import { publicSiteUrl } from "@/lib/config/env";
 import { stripeTestMode } from "@/lib/server/stripe";
+import { productOgImage } from "@/lib/product-og";
 import { buyerShareHref, resellerShareHref } from "@/lib/x-share";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +22,6 @@ export const dynamic = "force-dynamic";
 function aisleKey(listing: { kind: string; aisle: string | null }) {
   if (listing.kind === "bundle") return "bundles";
   return listing.aisle;
-}
-
-function absoluteImage(origin: string, image: string) {
-  if (image.startsWith("https://") || image.startsWith("http://")) return image;
-  return `${origin}${image.startsWith("/") ? image : `/${image}`}`;
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ productId: string }> }): Promise<Metadata> {
@@ -37,18 +33,18 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
   const origin = publicSiteUrl();
   const canonical = `${origin}/shop/${listing.productId}`;
   const description = `${money(listing.priceCents / 100)}. ${listing.description}`.slice(0, 200);
-  const image = absoluteImage(origin, listing.image);
+  const image = productOgImage(origin, listing.image, shown.title);
   return {
     title: `${shown.title} · XV-AIsle`,
     description,
     alternates: { canonical },
-    openGraph: { title: shown.title, description, url: canonical, images: [{ url: image, alt: shown.title }] },
+    openGraph: { title: shown.title, description, url: canonical, images: [image] },
     twitter: {
       card: "summary_large_image",
       site: "@xvaisle",
       title: shown.title,
       description,
-      images: [image],
+      images: [image.url],
     },
   };
 }

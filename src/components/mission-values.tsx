@@ -41,7 +41,7 @@ export function MissionValues() {
               <path d="M12 28v-9h8v9" />
             </svg>
             <b>Access</b>
-            <p>starting a business should take a decision, not a warehouse.</p>
+            <p>starting a business should take a decision, not a{"\u00A0"}warehouse.</p>
           </article>
           <article className="vm-card">
             <svg viewBox="0 0 32 32" aria-hidden>

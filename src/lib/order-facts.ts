@@ -72,14 +72,14 @@ export function receiptShipWindow(min?: number | null, max?: number | null, sour
   return `Usually ships in ${span} business days.`;
 }
 
-/** Product page. The window is the supplier's own days, and only after that supplier is confirmed. */
+/** Product page. The US line and the day window require a confirmed US supplier. */
 export function productShipLine(
   listing: ShipSource & { supplierName: string; shipDaysMin?: number | null; shipDaysMax?: number | null },
 ): string {
+  if (!usSupplierConfirmed(listing)) return TRACKING_SHIP;
   const min = listing.shipDaysMin;
   const max = listing.shipDaysMax;
   if (
-    listing.supplierUsConfirmed !== true ||
     typeof min !== "number" ||
     typeof max !== "number" ||
     !Number.isInteger(min) ||

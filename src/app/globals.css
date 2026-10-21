@@ -601,9 +601,13 @@
   letter-spacing: 0.24em;
 }
 
+.product-mark {
+  background: #101416;
+}
+
 .product-mark img {
-  width: var(--mark);
-  height: var(--mark);
+  width: 80px;
+  height: 80px;
 }
 
 .password-field .password-input,
@@ -2735,19 +2739,4 @@ button.contact-submit {
   line-height: 1;
 }
 
-.hero-aisle-photo {
-  object-position: 60% 58%;
-}
-
-@media (max-width: 767px) {
-  .hero-aisle .hero-aisle-photo {
-    transform: scale(2.6);
-    transform-origin: 60% 70%;
-  }
-
-  /* Last in the file so it wins over the earlier 90deg .hero-aisle-scrim rule. */
-  .hero-aisle-scrim {
-    background: linear-gradient(180deg, rgba(7, 8, 10, 0.25) 0%, rgba(7, 8, 10, 0.85) 28%, rgba(7, 8, 10, 0.85) 62%, rgba(7, 8, 10, 0.35) 100%);
-  }
-}
 

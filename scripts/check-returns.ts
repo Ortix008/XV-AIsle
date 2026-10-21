@@ -97,17 +97,28 @@ async function main() {
   );
   const sheet = sampleStarters.find((item) => item.productId === "sheet-pan");
   if (!sheet) throw new Error("sample sheet pan");
-  const sheetLine = productShipLine({ ...sheet, supplierUsConfirmed: false });
-  assert(sheetLine === US_SUPPLIER_SHIP, "an unconfirmed sample with ship days uses the US supplier fallback");
-  assert(!/\d/.test(sheetLine), "the unconfirmed product line has no day numbers");
+  const unconfirmed = productShipLine({ ...sheet, supplierUsConfirmed: false, shipsFrom: "Elizabeth, NJ" });
+  assert(unconfirmed === TRACKING_SHIP, "an unconfirmed product uses the tracking line");
+  assert(unconfirmed === unconfirmedShipLine({ ...sheet, supplierUsConfirmed: false, shipsFrom: "Elizabeth, NJ" }), "the product line matches the shop grid for an unconfirmed supplier");
+  assert(unconfirmed !== US_SUPPLIER_SHIP, "an unconfirmed product does not claim a US supplier");
+  assert(!/\d/.test(unconfirmed), "the unconfirmed product line has no day numbers");
+  const confirmed = {
+    ...sheet,
+    supplierUsConfirmed: true as const,
+    shipsFrom: "Elizabeth, NJ",
+  };
   assert(
-    productShipLine({ ...sheet, supplierUsConfirmed: true }) ===
+    productShipLine(confirmed) ===
       `Our expected window is ${sheet.shipDaysMin}–${sheet.shipDaysMax} days after you pay.`,
-    "a confirmed product names its own ship-day min and max",
+    "a confirmed US supplier with both ship days names that window",
   );
   assert(
-    productShipLine({ ...sheet, supplierUsConfirmed: true, shipDaysMax: null }) === US_SUPPLIER_SHIP,
-    "a confirmed product missing a ship-day bound uses the US supplier fallback",
+    productShipLine({ ...confirmed, shipDaysMax: null }) === US_SUPPLIER_SHIP,
+    "a confirmed US supplier missing a ship-day bound uses the US supplier line",
+  );
+  assert(
+    productShipLine({ ...confirmed, shipsFrom: "Toronto, ON" }) === TRACKING_SHIP,
+    "ship days without a confirmed US supplier use the tracking line",
   );
   const facts = readFileSync(join(process.cwd(), "src/lib/order-facts.ts"), "utf8");
   const shipFn = facts.slice(facts.indexOf("export function productShipLine"), facts.indexOf("export function etaFromListing"));

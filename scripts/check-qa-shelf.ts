@@ -132,7 +132,11 @@ async function main() {
   const { isHeldSample } = await import("../src/lib/shelf-holds");
   const { QA_TEST_BANNER, SAMPLE_UNAVAILABLE } = await import("../src/lib/shelf-copy");
   assert(QA_TEST_BANNER === "Test mode. No real money moves on this page.", "the test banner is the approved line");
-  assert(SAMPLE_UNAVAILABLE === "Not available yet. Check back soon.", "the sample note is the approved line");
+  assert(
+    SAMPLE_UNAVAILABLE.replaceAll("\u00A0", " ") === "Not available yet. Check back soon.",
+    "the sample note is the approved line",
+  );
+  assert(SAMPLE_UNAVAILABLE.endsWith("\u00A0soon."), "soon stays with the word before it");
   const sheet = getListing("sheet-pan");
   const scraper = getListing("bench-scraper");
   if (!sheet || !scraper || !isHeldSample(sheet) || !isHeldSample(scraper)) {
@@ -288,6 +292,22 @@ async function main() {
     "the live-shelf guard stays closed in production",
   );
   getDb().prepare("UPDATE listings SET published = 1 WHERE product_id = ?").run(QA_CHECKOUT_PRODUCT_ID);
+  assert(
+    visibleOnShop({
+      productId: QA_CHECKOUT_PRODUCT_ID,
+      supplierName: "QA Test Supplier",
+      published: true,
+    }) === false,
+    "production keeps qa-checkout off the shop even when the row is published",
+  );
+  const { default: ProductPage } = await import("../src/app/shop/[productId]/page");
+  let digest = "";
+  try {
+    await ProductPage({ params: Promise.resolve({ productId: QA_CHECKOUT_PRODUCT_ID }) });
+  } catch (error) {
+    digest = error instanceof Error ? String((error as { digest?: string }).digest ?? error.message) : "";
+  }
+  assert(digest.includes("404"), "production /shop/qa-checkout returns 404");
   const liveOrder = createPendingOrder({ productId: ship.productId, qty: ship.qty, ship });
   assert("error" in liveOrder, "production checkout refuses the fixture");
 

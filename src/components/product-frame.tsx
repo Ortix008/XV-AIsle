@@ -33,7 +33,7 @@ export function ProductFrame({
       ) : (
         <div className="product-mark" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/xv-aisle-mark.svg" alt="" width={32} height={32} />
+          <img src="/xv-aisle-mark.svg" alt="" width={80} height={80} />
         </div>
       )}
     </div>

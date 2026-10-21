@@ -368,6 +368,19 @@ if (
 for (const sentence of ["We do not promise income.", "Buyers pay on xvaisle.com."]) {
   if (!resellerPage.includes(sentence)) throw new Error("honest reseller copy should stay");
 }
+const earnings =
+  "We don't promise any amount you'll make. Full terms come when the reseller program opens.";
+const termsPage = readFileSync(join(process.cwd(), "src/app/shop/reseller/terms/page.tsx"), "utf8");
+for (const [file, source] of [
+  ["reseller page", resellerPage],
+  ["reseller terms", termsPage],
+] as const) {
+  if (source.includes("We do not quote example earnings")) throw new Error(`${file} still quotes example earnings`);
+  if (!source.includes(earnings)) throw new Error(`${file} should use the approved earnings line`);
+  if (!source.includes("We do not promise income. A listing can sell, or it can sell nothing.")) {
+    throw new Error(`${file} should keep the sentences before the earnings line`);
+  }
+}
 for (const file of ["src/components/policy-article.tsx", "src/app/shop/contact/page.tsx"]) {
   const source = readFileSync(join(process.cwd(), file), "utf8");
   if (source.includes("A support email is not published yet")) throw new Error(`${file} still hides the support email`);

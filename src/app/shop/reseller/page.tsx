@@ -9,7 +9,9 @@ export default function ResellerPage() {
   return (
     <PolicyArticle kicker="Store" title="Reseller program coming soon.">
       <ResellerWaitlist />
-      <p>We do not promise income. A listing can sell, or it can sell nothing. We do not quote example earnings, and we do not say what you will make.</p>
+      <p>
+        {`We do not promise income. A listing can sell, or it can sell nothing. We don't promise any amount you'll make. Full terms come when the reseller program opens.`}
+      </p>
       <p>
         Buyers pay on xvaisle.com. The supplier ships the box. The{" "}
         <Link href="/shop/terms" className="underline underline-offset-4">

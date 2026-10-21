@@ -8,6 +8,7 @@ import { FindShare } from "../src/components/find-share";
 import { MissionValues } from "../src/components/mission-values";
 import { productPageUrl } from "../src/lib/config/env";
 import { RESELLER_DISCLOSURE } from "../src/lib/policies";
+import { productOgImage } from "../src/lib/product-og";
 import { SHARE_IMAGE_ALT, shareCard, shareCardMetadata } from "../src/lib/share-card";
 import { profileFromXCode } from "../src/lib/server/x-auth";
 import { sessionCookieOptions } from "../src/lib/server/session-cookie";
@@ -225,6 +226,15 @@ const tags = JSON.stringify(shareCardMetadata());
 assert(tags.includes("https://xvaisle.com/og/og-image.png"), "og and twitter images are the absolute public card");
 assert(tags.includes("summary_large_image"), "twitter card is summary_large_image");
 assert(!tags.includes("localhost") && !tags.includes("127.0.0.1"), "share card tags have no localhost");
+const productCard = productOgImage("https://xvaisle.com", "/art/mock-sheet-pan-1.png", "Quarter sheet pan");
+assert(productCard.url === "https://xvaisle.com/art/mock-sheet-pan-1.png", "a product card image is absolute");
+assert(productCard.width === 1152 && productCard.height === 864, "a product card uses the file's real size");
+assert(!String(productCard.url).includes("localhost") && !String(productCard.url).includes("127.0.0.1"), "a product card image has no localhost");
+const siteCard = productOgImage("https://xvaisle.com", "", "Missing photo");
+assert(siteCard.url === "https://xvaisle.com/og/og-image.png", "a product without a photo uses the site card");
+assert(siteCard.width === 1200 && siteCard.height === 630, "the site card on a product is 1200 by 630");
+const productPage = readFileSync(join(process.cwd(), "src/app/shop/[productId]/page.tsx"), "utf8");
+assert(productPage.includes("productOgImage"), "product share cards set image width and height");
 const mission = renderToStaticMarkup(createElement(MissionValues));
 assert(
   mission.includes("Shoppers buy products that are reviewed before they") &&
