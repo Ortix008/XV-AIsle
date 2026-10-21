@@ -112,30 +112,34 @@ export function StoreHeader() {
       >
         <div className="store-header-veil" aria-hidden />
         <div className="store-header-bar relative z-[1] mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-3 px-4 min-[900px]:h-[68px] min-[900px]:gap-4 min-[900px]:px-10 sm:px-5">
-          <Link href="/" className="brand-home shrink-0">
+          <Link href="/" className="brand-home inline-flex min-h-[var(--tap)] min-w-[var(--tap)] shrink-0 items-center">
             {/* Outlined wordmark. Explicit width and height keep the header from shifting. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/xv-aisle-logo.svg" height={32} width={115} alt="XV-AIsle" className="brand-logo" />
           </Link>
-          <nav className="hidden items-center gap-[30px] text-sm text-muted-foreground min-[900px]:flex" aria-label="Shop">
+          <nav className="hidden items-center gap-6 text-sm text-muted-foreground min-[900px]:flex" aria-label="Shop">
             {nav.slice(0, 5).map((item) => (
-              <Link key={item.href} href={item.href} className="link-slide hover:text-foreground">
+              <Link
+                key={item.href}
+                href={item.href}
+                className="link-slide inline-flex min-h-[var(--tap)] min-w-[var(--tap)] items-center justify-center hover:text-foreground"
+              >
                 {item.label}
               </Link>
             ))}
           </nav>
           <div className="header-tools flex shrink-0 items-center text-sm text-muted-foreground">
-            <Link href="/shop" className="tap-link link-slide hover:text-foreground">
-              Search
-            </Link>
-            <Link href="/account" className="link-slide hidden hover:text-foreground min-[900px]:inline">
+            <Link
+              href="/account"
+              className="link-slide hidden min-h-[var(--tap)] min-w-[var(--tap)] items-center hover:text-foreground min-[900px]:inline-flex"
+            >
               Account
             </Link>
-            <OperatorDeskLink className="link-slide hidden hover:text-foreground min-[900px]:inline" />
+            <OperatorDeskLink className="link-slide hidden min-h-[var(--tap)] min-w-[var(--tap)] items-center hover:text-foreground min-[900px]:inline-flex" />
             <button
               ref={buttonRef}
               type="button"
-              className="min-h-11 rounded-full border border-primary/40 px-3.5 py-1.5 text-foreground shadow-[0_0_18px_rgba(61,220,132,0.18)] min-[900px]:hidden"
+              className="inline-flex min-h-[var(--tap)] min-w-[var(--tap)] items-center justify-center rounded-full border border-primary/40 px-3.5 py-1.5 text-foreground shadow-[0_0_18px_rgba(61,220,132,0.18)] min-[900px]:hidden"
               aria-expanded={open}
               aria-controls="shop-menu"
               onClick={() => setOpen((value) => !value)}

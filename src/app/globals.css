@@ -731,6 +731,11 @@
   transition: transform 0.35s ease;
 }
 
+.store-header .header-tools {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
 .store-header.is-compact .store-header-bar {
   transform: scale(0.97);
 }
@@ -754,7 +759,7 @@
 
 .nav-fold-link {
   display: flex;
-  min-height: 44px;
+  min-height: var(--tap);
   align-items: center;
   border-bottom: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
   color: var(--foreground);
