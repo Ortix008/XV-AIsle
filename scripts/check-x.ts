@@ -1,8 +1,14 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { xCallbackLogLine } from "../src/app/api/auth/x/callback/route";
+import { FindShare } from "../src/components/find-share";
+import { MissionValues } from "../src/components/mission-values";
+import { productPageUrl } from "../src/lib/config/env";
 import { RESELLER_DISCLOSURE } from "../src/lib/policies";
+import { SHARE_IMAGE_ALT, shareCard, shareCardMetadata } from "../src/lib/share-card";
 import { profileFromXCode } from "../src/lib/server/x-auth";
 import { sessionCookieOptions } from "../src/lib/server/session-cookie";
 import { buyerShareHref, resellerShareHref, xIntentUrl } from "../src/lib/x-share";
@@ -55,6 +61,7 @@ const saved = {
   redirect: process.env.X_REDIRECT_URI,
   nodeEnv: process.env.NODE_ENV,
   appUrl: process.env.APP_URL,
+  site: process.env.PUBLIC_SITE_URL,
 };
 
 function setNodeEnv(value: string | undefined) {
@@ -72,6 +79,8 @@ function restoreEnv() {
   process.env.X_REDIRECT_URI = saved.redirect;
   setNodeEnv(saved.nodeEnv);
   setAppUrl(saved.appUrl);
+  if (saved.site == null) delete process.env.PUBLIC_SITE_URL;
+  else process.env.PUBLIC_SITE_URL = saved.site;
 }
 
 assert(X_SCOPES === "users.read tweet.read", "scopes are users.read and tweet.read");
@@ -188,6 +197,43 @@ const buyer = new URL(
 assert(buyer.searchParams.get("text") === "Quarter sheet pan and rack", "buyer text is only the product name");
 assert(!buyer.searchParams.get("text")?.includes(RESELLER_DISCLOSURE), "buyer text omits the ad line");
 assert(!new URL(buyer.searchParams.get("url") ?? "").searchParams.has("ref"), "buyer url drops a referral");
+
+setAppUrl("http://127.0.0.1:4317");
+delete process.env.PUBLIC_SITE_URL;
+const localShare = buyerShareHref({ title: "Quarter sheet pan", productUrl: "http://127.0.0.1:4317/shop/sheet-pan" });
+const localTarget = new URL(localShare).searchParams.get("url") ?? "";
+assert(localTarget === "https://xvaisle.com/shop/sheet-pan", "share ignores a localhost product URL and APP_URL");
+assert(!localShare.includes("localhost") && !localShare.includes("127.0.0.1"), "the share URL has no localhost");
+process.env.PUBLIC_SITE_URL = "http://localhost:4317";
+const configuredLocal = productPageUrl("sheet-pan");
+assert(configuredLocal === "https://xvaisle.com/shop/sheet-pan", "a localhost PUBLIC_SITE_URL falls back to the public site");
+assert(!configuredLocal.includes("localhost") && !configuredLocal.includes("127.0.0.1"), "the configured share URL has no localhost");
+const shareMarkup = renderToStaticMarkup(createElement(FindShare, { title: "Quarter sheet pan", productId: "sheet-pan" }));
+assert(shareMarkup.includes("https://x.com/intent/post"), "the share link renders without a browser");
+assert(shareMarkup.includes("xvaisle.com") && !shareMarkup.includes("localhost") && !shareMarkup.includes("127.0.0.1"), "the rendered share link stays on the public site");
+process.env.PUBLIC_SITE_URL = "https://preview.xvaisle.com";
+const previewCard = shareCard();
+assert(previewCard.url === "https://preview.xvaisle.com/og/og-image.png", "the share card uses PUBLIC_SITE_URL when it is public");
+delete process.env.PUBLIC_SITE_URL;
+const card = shareCard();
+assert(card.url === "https://xvaisle.com/og/og-image.png", "the share card defaults to the public site");
+assert(card.url.startsWith("https://"), "the share card image is absolute");
+assert(card.width === 1200 && card.height === 630, "the share card is 1200 by 630");
+assert(card.card === "summary_large_image", "the share card is a large image");
+assert(card.alt === SHARE_IMAGE_ALT, "the share card uses the approved alt text");
+const tags = JSON.stringify(shareCardMetadata());
+assert(tags.includes("https://xvaisle.com/og/og-image.png"), "og and twitter images are the absolute public card");
+assert(tags.includes("summary_large_image"), "twitter card is summary_large_image");
+assert(!tags.includes("localhost") && !tags.includes("127.0.0.1"), "share card tags have no localhost");
+const mission = renderToStaticMarkup(createElement(MissionValues));
+assert(
+  mission.includes("Shoppers buy products that are reviewed before they") &&
+    mission.includes("from their shelf to your home."),
+  "the mission sentence renders without a browser",
+);
+setAppUrl(saved.appUrl);
+if (saved.site == null) delete process.env.PUBLIC_SITE_URL;
+else process.env.PUBLIC_SITE_URL = saved.site;
 
 const code = "code-marker-9f3a2c-not-an-oauth-name";
 const secret = "secret-marker-b7c1-not-an-oauth-name";

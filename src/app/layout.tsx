@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
+import { shareCardMetadata } from "@/lib/share-card";
 import "./globals.css";
 
 const inter = Inter({
@@ -21,11 +22,14 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "XV-AIsle",
-  description:
-    "XV-AIsle is a curated US market for home, kitchen and everyday goods. Every item is reviewed before it's listed.",
-};
+export function generateMetadata(): Metadata {
+  return {
+    title: "XV-AIsle",
+    description:
+      "XV-AIsle is a curated US market for home, kitchen and everyday goods. Every item is reviewed before it's listed.",
+    ...shareCardMetadata(),
+  };
+}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

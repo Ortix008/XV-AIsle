@@ -1,3 +1,4 @@
+import { publicSiteUrl } from "./config/env";
 import { RESELLER_DISCLOSURE } from "./policies";
 
 function shareTarget(value: string) {
@@ -6,6 +7,10 @@ function shareTarget(value: string) {
     throw new Error("Share URL must be http(s).");
   }
   if (url.username || url.password) throw new Error("Share URL must be http(s).");
+  const site = new URL(publicSiteUrl());
+  url.protocol = site.protocol;
+  url.hostname = site.hostname;
+  url.port = site.port;
   return url;
 }
 

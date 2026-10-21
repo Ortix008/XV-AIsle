@@ -72,15 +72,15 @@ export function receiptShipWindow(min?: number | null, max?: number | null, sour
   return `Usually ships in ${span} business days.`;
 }
 
-/** Product page. An en dash, and a single number when the two days match. */
+/** Product page. An en dash, and a single number when the two days match. Omitted until the days are confirmed. */
 export function productShipLine(
   listing: ShipSource & { supplierName: string; shipDaysMin?: number | null; shipDaysMax?: number | null },
-) {
-  if (!shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax)) return unconfirmedShipLine(listing);
+): string | null {
+  if (!shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax)) return null;
   const lo = listing.shipDaysMin ?? 0;
   const hi = listing.shipDaysMax ?? 0;
   const span = lo === hi ? String(lo) : `${lo}–${hi}`;
-  return `${listing.supplierName} ships it to you. Our best estimate is ${span} days after you pay.`;
+  return `Our expected window is ${span} days after you pay.`;
 }
 
 /** Arrival copy for an order. Confirmed days use the receipt window. Anything else uses the unconfirmed line. */

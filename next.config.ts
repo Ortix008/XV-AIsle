@@ -58,6 +58,11 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }],
       },
       {
+        // X fetches the share card from another origin.
+        source: "/og/:path*",
+        headers: [{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }],
+      },
+      {
         source: "/art/:path*",
         headers: [
           { key: "Content-Security-Policy", value: "default-src 'none'; style-src 'unsafe-inline'; sandbox" },

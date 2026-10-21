@@ -13,7 +13,7 @@ import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
 import { QA_CHECKOUT_PRODUCT_ID } from "@/lib/qa-checkout";
 import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE } from "@/lib/shelf-copy";
-import { usSupplierConfirmed } from "@/lib/order-facts";
+import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
@@ -89,6 +89,7 @@ export function ProductBuy({
   const world = nightWorldForListing(listing);
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
   const aisleCrumb = productAisleCrumb(listing);
+  const shipWindow = productShipLine(listing);
 
   useEffect(() => {
     if (details) nameRef.current?.focus();
@@ -284,7 +285,15 @@ export function ProductBuy({
             ) : null}
             <div>
               <dt className="text-sm font-medium text-muted-foreground">Shipping</dt>
-              <dd className="mt-1">Tracking is emailed when it ships.</dd>
+              <dd className="mt-1">
+                {shipWindow ? (
+                  <>
+                    {shipWindow}
+                    {" "}
+                  </>
+                ) : null}
+                Tracking is emailed when it ships.
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-muted-foreground">Returns</dt>

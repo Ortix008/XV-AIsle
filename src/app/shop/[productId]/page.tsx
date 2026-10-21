@@ -12,7 +12,8 @@ import { ensureStarterShelf, isSampleListing, listedOnGrid, sampleProductReturnN
 import { isHeldSample } from "@/lib/shelf-holds";
 import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
-import { appOrigin, stripeTestMode } from "@/lib/server/stripe";
+import { publicSiteUrl } from "@/lib/config/env";
+import { stripeTestMode } from "@/lib/server/stripe";
 import { buyerShareHref, resellerShareHref } from "@/lib/x-share";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
   const listing = getListing(productId);
   if (!listing || !visibleOnShop(listing) || listingLoss(listing)) return { title: "Shop · XV-AIsle" };
   const shown = publicListing(listing, isSampleListing(listing));
-  const origin = appOrigin();
+  const origin = publicSiteUrl();
   const canonical = `${origin}/shop/${listing.productId}`;
   const description = `${money(listing.priceCents / 100)}. ${listing.description}`.slice(0, 200);
   const image = absoluteImage(origin, listing.image);
@@ -71,7 +72,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
           kind: item.kind === "bundle" ? "bundle" : undefined,
         }))
     : [];
-  const origin = appOrigin();
+  const origin = publicSiteUrl();
   const productUrl = `${origin}/shop/${listing.productId}`;
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const account = accountFromToken(token);

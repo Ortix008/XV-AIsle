@@ -90,6 +90,8 @@
   --chip-line: #ffffff26;
   --footer: #050607;
   --link: #c9cdc9;
+  --tap: 44px;
+  --mark: 32px;
   --glow: 0 0 0 2px #07080a, 0 0 0 4px #3ddc84, 0 0 24px rgba(61, 220, 132, 0.28);
   --chart-1: #3ddc84;
   --chart-2: #9aa09c;
@@ -586,7 +588,8 @@
     0 0 36px rgba(61, 220, 132, 0.1);
 }
 
-.product-placeholder {
+.product-placeholder,
+.product-mark {
   position: absolute;
   inset: 0;
   display: grid;
@@ -596,6 +599,22 @@
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.24em;
+}
+
+.product-mark img {
+  width: var(--mark);
+  height: var(--mark);
+}
+
+.password-field .password-input,
+.password-toggle {
+  height: var(--tap);
+  min-height: var(--tap);
+}
+
+.password-toggle {
+  width: var(--tap);
+  min-width: var(--tap);
 }
 
 @media (min-width: 640px) {
@@ -1969,9 +1988,14 @@ video.auth-plate-media {
 
 .brand-logo {
   display: block;
-  width: 115px;
-  height: 32px;
+  width: calc(var(--mark) * 115 / 32);
+  height: var(--mark);
   max-width: none;
+}
+
+.shop-footer .brand-logo {
+  width: calc(var(--mark) * 115 / 32);
+  height: var(--mark);
 }
 
 .brand-mark {

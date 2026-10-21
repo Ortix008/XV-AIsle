@@ -1,6 +1,7 @@
 import { formatISODate } from "../business-days";
 import { receiptShipWindow, usSupplierConfirmed } from "../order-facts";
 import { SAMPLE_ORDER_NUMBER, sampleReceiptFacts } from "../sample-shelf";
+import { publicSiteUrl } from "../config/env";
 import { buyerShareHref } from "../x-share";
 import { dollars } from "./fees";
 import { sendMail } from "./mail";
@@ -217,7 +218,7 @@ ${actionRow({ receiptUrl: input.receiptUrl, shareUrl: input.shareUrl })}
 
 export function sampleReceiptHtml() {
   const sample = sampleReceiptFacts();
-  const productUrl = `https://xvaisle.com/shop/${sample.productId}`;
+  const productUrl = `${publicSiteUrl()}/shop/${sample.productId}`;
   return receiptHtml({
     number: SAMPLE_ORDER_NUMBER,
     title: sample.title,
@@ -376,7 +377,7 @@ export async function sendCustomerReceipt(input: {
 }) {
   const link = receiptUrl(input.token);
   const shareUrl = input.productId
-    ? buyerShareHref({ title: input.title, productUrl: `${appOrigin()}/shop/${input.productId}` })
+    ? buyerShareHref({ title: input.title, productUrl: `${publicSiteUrl()}/shop/${input.productId}` })
     : null;
   const facts: ReceiptFacts = { ...input, receiptUrl: link, shareUrl };
   return deliver({

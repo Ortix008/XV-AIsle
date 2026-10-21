@@ -51,18 +51,6 @@ function roundBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
   ctx.closePath();
 }
 
-function drawHouse(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
-  ctx.beginPath();
-  ctx.moveTo(x, y - s);
-  ctx.lineTo(x + s, y);
-  ctx.lineTo(x + s * 0.62, y);
-  ctx.lineTo(x + s * 0.62, y + s * 0.72);
-  ctx.lineTo(x - s * 0.62, y + s * 0.72);
-  ctx.lineTo(x - s * 0.62, y);
-  ctx.closePath();
-  ctx.stroke();
-}
-
 export function XvAisleFlow({ density = "full" }: { density?: "full" | "light" }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -169,10 +157,6 @@ export function XvAisleFlow({ density = "full" }: { density?: "full" | "light" }
           ctx.arc(doorX, doorY, 36 * scale, 0, Math.PI * 2);
           ctx.fill();
         }
-        ctx.strokeStyle = flash > 0.4 ? "rgba(233, 255, 242, 0.95)" : "rgba(61, 220, 132, 0.7)";
-        ctx.lineWidth = 1.4;
-        drawHouse(ctx, doorX, doorY - 4, 8 * scale);
-
         const lift = phase < 0.12 ? 1 - phase / 0.12 : 0;
         const fade = phase < 0.08 ? phase / 0.08 : phase > 0.94 ? (1 - phase) / 0.06 : 1;
         ctx.save();

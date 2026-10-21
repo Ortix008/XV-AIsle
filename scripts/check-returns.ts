@@ -97,7 +97,7 @@ async function main() {
   );
   assert(
     productShipLine({ supplierName: "Northwharf Goods", shipDaysMin: 2, shipDaysMax: 4 }) ===
-      "Northwharf Goods ships it to you. Our best estimate is 2–4 days after you pay.",
+      "Our expected window is 2–4 days after you pay.",
     "a confirmed window names the product days",
   );
   assert(receiptShipWindow(2, 2) === "Usually ships in 2 business days.", "equal days collapse to one number");
@@ -198,8 +198,8 @@ async function main() {
   if ("error" in kept || !kept.listing) throw new Error("kept listing");
   assert(kept.listing.hiddenFromShop === true && kept.listing.supplierUsConfirmed === true, "republish keeps omitted shelf flags");
   assert(
-    productShipLine(kept.listing) === US_SUPPLIER_SHIP,
-    "a confirmed US supplier with no day window uses the US line",
+    productShipLine(kept.listing) === null,
+    "a confirmed US supplier with no day window omits the product window",
   );
   const hiddenPublic = JSON.stringify(publicListing(kept.listing));
   assert(!hiddenPublic.includes("hiddenFromShop"), "a hidden listing's public shape still omits the hide flag");
