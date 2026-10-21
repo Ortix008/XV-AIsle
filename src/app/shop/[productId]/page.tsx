@@ -13,8 +13,8 @@ import { isHeldSample } from "@/lib/shelf-holds";
 import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
 import { publicSiteUrl } from "@/lib/config/env";
-import { stripeTestMode } from "@/lib/server/stripe";
 import { productOgImage } from "@/lib/product-og";
+import { stripeTestMode } from "@/lib/server/stripe";
 import { buyerShareHref, resellerShareHref } from "@/lib/x-share";
 
 export const dynamic = "force-dynamic";
