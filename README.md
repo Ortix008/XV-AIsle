@@ -145,6 +145,9 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | `ADMIN_PASSWORD` | Password for a new admin. Leave empty to type it, or omit it when promoting an account that already exists. The reset command never reads this. |
 | `ADMIN_NAME` | Optional name when the seed script creates a new admin. Ignored when that email already has an account. |
 | `ADMIN_EMAILS` | Optional comma-separated allowlist for the seed script only. Signup ignores it. |
+| `MODALYST_API_BASE` | HTTPS origin for the Modalyst product API. No path, user, or password. |
+| `MODALYST_API_KEY` | Bearer token sent to that API. |
+| `MODALYST_API_SECRET` | Optional second credential, sent as `X-Modalyst-Api-Secret`. |
 
 `/api/billing/webhook` is platform events only: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`, `review.opened`, and `review.closed`. Do not send connected-account charges here.
 
@@ -212,6 +215,16 @@ docker compose exec store rm /data/catalog-private.json
 Pictures live at `public/art/products/<slug>.jpg` and are baked in when the image is built. A path with no file is imported with an empty picture.
 
 After the certificate is up, sign in as that admin, open `/shop/safety`, and save each supplier's return address. Use the supplier's business street. PO Boxes are rejected, and the address is not a home address. Buyers see it on the order page after they pay. Suppliers rotate a delivery secret from the account page. Each secret is stored hashed.
+
+## Import from Modalyst
+
+Set `MODALYST_API_BASE`, `MODALYST_API_KEY`, and `MODALYST_API_SECRET` when Modalyst issued a second credential. `STORE_OPERATOR_EMAIL` has to be an admin that already exists. The command does not create a Modalyst account and does not sign in. Each product is stored with its title, images, wholesale cost, list price, ship-from, and ship days. New rows stay unpublished, and the supplier stays unconfirmed.
+
+```bash
+npm run modalyst:import
+```
+
+A signed-in admin can POST `/api/admin/modalyst` instead. Any other session gets 403. The command prints product ids only. It does not print the key, the secret, or prices.
 
 ## Collaborating
 
