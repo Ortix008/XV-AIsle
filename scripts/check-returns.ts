@@ -44,6 +44,7 @@ async function main() {
   const { createPendingOrder, fulfillPaidOrder, getListing, getOrder, listPublished, publishListing } = await import(
     "../src/lib/server/store"
   );
+  const { orderSummary } = await import("../src/lib/server/order-summary");
   const { visibleOnShop } = await import("../src/lib/server/starter-shelf");
   const {
     listSupplierReturns,
@@ -158,8 +159,17 @@ async function main() {
     receiptShipWindow(2, 4, confirmedShip) === "Our expected window is 2–4 days after you pay.",
     "a confirmed receipt names the product window",
   );
+  const unconfirmedWithDays = {
+    supplierName: "Example Supply",
+    shipsFrom: "Elizabeth, NJ",
+    supplierUsConfirmed: false as const,
+  };
   assert(
-    receiptShipWindow(2, 4, { ...confirmedShip, supplierUsConfirmed: false }) === TRACKING_SHIP,
+    receiptShipWindow(2, 4, unconfirmedWithDays) === unconfirmedShipLine(unconfirmedWithDays),
+    "an unconfirmed product with ship days uses the unconfirmed line",
+  );
+  assert(
+    receiptShipWindow(2, 4, unconfirmedWithDays) === TRACKING_SHIP,
     "an unconfirmed receipt with ship days uses the tracking line",
   );
   assert(
@@ -342,6 +352,65 @@ async function main() {
   const confirmedReceipt = await GET(new Request(`http://127.0.0.1/api/store/receipt?token=${pending.receiptToken}`));
   const confirmedBody = (await confirmedReceipt.json()) as { order?: { returnAddress?: string } };
   assert(confirmedBody.order?.returnAddress?.includes(STREET), "a confirmed order page shows the supplier street");
+  getDb().prepare("UPDATE listings SET supplier_us_confirmed = 0, ships_from = ? WHERE product_id = 'return-pan'").run("Elizabeth, NJ");
+  const daysWithoutConfirm = getListing("return-pan");
+  if (!daysWithoutConfirm) throw new Error("unconfirmed return pan");
+  assert(
+    daysWithoutConfirm.shipDaysMin === 2 &&
+      daysWithoutConfirm.shipDaysMax === 4 &&
+      daysWithoutConfirm.supplierUsConfirmed === false,
+    "the unconfirmed product keeps its ship days",
+  );
+  const unconfirmedSummary = orderSummary(pending.order);
+  assert(
+    unconfirmedSummary.eta === TRACKING_SHIP,
+    "an unconfirmed order summary with ship days uses the tracking line",
+  );
+  assert(
+    unconfirmedSummary.eta != null && !unconfirmedSummary.eta.includes("Our expected window"),
+    "an unconfirmed order summary does not name a window",
+  );
+  const unconfirmedMail = receiptText({
+    number: pending.order.number,
+    title: daysWithoutConfirm.title,
+    qty: pending.order.qty,
+    amountCents: pending.order.amountCents,
+    shipsFrom: daysWithoutConfirm.shipsFrom,
+    shipDaysMin: daysWithoutConfirm.shipDaysMin,
+    shipDaysMax: daysWithoutConfirm.shipDaysMax,
+    supplierName: daysWithoutConfirm.supplierName,
+    supplierUsConfirmed: daysWithoutConfirm.supplierUsConfirmed,
+    receiptUrl: "http://127.0.0.1/shop/order?token=example",
+  });
+  assert(
+    unconfirmedMail.includes(`Shipping: ${TRACKING_SHIP}`),
+    "an unconfirmed receipt email with ship days uses the tracking line",
+  );
+  assert(!unconfirmedMail.includes("Our expected window"), "an unconfirmed receipt email does not name a window");
+  getDb().prepare("UPDATE listings SET supplier_us_confirmed = 1 WHERE product_id = 'return-pan'").run();
+  const confirmedDays = getListing("return-pan");
+  if (!confirmedDays) throw new Error("confirmed return pan");
+  const confirmedSummary = orderSummary(pending.order);
+  assert(
+    confirmedSummary.eta === "Our expected window is 2–4 days after you pay.",
+    "a confirmed order summary names the window",
+  );
+  const confirmedMail = receiptText({
+    number: pending.order.number,
+    title: confirmedDays.title,
+    qty: pending.order.qty,
+    amountCents: pending.order.amountCents,
+    shipsFrom: confirmedDays.shipsFrom,
+    shipDaysMin: confirmedDays.shipDaysMin,
+    shipDaysMax: confirmedDays.shipDaysMax,
+    supplierName: confirmedDays.supplierName,
+    supplierUsConfirmed: confirmedDays.supplierUsConfirmed,
+    receiptUrl: "http://127.0.0.1/shop/order?token=example",
+  });
+  assert(
+    confirmedMail.includes("Shipping: Our expected window is 2–4 days after you pay."),
+    "a confirmed receipt email names the window",
+  );
   getDb().prepare("UPDATE listings SET supplier_us_confirmed = 0, ships_from = NULL WHERE product_id = 'return-pan'").run();
 
   const blankOrder = createPendingOrder({

@@ -85,15 +85,18 @@ export function productShipLine(
   return `Our expected window is ${span} days after you pay.`;
 }
 
-/** Receipts, the order page, and mail. Same confirmed-supplier rule as the product page. */
+/** Receipts, the order page, and mail. A day window needs a confirmed supplier and confirmed ship days. */
 export function receiptShipWindow(min?: number | null, max?: number | null, source?: ShipSource | null) {
-  return productShipLine({
-    supplierName: source?.supplierName ?? "",
-    shipsFrom: source?.shipsFrom,
-    supplierUsConfirmed: source?.supplierUsConfirmed,
-    shipDaysMin: min,
-    shipDaysMax: max,
-  });
+  const daysReady =
+    shipDaysConfirmed(min, max) &&
+    typeof min === "number" &&
+    typeof max === "number" &&
+    Number.isInteger(min) &&
+    Number.isInteger(max) &&
+    min <= max;
+  if (!usSupplierConfirmed(source) || !daysReady) return unconfirmedShipLine(source);
+  const span = min === max ? String(min) : `${min}–${max}`;
+  return `Our expected window is ${span} days after you pay.`;
 }
 
 /** Arrival copy for an order. Same confirmed-supplier rule as the product page. */
