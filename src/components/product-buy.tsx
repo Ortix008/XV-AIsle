@@ -285,15 +285,7 @@ export function ProductBuy({
             ) : null}
             <div>
               <dt className="text-sm font-medium text-muted-foreground">Shipping</dt>
-              <dd className="mt-1">
-                {shipWindow ? (
-                  <>
-                    {shipWindow}
-                    {" "}
-                  </>
-                ) : null}
-                Tracking is emailed when it ships.
-              </dd>
+              <dd className="mt-1">{shipWindow}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-muted-foreground">Returns</dt>

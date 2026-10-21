@@ -195,7 +195,8 @@ export function ShopGrid({
                   {listing.sample ? null : (
                     <>
                       {" · "}
-                      {shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax) ? (
+                      {listing.supplierUsConfirmed &&
+                      shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax) ? (
                         usSupplierConfirmed(listing) ? (
                           <>
                             ships from {listing.supplierOrigin} in {listing.shipDaysMin}–{listing.shipDaysMax} days

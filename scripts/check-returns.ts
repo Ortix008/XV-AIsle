@@ -36,7 +36,7 @@ async function main() {
   const { closeDb, getDb } = await import("../src/lib/server/db");
   const { signUp } = await import("../src/lib/server/accounts");
   const { startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
-  const { SAMPLE_ORDER_NUMBER, SAMPLE_RETURN_PARTS } = await import("../src/lib/sample-shelf");
+  const { SAMPLE_ORDER_NUMBER, SAMPLE_RETURN_PARTS, sampleStarters } = await import("../src/lib/sample-shelf");
   const { receiptHtml, receiptText, sampleReceiptHtml } = await import("../src/lib/server/order-mail");
   const { buyerOrder, presentOrder, publicListing, resellerListing } = await import("../src/lib/server/order-view");
   const { saveReturnsAddress } = await import("../src/lib/server/settings");
@@ -95,10 +95,27 @@ async function main() {
       TRACKING_SHIP,
     "a sample region is not a US location",
   );
+  const sheet = sampleStarters.find((item) => item.productId === "sheet-pan");
+  if (!sheet) throw new Error("sample sheet pan");
+  const sheetLine = productShipLine({ ...sheet, supplierUsConfirmed: false });
+  assert(sheetLine === US_SUPPLIER_SHIP, "an unconfirmed sample with ship days uses the US supplier fallback");
+  assert(!/\d/.test(sheetLine), "the unconfirmed product line has no day numbers");
   assert(
-    productShipLine({ supplierName: "Northwharf Goods", shipDaysMin: 2, shipDaysMax: 4 }) ===
-      "Our expected window is 2–4 days after you pay.",
-    "a confirmed window names the product days",
+    productShipLine({ ...sheet, supplierUsConfirmed: true }) ===
+      `Our expected window is ${sheet.shipDaysMin}–${sheet.shipDaysMax} days after you pay.`,
+    "a confirmed product names its own ship-day min and max",
+  );
+  assert(
+    productShipLine({ ...sheet, supplierUsConfirmed: true, shipDaysMax: null }) === US_SUPPLIER_SHIP,
+    "a confirmed product missing a ship-day bound uses the US supplier fallback",
+  );
+  const facts = readFileSync(join(process.cwd(), "src/lib/order-facts.ts"), "utf8");
+  const shipFn = facts.slice(facts.indexOf("export function productShipLine"), facts.indexOf("export function etaFromListing"));
+  assert(!shipFn.includes("2–4") && !shipFn.includes("2-4"), "the product ship line does not hard-code a day window");
+  const buy = readFileSync(join(process.cwd(), "src/components/product-buy.tsx"), "utf8");
+  assert(
+    !buy.includes("Tracking is emailed when it ships."),
+    "the product page does not append a second tracking sentence",
   );
   assert(receiptShipWindow(2, 2) === "Usually ships in 2 business days.", "equal days collapse to one number");
   assert(receiptShipWindow(0, 0) === TRACKING_SHIP, "a receipt without days and without a US supplier uses tracking only");
@@ -198,8 +215,8 @@ async function main() {
   if ("error" in kept || !kept.listing) throw new Error("kept listing");
   assert(kept.listing.hiddenFromShop === true && kept.listing.supplierUsConfirmed === true, "republish keeps omitted shelf flags");
   assert(
-    productShipLine(kept.listing) === null,
-    "a confirmed US supplier with no day window omits the product window",
+    productShipLine(kept.listing) === US_SUPPLIER_SHIP,
+    "a confirmed US supplier with no day window uses the US supplier fallback",
   );
   const hiddenPublic = JSON.stringify(publicListing(kept.listing));
   assert(!hiddenPublic.includes("hiddenFromShop"), "a hidden listing's public shape still omits the hide flag");
