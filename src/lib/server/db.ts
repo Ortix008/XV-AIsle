@@ -263,6 +263,7 @@ export function getDb() {
   );
   migrateSupplierReturns(next);
   migrateMoneyFlow(next);
+  addColumn(next, "listings", "import_images", "TEXT");
   db = next;
   return next;
 }
