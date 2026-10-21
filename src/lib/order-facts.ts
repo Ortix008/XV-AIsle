@@ -63,16 +63,7 @@ export function unconfirmedShipLine(source?: ShipSource | null) {
   return usSupplierConfirmed(source) ? US_SUPPLIER_SHIP : TRACKING_SHIP;
 }
 
-/** Receipt and order pages. A hyphen, and a single number when the two days match. */
-export function receiptShipWindow(min?: number | null, max?: number | null, source?: ShipSource | null) {
-  if (!shipDaysConfirmed(min, max)) return unconfirmedShipLine(source);
-  const lo = min ?? 0;
-  const hi = max ?? 0;
-  const span = lo === hi ? String(lo) : `${lo}-${hi}`;
-  return `Usually ships in ${span} business days.`;
-}
-
-/** Product page. The US line and the day window require a confirmed US supplier. */
+/** Product page, receipts, order pages, and mail. The US line and the day window require a confirmed US supplier. */
 export function productShipLine(
   listing: ShipSource & { supplierName: string; shipDaysMin?: number | null; shipDaysMax?: number | null },
 ): string {
@@ -94,7 +85,18 @@ export function productShipLine(
   return `Our expected window is ${span} days after you pay.`;
 }
 
-/** Arrival copy for an order. Confirmed days use the receipt window. Anything else uses the unconfirmed line. */
+/** Receipts, the order page, and mail. Same confirmed-supplier rule as the product page. */
+export function receiptShipWindow(min?: number | null, max?: number | null, source?: ShipSource | null) {
+  return productShipLine({
+    supplierName: source?.supplierName ?? "",
+    shipsFrom: source?.shipsFrom,
+    supplierUsConfirmed: source?.supplierUsConfirmed,
+    shipDaysMin: min,
+    shipDaysMax: max,
+  });
+}
+
+/** Arrival copy for an order. Same confirmed-supplier rule as the product page. */
 export function etaFromListing(
   listing:
     | (ShipSource & { deliveryTime?: string | null; shipDaysMin?: number | null; shipDaysMax?: number | null })

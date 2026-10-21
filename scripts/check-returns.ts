@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -128,7 +128,48 @@ async function main() {
     !buy.includes("Tracking is emailed when it ships."),
     "the product page does not append a second tracking sentence",
   );
-  assert(receiptShipWindow(2, 2) === "Usually ships in 2 business days.", "equal days collapse to one number");
+  const retiredShip = ["Usually", "ships", "in"].join(" ");
+  for (const root of ["src", "scripts"]) {
+    const pending = [join(process.cwd(), root)];
+    while (pending.length > 0) {
+      const dir = pending.pop();
+      if (!dir) break;
+      for (const entry of readdirSync(dir)) {
+        const path = join(dir, entry);
+        if (statSync(path).isDirectory()) {
+          pending.push(path);
+          continue;
+        }
+        if (!/\.(ts|tsx|js|mjs|html|md|txt)$/.test(entry)) continue;
+        assert(!readFileSync(path, "utf8").includes(retiredShip), `${path} still says ${retiredShip}`);
+      }
+    }
+  }
+  const confirmedShip = {
+    supplierName: "Northwharf Goods",
+    shipsFrom: "Elizabeth, NJ",
+    supplierUsConfirmed: true as const,
+  };
+  assert(
+    receiptShipWindow(2, 2, confirmedShip) === "Our expected window is 2 days after you pay.",
+    "equal days collapse to one number",
+  );
+  assert(
+    receiptShipWindow(2, 4, confirmedShip) === "Our expected window is 2–4 days after you pay.",
+    "a confirmed receipt names the product window",
+  );
+  assert(
+    receiptShipWindow(2, 4, { ...confirmedShip, supplierUsConfirmed: false }) === TRACKING_SHIP,
+    "an unconfirmed receipt with ship days uses the tracking line",
+  );
+  assert(
+    receiptShipWindow(2, 4) === TRACKING_SHIP,
+    "ship days alone do not name a window",
+  );
+  assert(
+    receiptShipWindow(null, 4, confirmedShip) === US_SUPPLIER_SHIP,
+    "a confirmed receipt missing a day bound uses the US supplier line",
+  );
   assert(receiptShipWindow(0, 0) === TRACKING_SHIP, "a receipt without days and without a US supplier uses tracking only");
   assert(getDb().prepare("SELECT name FROM sqlite_master WHERE name = 'supplier_returns'").get(), "supplier_returns exists");
 
@@ -321,7 +362,24 @@ async function main() {
   });
   assert(!blankReceipt.includes(RETURNS_EMAILED), "the receipt email omits the return line when there is no address");
   assert(!blankReceipt.includes("Need to send it back"), "a receipt without a return address omits the returns line");
-  assert(blankReceipt.includes("Usually ships in 2-4 business days."), "a confirmed window names the days");
+  assert(blankReceipt.includes(TRACKING_SHIP), "days without a confirmed supplier stay on the tracking line");
+  assert(!blankReceipt.includes("Our expected window"), "an unconfirmed receipt does not name a window");
+  const confirmedWindow = receiptText({
+    number: blankOrder.order.number,
+    title: "Named pan",
+    qty: 1,
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    supplierName: "Northwharf Goods",
+    shipsFrom: "Elizabeth, NJ",
+    supplierUsConfirmed: true,
+    receiptUrl: "http://127.0.0.1/shop/order?token=example",
+    returnAddress: null,
+  });
+  assert(
+    confirmedWindow.includes("Our expected window is 2–4 days after you pay."),
+    "a confirmed receipt email names the window",
+  );
   assert(!blankReceipt.includes(STREET), "the fallback email has no street");
   assert(!blankReceipt.includes("Ships from"), "a receipt with no origin omits ships-from");
   const blankHtml = receiptHtml({
@@ -352,7 +410,8 @@ async function main() {
   assert(sampleHtml.includes("Share your find on X"), "the sample receipt names the share button");
   assert(sampleHtml.includes("Quarter sheet pan and rack"), "the sample receipt uses the sample product title");
   assert(sampleHtml.includes(SAMPLE_ORDER_NUMBER), "the sample receipt uses the shared order number");
-  assert(sampleHtml.includes("Usually ships in 2-4 business days"), "the sample receipt uses the sample ship window");
+  assert(sampleHtml.includes(TRACKING_SHIP), "the sample receipt stays on the tracking line until the supplier is confirmed");
+  assert(!sampleHtml.includes("Our expected window"), "the sample receipt does not name a window");
   assert(sampleHtml.includes(">Shipping<"), "the receipt labels the ship window Shipping");
   assert(sampleHtml.includes("100 Example Street"), "the sample receipt includes the placeholder street");
   assert(sampleHtml.includes("Sample City") && sampleHtml.includes("00000"), "the sample receipt includes the placeholder city and ZIP");
