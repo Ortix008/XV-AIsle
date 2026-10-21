@@ -75,8 +75,11 @@ function mockFetch(url: URL | RequestInfo, init?: RequestInit) {
 async function main() {
   const { signUp } = await import("../src/lib/server/accounts");
   const { getDb } = await import("../src/lib/server/db");
-  const { getListing, listPublished } = await import("../src/lib/server/store");
+  const { getListing, getOrder, listPublished } = await import("../src/lib/server/store");
   const { importModalystForAccount } = await import("../src/lib/server/modalyst-import");
+  const { receiptText } = await import("../src/lib/server/order-mail");
+  const { orderSummary } = await import("../src/lib/server/order-summary");
+  const { TRACKING_SHIP } = await import("../src/lib/order-facts");
 
   const blocked = await importModalystForAccount(
     { id: "buyer", role: "buyer" },
@@ -119,6 +122,53 @@ async function main() {
   assert(lantern?.shipsFrom === "Austin, TX", "ship-from is mapped");
   assert(lantern?.shipDaysMin === 2 && lantern.shipDaysMax === 5, "ship days are mapped");
   assert(lantern?.title === "Glass lantern", "title is mapped");
+  if (!lantern) throw new Error("imported lantern");
+  const importedMail = receiptText({
+    number: "XV-IMPORT",
+    title: lantern.title,
+    qty: 1,
+    amountCents: lantern.priceCents,
+    shipsFrom: lantern.shipsFrom,
+    shipDaysMin: lantern.shipDaysMin,
+    shipDaysMax: lantern.shipDaysMax,
+    supplierName: lantern.supplierName,
+    supplierUsConfirmed: lantern.supplierUsConfirmed,
+    receiptUrl: "http://127.0.0.1/shop/order?token=example",
+  });
+  assert(importedMail.includes(`Shipping: ${TRACKING_SHIP}`), "an imported receipt email uses the tracking line");
+  assert(!importedMail.includes("Our expected window"), "an imported receipt email does not name a window");
+  getDb()
+    .prepare(
+      `INSERT INTO orders (
+         id, number, product_id, account_id, customer_name, email, qty, amount_cents,
+         ship_line1, ship_city, ship_region, ship_postal, ship_country, status, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "modalyst-lantern-order",
+      "XV-IMPORT",
+      lantern.productId,
+      admin.account.id,
+      "Example Buyer",
+      "buyer@example.com",
+      1,
+      lantern.priceCents,
+      "100 Example Street",
+      "Sample City",
+      "ST",
+      "00000",
+      "US",
+      "paid",
+      Date.now(),
+    );
+  const importedOrder = getOrder("modalyst-lantern-order");
+  if (!importedOrder) throw new Error("imported order");
+  const importedSummary = orderSummary(importedOrder);
+  assert(importedSummary.eta === TRACKING_SHIP, "an imported order summary uses the tracking line");
+  assert(
+    importedSummary.eta != null && !importedSummary.eta.includes("Our expected window"),
+    "an imported order summary does not name a window",
+  );
   const images = getDb().prepare("SELECT import_images, wholesale_cost FROM listings WHERE product_id = ?").get("lantern-12") as {
     import_images: string;
     wholesale_cost: number;
