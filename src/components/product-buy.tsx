@@ -11,8 +11,7 @@ import { Input } from "@/components/ui/input";
 import { isStripeCheckoutUrl } from "@/lib/checkout-url";
 import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
-import { QA_CHECKOUT_PRODUCT_ID } from "@/lib/qa-checkout";
-import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE } from "@/lib/shelf-copy";
+import { SAMPLE_UNAVAILABLE } from "@/lib/shelf-copy";
 import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
@@ -60,13 +59,11 @@ export function ProductBuy({
   listing,
   returnNote,
   shareHref,
-  testMode = false,
   held = false,
 }: {
   listing: ProductListing;
   returnNote: string;
   shareHref: string;
-  testMode?: boolean;
   held?: boolean;
 }) {
   const formReveal = useReveal<HTMLFormElement>(1);
@@ -128,15 +125,8 @@ export function ProductBuy({
     window.location.assign(data.url);
   }
 
-  const qaCheckout = listing.productId === QA_CHECKOUT_PRODUCT_ID;
-
   return (
     <div className="product-page">
-      {qaCheckout ? (
-        <p className="status-chip qa-test-band" role="status">
-          {QA_TEST_BANNER}
-        </p>
-      ) : null}
       <div className="product-photo">
         <div className="product-stage" data-world={world?.slug} style={worldStyle}>
           <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 560px, 100vw" priority />
@@ -170,11 +160,6 @@ export function ProductBuy({
           {listing.sample ? <span className="product-sample">Sample</span> : null}
         </div>
         <p className="product-desc">{listing.description}</p>
-        {testMode && !qaCheckout ? (
-          <p className="product-test" role="status">
-            Test mode
-          </p>
-        ) : null}
         <form {...formReveal} onSubmit={checkout} className="product-checkout">
           <div className="product-buy">
             <label className="product-qty-field">

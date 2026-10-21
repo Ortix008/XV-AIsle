@@ -104,7 +104,7 @@ export function JoinScreen() {
         />
 
         <section>
-          <div className="mx-auto grid max-w-[1280px] gap-5 px-5 py-16 sm:px-10 sm:py-[72px] lg:grid-cols-3 lg:py-[110px]">
+          <div className="mx-auto grid max-w-[1280px] gap-5 px-5 py-16 sm:px-10 sm:py-[72px] lg:grid-cols-2 lg:py-[110px]">
             <Reveal as="article" index={0} className="rounded-2xl border border-border bg-secondary p-7">
               <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
               <h2 className="text-lg">Open product info</h2>
@@ -117,13 +117,6 @@ export function JoinScreen() {
               <h2 className="text-lg">{RETURN_WINDOW_DAYS}-day returns</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Changed your mind? Start a return within {RETURN_WINDOW_DAYS} days of delivery.
-              </p>
-            </Reveal>
-            <Reveal as="article" index={2} className="rounded-2xl border border-border bg-secondary p-7">
-              <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
-              <h2 className="text-lg">Checkout opens soon</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                When it opens, Stripe will handle your payment, so we never see your card number. Questions? We reply within 2 business days.
               </p>
             </Reveal>
           </div>

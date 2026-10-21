@@ -13,7 +13,6 @@ import { isHeldSample } from "@/lib/shelf-holds";
 import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
 import { publicSiteUrl } from "@/lib/config/env";
-import { stripeTestMode } from "@/lib/server/stripe";
 import { productOgImage } from "@/lib/product-og";
 import { buyerShareHref, resellerShareHref } from "@/lib/x-share";
 
@@ -82,7 +81,6 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
         listing={publicListing(listing, isSampleListing(listing))}
         returnNote={sampleProductReturnNote(listing, returnCopyForListing(listing))}
         shareHref={shareHref}
-        testMode={stripeTestMode()}
         held={isHeldSample(listing)}
       />
       <AislePicks aisle={aisle} picks={picks} />
