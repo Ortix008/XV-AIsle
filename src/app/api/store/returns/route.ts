@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { verifiedAdmin } from "@/lib/server/access";
 import { accountFromToken } from "@/lib/server/accounts";
-import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
+import { allowClient } from "@/lib/server/rate-limit";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { listSupplierReturns, saveSupplierReturn } from "@/lib/server/supplier-returns";
 
@@ -20,7 +20,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!allowAttempt(clientBucket(request, "supplier-returns"), 30, 10 * 60 * 1000)) {
+  if (!allowClient(request, "supplier-returns", 30, 10 * 60 * 1000)) {
     return Response.json({ error: "Too many tries. Wait a few minutes." }, { status: 429 });
   }
   const gate = await operator();

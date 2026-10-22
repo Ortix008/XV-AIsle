@@ -1,9 +1,11 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { isAccountRole, type AccountRole } from "../account";
+import { isCommonPassword } from "../common-passwords";
+import { COMMON_PASSWORD, PASSWORD_CHANGED_SUBJECT, PASSWORD_CHANGED_TEXT } from "../signup-copy";
 import { changed, getDb } from "./db";
 import { sendMail, sendVerificationLink } from "./mail";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password";
-import { authSecretReady, decryptSecret, encryptSecret, generateTotpSecret, verifyTotp } from "./totp";
+import { acceptedTotpStep, authSecretReady, decryptSecret, encryptSecret, generateTotpSecret } from "./totp";
 
 const MONTH = 30 * 24 * 60 * 60 * 1000;
 
@@ -37,6 +39,7 @@ type AccountRow = {
   locked_until?: number | null;
   totp_secret?: string | null;
   totp_enabled?: number | null;
+  totp_last_step?: number | null;
   x_user_id?: string | null;
 };
 
@@ -92,9 +95,13 @@ export function signUp(input: { name: string; email: string; password: string })
   }
   if (input.password.length < 8) return { error: "Use at least 8 characters." as const };
   if (input.password.length > 200) return { error: "Use a shorter password." as const };
+  if (isCommonPassword(input.password)) return { error: COMMON_PASSWORD };
   const db = getDb();
   const existing = db.prepare("SELECT id FROM accounts WHERE email = ?").get(email) as { id: string } | undefined;
-  if (existing) return { error: "That email already has an account. Sign in instead." as const };
+  if (existing) {
+    hashPassword(input.password);
+    return { error: "That email already has an account. Sign in instead." as const, email };
+  }
   const { salt, hash } = hashPassword(input.password);
   const account: AccountRow = {
     id: randomUUID(),
@@ -199,7 +206,8 @@ export async function requestPasswordReset(email: string) {
     expires,
   );
   const link = `${resetOrigin()}/reset/confirm?token=${token}`;
-  await sendMail({
+  // Mail goes out in the background so a missing account is not slower or faster.
+  void sendMail({
     to: row.email,
     subject: "Reset your XV-AIsle password",
     text: `Choose a new password:\n${link}\n\nThis link works once and then expires. If you didn't ask for it, you can ignore this email.\n`,
@@ -211,6 +219,7 @@ export function consumePasswordReset(token: string, password: string) {
   if (!token || token.length < 32 || token.length > 200) return { error: "That link is not valid." as const };
   if (password.length < 8) return { error: "Use at least 8 characters." as const };
   if (password.length > 200) return { error: "Use a shorter password." as const };
+  if (isCommonPassword(password)) return { error: COMMON_PASSWORD };
   const db = getDb();
   const row = db.prepare("SELECT account_id, expires_at FROM password_resets WHERE token_hash = ?").get(tokenHash(token)) as
     | { account_id: string; expires_at: number }
@@ -223,8 +232,16 @@ export function consumePasswordReset(token: string, password: string) {
   db.prepare(
     "UPDATE accounts SET password_hash = ?, password_salt = ?, failed_logins = 0, locked_until = NULL WHERE id = ?",
   ).run(hash, salt, row.account_id);
+  const owner = db.prepare("SELECT email FROM accounts WHERE id = ?").get(row.account_id) as { email: string } | undefined;
   db.prepare("DELETE FROM password_resets WHERE account_id = ?").run(row.account_id);
   db.prepare("DELETE FROM sessions WHERE account_id = ?").run(row.account_id);
+  if (owner && !pendingReceiptEmail(owner.email)) {
+    void sendMail({
+      to: owner.email,
+      subject: PASSWORD_CHANGED_SUBJECT,
+      text: PASSWORD_CHANGED_TEXT,
+    });
+  }
   return { ok: true as const };
 }
 
@@ -264,10 +281,12 @@ export function seedAdmin(input: { name?: string; email: string; password?: stri
   return { account: getAccount(id)! };
 }
 
-const LOCK_MS = 15 * 60 * 1000;
 const CHALLENGE_MS = 5 * 60 * 1000;
 
 export function signIn(input: { email: string; password: string }) {
+  if (typeof input.email !== "string" || typeof input.password !== "string") {
+    return { error: "That email and password do not match." as const };
+  }
   const email = input.email.trim().toLowerCase();
   if (email.length > 120 || input.password.length > 200) {
     return { error: "That email and password do not match." as const };
@@ -278,23 +297,12 @@ export function signIn(input: { email: string; password: string }) {
     burnPasswordCheck(input.password);
     return { error: "That email and password do not match." as const };
   }
-  const now = Date.now();
-  const lockedUntil = row.locked_until ?? 0;
-  if (lockedUntil > now) {
-    const minutes = Math.max(1, Math.ceil((lockedUntil - now) / 60_000));
-    const unit = minutes === 1 ? "minute" : "minutes";
-    return { error: `Too many tries. Try again in ${minutes} ${unit}.`, locked: true as const };
-  }
-  let failedLogins = row.failed_logins ?? 0;
-  if (row.locked_until != null && row.locked_until > 0 && row.locked_until <= now) {
-    failedLogins = 0;
-    db.prepare("UPDATE accounts SET failed_logins = 0, locked_until = NULL WHERE id = ?").run(row.id);
-  }
+  // Misses are throttled per account at the route. A correct password still signs in,
+  // so an attacker cannot lock the owner out.
   const passwordOk = verifyPassword(input.password, row.password_salt, row.password_hash);
   if (!passwordOk) {
-    const fails = failedLogins + 1;
-    const until = fails >= 5 ? now + LOCK_MS : null;
-    db.prepare("UPDATE accounts SET failed_logins = ?, locked_until = ? WHERE id = ?").run(fails, until, row.id);
+    const fails = (row.failed_logins ?? 0) + 1;
+    db.prepare("UPDATE accounts SET failed_logins = ?, locked_until = NULL WHERE id = ?").run(fails, row.id);
     return { error: "That email and password do not match." as const };
   }
   db.prepare("UPDATE accounts SET failed_logins = 0, locked_until = NULL WHERE id = ?").run(row.id);
@@ -385,16 +393,26 @@ export function finishTotpSignIn(challenge: string, code: string) {
   }
   const db = getDb();
   const row = db
-    .prepare("SELECT account_id, expires_at FROM login_challenges WHERE token_hash = ?")
-    .get(tokenHash(challenge)) as { account_id: string; expires_at: number } | undefined;
+    .prepare("SELECT account_id, expires_at, fails FROM login_challenges WHERE token_hash = ?")
+    .get(tokenHash(challenge)) as { account_id: string; expires_at: number; fails: number | null } | undefined;
   if (!row || row.expires_at < Date.now()) {
     return { error: "That sign-in step expired. Enter your password again." as const };
   }
   const account = db.prepare("SELECT * FROM accounts WHERE id = ?").get(row.account_id) as AccountRow | undefined;
   const secret = account?.totp_secret ? decryptSecret(account.totp_secret) : null;
-  if (!account || account.totp_enabled !== 1 || !secret || !verifyTotp(secret, code)) {
-    return { error: "That code did not match. Try the next code from your authenticator app." as const };
+  const step = secret ? acceptedTotpStep(secret, code) : null;
+  const last = account?.totp_last_step;
+  const replay = step !== null && last != null && step <= last;
+  if (!account || account.totp_enabled !== 1 || !secret || step === null || replay) {
+    const fails = (row.fails ?? 0) + 1;
+    if (fails >= 5) db.prepare("DELETE FROM login_challenges WHERE account_id = ?").run(row.account_id);
+    else db.prepare("UPDATE login_challenges SET fails = ? WHERE token_hash = ?").run(fails, tokenHash(challenge));
+    return {
+      error: "That code did not match. Try the next code from your authenticator app." as const,
+      accountId: row.account_id,
+    };
   }
+  db.prepare("UPDATE accounts SET totp_last_step = ? WHERE id = ?").run(step, account.id);
   db.prepare("DELETE FROM login_challenges WHERE account_id = ?").run(account.id);
   return { account: publicAccount(account), token: openSession(account.id) };
 }
@@ -420,10 +438,12 @@ export function confirmTotp(accountId: string, code: string) {
   if (!row?.totp_secret) return { error: "Start authenticator setup first." as const };
   if (row.totp_enabled === 1) return { account: publicAccount(row) };
   const secret = decryptSecret(row.totp_secret);
-  if (!secret || !verifyTotp(secret, code)) {
+  const step = secret ? acceptedTotpStep(secret, code) : null;
+  const last = row.totp_last_step;
+  if (!secret || step === null || (last != null && step <= last)) {
     return { error: "That code did not match. Check the secret in your app and try the current code." as const };
   }
-  getDb().prepare("UPDATE accounts SET totp_enabled = 1 WHERE id = ?").run(accountId);
+  getDb().prepare("UPDATE accounts SET totp_enabled = 1, totp_last_step = ? WHERE id = ?").run(step, accountId);
   return { account: getAccount(accountId)! };
 }
 

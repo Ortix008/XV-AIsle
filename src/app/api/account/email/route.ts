@@ -1,12 +1,12 @@
 import { cookies } from "next/headers";
 import { accountFromToken, setReceiptEmail } from "@/lib/server/accounts";
-import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
+import { allowClient } from "@/lib/server/rate-limit";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  if (!allowAttempt(clientBucket(request, "account-email"), 8, 15 * 60 * 1000)) {
+  if (!allowClient(request, "account-email", 8, 15 * 60 * 1000)) {
     return Response.json({ error: "Too many tries. Wait a few minutes and try again." }, { status: 429 });
   }
   const token = (await cookies()).get(SESSION_COOKIE)?.value;

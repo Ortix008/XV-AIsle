@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
+import { allowClient } from "@/lib/server/rate-limit";
 import {
   buildAuthorizeUrl,
   codeChallenge,
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   if (!xSignInConfigured()) return new Response("Not found.", { status: 404 });
-  if (!allowAttempt(clientBucket(request, "x-start"), 20, 15 * 60 * 1000)) {
+  if (!allowClient(request, "x-start", 20, 15 * 60 * 1000)) {
     return NextResponse.json({ error: "Too many tries. Wait a few minutes and try again." }, { status: 429 });
   }
   const state = createState();

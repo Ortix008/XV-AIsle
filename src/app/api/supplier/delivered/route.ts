@@ -1,9 +1,9 @@
 import { buyerOrder } from "@/lib/server/order-view";
-import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
+import { allowClient } from "@/lib/server/rate-limit";
 import { acceptSupplierDelivery } from "@/lib/server/supplier-callback";
 
 export async function POST(request: Request) {
-  if (!allowAttempt(clientBucket(request, "supplier-delivery"), 30, 10 * 60 * 1000)) {
+  if (!allowClient(request, "supplier-delivery", 30, 10 * 60 * 1000)) {
     return Response.json({ error: "Too many delivery notes. Wait a few minutes." }, { status: 429 });
   }
   const raw = await request.text();

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { accountFromToken } from "@/lib/server/accounts";
 import { addInquiry, inquiriesFor } from "@/lib/server/inquiries";
-import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
+import { allowClient } from "@/lib/server/rate-limit";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 
 export async function GET() {
@@ -21,7 +21,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!allowAttempt(clientBucket(request, "contact"), 5, 15 * 60 * 1000)) {
+  if (!allowClient(request, "contact", 5, 15 * 60 * 1000)) {
     return Response.json({ error: "Too many notes. Wait a few minutes." }, { status: 429 });
   }
   const body = (await request.json().catch(() => null)) as {

@@ -223,6 +223,7 @@ export function SignUpScreen({ showX = false, xDisabled = false }: { showX?: boo
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const nameId = useId();
   const emailId = useId();
@@ -240,8 +241,15 @@ export function SignUpScreen({ showX = false, xDisabled = false }: { showX?: boo
       return;
     }
     setPending(true);
+    setNotice(null);
     const message = await signUp({ name, email, password, confirmPassword });
-    setError(message);
+    if (message?.startsWith("TODO(Wordy)")) {
+      setNotice(message);
+      setError(null);
+    } else {
+      setNotice(null);
+      setError(message);
+    }
     setPending(false);
   }
 
@@ -302,6 +310,7 @@ export function SignUpScreen({ showX = false, xDisabled = false }: { showX?: boo
             </p>
           ) : null}
         </div>
+        {notice ? <p className="text-base">{notice}</p> : null}
         {error && error !== confirmError && !staleMismatch ? (
           <p className="text-base text-late" role="alert">
             {error}

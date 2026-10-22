@@ -137,8 +137,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ name, email, password, confirmPassword }),
         });
         if (!response.ok) return readError(response);
+        const data = (await response.json().catch(() => null)) as { message?: string } | null;
         await refresh();
-        return null;
+        return data?.message ?? null;
       },
       signIn: async ({ email, password }) => {
         const response = await fetch("/api/account/signin", {

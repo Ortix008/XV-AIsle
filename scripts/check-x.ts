@@ -128,7 +128,7 @@ assert(devCookies.sameSite === "lax", "oauth cookies are SameSite=Lax");
 assert(devCookies.path === "/", "oauth cookies use the site path");
 assert(devCookies.maxAge === 600, "oauth cookies last 10 minutes");
 assert(devCookies.secure === false, "an http APP_URL leaves oauth cookies unset for Secure");
-assert(sessionCookieOptions().secure === false, "an http APP_URL leaves the session cookie unset for Secure");
+assert(sessionCookieOptions().secure === true, "production marks the session cookie Secure even when APP_URL is http");
 setAppUrl("https://xvaisle.com");
 setNodeEnv("development");
 assert(xOauthCookieOptions().secure === true, "an https APP_URL marks oauth cookies Secure");

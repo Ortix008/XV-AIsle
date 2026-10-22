@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { signInWithX } from "@/lib/server/accounts";
-import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
+import { allowClient } from "@/lib/server/rate-limit";
 import { profileFromXCode, safeOauthLabel } from "@/lib/server/x-auth";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/server/session-cookie";
 import { appOrigin } from "@/lib/server/stripe";
@@ -43,7 +43,7 @@ function logCallback(kind: "rate_limited" | "x_error" | "state_mismatch" | "miss
 
 export async function GET(request: Request) {
   if (!xSignInConfigured()) return new Response("Not found.", { status: 404 });
-  if (!allowAttempt(clientBucket(request, "x-callback"), 20, 15 * 60 * 1000)) {
+  if (!allowClient(request, "x-callback", 20, 15 * 60 * 1000)) {
     logCallback("rate_limited");
     return clearOauth(NextResponse.redirect(`${appOrigin()}/sign-in?x=failed`));
   }

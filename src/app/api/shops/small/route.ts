@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { accountFromToken } from "@/lib/server/accounts";
-import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
+import { allowClient } from "@/lib/server/rate-limit";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { addSmallShop, listSmallShops } from "@/lib/server/small-shops";
 
@@ -12,7 +12,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!allowAttempt(clientBucket(request, "small-shop"), 20, 10 * 60 * 1000)) {
+  if (!allowClient(request, "small-shop", 20, 10 * 60 * 1000)) {
     return Response.json({ error: "Too many updates. Wait a few minutes." }, { status: 429 });
   }
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
