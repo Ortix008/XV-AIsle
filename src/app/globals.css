@@ -583,6 +583,14 @@
     0 0 36px rgba(61, 220, 132, 0.1);
 }
 
+.product-frame > img[width] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .product-placeholder {
   position: absolute;
   inset: 0;
@@ -2101,6 +2109,14 @@ button.auth-x:disabled {
   aspect-ratio: 4 / 3;
   width: 100%;
   overflow: hidden;
+}
+
+.mark-tile img[width] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .stall-tab {

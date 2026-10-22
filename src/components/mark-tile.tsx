@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { useState, type ReactNode } from "react";
 import { cn } from "cn";
+import { CatalogPhoto } from "@/components/catalog-photo";
 
 export function MarkUnderlay({
   src,
@@ -24,14 +24,7 @@ export function MarkUnderlay({
   return (
     <div className={cn("mark-underlay relative overflow-hidden", className)}>
       {photo && !failed ? (
-        <Image
-          src={photo}
-          alt={alt}
-          fill
-          sizes={sizes}
-          className={zoom ? "media-zoom object-cover object-center" : "object-cover object-center"}
-          onError={() => setFailed(true)}
-        />
+        <CatalogPhoto src={photo} alt={alt} sizes={sizes} zoom={zoom} onError={() => setFailed(true)} />
       ) : null}
       {children}
     </div>

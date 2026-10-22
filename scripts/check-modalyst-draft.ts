@@ -1,11 +1,15 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MarkTile } from "../src/components/mark-tile";
+import { ProductFrame } from "../src/components/product-frame";
 import { money } from "../src/lib/money";
 import { productShipLine, TRACKING_SHIP } from "../src/lib/order-facts";
+import { PRODUCT_PHOTO_SIZE } from "../src/lib/product-photo";
 
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-draft-")), "draft.sqlite");
 
@@ -19,6 +23,33 @@ function assert(condition: unknown, message: string) {
 function textOf(html: string, className: string) {
   const match = html.match(new RegExp(`class="${className}">([^<]*)`));
   return match?.[1] ?? "";
+}
+
+const PHOTO_SHA256: Record<string, string> = {
+  "christmas-tree-cat-house-flag.jpg": "ac0a1ab93607a0e18557caa76eef05f0f6d18dee69afbfd8c324084e4c8e3049",
+  "garnet-jewelry-gift-set.jpg": "c4b16f663d69eb8289be8212250c29a8f182d8cf164a028fc0b61c40548b9f99",
+  "insulated-dog-raincoat-dark-blue.jpg": "10606a2dde9841be9e26faabfd98dcc991874f4ff472415f1e05e23487d3c5a1",
+  "pearl-jewelry-gift-set.jpg": "5afc5a182d114f7e43f6c28c2f5ddb8c640051ac634c56907cb1ee801b5eab83",
+  "reversible-dog-raincoat-green.jpg": "c308138653995b450f4f7ccb5334879682186258962c4c9e11ee8bad0204395e",
+};
+
+function jpegBox(buf: Buffer) {
+  if (buf[0] !== 0xff || buf[1] !== 0xd8) throw new Error("not a jpeg");
+  let i = 2;
+  while (i < buf.length - 8) {
+    if (buf[i] !== 0xff) throw new Error("broken jpeg");
+    const marker = buf[i + 1] ?? 0;
+    if (marker === 0xda || marker === 0xd9) break;
+    const length = buf.readUInt16BE(i + 2);
+    const payload = buf.subarray(i + 4, i + 2 + length);
+    if (marker === 0xe1 || payload.includes(Buffer.from("Exif")) || payload.includes(Buffer.from("GPSLatitude")) || payload.includes(Buffer.from("xmpmeta"))) {
+      throw new Error("jpeg still has EXIF, GPS, or XMP");
+    }
+    const sof = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+    if (sof) return { width: buf.readUInt16BE(i + 7), height: buf.readUInt16BE(i + 5) };
+    i += 2 + length;
+  }
+  throw new Error("jpeg has no size");
 }
 
 function runDraft(path: string) {
@@ -36,9 +67,19 @@ async function main() {
   for (const product of parsed.products) {
     assert(Object.keys(product).every((key) => ALLOWED.includes(key)), "a draft product keeps only the public fields");
     const slug = String(product.slug);
-    assert(product.image === `/art/products/${slug}.jpg`, "the image path is the held jpg");
-    assert(!existsSync(join(process.cwd(), "public", "art", "products", `${slug}.jpg`)), "the product photo is not in the repo");
+    assert(product.image === `/art/products/${slug}.jpg`, "the image path is the jpg");
+    const file = join(process.cwd(), "public", "art", "products", `${slug}.jpg`);
+    const webp = join(process.cwd(), "public", "art", "products", `${slug}.webp`);
+    assert(existsSync(file), "the product photo is the jpg");
+    assert(!existsSync(webp), "next/image makes the webp, so no second file is stored");
+    const bytes = readFileSync(file);
+    assert(createHash("sha256").update(bytes).digest("hex") === PHOTO_SHA256[`${slug}.jpg`], "the jpeg pixels are the cleared photo");
+    const box = jpegBox(bytes);
+    const expected = PRODUCT_PHOTO_SIZE[`/art/products/${slug}.jpg`];
+    assert(expected && box.width === expected.width && box.height === expected.height, "the jpeg size matches the layout box");
   }
+  const imageConfig = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
+  assert(!imageConfig.includes("unoptimized: true") && !imageConfig.includes("formats:"), "the image pipeline keeps the webp default");
 
   const { signUp } = await import("../src/lib/server/accounts");
   const { closeDb } = await import("../src/lib/server/db");
@@ -119,6 +160,15 @@ async function main() {
   assert(mark.includes(".mark-underlay") && mark.includes("viewBox"), "the shop photo underlay is the XV mark");
   assert(tile.includes("mark-underlay") && tile.includes("onError"), "a missing shop photo falls back to the underlay");
   assert(frame.includes("product-placeholder") && frame.includes(">XV<"), "a missing product photo falls back to the XV mark");
+  assert(mark.includes(".product-frame") && mark.includes("aspect-ratio: 4 / 5") && mark.includes("position: relative"), "the product frame reserves its box");
+  assert(mark.includes(".product-frame > img[width]") && mark.includes(".mark-tile img[width]"), "a sized photo stays inside the frame");
+  const pearl = "/art/products/pearl-jewelry-gift-set.jpg";
+  const frameHtml = renderToStaticMarkup(createElement(ProductFrame, { src: pearl, alt: "Pearl Jewelry Gift Set", sizes: "280px", priority: true }));
+  assert(frameHtml.includes('loading="lazy"'), "a draft photo lazy-loads");
+  assert(frameHtml.includes('width="1920"') && frameHtml.includes('height="1920"'), "a draft photo has fixed dimensions");
+  assert(!frameHtml.includes("preload"), "a draft photo is not preloaded");
+  const tileHtml = renderToStaticMarkup(createElement(MarkTile, { src: pearl, alt: "", sizes: "280px" }));
+  assert(tileHtml.includes('loading="lazy"') && tileHtml.includes('width="1920"') && tileHtml.includes('height="1920"'), "a draft tile lazy-loads at a fixed size");
   console.log(JSON.stringify(rendered));
   console.log("modalyst draft checks ok");
   db.close();
