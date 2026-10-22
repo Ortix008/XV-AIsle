@@ -94,11 +94,19 @@ function claimRanges(value: string) {
 function tidyRemainder(value: string) {
   let text = value.replace(/\s+/g, " ").trim();
   text = text.replace(/\s+([,.;:!?])/g, "$1");
-  text = text.replace(/(?:\s*\.\s*|,\s*){2,}/g, (chunk) => (chunk.includes(".") ? "." : ", "));
+  text = text.replace(/(?:[.,]\s*){2,}/g, (chunk: string, offset: number, whole: string) => {
+    const next = whole[offset + chunk.length] ?? "";
+    if (!chunk.includes(".")) return ", ";
+    return /[a-z0-9]/i.test(next) ? ". " : ".";
+  });
   text = text.replace(/^[\s,]+/, "");
   text = text.replace(/\s{2,}/g, " ");
   text = text.replace(/\s+([,.;:!?])/g, "$1");
   return text.trim();
+}
+
+function hasShopperText(value: string) {
+  return /[a-z0-9]/i.test(value);
 }
 
 function withoutMadeIn(value: string) {
@@ -122,6 +130,13 @@ export function publicSmallShop(shop: SmallShop) {
   };
 }
 
+/** A card with no letters or digits left after the made-in text is stripped stays off public pages. */
+export function listPublicSmallShops() {
+  return listSmallShops()
+    .map(publicSmallShop)
+    .filter((shop) => hasShopperText(shop.name) || hasShopperText(shop.makes));
+}
+
 export function addSmallShop(
   accountId: string,
   input: { name: string; city: string; makes: string; madeInUsa: boolean },
@@ -132,6 +147,9 @@ export function addSmallShop(
   if (name.length < 2 || name.length > 80) return { error: "Add the business name." as const };
   if (city.length < 2 || city.length > 80) return { error: "Add the city." as const };
   if (makes.length < 2 || makes.length > 200) return { error: "Say what they make, in a short line." as const };
+  if (!hasShopperText(withoutMadeIn(name)) && !hasShopperText(withoutMadeIn(makes))) {
+    return { error: "Add the business name." as const };
+  }
   const id = randomUUID();
   getDb()
     .prepare(

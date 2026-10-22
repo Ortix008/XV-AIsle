@@ -1,5 +1,5 @@
-import { listSmallShops, publicSmallShop } from "@/lib/server/small-shops";
+import { listPublicSmallShops } from "@/lib/server/small-shops";
 
 export function GET() {
-  return Response.json({ shops: listSmallShops().map(publicSmallShop) });
+  return Response.json({ shops: listPublicSmallShops() });
 }
