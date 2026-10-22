@@ -519,6 +519,45 @@ async function main() {
   assert(claimedPublic.makes === "towels", "a published shop drops the made-in claim from what it makes");
   assert(!claimedPublic.name.toLowerCase().includes("made in"), "a published shop drops the made-in claim from its name");
   assert(!claimedJson.includes("Austin") && !claimedJson.includes("Made in"), "a published shop has no city and no made-in claim");
+  const madeInVariants = [
+    { makes: "Made in USA towels", label: "Made in USA" },
+    { makes: "American-made towels", label: "American-made" },
+    { makes: "MADE IN AMERICA towels", label: "MADE IN AMERICA" },
+    { makes: "USA made towels", label: "USA made" },
+  ];
+  for (const variant of madeInVariants) {
+    const shop = addSmallShop("acct-place", {
+      name: `${variant.label} Shop`,
+      city: "Austin, TX",
+      makes: variant.makes,
+      madeInUsa: true,
+    });
+    if ("error" in shop) throw new Error(shop.error);
+    const published = publicSmallShop(shop.shop);
+    const publishedJson = JSON.stringify(published).toLowerCase();
+    assert(published.makes === "towels", `${variant.label} is stripped from what a shop makes`);
+    assert(!publishedJson.includes("made in"), `${variant.label} leaves no made-in claim`);
+    assert(!publishedJson.includes("american-made"), `${variant.label} leaves no american-made claim`);
+    assert(!publishedJson.includes("usa made"), `${variant.label} leaves no usa-made claim`);
+    assert(!publishedJson.includes("america"), `${variant.label} leaves no america claim`);
+    assert(!publishedJson.includes("austin"), `${variant.label} leaves no city`);
+  }
+  const mixed = addSmallShop("acct-place", {
+    name: "Mixed Claim Shop",
+    city: "Elizabeth, NJ",
+    makes: "Made in USA mugs. American-made, MADE IN AMERICA, USA made",
+    madeInUsa: true,
+  });
+  if ("error" in mixed) throw new Error(mixed.error);
+  const mixedPublic = publicSmallShop(mixed.shop);
+  const mixedJson = JSON.stringify(mixedPublic).toLowerCase();
+  assert(mixedPublic.makes.includes("mugs"), "a mixed made-in line keeps the product");
+  assert(!mixedJson.includes("made in usa"), "a mixed line drops Made in USA");
+  assert(!mixedJson.includes("made in the usa"), "a mixed line drops made in the usa");
+  assert(!mixedJson.includes("american-made"), "a mixed line drops American-made");
+  assert(!mixedJson.includes("made in america"), "a mixed line drops MADE IN AMERICA");
+  assert(!mixedJson.includes("usa made"), "a mixed line drops USA made");
+  assert(!mixedJson.includes("elizabeth"), "a mixed line drops the city");
 
   const floors = renderToStaticMarkup(createElement(FloorsView));
   const floorsSource = readFileSync(join(process.cwd(), "src/components/floors-view.tsx"), "utf8");
@@ -612,6 +651,33 @@ async function main() {
   assert(buyerFloorWrite.status === 403, "a shopper cannot write floors");
   const signedOut = await floorsRoute.GET(new Request("http://127.0.0.1/api/floors"));
   assert(signedOut.status === 401, "floors still ask a signed-out visitor to sign in");
+  const malformedCookie = { cookie: `${SESSION_COOKIE}=%E0%A4%A` };
+  const malformedFloors = await floorsRoute.GET(new Request("http://127.0.0.1/api/floors", { headers: malformedCookie }));
+  const malformedShops = await smallRoute.GET(new Request("http://127.0.0.1/api/shops/small", { headers: malformedCookie }));
+  const malformedFloorsBody = (await malformedFloors.json()) as { error?: string };
+  const malformedShopsBody = (await malformedShops.json()) as { error?: string };
+  assert(malformedFloors.status === 401 && malformedFloorsBody.error === "Sign in first.", "a malformed session cookie on floors is a 401");
+  assert(malformedShops.status === 401 && malformedShopsBody.error === "Sign in first.", "a malformed session cookie on small shops is a 401");
+  const storeSmall = await import("../src/app/api/store/small/route");
+  const publicShops = await storeSmall.GET();
+  const publicShopsBody = (await publicShops.json()) as { shops?: { makes?: string }[] };
+  const publicMakes = JSON.stringify(publicShopsBody).toLowerCase();
+  assert(publicShops.status === 200, "the public small-shop list loads");
+  assert(publicMakes.includes("mugs"), "the public list keeps the product from a mixed made-in line");
+  assert(!publicMakes.includes("made in"), "the public list drops every made-in claim");
+  assert(!publicMakes.includes("american-made"), "the public list drops american-made");
+  assert(!publicMakes.includes("usa made"), "the public list drops usa made");
+  assert(!publicMakes.includes("america"), "the public list drops america");
+  assert(!publicMakes.includes("elizabeth") && !publicMakes.includes("austin"), "the public list drops cities");
+  const returnsSource = readFileSync(join(process.cwd(), "src/app/shop/returns/page.tsx"), "utf8");
+  const damagedLine =
+    "Something arrived damaged or wrong? Email us a photo within 3 days of delivery and we'll help make it right.";
+  assert(returnsSource.includes(damagedLine), "the returns page source uses the damaged-item line");
+  assert(!returnsSource.includes("Send us a photo"), "the returns page source drops the old damaged-item line");
+  const { default: ReturnsPage } = await import("../src/app/shop/returns/page");
+  const returnsHtml = renderToStaticMarkup(createElement(ReturnsPage)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
+  assert(returnsHtml.includes(damagedLine), "the returns page renders the damaged-item line");
+  assert(!returnsHtml.includes("Send us a photo"), "the returns page does not render the old damaged-item line");
   const unverifiedCookie = { cookie: `${SESSION_COOKIE}=${unverified.token}` };
   const unverifiedFloors = await floorsRoute.GET(new Request("http://127.0.0.1/api/floors", { headers: unverifiedCookie }));
   const unverifiedShops = await smallRoute.GET(new Request("http://127.0.0.1/api/shops/small", { headers: unverifiedCookie }));

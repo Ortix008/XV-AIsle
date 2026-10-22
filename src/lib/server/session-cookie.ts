@@ -7,7 +7,11 @@ export function sessionTokenFromRequest(request: Request) {
     const eq = piece.indexOf("=");
     if (eq <= 0) continue;
     if (piece.slice(0, eq) !== SESSION_COOKIE) continue;
-    return decodeURIComponent(piece.slice(eq + 1));
+    try {
+      return decodeURIComponent(piece.slice(eq + 1));
+    } catch {
+      return undefined;
+    }
   }
   return undefined;
 }

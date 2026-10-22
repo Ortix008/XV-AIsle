@@ -35,6 +35,10 @@ export function listSmallShops() {
 function withoutMadeIn(value: string) {
   return value
     .replace(/made in the usa/gi, "")
+    .replace(/made in america/gi, "")
+    .replace(/made in usa/gi, "")
+    .replace(/american-made/gi, "")
+    .replace(/usa made/gi, "")
     .replace(/\s{2,}/g, " ")
     .replace(/\s+([,.])/g, "$1")
     .trim();
