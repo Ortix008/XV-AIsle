@@ -171,7 +171,17 @@ function compactPassword(password: string) {
   return password.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-export function isCommonPassword(password: string) {
+function passwordUsesEmail(password: string, email: string) {
+  const normalized = email.trim().toLowerCase();
+  const at = normalized.indexOf("@");
+  if (at <= 0) return false;
+  const local = normalized.slice(0, at);
+  const lower = password.toLowerCase();
+  if (lower === normalized) return true;
+  return local.length > 0 && lower.includes(local);
+}
+
+export function isCommonPassword(password: string, email?: string) {
   const lower = password.toLowerCase();
   if (COMMON_PASSWORDS.has(lower)) return true;
   const compact = compactPassword(password);
@@ -179,5 +189,6 @@ export function isCommonPassword(password: string) {
   if (compact.length >= 8 && /^(.)\1+$/.test(compact)) return true;
   if (lower.includes("xvaisle")) return true;
   if (/(?:spring|summer|autumn|fall|winter)\s*20\d{2}/i.test(lower)) return true;
+  if (email && passwordUsesEmail(password, email)) return true;
   return false;
 }

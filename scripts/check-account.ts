@@ -465,6 +465,35 @@ async function checkSignInHardening() {
       throw new Error(`${weak} blocked a stronger password`);
     }
   }
+  const emailAsPassword = [
+    { email: "shopper.locktest@example.com", password: "use-shopper.locktest-ok" },
+    { email: "alice.wonder@mailinator.net", password: "alice.wonder@mailinator.net" },
+    { email: "bob.builder@example.org", password: "bob.builder@example.org" },
+    { email: "bob.builder@example.org", password: "Bob.Builder@Example.org" },
+  ];
+  for (const sample of emailAsPassword) {
+    if (!isCommonPassword(sample.password, sample.email)) throw new Error(`${sample.password} is still treated as strong`);
+    const refused = await postJson("signup", {
+      name: "Mail Person",
+      email: sample.email,
+      password: sample.password,
+      confirmPassword: sample.password,
+    });
+    if (refused.status !== 400 || refused.body?.error !== COMMON_PASSWORD || refused.cookie || refused.body?.account) {
+      throw new Error(`${sample.email} accepted a password from its own email`);
+    }
+  }
+  const mailStrong = "shelf-maple-mail-ok";
+  if (isCommonPassword(mailStrong, "bob.builder@example.org")) throw new Error("the follow-up mailbox password is weak");
+  const mailAccepted = await postJson("signup", {
+    name: "Mail Person",
+    email: "bob.builder@example.org",
+    password: mailStrong,
+    confirmPassword: mailStrong,
+  });
+  if (mailAccepted.status !== 200 || mailAccepted.body?.notice !== true || mailAccepted.body?.message !== SIGNUP_CHECK_EMAIL || mailAccepted.cookie) {
+    throw new Error("an email-shaped password blocked a stronger one");
+  }
 
   const captured = startMailCapture();
   const created = await postJson("signup", {

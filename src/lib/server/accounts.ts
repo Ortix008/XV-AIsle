@@ -95,7 +95,7 @@ export function signUp(input: { name: string; email: string; password: string })
   }
   if (input.password.length < 8) return { error: "Use at least 8 characters." as const };
   if (input.password.length > 200) return { error: "Use a shorter password." as const };
-  if (isCommonPassword(input.password)) return { error: COMMON_PASSWORD };
+  if (isCommonPassword(input.password, email)) return { error: COMMON_PASSWORD };
   const db = getDb();
   const existing = db.prepare("SELECT id FROM accounts WHERE email = ?").get(email) as { id: string } | undefined;
   if (existing) {
@@ -228,11 +228,13 @@ export function consumePasswordReset(token: string, password: string) {
     if (row) db.prepare("DELETE FROM password_resets WHERE token_hash = ?").run(tokenHash(token));
     return { error: "That link is not valid." as const };
   }
+  const ownerEmail = db.prepare("SELECT email FROM accounts WHERE id = ?").get(row.account_id) as { email: string } | undefined;
+  if (ownerEmail && isCommonPassword(password, ownerEmail.email)) return { error: COMMON_PASSWORD };
   const { salt, hash } = hashPassword(password);
   db.prepare(
     "UPDATE accounts SET password_hash = ?, password_salt = ?, failed_logins = 0, locked_until = NULL WHERE id = ?",
   ).run(hash, salt, row.account_id);
-  const owner = db.prepare("SELECT email FROM accounts WHERE id = ?").get(row.account_id) as { email: string } | undefined;
+  const owner = ownerEmail;
   db.prepare("DELETE FROM password_resets WHERE account_id = ?").run(row.account_id);
   db.prepare("DELETE FROM sessions WHERE account_id = ?").run(row.account_id);
   if (owner && !pendingReceiptEmail(owner.email)) {
