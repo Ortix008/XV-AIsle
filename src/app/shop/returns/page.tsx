@@ -23,7 +23,7 @@ export default function ReturnsPage() {
           "Once the supplier confirms they have your item back, we'll refund the card you paid with. How fast it shows up depends on your bank. Stripe handles your card, so we never see your number."
         }
       </p>
-      <p>{"Something arrived damaged or wrong? Email us a photo within 3 days of delivery and we'll help make it right."}</p>
+      <p>{"Something arrived damaged or wrong? Send us a photo within 3 days of delivery and we'll help make it right."}</p>
       <p>
         Email{" "}
         <a className="underline underline-offset-4" href={`mailto:${supportEmail}`}>
