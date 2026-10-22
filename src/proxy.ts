@@ -17,6 +17,13 @@ function withReferral(response: NextResponse, request: NextRequest) {
   return response;
 }
 
+function homeRedirect(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/";
+  url.search = "";
+  return withReferral(NextResponse.redirect(url, 307), request);
+}
+
 export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   if (path === "/account" || path === "/sign-in") {
@@ -28,6 +35,11 @@ export function proxy(request: NextRequest) {
       url.search = "";
       return withReferral(NextResponse.redirect(url), request);
     }
+  }
+  if (path === "/desk") {
+    const token = request.cookies.get(SESSION_COOKIE)?.value;
+    const account = accountFromToken(token);
+    if (account && (account.role !== "admin" || !account.emailVerified)) return homeRedirect(request);
   }
   return withReferral(NextResponse.next(), request);
 }
