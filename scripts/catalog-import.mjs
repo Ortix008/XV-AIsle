@@ -27,6 +27,25 @@ function platformFeeBps() {
   return clampedInt(process.env.PLATFORM_FEE_BPS, 1000, 800, 1200);
 }
 
+let cachedOperatorEmail = "";
+let cachedOperatorId = null;
+
+function shelfOperatorId(db) {
+  const preferred = process.env.STORE_OPERATOR_EMAIL?.trim().toLowerCase() ?? "";
+  if (!preferred) return null;
+  if (cachedOperatorEmail === preferred && cachedOperatorId) return cachedOperatorId;
+  if (!db) return null;
+  const row = db.prepare("SELECT id FROM accounts WHERE email = ?").get(preferred);
+  if (!row?.id) return null;
+  cachedOperatorEmail = preferred;
+  cachedOperatorId = row.id;
+  return row.id;
+}
+
+function importFeeBps(db) {
+  return shelfOperatorId(db) ? 0 : platformFeeBps();
+}
+
 function stripeFeeBps() {
   return clampedInt(process.env.STRIPE_FEE_BPS, 290, 0, 1000);
 }
@@ -39,8 +58,8 @@ function minResellerNetCents() {
   return clampedInt(process.env.MIN_RESELLER_NET_CENTS, 50, 0, 5000);
 }
 
-function payoutBelowFloor(price, cost, shipping) {
-  const platform = Math.round((price * platformFeeBps()) / 10000);
+function payoutBelowFloor(price, cost, shipping, feeBps = platformFeeBps()) {
+  const platform = Math.round((price * feeBps) / 10000);
   const stripe = Math.round((price * stripeFeeBps()) / 10000) + stripeFeeFixedCents();
   return price - platform - stripe - cost - shipping < minResellerNetCents();
 }
@@ -110,7 +129,7 @@ function ensureColumn(db, table, column, definition) {
   }
 }
 
-function buildRow(product, priv) {
+function buildRow(product, priv, feeBps = platformFeeBps()) {
   const title = typeof product.title === "string" ? product.title.trim() : "";
   if (title.length < 1 || title.length > 180) return { reason: "invalid title" };
   const sku = typeof product.sku === "string" ? product.sku.trim() : "";
@@ -130,7 +149,7 @@ function buildRow(product, priv) {
   const shipping = priv.supplier_shipping_cents;
   if (typeof cost !== "number" || !Number.isInteger(cost) || cost < 0) return { reason: "invalid cost" };
   if (typeof shipping !== "number" || !Number.isInteger(shipping) || shipping < 0) return { reason: "invalid shipping" };
-  if (payoutBelowFloor(product.price_cents, cost, shipping)) return { reason: "payout below floor" };
+  if (payoutBelowFloor(product.price_cents, cost, shipping, feeBps)) return { reason: "payout below floor" };
   return {
     row: {
       slug: product.slug,
@@ -190,6 +209,16 @@ function main() {
     return;
   }
 
+  const path = process.env.DATABASE_PATH ?? "data/xvaisle.sqlite";
+  let db;
+  try {
+    db = new DatabaseSync(path);
+  } catch {
+    fail("The store database could not be opened.");
+    return;
+  }
+  const feeBps = importFeeBps(db);
+
   const publicCounts = countSlugs(publicProducts);
   const privateCounts = countSlugs(privateProducts);
   const privateBySlug = new Map();
@@ -227,7 +256,7 @@ function main() {
       skipped.push({ slug, reason: "no private row" });
       continue;
     }
-    const built = buildRow(product, priv);
+    const built = buildRow(product, priv, feeBps);
     if (built.reason) skipped.push({ slug, reason: built.reason });
     else ready.push(built.row);
   }
@@ -235,15 +264,6 @@ function main() {
   for (const [slug, count] of privateCounts) {
     if (publicCounts.has(slug)) continue;
     skipped.push({ slug, reason: count > 1 ? "duplicate slug" : "no public row" });
-  }
-
-  const path = process.env.DATABASE_PATH ?? "data/xvaisle.sqlite";
-  let db;
-  try {
-    db = new DatabaseSync(path);
-  } catch {
-    fail("The store database could not be opened.");
-    return;
   }
 
   const operator = accountByEmail(db, operatorEmail);
@@ -298,7 +318,6 @@ function main() {
   ensureColumn(db, "listings", "supplier_order_url", "TEXT");
   ensureColumn(db, "listings", "supplier_email", "TEXT");
 
-  const feeBps = platformFeeBps();
   const insertCatalog = db.prepare(
     `INSERT INTO supplier_catalog (
        id, account_id, sku, title, cost_cents, shipping_cents, origin, approved, created_at

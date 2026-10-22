@@ -3,7 +3,7 @@ import type { PublicAccount } from "./accounts";
 import { getAccount } from "./accounts";
 import { getApprovedCatalog } from "./catalog";
 import { connectReady, getConnected } from "./connect";
-import { platformFeeBps, quoteSplit, saleBlock, sellerLedgerEnabled } from "./fees";
+import { isOwnStore, platformFeeBps, quoteSplit, saleBlock, sellerLedgerEnabled } from "./fees";
 import { resellerDebtCents } from "./ledger";
 import { getListing, publishListing } from "./store";
 
@@ -47,7 +47,7 @@ export type PriceQuote = {
   error: string | null;
 };
 
-export function quoteForAccount(input: { catalogItemId: string; priceCents: number }) {
+export function quoteForAccount(input: { catalogItemId: string; priceCents: number; sellerAccountId?: string | null }) {
   const item = input.catalogItemId ? getApprovedCatalog(input.catalogItemId) : null;
   if (!item) return { status: 400 as const, error: "Choose a supplier-approved catalog item." };
   if (!Number.isInteger(input.priceCents)) return { status: 400 as const, error: "Set a price before the store can sell it." };
@@ -57,6 +57,7 @@ export function quoteForAccount(input: { catalogItemId: string; priceCents: numb
     supplierCostCents: item.costCents,
     supplierShippingCents: item.shippingCents,
     feeBps: platformFeeBps(),
+    sellerAccountId: input.sellerAccountId,
   });
   const quote: PriceQuote = {
     priceCents: input.priceCents,
@@ -71,7 +72,7 @@ export function quoteForAccount(input: { catalogItemId: string; priceCents: numb
 
 export function publishForAccount(account: PublicAccount, input: PublishBody) {
   const publishing = input.published !== false;
-  const feeBps = sellerLedgerEnabled() ? platformFeeBps() : 0;
+  const feeBps = isOwnStore(account.id) ? 0 : sellerLedgerEnabled() ? platformFeeBps() : 0;
   const existing = getListing(input.productId);
   let supplierAccountId = existing?.supplierAccountId ?? null;
   let supplierCostCents = existing?.supplierCostCents ?? 0;
@@ -112,6 +113,7 @@ export function publishForAccount(account: PublicAccount, input: PublishBody) {
       supplierCostCents,
       supplierShippingCents,
       feeBps,
+      sellerAccountId: account.id,
     });
     const problem = saleBlock({ priceCents: input.priceCents, split, supplierAccountId });
     if (problem) return { status: 400 as const, error: problem };

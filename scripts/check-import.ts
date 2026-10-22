@@ -11,13 +11,14 @@ function writeCatalog(dir: string, name: string, products: unknown) {
   return path;
 }
 
-function runImport(paths: string[]) {
+function runImport(paths: string[], env: Record<string, string> = {}) {
   return spawnSync(process.execPath, ["scripts/catalog-import.mjs", ...paths], {
     env: {
       ...process.env,
       DATABASE_PATH: process.env.DATABASE_PATH,
       STORE_OPERATOR_EMAIL: "operator@example.com",
       IMPORT_SUPPLIER_EMAIL: "supplier@example.com",
+      ...env,
     },
     encoding: "utf8",
   });
@@ -86,12 +87,12 @@ async function main() {
     },
   ]);
   const badPrivate = writeCatalog(dir, "bad-private.json", [
-    { slug: "example-loss", supplier_cost_cents: 400, supplier_shipping_cents: 0 },
+    { slug: "example-loss", supplier_cost_cents: 430, supplier_shipping_cents: 0 },
   ]);
   closeDb();
   const rejected = runImport([badPublic, badPrivate]);
   if (rejected.status === 0) throw new Error("a payout under the floor should fail");
-  if (rejected.stdout.includes("400")) throw new Error("stdout leaked a private field");
+  if (rejected.stdout.includes("430")) throw new Error("stdout leaked a private field");
   const afterListings = Number(
     (getDb().prepare("SELECT COUNT(*) AS n FROM listings").get() as { n: number | bigint }).n,
   );
@@ -151,6 +152,66 @@ async function main() {
     }),
   );
   if (buyerQuote.status !== 403) throw new Error("a buyer should not receive a supplier quote");
+
+  const twentyPublic = writeCatalog(dir, "twenty-public.json", [
+    {
+      slug: "twenty-pan",
+      sku: "TW-PAN",
+      title: "Twenty dollar pan",
+      price_cents: 2000,
+      description: "A made-up pan whose old 10% fee was the only reason it missed the floor.",
+      image: "/art/products/twenty-pan.jpg",
+      source_url: "https://example.invalid/twenty-hidden",
+    },
+  ]);
+  const twentyPrivate = writeCatalog(dir, "twenty-private.json", [
+    { slug: "twenty-pan", supplier_cost_cents: 1700, supplier_shipping_cents: 0 },
+  ]);
+  closeDb();
+  const twenty = runImport([twentyPublic, twentyPrivate]);
+  if (twenty.status !== 0) throw new Error(twenty.stderr || twenty.stdout || "own-store import failed");
+  if (!twenty.stdout.includes("twenty-pan → published")) throw new Error("a twenty dollar own-store import clears the floor");
+  if (twenty.stdout.includes("1700")) throw new Error("stdout leaked a private field");
+  const twentyRow = getDb().prepare("SELECT fee_bps, account_id FROM listings WHERE product_id = 'twenty-pan'").get() as
+    | { fee_bps: number | null; account_id: string }
+    | undefined;
+  if (!twentyRow || twentyRow.account_id !== operator.account.id) throw new Error("the twenty dollar import should be published");
+  if (twentyRow.fee_bps !== 0) throw new Error("an own-store import stores a zero fee");
+  console.log("pass a twenty dollar own-store import clears the floor");
+  console.log("pass an own-store import stores a zero fee");
+
+  const missedPublic = writeCatalog(dir, "missed-public.json", [
+    {
+      slug: "missed-pan",
+      sku: "MS-PAN",
+      title: "Missed pan",
+      price_cents: 2000,
+      description: "The same pan, imported before the operator account resolves.",
+      image: "/art/products/missed-pan.jpg",
+      source_url: "https://example.invalid/missed-hidden",
+    },
+  ]);
+  const missedPrivate = writeCatalog(dir, "missed-private.json", [
+    { slug: "missed-pan", supplier_cost_cents: 1700, supplier_shipping_cents: 0 },
+  ]);
+  closeDb();
+  const unresolved = runImport([missedPublic, missedPrivate], { STORE_OPERATOR_EMAIL: "missing@example.com" });
+  if (unresolved.status === 0) throw new Error("an unresolved operator should not import");
+  if (!`${unresolved.stderr}${unresolved.stdout}`.includes("The operator or supplier account is not on file.")) {
+    throw new Error("an unresolved operator keeps today's refusal");
+  }
+  if (getDb().prepare("SELECT product_id FROM listings WHERE product_id = 'missed-pan'").get()) {
+    throw new Error("an unresolved operator does not import at zero fee");
+  }
+  console.log("pass an unresolved operator does not import at zero fee");
+
+  closeDb();
+  const unset = runImport([missedPublic, missedPrivate], { STORE_OPERATOR_EMAIL: "" });
+  if (unset.status === 0) throw new Error("an unset operator email should not import");
+  if (!`${unset.stderr}${unset.stdout}`.includes("Set STORE_OPERATOR_EMAIL and IMPORT_SUPPLIER_EMAIL.")) {
+    throw new Error("an unset operator email keeps today's refusal");
+  }
+  console.log("pass an unset operator email does not import at zero fee");
 
   closeDb();
   console.log("import checks ok");

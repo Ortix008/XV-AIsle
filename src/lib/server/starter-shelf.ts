@@ -80,11 +80,19 @@ export function listedOnGrid(listing: {
   return visibleOnShop(listing);
 }
 
-function shelfOperatorId() {
-  const preferred = process.env.STORE_OPERATOR_EMAIL?.trim().toLowerCase();
+let cachedOperatorEmail = "";
+let cachedOperatorId: string | null = null;
+
+/** One cached lookup. An unset email or an unknown account is not an own store. */
+export function shelfOperatorId() {
+  const preferred = process.env.STORE_OPERATOR_EMAIL?.trim().toLowerCase() ?? "";
   if (!preferred) return null;
+  if (cachedOperatorEmail === preferred && cachedOperatorId) return cachedOperatorId;
   const row = getDb().prepare("SELECT id FROM accounts WHERE email = ?").get(preferred) as { id: string } | undefined;
-  return row?.id ?? null;
+  if (!row) return null;
+  cachedOperatorEmail = preferred;
+  cachedOperatorId = row.id;
+  return row.id;
 }
 
 /** Take Wood Tray off the shelf without deleting the row. Runs on every boot. */
@@ -179,6 +187,7 @@ function ensureQaCheckoutListing(operatorId: string) {
     supplierCostCents: QA_SUPPLIER_COST_CENTS,
     supplierShippingCents: 0,
     feeBps: platformFeeBps(),
+    sellerAccountId: operatorId,
   });
   if (saleBlock({ priceCents: QA_PRICE_CENTS, split, supplierAccountId: supplierId })) return;
   const existing = getListing(QA_CHECKOUT_PRODUCT_ID);

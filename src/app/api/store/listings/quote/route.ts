@@ -36,6 +36,7 @@ export async function POST(request: Request) {
   const result = quoteForAccount({
     catalogItemId: body.catalogItemId,
     priceCents: body.priceCents ?? 0,
+    sellerAccountId: account.id,
   });
   if (result.status !== 200) return Response.json({ error: result.error }, { status: result.status });
   if (account.role === "admin") {
