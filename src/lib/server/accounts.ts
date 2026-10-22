@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { isAccountRole, type AccountRole } from "../account";
 import { isCommonPassword } from "../common-passwords";
-import { COMMON_PASSWORD, PASSWORD_CHANGED_SUBJECT, PASSWORD_CHANGED_TEXT } from "../signup-copy";
+import { COMMON_PASSWORD, PASSWORD_CHANGED_SUBJECT, passwordChangedText } from "../signup-copy";
 import { changed, getDb } from "./db";
 import { logBackgroundMailError, sendMail, sendVerificationLink } from "./mail";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password";
@@ -239,7 +239,7 @@ export function consumePasswordReset(token: string, password: string) {
     void sendMail({
       to: owner.email,
       subject: PASSWORD_CHANGED_SUBJECT,
-      text: PASSWORD_CHANGED_TEXT,
+      text: passwordChangedText(),
     }).catch(logBackgroundMailError);
   }
   return { ok: true as const };

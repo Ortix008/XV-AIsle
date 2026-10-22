@@ -7,6 +7,7 @@ export async function register() {
   const { releaseMatured } = await import("./lib/server/ledger");
   const { notifyUnshippedDelays } = await import("./lib/server/order-routing");
   const { assertProductionAppUrl } = await import("./lib/server/same-origin");
+  const { assertProductionSupportEmail } = await import("./lib/signup-copy");
   const { sweepRateHits } = await import("./lib/server/rate-limit");
   try {
     ensureStarterShelf();
@@ -15,6 +16,7 @@ export async function register() {
   }
   if (process.env.NEXT_PHASE === "phase-production-build") return;
   assertProductionAppUrl();
+  assertProductionSupportEmail();
   sweepRateHits();
   const sweep = async () => {
     await sweepStuckFulfillment();

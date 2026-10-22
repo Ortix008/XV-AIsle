@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SIGNUP_CHECK_EMAIL, SIGNUP_TAKEN_SUBJECT, SIGNUP_TAKEN_TEXT } from "@/lib/signup-copy";
+import { SIGNUP_CHECK_EMAIL, SIGNUP_TAKEN_SUBJECT, signupTakenText } from "@/lib/signup-copy";
 import { signUp } from "@/lib/server/accounts";
 import { logBackgroundMailError, sendMail } from "@/lib/server/mail";
 import { allowAccount, allowClient } from "@/lib/server/rate-limit";
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     password: passwordText,
   });
   if ("error" in result && result.error === "That email already has an account. Sign in instead.") {
-    void sendMail({ to: result.email, subject: SIGNUP_TAKEN_SUBJECT, text: SIGNUP_TAKEN_TEXT }).catch(logBackgroundMailError);
+    void sendMail({ to: result.email, subject: SIGNUP_TAKEN_SUBJECT, text: signupTakenText() }).catch(logBackgroundMailError);
     return checkEmail();
   }
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });

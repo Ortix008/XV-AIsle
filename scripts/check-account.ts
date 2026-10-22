@@ -35,8 +35,34 @@ console.log("account checks ok", { commission: resellerCommissionLabel() });
 
 async function checkPasswordReset() {
   process.env.DATABASE_PATH = ":memory:";
+  process.env.SUPPORT_EMAIL = "support@example.test";
   const { signUp, requestPasswordReset, consumePasswordReset, signIn } = await import("../src/lib/server/accounts");
-  const { COMMON_PASSWORD, PASSWORD_CHANGED_SUBJECT, PASSWORD_CHANGED_TEXT } = await import("../src/lib/signup-copy");
+  const { COMMON_PASSWORD, PASSWORD_CHANGED_SUBJECT, SIGNIN_400, SIGNUP_CHECK_EMAIL, SIGNUP_TAKEN_SUBJECT, passwordChangedText, signupTakenText } =
+    await import("../src/lib/signup-copy");
+  if (SIGNUP_CHECK_EMAIL !== "Check your email. We sent you a message with the next step.") {
+    throw new Error("signup check-email copy");
+  }
+  if (SIGNUP_TAKEN_SUBJECT !== "Someone tried to sign up with your email") throw new Error("taken subject copy");
+  if (
+    signupTakenText() !==
+    "Someone just tried to create an XV-AIsle account with this email address. You already have an account, so nothing changed. If it was you, sign in or reset your password. If it wasn't you, you can ignore this email. Questions? Email us at support@example.test."
+  ) {
+    throw new Error("taken email copy");
+  }
+  if (COMMON_PASSWORD !== "That password is easy to guess. Please choose a different one.") throw new Error("common password copy");
+  if (PASSWORD_CHANGED_SUBJECT !== "Your XV-AIsle password was changed") throw new Error("password changed subject");
+  if (
+    passwordChangedText() !==
+    "Your XV-AIsle password was just changed. If you did this, you're all set. If you didn't, reset your password and email us at support@example.test so we can help."
+  ) {
+    throw new Error("password changed email copy");
+  }
+  if (SIGNIN_400 !== "Enter your email and password.") throw new Error("signin 400 copy");
+  process.env.SUPPORT_EMAIL = "  support@example.test  ";
+  if (!passwordChangedText().endsWith("support@example.test so we can help.")) {
+    throw new Error("SUPPORT_EMAIL is trimmed when the email is written");
+  }
+  process.env.SUPPORT_EMAIL = "support@example.test";
   const { logBackgroundMailError, setMailDelivery, startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
   const { getDb } = await import("../src/lib/server/db");
 
@@ -88,7 +114,13 @@ async function checkPasswordReset() {
   const saved = consumePasswordReset(token, "new-password");
   if ("error" in saved) throw new Error(saved.error);
   const note = changedMail.filter((message) => message.subject === PASSWORD_CHANGED_SUBJECT);
-  if (note.length !== 1 || note[0]?.to !== "reset-buyer@example.com" || note[0]?.text !== PASSWORD_CHANGED_TEXT) {
+  if (
+    note.length !== 1 ||
+    note[0]?.to !== "reset-buyer@example.com" ||
+    note[0]?.subject !== "Your XV-AIsle password was changed" ||
+    note[0]?.text !==
+      "Your XV-AIsle password was just changed. If you did this, you're all set. If you didn't, reset your password and email us at support@example.test so we can help."
+  ) {
     throw new Error("a password reset emails that the password changed");
   }
   stopMailCapture();
@@ -215,6 +247,7 @@ async function postJson(path: string, body: unknown, headers: Record<string, str
 
 async function checkSignInHardening() {
   delete process.env.TRUST_PROXY;
+  process.env.SUPPORT_EMAIL = "support@example.test";
   process.env.AUTH_SECRET = "signin-hardening-test";
   const { getDb } = await import("../src/lib/server/db");
   const { signIn, signUp, startTotp, confirmTotp, finishTotpSignIn, requestPasswordReset } = await import(
@@ -222,7 +255,7 @@ async function checkSignInHardening() {
   );
   const { totpCode } = await import("../src/lib/server/totp");
   const { setMailDelivery, startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
-  const { COMMON_PASSWORD, SIGNUP_CHECK_EMAIL, SIGNUP_TAKEN_SUBJECT, SIGNUP_TAKEN_TEXT } = await import("../src/lib/signup-copy");
+  const { COMMON_PASSWORD, SIGNUP_CHECK_EMAIL, SIGNUP_TAKEN_SUBJECT, signupTakenText } = await import("../src/lib/signup-copy");
   const db = getDb();
   db.prepare("DELETE FROM rate_hits").run();
   const { allowAttempt, sweepRateHits, RATE_LIMIT_WINDOW_MS } = await import("../src/lib/server/rate-limit");
@@ -268,7 +301,7 @@ async function checkSignInHardening() {
   if (faster < 5 || slower > faster * 4) throw new Error(`sign-in timing diverged (${unknownMs.toFixed(0)}ms vs ${knownMs.toFixed(0)}ms)`);
 
   const arrayPassword = await postJson("signin", { email: "rate-real@example.com", password: ["wrong-pass"] });
-  if (arrayPassword.status !== 400 || arrayPassword.body?.error !== "Send an email and password.") {
+  if (arrayPassword.status !== 400 || arrayPassword.body?.error !== "Enter your email and password.") {
     throw new Error("a non-string password is a 400");
   }
   const libraryPassword = signIn({ email: "rate-real@example.com", password: ["wrong-pass"] as unknown as string });
@@ -331,7 +364,7 @@ async function checkSignInHardening() {
   }
   const prefixed = signupFeedbackState({ kind: "error", message: COMMON_PASSWORD });
   if (prefixed.error !== COMMON_PASSWORD || prefixed.notice !== null) {
-    throw new Error("an error flag stays an error when the copy starts with TODO(Wordy)");
+    throw new Error("an error flag stays an error");
   }
   const screen = readFileSync(new URL("../src/components/auth-screens.tsx", import.meta.url), "utf8");
   const signupScreen = screen.slice(
@@ -369,7 +402,14 @@ async function checkSignInHardening() {
     throw new Error("signup does not reveal whether the email exists");
   }
   const takenMail = captured.filter((message) => message.subject === SIGNUP_TAKEN_SUBJECT);
-  if (takenMail.length !== 1 || takenMail[0]?.to !== "fresh-one@example.com" || takenMail[0]?.text !== SIGNUP_TAKEN_TEXT) {
+  if (
+    takenMail.length !== 1 ||
+    takenMail[0]?.to !== "fresh-one@example.com" ||
+    takenMail[0]?.subject !== "Someone tried to sign up with your email" ||
+    takenMail[0]?.text !== signupTakenText() ||
+    takenMail[0]?.text !==
+      "Someone just tried to create an XV-AIsle account with this email address. You already have an account, so nothing changed. If it was you, sign in or reset your password. If it wasn't you, you can ignore this email. Questions? Email us at support@example.test."
+  ) {
     throw new Error("an existing signup emails the owner");
   }
   for (let index = 0; index < 6; index += 1) {
@@ -633,8 +673,60 @@ async function checkSignInHardening() {
   if (!compose.includes('TRUST_PROXY: "1"') || !compose.includes("caddy")) {
     throw new Error("Docker Compose sets TRUST_PROXY=1 behind Caddy");
   }
-  if (!bootFile.includes("assertProductionAppUrl()") || !bootFile.includes("sweepRateHits()")) {
-    throw new Error("boot checks APP_URL and sweeps rate hits");
+  if (!bootFile.includes("assertProductionAppUrl()") || !bootFile.includes("assertProductionSupportEmail()") || !bootFile.includes("sweepRateHits()")) {
+    throw new Error("boot checks APP_URL and SUPPORT_EMAIL and sweeps rate hits");
+  }
+  const supportLine = example.split("\n").find((line) => line.startsWith("SUPPORT_EMAIL="));
+  if (supportLine !== "SUPPORT_EMAIL=") throw new Error("SUPPORT_EMAIL example stays blank");
+  const copySource = readFileSync(new URL("../src/lib/signup-copy.ts", import.meta.url), "utf8");
+  if (copySource.includes("@") || example.includes("xvaisle.team@gmail.com") || readme.includes("xvaisle.team@gmail.com")) {
+    throw new Error("the support address stays in the environment");
+  }
+
+  const { assertProductionSupportEmail } = await import("../src/lib/signup-copy");
+  const supportErrors: string[] = [];
+  const writeSupport = console.error;
+  console.error = (...args: unknown[]) => {
+    supportErrors.push(args.map((part) => String(part)).join(" "));
+  };
+  const supportEnv = process.env.NODE_ENV;
+  const supportMail = process.env.SUPPORT_EMAIL;
+  const supportPhase = process.env.NEXT_PHASE;
+  try {
+    setNodeEnv("development");
+    delete process.env.SUPPORT_EMAIL;
+    assertProductionSupportEmail();
+    setNodeEnv("production");
+    process.env.NEXT_PHASE = "phase-production-build";
+    assertProductionSupportEmail();
+    delete process.env.NEXT_PHASE;
+    let missingSupport = false;
+    try {
+      assertProductionSupportEmail();
+    } catch {
+      missingSupport = true;
+    }
+    if (!missingSupport) throw new Error("production refuses to boot without SUPPORT_EMAIL");
+    process.env.SUPPORT_EMAIL = "   ";
+    let blankSupport = false;
+    try {
+      assertProductionSupportEmail();
+    } catch {
+      blankSupport = true;
+    }
+    if (!blankSupport) throw new Error("production refuses to boot when SUPPORT_EMAIL is blank");
+    process.env.SUPPORT_EMAIL = "support@example.test";
+    assertProductionSupportEmail();
+    if (!supportErrors.join("\n").includes("SUPPORT_EMAIL is unset")) {
+      throw new Error("an unset SUPPORT_EMAIL is logged at boot");
+    }
+  } finally {
+    console.error = writeSupport;
+    setNodeEnv(supportEnv);
+    if (supportMail == null) delete process.env.SUPPORT_EMAIL;
+    else process.env.SUPPORT_EMAIL = supportMail;
+    if (supportPhase == null) delete process.env.NEXT_PHASE;
+    else process.env.NEXT_PHASE = supportPhase;
   }
 
   console.log("sign-in hardening checks ok");

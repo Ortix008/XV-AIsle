@@ -138,6 +138,7 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | `SMTP_USER` | SMTP username. Optional when the server does not require auth. |
 | `SMTP_PASS` | SMTP password. |
 | `MAIL_FROM` | From address. Required when `SMTP_HOST` is set. |
+| `SUPPORT_EMAIL` | Address in the signup and password-changed emails. Required in production. |
 | `STORE_RETURNS` | Legacy store line. Buyers are not shown it. Save each supplier's return address in admin instead, and do not put a home address here. |
 | `STORE_SUPPORT_EMAIL` | Support email shown before the operator saves one at `/shop/safety`. |
 | `STORE_OPERATOR_EMAIL` | Account that receives the two starter products. Empty means nobody does. |

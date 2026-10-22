@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { SIGNIN_400 } from "@/lib/signup-copy";
 import { finishTotpSignIn, signIn } from "@/lib/server/accounts";
 import { allowAccount, allowClient } from "@/lib/server/rate-limit";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/server/session-cookie";
@@ -12,7 +13,7 @@ function throttled() {
 }
 
 function badInput() {
-  return NextResponse.json({ error: "Send an email and password." }, { status: 400 });
+  return NextResponse.json({ error: SIGNIN_400 }, { status: 400 });
 }
 
 export async function POST(request: Request) {
