@@ -18,7 +18,6 @@ function OperatorDeskLink({ className }: { className: string }) {
 
 const nav = [
   { href: "/shop", label: "Shop" },
-  { href: "/shop/usa", label: "Made in the USA" },
   { href: "/shop/small", label: "Small business" },
   { href: "/#aisles", label: "Aisles" },
   { href: HOW_WE_CHECK_HREF, label: "How we check" },
@@ -118,15 +117,17 @@ export function StoreHeader() {
             <img src="/xv-aisle-logo.svg" height={32} width={115} alt="XV-AIsle" className="brand-logo" />
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground min-[900px]:flex" aria-label="Shop">
-            {nav.slice(0, 5).map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="link-slide inline-flex min-h-[var(--tap)] min-w-[var(--tap)] items-center justify-center hover:text-foreground"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {nav
+              .filter((item) => item.href !== "/account")
+              .map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="link-slide inline-flex min-h-[var(--tap)] min-w-[var(--tap)] items-center justify-center hover:text-foreground"
+                >
+                  {item.label}
+                </Link>
+              ))}
           </nav>
           <div className="header-tools flex shrink-0 items-center text-sm text-muted-foreground">
             <Link

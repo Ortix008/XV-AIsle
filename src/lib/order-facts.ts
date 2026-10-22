@@ -2,6 +2,22 @@
 
 export const US_SUPPLIER_SHIP = "Ships from a US supplier. Tracking emailed when it ships.";
 export const TRACKING_SHIP = "Tracking emailed when it ships.";
+/** Place line a shopper may see. No city, no supplier name. */
+export const SHOPPER_PLACE = "Ships from a US supplier.";
+
+const ENGINE_SHIP_SENTENCE =
+  /Ships from [^.\n]{0,240} through [^.\n]{0,240}\.(?:\s*Plan on [^.\n]{0,160} days\.)?(?:\s*This is an import, not a week-of order\.)?/g;
+
+/** Drop the desk engine's ship sentence, including its day plan and import clause. */
+export function shopperDescription(value: string) {
+  return value
+    .replace(ENGINE_SHIP_SENTENCE, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 const US_STATE_CODES = new Set([
   "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA",
@@ -49,6 +65,16 @@ export function isUsLocation(value?: string | null) {
     return true;
   }
   return US_STATE_NAMES.has(last.toLowerCase().replace(/\./g, ""));
+}
+
+/**
+ * The place sentence needs a real supplier, a US ships-from, and the confirmed flag.
+ * A public listing omits the city and carries the result on supplierUsConfirmed.
+ */
+export function shopperMayNameUsSupplier(source?: ShipSource | null) {
+  if (!source) return false;
+  if (source.shipsFrom != null) return usSupplierConfirmed(source);
+  return source.supplierUsConfirmed === true;
 }
 
 /** All three have to be true: a real supplier, a US ships-from, and the confirmed flag. */

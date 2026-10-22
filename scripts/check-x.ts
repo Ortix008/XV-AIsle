@@ -55,6 +55,24 @@ assert(
 );
 assert(!authScreens.includes("/brand/logo-official-xo.png"), "Continue with X does not use the old logo");
 assert(!authScreens.includes("auth-email-row"), "Continue with X is not beside the email field");
+const releaseChecklist = readFileSync(join(process.cwd(), "docs/release-checklist.md"), "utf8");
+for (const name of ["X_CLIENT_ID", "X_CLIENT_SECRET", "X_REDIRECT_URI"]) {
+  assert(releaseChecklist.includes(name), `the release checklist names ${name}`);
+}
+assert(/never print the values/i.test(releaseChecklist), "the release checklist says never to print the X login values");
+assert(releaseChecklist.includes("A receipt email arrives after a 4242 test checkout."), "the release checklist includes the 4242 receipt email");
+assert(releaseChecklist.includes("A full Continue with X login completes."), "the release checklist includes a full Continue with X login");
+assert(
+  releaseChecklist.includes("Stripe is confirmed in TEST mode. Check the key prefix type only. Do not print the key."),
+  "the release checklist checks Stripe test mode by prefix type only",
+);
+assert(releaseChecklist.includes("banned-words.md"), "the release checklist parses banned-words.md against live pages");
+assert(!/sk_live_|sk_test_|ghp_|xox[baprs]-|-----BEGIN/.test(releaseChecklist), "the release checklist has no secret values");
+const postLaunch = readFileSync(join(process.cwd(), "docs/post-launch.md"), "utf8");
+assert(
+  postLaunch.includes("Buyer order list on /account (deferred; the receipt email covers it for launch)."),
+  "post-launch defers the buyer order list",
+);
 
 const saved = {
   id: process.env.X_CLIENT_ID,
@@ -211,6 +229,8 @@ assert(configuredLocal === "https://xvaisle.com/shop/sheet-pan", "a localhost PU
 assert(!configuredLocal.includes("localhost") && !configuredLocal.includes("127.0.0.1"), "the configured share URL has no localhost");
 const shareMarkup = renderToStaticMarkup(createElement(FindShare, { title: "Quarter sheet pan", productId: "sheet-pan" }));
 assert(shareMarkup.includes("https://x.com/intent/post"), "the share link renders without a browser");
+assert(shareMarkup.includes("Share this find") && shareMarkup.includes('aria-label="Share this find on X"'), "the find share button uses the approved label");
+assert(shareMarkup.includes('aria-hidden="true"') && !shareMarkup.includes("TODO("), "the find share button hides the X icon and renders no TODO( string");
 assert(shareMarkup.includes("xvaisle.com") && !shareMarkup.includes("localhost") && !shareMarkup.includes("127.0.0.1"), "the rendered share link stays on the public site");
 process.env.PUBLIC_SITE_URL = "https://preview.xvaisle.com";
 const previewCard = shareCard();

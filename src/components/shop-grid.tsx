@@ -7,7 +7,7 @@ import { NightMotif } from "@/components/night-motif";
 import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
 import { money } from "@/lib/money";
-import { shipDaysConfirmed, unconfirmedShipLine, usSupplierConfirmed } from "@/lib/order-facts";
+import { SHOPPER_PLACE, TRACKING_SHIP, shopperMayNameUsSupplier } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
 
 export type ShopCard = {
@@ -16,7 +16,7 @@ export type ShopCard = {
   priceCents: number;
   image: string;
   supplierName?: string;
-  supplierOrigin: string;
+  supplierOrigin?: string;
   shipsFrom?: string | null;
   supplierUsConfirmed?: boolean;
   shipDaysMin: number;
@@ -33,10 +33,29 @@ function eyebrow(listing: ShopCard) {
   if (listing.kind === "bundle") return "Bundle";
   if (listing.brand) return listing.brand;
   if (listing.sample) return "Sample";
-  if (listing.madeInUsa) return "Made in the USA";
   if (listing.shelf === "small") return "Small business";
-  if (usSupplierConfirmed(listing) && listing.supplierOrigin.trim()) return listing.supplierOrigin;
   return "";
+}
+
+/** Confirmed cards name a US supplier. The day window stays off the grid. */
+export function shopCardShipPhrase(listing: ShopCard) {
+  if (shopperMayNameUsSupplier(listing)) return SHOPPER_PLACE;
+  return TRACKING_SHIP;
+}
+
+export function ShopCardCopy({ listing }: { listing: ShopCard }) {
+  const label = eyebrow(listing);
+  const phrase = shopCardShipPhrase(listing);
+  return (
+    <div className="shop-card-text">
+      {label ? <p className="shop-card-eyebrow">{label}</p> : null}
+      <h3 className="shop-card-title">{listing.title}</h3>
+      <p className="shop-card-price">
+        {money(listing.priceCents / 100)}
+        {phrase ? <> · {phrase}</> : null}
+      </p>
+    </div>
+  );
 }
 
 export function ShopGrid({
@@ -185,28 +204,7 @@ export function ShopGrid({
                 ) : (
                   <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
                 )}
-                <div className="shop-card-text">
-                  <p className="shop-card-eyebrow" aria-hidden={eyebrow(listing) ? undefined : true}>
-                    {eyebrow(listing)}
-                  </p>
-                  <h3 className="shop-card-title">{listing.title}</h3>
-                  <p className="shop-card-price">
-                  {money(listing.priceCents / 100)}
-                  {listing.sample ? null : (
-                    <>
-                      {" · "}
-                      {usSupplierConfirmed(listing) &&
-                      shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax) ? (
-                        <>
-                          ships from {listing.supplierOrigin} in {listing.shipDaysMin}–{listing.shipDaysMax} days
-                        </>
-                      ) : (
-                        unconfirmedShipLine(listing)
-                      )}
-                    </>
-                  )}
-                  </p>
-                </div>
+                <ShopCardCopy listing={listing} />
               </Link>
             </Reveal>
           );

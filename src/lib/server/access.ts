@@ -9,6 +9,15 @@ export type Actor = {
   totpEnabled: boolean;
 };
 
+/** Desk routes. A signed-out visitor signs in. An admin needs a verified email. */
+export function operatorOnly(account: { role?: string | null; emailVerified?: boolean | null } | null) {
+  if (!account) return { status: 401 as const, error: "Sign in first." as const };
+  if (account.role !== "admin" || account.emailVerified !== true) {
+    return { status: 403 as const, error: "Only a verified operator can do that." as const };
+  }
+  return null;
+}
+
 export function verifiedAdmin(account: Actor | null) {
   if (!account) return { status: 401 as const, error: "Sign in first." };
   if (account.role !== "admin" || !account.emailVerified) {

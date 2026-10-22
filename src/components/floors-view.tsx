@@ -18,11 +18,10 @@ export function FloorsView() {
   const [origin, setOrigin] = useState("");
   const [floors, setFloors] = useState<FloorRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [shops, setShops] = useState<{ id: string; name: string; city: string; makes: string; madeInUsa: boolean }[]>([]);
+  const [shops, setShops] = useState<{ id: string; name: string; city: string; makes: string }[]>([]);
   const [shopName, setShopName] = useState("");
   const [shopCity, setShopCity] = useState("");
   const [shopMakes, setShopMakes] = useState("");
-  const [shopUsa, setShopUsa] = useState(true);
 
   useEffect(() => {
     fetch("/api/floors")
@@ -147,11 +146,7 @@ export function FloorsView() {
             {shops.map((shop) => (
               <li key={shop.id} className="py-2 text-sm">
                 <span className="font-medium">{shop.name}</span>
-                <span className="text-muted-foreground">
-                  {" "}
-                  · {shop.city}
-                  {shop.madeInUsa ? " · Made in the USA" : ""}
-                </span>
+                <span className="text-muted-foreground"> · {shop.city}</span>
                 <span className="mt-0.5 block text-muted-foreground">{shop.makes}</span>
               </li>
             ))}
@@ -164,7 +159,7 @@ export function FloorsView() {
               void fetch("/api/shops/small", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: shopName, city: shopCity, makes: shopMakes, madeInUsa: shopUsa }),
+                body: JSON.stringify({ name: shopName, city: shopCity, makes: shopMakes }),
               })
                 .then(async (response) => {
                   const data = (await response.json()) as { error?: string; shops?: typeof shops };
@@ -191,10 +186,6 @@ export function FloorsView() {
             <label className="flex flex-col gap-1 text-sm">
               What they make
               <input value={shopMakes} onChange={(event) => setShopMakes(event.target.value)} className="h-9 border bg-background px-2" required />
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={shopUsa} onChange={(event) => setShopUsa(event.target.checked)} />
-              They make it in the USA
             </label>
             <button type="submit" className="w-fit border border-foreground px-3 py-1.5 text-sm">
               Add the business

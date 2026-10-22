@@ -21,7 +21,6 @@ export function GET() {
         image: page.image ? `${origin}${page.image}` : "",
         availability: "in stock",
         brand: page.supplierName,
-        madeInUsa: page.madeInUsa,
         shelf: page.shelf,
       };
     });
