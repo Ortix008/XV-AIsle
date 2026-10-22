@@ -13,6 +13,7 @@ import { RETURNS_EMAILED } from "../return-address";
 import { samplePriceCents, sampleStarters } from "../sample-shelf";
 import { getDb } from "./db";
 import { platformFeeBps, quoteSplit, saleBlock } from "./fees";
+import { shelfOperatorId } from "./store-operator";
 import { getListing, publishListing } from "./store";
 
 /** Preview and local checks only. Production never seeds, even when the flag is set. */
@@ -78,21 +79,6 @@ export function listedOnGrid(listing: {
 }) {
   if (isQaCheckoutListing(listing)) return false;
   return visibleOnShop(listing);
-}
-
-let cachedOperatorEmail = "";
-let cachedOperatorId: string | null = null;
-
-/** One cached lookup. An unset email or an unknown account is not an own store. */
-export function shelfOperatorId() {
-  const preferred = process.env.STORE_OPERATOR_EMAIL?.trim().toLowerCase() ?? "";
-  if (!preferred) return null;
-  if (cachedOperatorEmail === preferred && cachedOperatorId) return cachedOperatorId;
-  const row = getDb().prepare("SELECT id FROM accounts WHERE email = ?").get(preferred) as { id: string } | undefined;
-  if (!row) return null;
-  cachedOperatorEmail = preferred;
-  cachedOperatorId = row.id;
-  return row.id;
 }
 
 /** Take Wood Tray off the shelf without deleting the row. Runs on every boot. */

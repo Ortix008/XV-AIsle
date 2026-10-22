@@ -16,7 +16,7 @@
  * Supplier shipping is added once per order, not once per unit.
  */
 
-import { shelfOperatorId } from "./starter-shelf";
+import { shelfOperatorId } from "./store-operator";
 
 export const FEE_BPS_MIN = 800;
 export const FEE_BPS_MAX = 1200;
