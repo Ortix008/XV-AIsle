@@ -765,6 +765,19 @@ async function main() {
   const { default: ReturnsPage } = await import("../src/app/shop/returns/page");
   const returnsHtml = renderToStaticMarkup(createElement(ReturnsPage)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
   assert(returnsHtml.includes(damagedLine), "the returns page renders the damaged-item line");
+  const { NextRequest } = await import("next/server");
+  const { proxy } = await import("../src/proxy");
+  function deskRequest(token?: string) {
+    return new NextRequest("http://127.0.0.1/desk", token ? { headers: { cookie: `${SESSION_COOKIE}=${token}` } } : undefined);
+  }
+  const buyerDesk = proxy(deskRequest(buyer.token));
+  const buyerLocation = buyerDesk.headers.get("location");
+  assert(buyerDesk.status === 307 || buyerDesk.status === 303, "a signed-in buyer gets a server redirect from the desk");
+  assert(buyerLocation != null && new URL(buyerLocation).pathname === "/", "a signed-in buyer desk redirect sends them home");
+  const signedOutDesk = proxy(deskRequest());
+  assert(signedOutDesk.status === 200 && signedOutDesk.headers.get("location") == null, "a signed-out desk visit keeps the existing response");
+  const operatorDesk = proxy(deskRequest(operator.token));
+  assert(operatorDesk.status === 200 && operatorDesk.headers.get("location") == null, "a verified admin is not redirected away from the desk");
   const unverifiedCookie = { cookie: `${SESSION_COOKIE}=${unverified.token}` };
   const unverifiedFloors = await floorsRoute.GET(new Request("http://127.0.0.1/api/floors", { headers: unverifiedCookie }));
   const unverifiedShops = await smallRoute.GET(new Request("http://127.0.0.1/api/shops/small", { headers: unverifiedCookie }));

@@ -29,6 +29,13 @@ function withSecurity(response: NextResponse, request: NextRequest) {
   return response;
 }
 
+function homeRedirect(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/";
+  url.search = "";
+  return withSecurity(withReferral(NextResponse.redirect(url, 307), request), request);
+}
+
 export function proxy(request: NextRequest) {
   if (!postOriginAllowed(request)) {
     return withSecurity(NextResponse.json({}, { status: 403 }), request);
@@ -43,6 +50,11 @@ export function proxy(request: NextRequest) {
       url.search = "";
       return withSecurity(withReferral(NextResponse.redirect(url), request), request);
     }
+  }
+  if (path === "/desk") {
+    const token = request.cookies.get(SESSION_COOKIE)?.value;
+    const account = accountFromToken(token);
+    if (account && (account.role !== "admin" || !account.emailVerified)) return homeRedirect(request);
   }
   return withSecurity(withReferral(NextResponse.next(), request), request);
 }

@@ -60,8 +60,19 @@ for (const name of ["X_CLIENT_ID", "X_CLIENT_SECRET", "X_REDIRECT_URI"]) {
   assert(releaseChecklist.includes(name), `the release checklist names ${name}`);
 }
 assert(/never print the values/i.test(releaseChecklist), "the release checklist says never to print the X login values");
-assert(releaseChecklist.includes("Continue with X"), "the release checklist asks the smoke test to show Continue with X");
+assert(releaseChecklist.includes("A receipt email arrives after a 4242 test checkout."), "the release checklist includes the 4242 receipt email");
+assert(releaseChecklist.includes("A full Continue with X login completes."), "the release checklist includes a full Continue with X login");
+assert(
+  releaseChecklist.includes("Stripe is confirmed in TEST mode. Check the key prefix type only. Do not print the key."),
+  "the release checklist checks Stripe test mode by prefix type only",
+);
+assert(releaseChecklist.includes("banned-words.md"), "the release checklist parses banned-words.md against live pages");
 assert(!/sk_live_|sk_test_|ghp_|xox[baprs]-|-----BEGIN/.test(releaseChecklist), "the release checklist has no secret values");
+const postLaunch = readFileSync(join(process.cwd(), "docs/post-launch.md"), "utf8");
+assert(
+  postLaunch.includes("Buyer order list on /account (deferred; the receipt email covers it for launch)."),
+  "post-launch defers the buyer order list",
+);
 
 const saved = {
   id: process.env.X_CLIENT_ID,
