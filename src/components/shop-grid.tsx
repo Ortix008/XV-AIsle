@@ -7,7 +7,7 @@ import { NightMotif } from "@/components/night-motif";
 import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
 import { money } from "@/lib/money";
-import { shipDaysConfirmed, unconfirmedShipLine, usSupplierConfirmed } from "@/lib/order-facts";
+import { SHOPPER_PLACE, TRACKING_SHIP } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
 
 export type ShopCard = {
@@ -38,12 +38,10 @@ function eyebrow(listing: ShopCard) {
   return "";
 }
 
+/** Confirmed cards name a US supplier. The day window stays off the grid. */
 export function shopCardShipPhrase(listing: ShopCard) {
-  if (listing.sample) return null;
-  if (usSupplierConfirmed(listing) && shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax)) {
-    return `ships from a US supplier in ${listing.shipDaysMin}–${listing.shipDaysMax} days`;
-  }
-  return unconfirmedShipLine(listing);
+  if (listing.supplierUsConfirmed === true) return SHOPPER_PLACE;
+  return TRACKING_SHIP;
 }
 
 export function ShopCardCopy({ listing }: { listing: ShopCard }) {

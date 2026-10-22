@@ -13,7 +13,7 @@ import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
 import { QA_CHECKOUT_PRODUCT_ID } from "@/lib/qa-checkout";
 import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE } from "@/lib/shelf-copy";
-import { productShipLine, SHOPPER_PLACE, shopperDescription, usSupplierConfirmed } from "@/lib/order-facts";
+import { productShipLine, SHOPPER_PLACE, shopperDescription } from "@/lib/order-facts";
 import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
@@ -62,12 +62,14 @@ export function ProductBuy({
   shareHref,
   testMode = false,
   held = false,
+  shipWindow,
 }: {
   listing: ProductListing;
   returnNote: string;
   shareHref: string;
   testMode?: boolean;
   held?: boolean;
+  shipWindow?: string;
 }) {
   const formReveal = useReveal<HTMLFormElement>(1);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +91,7 @@ export function ProductBuy({
   const world = nightWorldForListing(listing);
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
   const aisleCrumb = productAisleCrumb(listing);
-  const shipWindow = productShipLine(listing);
+  const shipping = shipWindow ?? productShipLine(listing);
 
   useEffect(() => {
     if (details) nameRef.current?.focus();
@@ -274,14 +276,14 @@ export function ProductBuy({
         <section className="product-extra">
           <h2 className="text-lg">Shipping & returns</h2>
           <dl className="mt-3 space-y-3 text-base">
-            {usSupplierConfirmed(listing) ? (
+            {listing.supplierUsConfirmed === true ? (
               <div>
                 <dd className="mt-1">{SHOPPER_PLACE}</dd>
               </div>
             ) : null}
             <div>
               <dt className="text-sm font-medium text-muted-foreground">Shipping</dt>
-              <dd className="mt-1">{shipWindow}</dd>
+              <dd className="mt-1">{shipping}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-muted-foreground">Returns</dt>

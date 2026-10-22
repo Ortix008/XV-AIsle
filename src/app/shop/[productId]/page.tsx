@@ -5,6 +5,7 @@ import { AislePicks, type AislePick } from "@/components/aisle-picks";
 import { ProductBuy } from "@/components/product-buy";
 import { ShopFrame } from "@/components/shop-frame";
 import { money } from "@/lib/money";
+import { productShipLine } from "@/lib/order-facts";
 import { accountFromToken } from "@/lib/server/accounts";
 import { publicListing } from "@/lib/server/order-view";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
@@ -84,6 +85,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
         shareHref={shareHref}
         testMode={stripeTestMode()}
         held={isHeldSample(listing)}
+        shipWindow={productShipLine(listing)}
       />
       <AislePicks aisle={aisle} picks={picks} />
     </ShopFrame>

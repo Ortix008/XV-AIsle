@@ -10,7 +10,7 @@ import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { marginGuard, snapshotOrderCost } from "./money-flow";
 import { changed, getDb } from "./db";
-import { etaFromListing, shopperDescription, usSupplierConfirmed } from "../order-facts";
+import { etaFromListing, shopperDescription } from "../order-facts";
 import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
 import { formatOrderReturn, resolveReturnAddress } from "./supplier-returns";
 import { requestShipment } from "./supplier";
@@ -317,7 +317,7 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     madeInUsa: listing.madeInUsa,
     shelf: listing.shelf,
     sample,
-    supplierUsConfirmed: usSupplierConfirmed(listing),
+    supplierUsConfirmed: listing.supplierUsConfirmed,
     ...(listing.deliveryTime ? { deliveryTime: listing.deliveryTime } : {}),
     ...(whyWePicked ? { whyWePicked } : {}),
     ...(listing.brand ? { brand: listing.brand } : {}),

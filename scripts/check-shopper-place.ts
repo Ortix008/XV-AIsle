@@ -26,18 +26,17 @@ function count(text: string, needle: string) {
 }
 
 const cleaned = shopperDescription(RAW_DESCRIPTION);
-assert(cleaned.includes("A heavy pan."), "the description keeps the product sentence");
-assert(cleaned.includes("Plan on 2–4 days."), "the day plan stays after the engine sentence");
-assert(!cleaned.includes(CITY) && !cleaned.includes("through Harbor"), "the engine ship sentence is stripped");
+assert(cleaned === "A heavy pan.", "the engine ship sentence is cut from the description");
+assert(!cleaned.includes("Plan on") && !cleaned.includes(CITY) && !cleaned.includes("through"), "no engine ship remnant stays");
 assert(
   shopperDescription(`${SHOPPER_PLACE} A pan.`) === `${SHOPPER_PLACE} A pan.`,
   "the approved place line is not an engine sentence",
 );
 assert(
   shopperDescription(
-    "Ships from Shenzhen through Overseas Co. Plan on 12–20 days. This is an import, not a week-of order.",
-  ) === "Plan on 12–20 days. This is an import, not a week-of order.",
-  "an import engine sentence is stripped and the rest stays",
+    "A pan.\n\nShips from Shenzhen through Overseas Co. Plan on 12–20 days. This is an import, not a week-of order.",
+  ) === "A pan.",
+  "an import engine sentence is cut entirely",
 );
 
 const shopperFiles = [
@@ -100,9 +99,10 @@ async function main() {
   const shown = publicShopListing(stored!, false);
   const shownJson = JSON.stringify(shown);
   assert(!("supplierOrigin" in shown) && !("shipsFrom" in shown) && !("origin" in shown), "public JSON has no origin");
-  assert(!shownJson.includes(CITY) && !shownJson.includes("through Harbor"), "public JSON has no city and no engine sentence");
-  assert(shown.description.includes("Plan on 2–4 days."), "public JSON keeps the day plan");
-  assert(productShipLine(shown) === "Our expected window is 2–4 days after you pay.", "a public confirmed listing still has its window");
+  assert(shown.supplierUsConfirmed === true, "public JSON keeps the confirmed flag");
+  assert(!shownJson.includes(CITY) && !shownJson.includes("through") && !shownJson.includes("Plan on"), "public JSON has no city and no engine sentence");
+  assert(shown.description === "A heavy pan.", "public JSON cuts the engine sentence");
+  assert(productShipLine(stored!) === "Our expected window is 2–4 days after you pay.", "a confirmed listing still has its window");
 
   const cityListing = {
     productId: "place-pan",
@@ -125,20 +125,21 @@ async function main() {
       shareHref: "http://127.0.0.1/shop/place-pan",
     }),
   );
-  assert(!product.includes(CITY) && !product.includes("through Harbor"), "the product page does not render the city or the engine sentence");
-  assert(product.includes("A heavy pan.") && product.includes("Plan on 2–4 days."), "the product page keeps the rest of the description");
-  assert(count(product, SHOPPER_PLACE) === 1, "the product page shows the place sentence once");
-  assert(product.includes("Our expected window is 2–4 days after you pay."), "the product page keeps the window");
+  assert(!product.includes(CITY) && !product.includes("through") && !product.includes("Plan on"), "the product page does not render the city or the engine sentence");
+  assert(product.includes("A heavy pan."), "the product page keeps the rest of the description");
+  assert(count(product, SHOPPER_PLACE) === 1, "the confirmed product page shows the place sentence once");
+  assert(product.includes("Our expected window is 2–4 days after you pay."), "the confirmed product page keeps the window");
 
   const publicProduct = renderToStaticMarkup(
     createElement(ProductBuy, {
       listing: { ...shown, image: "" },
       returnNote: "We'll email the return address when you start a return.",
       shareHref: "http://127.0.0.1/shop/place-pan",
+      shipWindow: productShipLine(stored!),
     }),
   );
-  assert(publicProduct.includes(SHOPPER_PLACE) && publicProduct.includes("Our expected window is 2–4 days after you pay."), "a public listing still shows the place and the window");
-  assert(!publicProduct.includes(CITY), "a public listing renders no city");
+  assert(publicProduct.includes(SHOPPER_PLACE) && publicProduct.includes("Our expected window is 2–4 days after you pay."), "a public confirmed listing shows the place and the window");
+  assert(!publicProduct.includes(CITY) && !publicProduct.includes("Plan on"), "a public listing renders no city and no engine sentence");
 
   const unconfirmedProduct = renderToStaticMarkup(
     createElement(ProductBuy, {
@@ -147,20 +148,19 @@ async function main() {
       shareHref: "http://127.0.0.1/shop/place-pan",
     }),
   );
-  assert(!unconfirmedProduct.includes(SHOPPER_PLACE) && !unconfirmedProduct.includes(CITY), "an unconfirmed product page has no place and no city");
-  assert(unconfirmedProduct.includes(TRACKING_SHIP), "an unconfirmed product page keeps the tracking line");
+  assert(!unconfirmedProduct.includes(SHOPPER_PLACE) && !unconfirmedProduct.includes("Ships from"), "an unconfirmed product page has no ships-from line");
+  assert(!unconfirmedProduct.includes(CITY) && !unconfirmedProduct.includes("Our expected window"), "an unconfirmed product page has no city and no window");
+  assert(unconfirmedProduct.includes(TRACKING_SHIP), "an unconfirmed product page shows only the tracking line");
 
   const grid = renderToStaticMarkup(createElement(ShopCardCopy, { listing: cityListing }));
-  assert(grid.includes("ships from a US supplier in 2–4 days"), "the grid keeps the confirmed day window");
-  assert(!grid.includes(CITY) && !grid.includes(SHOPPER_PLACE), "the grid place is a US supplier, not a city or the full sentence");
-  const equalDays = renderToStaticMarkup(
-    createElement(ShopCardCopy, { listing: { ...cityListing, shipDaysMin: 3, shipDaysMax: 3 } }),
-  );
-  assert(equalDays.includes("ships from a US supplier in 3–3 days"), "the grid does not collapse equal days");
+  assert(grid.includes(SHOPPER_PLACE), "a confirmed grid card shows the place sentence");
+  assert(!grid.includes(CITY) && !grid.includes("2–4") && !grid.includes("days"), "a confirmed grid card has no city and no day window");
   const unconfirmedGrid = renderToStaticMarkup(
     createElement(ShopCardCopy, { listing: { ...cityListing, supplierUsConfirmed: false } }),
   );
-  assert(unconfirmedGrid.includes(TRACKING_SHIP) && !unconfirmedGrid.includes(CITY), "an unconfirmed grid card keeps the tracking line and hides the city");
+  assert(unconfirmedGrid.includes(TRACKING_SHIP), "an unconfirmed grid card shows the tracking line");
+  assert(!unconfirmedGrid.includes(SHOPPER_PLACE) && !unconfirmedGrid.includes("Ships from") && !unconfirmedGrid.includes(CITY), "an unconfirmed grid card has no ships-from line and no city");
+  assert(!unconfirmedGrid.includes("2–4") && !unconfirmedGrid.includes("days"), "an unconfirmed grid card has no day window");
 
   const card = renderToStaticMarkup(
     createElement(OrderCard, {
@@ -174,8 +174,23 @@ async function main() {
       },
     }),
   );
-  assert(card.includes(SHOPPER_PLACE) && !card.includes(CITY), "the order card shows the place sentence and not the city");
-  assert(card.includes("Our expected window is 2–4 days after you pay."), "the order card keeps the window");
+  assert(card.includes(SHOPPER_PLACE) && !card.includes(CITY), "the confirmed order card shows the place sentence and not the city");
+  assert(card.includes("Our expected window is 2–4 days after you pay."), "the confirmed order card keeps the window");
+  const quietCard = renderToStaticMarkup(
+    createElement(OrderCard, {
+      facts: {
+        number: "XV-QUIET",
+        title: "Quiet pan",
+        qty: 1,
+        amountCents: 2695,
+        shipsFrom: null,
+        eta: TRACKING_SHIP,
+      },
+    }),
+  );
+  assert(quietCard.includes(TRACKING_SHIP), "an unconfirmed order card shows the tracking line");
+  assert(!quietCard.includes(SHOPPER_PLACE) && !quietCard.includes("Ships from") && !quietCard.includes(CITY), "an unconfirmed order card has no ships-from line");
+  assert(!quietCard.includes("Our expected window"), "an unconfirmed order card has no window");
 
   const order = {
     number: "XV-PLACE",
@@ -192,7 +207,31 @@ async function main() {
   const summary = orderSummary(order);
   assert(summary.shipsFrom === SHOPPER_PLACE, "the order summary names a US supplier");
   assert(!JSON.stringify(summary).includes(CITY), "the order summary has no city");
-  assert(summary.eta === "Our expected window is 2–4 days after you pay.", "the order summary keeps the window");
+  assert(summary.eta === "Our expected window is 2–4 days after you pay.", "the confirmed order summary keeps the window");
+
+  const quietPublished = publishListing("acct-place", {
+    productId: "quiet-pan",
+    sku: "PAN-Q",
+    title: "Quiet pan",
+    description: RAW_DESCRIPTION,
+    priceCents: 2695,
+    image: "/art/mock-sheet-pan-1.png",
+    supplierName: "Harbor Towel Co",
+    supplierOrigin: CITY,
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    shipsFrom: CITY,
+    supplierUsConfirmed: false,
+  });
+  if ("error" in quietPublished || !quietPublished.listing) throw new Error("error" in quietPublished ? quietPublished.error : "quiet listing");
+  const quietShown = publicShopListing(quietPublished.listing, false);
+  assert(quietShown.supplierUsConfirmed === false, "an unconfirmed public listing keeps the flag off");
+  assert(!("supplierOrigin" in quietShown) && !("shipsFrom" in quietShown) && !("origin" in quietShown), "an unconfirmed public listing has no origin");
+  assert(!JSON.stringify(quietShown).includes(CITY) && quietShown.description === "A heavy pan.", "an unconfirmed public listing has no city and no engine sentence");
+  const quietSummary = orderSummary({ ...order, productId: "quiet-pan", number: "XV-QUIET", title: "Quiet pan" });
+  assert(quietSummary.shipsFrom === null, "an unconfirmed order summary has no ships-from line");
+  assert(quietSummary.eta === TRACKING_SHIP, "an unconfirmed order summary with ship days stays on the tracking line");
+  assert(!JSON.stringify(quietSummary).includes(CITY) && !JSON.stringify(quietSummary).includes("Our expected window"), "an unconfirmed order summary has no city and no window");
 
   const receiptInput = {
     number: "XV-PLACE",
@@ -216,9 +255,9 @@ async function main() {
 
   const quiet = receiptText({ ...receiptInput, supplierUsConfirmed: false });
   const quietHtml = receiptHtml({ ...receiptInput, supplierUsConfirmed: false });
-  assert(!quiet.includes(SHOPPER_PLACE) && !quiet.includes(CITY), "an unconfirmed receipt text has no place and no city");
-  assert(!quietHtml.includes(SHOPPER_PLACE) && !quietHtml.includes(CITY), "an unconfirmed receipt HTML has no place and no city");
-  assert(quiet.includes(`Shipping: ${TRACKING_SHIP}`), "an unconfirmed receipt keeps the tracking line");
+  assert(!quiet.includes("Ships from") && !quiet.includes(CITY) && !quiet.includes("Our expected window"), "an unconfirmed receipt text has no ships-from line, city, or window");
+  assert(!quietHtml.includes("Ships from") && !quietHtml.includes(CITY) && !quietHtml.includes("Our expected window"), "an unconfirmed receipt HTML has no ships-from line, city, or window");
+  assert(quiet.includes(`Shipping: ${TRACKING_SHIP}`) && quietHtml.includes(TRACKING_SHIP), "an unconfirmed receipt shows only the tracking line");
 
   console.log("shopper place checks ok");
 }

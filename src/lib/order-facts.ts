@@ -5,9 +5,10 @@ export const TRACKING_SHIP = "Tracking emailed when it ships.";
 /** Place line a shopper may see. No city, no supplier name. */
 export const SHOPPER_PLACE = "Ships from a US supplier.";
 
-const ENGINE_SHIP_SENTENCE = /Ships from [^.\n]{0,240} through [^.\n]{0,240}\./g;
+const ENGINE_SHIP_SENTENCE =
+  /Ships from [^.\n]{0,240} through [^.\n]{0,240}\.(?:\s*Plan on [^.\n]{0,160} days\.)?(?:\s*This is an import, not a week-of order\.)?/g;
 
-/** Drop the desk engine's "Ships from … through …" sentence. The rest of the description stays. */
+/** Drop the desk engine's ship sentence, including its day plan and import clause. */
 export function shopperDescription(value: string) {
   return value
     .replace(ENGINE_SHIP_SENTENCE, "")
@@ -66,15 +67,11 @@ export function isUsLocation(value?: string | null) {
   return US_STATE_NAMES.has(last.toLowerCase().replace(/\./g, ""));
 }
 
-/**
- * All three have to be true: a real supplier, a US ships-from, and the confirmed flag.
- * Shopper JSON omits the place after that check, so a missing shipsFrom property keeps the flag.
- */
+/** All three have to be true: a real supplier, a US ships-from, and the confirmed flag. */
 export function usSupplierConfirmed(source?: ShipSource | null) {
-  if (source?.supplierUsConfirmed !== true) return false;
-  if (source && !Object.prototype.hasOwnProperty.call(source, "shipsFrom")) return true;
   const name = source?.supplierName?.trim() ?? "";
   if (!name || isStoreSupplier(name)) return false;
+  if (source?.supplierUsConfirmed !== true) return false;
   return isUsLocation(source?.shipsFrom);
 }
 

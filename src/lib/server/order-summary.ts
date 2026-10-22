@@ -21,7 +21,7 @@ export function orderSummary(order: StoreOrder): OrderSummary {
     title: order.title ?? listing?.title ?? "Order",
     qty: order.qty,
     amountCents: order.amountCents,
-    shipsFrom: listing && usSupplierConfirmed(listing) ? SHOPPER_PLACE : null,
+    shipsFrom: listing?.supplierUsConfirmed === true ? SHOPPER_PLACE : null,
     eta: etaFromListing(listing),
     returnAddress: listing && usSupplierConfirmed(listing) ? formatOrderReturn(order) : RETURNS_EMAILED,
     productId: order.productId,

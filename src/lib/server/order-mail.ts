@@ -1,5 +1,5 @@
 import { formatISODate } from "../business-days";
-import { receiptShipWindow, SHOPPER_PLACE, usSupplierConfirmed } from "../order-facts";
+import { receiptShipWindow, SHOPPER_PLACE } from "../order-facts";
 import { SAMPLE_ORDER_NUMBER, sampleReceiptFacts } from "../sample-shelf";
 import { publicSiteUrl } from "../config/env";
 import { buyerShareHref } from "../x-share";
@@ -56,9 +56,9 @@ function shippingWindow(input: ReceiptFacts) {
   return receiptShipWindow(input.shipDaysMin, input.shipDaysMax, input);
 }
 
-/** A confirmed receipt names a US supplier. The city stays on the input and off the email. */
+/** The place sentence is only for a confirmed supplier. The city stays off the email. */
 function visibleShipsFrom(input: ReceiptFacts) {
-  if (!usSupplierConfirmed(input)) return "";
+  if (input.supplierUsConfirmed !== true) return "";
   return SHOPPER_PLACE;
 }
 
