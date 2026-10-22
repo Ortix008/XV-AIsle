@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -6,15 +6,35 @@ import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MarkTile } from "../src/components/mark-tile";
+import { ProductBuy } from "../src/components/product-buy";
 import { ProductFrame } from "../src/components/product-frame";
+import { ShopGrid } from "../src/components/shop-grid";
+import { draftPublishError, eligibleToPublishLater, GARNET_TYPE } from "../src/lib/draft-holds";
 import { money } from "../src/lib/money";
 import { productShipLine, TRACKING_SHIP } from "../src/lib/order-facts";
 import { PRODUCT_PHOTO_SIZE } from "../src/lib/product-photo";
+import { SOLD_OUT_LABEL } from "../src/lib/sold-out";
 
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-draft-")), "draft.sqlite");
 
 const CATALOG = join(process.cwd(), "catalog/modalyst-draft.json");
-const ALLOWED = ["slug", "title", "sku", "description", "price_cents", "image", "variants"];
+const ALLOWED = ["slug", "title", "sku", "description", "price_cents", "image", "variants", "stock_count"];
+const STOCK: Record<string, number | null> = {
+  "pearl-jewelry-gift-set": 2,
+  "garnet-jewelry-gift-set": 1,
+  "christmas-tree-cat-house-flag": null,
+  "insulated-dog-raincoat-dark-blue": null,
+  "reversible-dog-raincoat-green": null,
+};
+const SHIP = {
+  name: "Example Buyer",
+  email: "buyer@example.com",
+  line1: "100 Example Street",
+  city: "Sample City",
+  region: "ST",
+  postal: "00000",
+  country: "US",
+};
 const RAIN_SIZES: Record<string, Array<{ size: string; sku: string }>> = {
   "insulated-dog-raincoat-dark-blue": [
     { size: "2XS", sku: "GJ472F2-DB-2XS" },
@@ -69,6 +89,34 @@ function runDraft(path: string) {
   });
 }
 
+function raceOrder(productId: string) {
+  return new Promise<{ ok: boolean; error: string | null }>((resolve, reject) => {
+    const child = spawn(process.execPath, ["--import", "tsx", "scripts/stock-order-once.ts"], {
+      env: { ...process.env, DATABASE_PATH: process.env.DATABASE_PATH, STOCK_PRODUCT: productId, STOCK_QTY: "1" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let out = "";
+    let err = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      out += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      err += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      const line = out.trim().split("\n").filter(Boolean).at(-1);
+      if (code !== 0 || !line) {
+        reject(new Error(err || out || `stock race exited ${code}`));
+        return;
+      }
+      resolve(JSON.parse(line) as { ok: boolean; error: string | null });
+    });
+  });
+}
+
 async function main() {
   const raw = readFileSync(CATALOG, "utf8");
   assert(!/cost|shipping|source_url|supplier_|route|https?:|margin/i.test(raw), "the draft catalog has no cost, shipping, supplier, route, or margin");
@@ -90,6 +138,8 @@ async function main() {
     const sizes = RAIN_SIZES[slug];
     if (sizes) assert(JSON.stringify(product.variants) === JSON.stringify(sizes), "the raincoat offers only 2XS and XS");
     else assert(product.variants == null, "only the raincoats have sizes");
+    assert(Object.hasOwn(product, "stock_count"), "each draft names its stock");
+    assert(Object.is(product.stock_count, STOCK[slug]), "the draft stock is the operator count");
   }
   const imageConfig = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
   assert(!imageConfig.includes("unoptimized: true") && !imageConfig.includes("formats:"), "the image pipeline keeps the webp default");
@@ -98,8 +148,9 @@ async function main() {
   const { closeDb } = await import("../src/lib/server/db");
   const { createPendingOrder, getListing, listPublished, publicShopListing, publishListing } = await import("../src/lib/server/store");
   const { visibleOnShop } = await import("../src/lib/server/starter-shelf");
-  const { RAINCOAT_HOLD, SOURCED_SIZE_CHART } = await import("../src/lib/size-chart");
+  const { SOURCED_SIZE_CHART } = await import("../src/lib/size-chart");
   assert(SOURCED_SIZE_CHART == null, "no sourced size chart exists");
+  assert(GARNET_TYPE == null, "the garnet type is unconfirmed");
   const operator = signUp({ name: "Draft Operator", email: "draft-operator@example.com", password: "import-test" });
   if ("error" in operator) throw new Error(operator.error);
   const operatorId = operator.account.id;
@@ -113,7 +164,7 @@ async function main() {
   assert(!imported.stdout.includes("published"), "a draft import does not publish");
 
   const { getDb: openDb } = await import("../src/lib/server/db");
-  const db = openDb();
+  let db = openDb();
   const rendered: Array<{ name: string; price: string; description: string }> = [];
   for (const product of parsed.products) {
     const slug = String(product.slug);
@@ -133,6 +184,8 @@ async function main() {
       description: string;
       sku: string;
       size_offer: string | null;
+      stock_count: number | null;
+      stock_cap: number;
     };
     assert(row.published === 0 && row.hidden_from_shop === 1, "the listing stays unpublished and hidden");
     assert(row.made_in_usa === 0 && row.supplier_us_confirmed === 0, "the listing is not a made-in or confirmed supplier");
@@ -143,6 +196,8 @@ async function main() {
     assert(row.sku === product.sku, "the listing sku stays the catalog sku");
     const sizes = RAIN_SIZES[slug] ?? null;
     assert(row.size_offer === (sizes ? JSON.stringify(sizes) : null), "the stored sizes are the offered sizes");
+    assert(row.stock_cap === 1 && Object.is(row.stock_count, STOCK[slug]), "the stored stock is the catalog count");
+    assert(row.description === product.description, "the stored description is the public catalog text");
     const catalog = db.prepare("SELECT id FROM supplier_catalog WHERE id = ?").get(`import-${slug}`);
     assert(!catalog, "a draft does not write a supplier catalog row");
     assert(!listPublished().some((item) => item.productId === slug), "the shop list hides the draft");
@@ -160,6 +215,7 @@ async function main() {
         createElement("p", { className: "product-ship" }, ship),
       ),
     );
+    assert(!("stockCount" in page) && !("stockCap" in page) && !("soldOut" in page), "a shopper listing hides the stock count");
     assert(textOf(html, "product-desc") === page.description, "the shopper description is the catalog description");
     assert(textOf(html, "product-ship") === TRACKING_SHIP, "a draft shows only the tracking line");
     assert(!html.includes("Made in") && !html.includes("USA"), "a draft shows no made-in claim");
@@ -170,36 +226,47 @@ async function main() {
       ship: { name: "Example Buyer", email: "buyer@example.com", line1: "100 Example Street", city: "Sample City", region: "ST", postal: "00000", country: "US" },
     });
     assert("error" in checkout && checkout.error === "That page is not on the store.", "a hidden draft cannot be ordered");
-    if (sizes) {
-      const attempt = publishListing(operatorId, {
-        productId: slug,
-        sku: listing.sku,
-        title: listing.title,
-        description: listing.description,
-        priceCents: listing.priceCents,
-        image: listing.image,
-        supplierName: listing.supplierName,
-        supplierOrigin: listing.supplierOrigin,
-        shipDaysMin: 0,
-        shipDaysMax: 0,
-        published: true,
-      });
-      assert("error" in attempt && attempt.error === RAINCOAT_HOLD, "a raincoat cannot publish without a size chart");
-      const held = db.prepare("SELECT published, hidden_from_shop FROM listings WHERE product_id = ?").get(slug) as {
+    const hold = draftPublishError(slug);
+    const liveLater = slug === "pearl-jewelry-gift-set" || slug === "christmas-tree-cat-house-flag";
+    assert(eligibleToPublishLater(slug) === liveLater && (hold == null) === liveLater, "only the pearl set and the flag can go live later");
+    const attempt = publishListing(operatorId, {
+      productId: slug,
+      sku: listing.sku,
+      title: listing.title,
+      description: listing.description,
+      priceCents: listing.priceCents,
+      image: listing.image,
+      supplierName: listing.supplierName,
+      supplierOrigin: listing.supplierOrigin,
+      shipDaysMin: 0,
+      shipDaysMax: 0,
+      published: true,
+    });
+    if (hold) {
+      assert("error" in attempt && attempt.error === hold, "a held draft cannot publish");
+      const held = db.prepare("SELECT published, hidden_from_shop, stock_count FROM listings WHERE product_id = ?").get(slug) as {
         published: number;
         hidden_from_shop: number;
+        stock_count: number | null;
       };
-      assert(held.published === 0 && held.hidden_from_shop === 1, "the raincoat stays unpublished without a size chart");
+      assert(held.published === 0 && held.hidden_from_shop === 1, "a held draft stays unpublished");
       db.prepare("UPDATE listings SET published = 1, hidden_from_shop = 0 WHERE product_id = ?").run(slug);
       const forced = getListing(slug);
-      assert(forced != null && !visibleOnShop(forced), "a raincoat stays off the shop without a size chart");
-      const forcedOrder = createPendingOrder({
-        productId: slug,
-        qty: 1,
-        ship: { name: "Example Buyer", email: "buyer@example.com", line1: "100 Example Street", city: "Sample City", region: "ST", postal: "00000", country: "US" },
-      });
-      assert("error" in forcedOrder && forcedOrder.error === "That page is not on the store.", "a raincoat cannot be ordered without a size chart");
+      assert(forced != null && !visibleOnShop(forced), "a held draft stays off the shop");
+      const forcedOrder = createPendingOrder({ productId: slug, qty: 1, ship: SHIP });
+      assert("error" in forcedOrder && forcedOrder.error === "That page is not on the store.", "a held draft cannot be ordered");
+      const after = db.prepare("SELECT stock_count FROM listings WHERE product_id = ?").get(slug) as { stock_count: number | null };
+      assert(Object.is(after.stock_count, held.stock_count), "a blocked checkout does not change stock");
       db.prepare("UPDATE listings SET published = 0, hidden_from_shop = 1 WHERE product_id = ?").run(slug);
+    } else {
+      assert(!("error" in attempt) && attempt.listing?.published === true, "the pearl set and the flag are eligible to publish");
+      db.prepare("UPDATE listings SET published = 0, hidden_from_shop = 1 WHERE product_id = ?").run(slug);
+      const back = db.prepare("SELECT published, hidden_from_shop, stock_count FROM listings WHERE product_id = ?").get(slug) as {
+        published: number;
+        hidden_from_shop: number;
+        stock_count: number | null;
+      };
+      assert(back.published === 0 && back.hidden_from_shop === 1 && Object.is(back.stock_count, STOCK[slug]), "eligibility does not publish the draft");
     }
     rendered.push({
       name: textOf(html, "product-title"),
@@ -207,6 +274,93 @@ async function main() {
       description: textOf(html, "product-desc"),
     });
   }
+
+  function stockOf(productId: string) {
+    return db.prepare(
+      "SELECT stock_count AS stockCount, stock_cap AS stockCap, published, hidden_from_shop AS hidden FROM listings WHERE product_id = ?",
+    ).get(productId) as { stockCount: number | null; stockCap: number; published: number; hidden: number };
+  }
+  function sell(productId: string) {
+    db.prepare("UPDATE listings SET published = 1, hidden_from_shop = 0, supplier_account_id = ? WHERE product_id = ?").run(operatorId, productId);
+  }
+  const pearlId = "pearl-jewelry-gift-set";
+  sell(pearlId);
+  assert(stockOf(pearlId).stockCount === 2, "the pearl set starts at 2");
+  const first = createPendingOrder({ productId: pearlId, qty: 1, ship: SHIP });
+  assert(!("error" in first), "the first pearl order takes one");
+  assert(stockOf(pearlId).stockCount === 1, "the pearl set decrements to 1");
+  const second = createPendingOrder({ productId: pearlId, qty: 1, ship: SHIP });
+  assert(!("error" in second), "the second pearl order takes the last one");
+  assert(stockOf(pearlId).stockCount === 0, "the pearl set reaches 0");
+  const soldListing = getListing(pearlId);
+  const soldPage = soldListing ? publicShopListing(soldListing, false) : null;
+  assert(soldPage?.soldOut === true && !("stockCount" in soldPage), "zero stock is sold out without a count");
+  const blockedSale = createPendingOrder({ productId: pearlId, qty: 1, ship: SHIP });
+  assert("error" in blockedSale && blockedSale.error === SOLD_OUT_LABEL && stockOf(pearlId).stockCount === 0, "zero stock blocks checkout");
+  db.prepare("UPDATE listings SET stock_count = 1 WHERE product_id = ?").run(pearlId);
+  const over = createPendingOrder({ productId: pearlId, qty: 2, ship: SHIP });
+  assert("error" in over && over.error === SOLD_OUT_LABEL && stockOf(pearlId).stockCount === 1, "checkout cannot take more than the stock");
+  db.prepare("UPDATE listings SET stock_cap = 0, stock_count = 0 WHERE product_id = ?").run(pearlId);
+  const legacy = getListing(pearlId);
+  const legacyPage = legacy ? publicShopListing(legacy, false) : null;
+  assert(legacyPage != null && legacyPage.soldOut !== true, "an uncapped listing is not sold out");
+  const legacyOrder = createPendingOrder({ productId: pearlId, qty: 1, ship: SHIP });
+  assert(!("error" in legacyOrder) && stockOf(pearlId).stockCount === 0 && stockOf(pearlId).stockCap === 0, "an uncapped listing does not decrement");
+  db.prepare("UPDATE listings SET stock_cap = 1, stock_count = 1 WHERE product_id = ?").run(pearlId);
+  closeDb();
+  const raced = await Promise.all([raceOrder(pearlId), raceOrder(pearlId)]);
+  db = openDb();
+  const wins = raced.filter((item) => item.ok);
+  const losses = raced.filter((item) => !item.ok);
+  assert(wins.length === 1 && losses.length === 1 && losses[0]?.error === SOLD_OUT_LABEL, "one concurrent order wins and the other is sold out");
+  assert(stockOf(pearlId).stockCount === 0, "the race leaves the pearl set at 0");
+
+  const flagId = "christmas-tree-cat-house-flag";
+  sell(flagId);
+  const unnamed = createPendingOrder({ productId: flagId, qty: 1, ship: SHIP });
+  assert("error" in unnamed && unnamed.error === "That page is not on the store." && stockOf(flagId).stockCount == null, "an unset stock count cannot be ordered");
+  const flag = getListing(flagId);
+  if (!flag) throw new Error("the flag listing was not stored");
+  const flagInput = {
+    productId: flag.productId,
+    sku: flag.sku,
+    title: flag.title,
+    description: flag.description,
+    priceCents: flag.priceCents,
+    image: flag.image,
+    supplierName: flag.supplierName,
+    supplierOrigin: flag.supplierOrigin,
+    shipDaysMin: 0,
+    shipDaysMax: 0,
+  };
+  const counted = publishListing(operatorId, { ...flagInput, published: false, stockCount: 1 });
+  assert(
+    !("error" in counted) && counted.listing?.published === false && counted.listing.stockCount === 1 && counted.listing.stockCap,
+    "the operator can set stock without publishing",
+  );
+  db.prepare("UPDATE listings SET stock_count = 4 WHERE product_id = ?").run(flagId);
+  const unchanged = publishListing(operatorId, { ...flagInput, published: false });
+  assert(!("error" in unchanged) && stockOf(flagId).stockCount === 4, "an omitted stock count stays as the operator left it");
+  const invalid = publishListing(operatorId, { ...flagInput, published: false, stockCount: -1 });
+  assert("error" in invalid && invalid.error === "That page is not on the store." && stockOf(flagId).stockCount === 4, "a bad stock count is refused");
+  sell(flagId);
+  db.prepare("UPDATE listings SET stock_count = 1, stock_cap = 1 WHERE product_id = ?").run(flagId);
+  const flagOrder = createPendingOrder({ productId: flagId, qty: 1, ship: SHIP });
+  assert(!("error" in flagOrder) && stockOf(flagId).stockCount === 0, "a counted flag decrements");
+  const flagAgain = createPendingOrder({ productId: flagId, qty: 1, ship: SHIP });
+  assert("error" in flagAgain && flagAgain.error === SOLD_OUT_LABEL && stockOf(flagId).stockCount === 0, "a sold-out flag cannot be ordered");
+
+  closeDb();
+  const restored = runDraft(CATALOG);
+  if (restored.status !== 0) throw new Error(restored.stderr || restored.stdout || "draft reimport failed");
+  assert(!restored.stdout.includes("published"), "a draft reimport does not publish");
+  db = openDb();
+  for (const product of parsed.products) {
+    const slug = String(product.slug);
+    const row = stockOf(slug);
+    assert(row.published === 0 && row.hidden === 1 && row.stockCap === 1 && Object.is(row.stockCount, STOCK[slug]), "reimport restores the unpublished stock");
+  }
+
   const mark = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
   const tile = readFileSync(join(process.cwd(), "src/components/mark-tile.tsx"), "utf8");
   const frame = readFileSync(join(process.cwd(), "src/components/product-frame.tsx"), "utf8");
@@ -222,6 +376,48 @@ async function main() {
   assert(!frameHtml.includes("preload"), "a draft photo is not preloaded");
   const tileHtml = renderToStaticMarkup(createElement(MarkTile, { src: pearl, alt: "", sizes: "280px" }));
   assert(tileHtml.includes('loading="lazy"') && tileHtml.includes('width="1920"') && tileHtml.includes('height="1920"'), "a draft tile lazy-loads at a fixed size");
+  const buyListing = {
+    productId: pearlId,
+    sku: "XV-MOD-L83",
+    title: "Pearl Jewelry Gift Set",
+    description: "A pearl jewelry set presented as a ready-to-give gift.",
+    priceCents: 15025,
+    image: pearl,
+    supplierName: "",
+    supplierOrigin: "",
+    shipDaysMin: 0,
+    shipDaysMax: 0,
+  };
+  const soldBuy = renderToStaticMarkup(
+    createElement(ProductBuy, { listing: { ...buyListing, soldOut: true }, returnNote: "", shareHref: "https://example.com/pearl" }),
+  );
+  assert(soldBuy.includes(SOLD_OUT_LABEL) && !soldBuy.includes("Continue to checkout"), "a sold-out listing shows the placeholder and no checkout");
+  const openBuy = renderToStaticMarkup(
+    createElement(ProductBuy, { listing: { ...buyListing, soldOut: false }, returnNote: "", shareHref: "https://example.com/pearl" }),
+  );
+  assert(!openBuy.includes("TODO(Wordy)") && openBuy.includes("Continue to checkout"), "an in-stock listing keeps checkout");
+  const gridHtml = renderToStaticMarkup(
+    createElement(ShopGrid, {
+      kicker: "Shop",
+      title: "Shop",
+      lede: "Goods",
+      query: "",
+      empty: "None",
+      seed: [
+        {
+          productId: pearlId,
+          title: "Pearl Jewelry Gift Set",
+          priceCents: 15025,
+          image: pearl,
+          supplierOrigin: "",
+          shipDaysMin: 0,
+          shipDaysMax: 0,
+          soldOut: true,
+        },
+      ],
+    }),
+  );
+  assert(gridHtml.includes("shop-card-stock") && gridHtml.includes(SOLD_OUT_LABEL), "a sold-out card shows the placeholder");
   console.log(JSON.stringify(rendered));
   console.log("modalyst draft checks ok");
   db.close();

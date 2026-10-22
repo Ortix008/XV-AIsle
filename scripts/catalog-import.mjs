@@ -152,7 +152,7 @@ function accountByEmail(db, email) {
   return db.prepare("SELECT id, name, role FROM accounts WHERE email = ?").get(email);
 }
 
-const DRAFT_KEYS = new Set(["slug", "title", "sku", "description", "price_cents", "image", "variants"]);
+const DRAFT_KEYS = new Set(["slug", "title", "sku", "description", "price_cents", "image", "variants", "stock_count"]);
 
 const RAINCOAT_VARIANTS = {
   "insulated-dog-raincoat-dark-blue": [
@@ -196,6 +196,9 @@ function buildDraftRow(product) {
   } else if (product.variants != null) {
     return { reason: "invalid sizes" };
   }
+  if (!Object.hasOwn(product, "stock_count")) return { reason: "missing stock" };
+  const stock = product.stock_count;
+  if (stock !== null && (typeof stock !== "number" || !Number.isInteger(stock) || stock < 0)) return { reason: "invalid stock" };
   return {
     row: {
       slug: product.slug,
@@ -205,6 +208,7 @@ function buildDraftRow(product) {
       priceCents: product.price_cents,
       image: product.image,
       sizeOffer: expectedSizes ? JSON.stringify(expectedSizes) : null,
+      stockCount: stock,
     },
   };
 }
@@ -289,6 +293,8 @@ function importDraft(file, dryRun) {
   ensureColumn(db, "listings", "supplier_shipping_cents", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "listings", "catalog_item_id", "TEXT");
   ensureColumn(db, "listings", "size_offer", "TEXT");
+  ensureColumn(db, "listings", "stock_count", "INTEGER");
+  ensureColumn(db, "listings", "stock_cap", "INTEGER NOT NULL DEFAULT 0");
 
   const insertListing = db.prepare(
     `INSERT INTO listings (
@@ -296,8 +302,8 @@ function importDraft(file, dryRun) {
        supplier_name, supplier_origin, ship_days_min, ship_days_max, published,
        made_in_usa, hidden_from_shop, supplier_us_confirmed,
        route, supplier_order_url, supplier_email,
-       supplier_cost_cents, supplier_shipping_cents, catalog_item_id, size_offer
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', 0, 0, 0, 0, 1, 0, '', NULL, NULL, 0, 0, NULL, ?)
+       supplier_cost_cents, supplier_shipping_cents, catalog_item_id, size_offer, stock_count, stock_cap
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', 0, 0, 0, 0, 1, 0, '', NULL, NULL, 0, 0, NULL, ?, ?, 1)
      ON CONFLICT(product_id) DO UPDATE SET
        account_id = excluded.account_id,
        sku = excluded.sku,
@@ -319,7 +325,9 @@ function importDraft(file, dryRun) {
        supplier_cost_cents = 0,
        supplier_shipping_cents = 0,
        catalog_item_id = NULL,
-       size_offer = excluded.size_offer`,
+       size_offer = excluded.size_offer,
+       stock_count = excluded.stock_count,
+       stock_cap = 1`,
   );
   const catalogTable = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'supplier_catalog'").get();
   const clearCatalog = catalogTable ? db.prepare("DELETE FROM supplier_catalog WHERE id = ?") : null;
@@ -333,7 +341,17 @@ function importDraft(file, dryRun) {
         owned.slug = row.slug;
         throw owned;
       }
-      insertListing.run(row.slug, operator.id, row.sku, row.title, row.description, row.priceCents, row.image, row.sizeOffer);
+      insertListing.run(
+        row.slug,
+        operator.id,
+        row.sku,
+        row.title,
+        row.description,
+        row.priceCents,
+        row.image,
+        row.sizeOffer,
+        row.stockCount,
+      );
       clearCatalog?.run(`import-${row.slug}`);
     }
     db.exec("COMMIT");

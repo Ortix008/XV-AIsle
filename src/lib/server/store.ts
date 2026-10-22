@@ -4,8 +4,10 @@ import { bundlePriceRejection } from "../bundles";
 import { getProduct } from "../catalog";
 import { compareAtRejection } from "../honest-price";
 import { isQaCheckoutListing, qaCheckoutSeedAllowed } from "../qa-checkout";
+import { draftPublishError, garnetHeld } from "../draft-holds";
+import { SOLD_OUT_LABEL } from "../sold-out";
 import { isHeldSample, isScentedCandleListing, isWoodTrayListing } from "../shelf-holds";
-import { RAINCOAT_HOLD, raincoatHeld } from "../size-chart";
+import { raincoatHeld } from "../size-chart";
 import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseListingRoute, type ListingRoute } from "../order-flags";
 import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
@@ -58,6 +60,8 @@ export type StoreListing = {
   returnCountry: string | null;
   /** Private. Cents. Shoppers and resellers never receive this. */
   wholesaleCost: number | null;
+  stockCount: number | null;
+  stockCap: boolean;
 };
 
 export type StoreOrder = {
@@ -167,6 +171,8 @@ type ListingRow = {
   wholesale_cost?: number | null;
   hidden_from_shop?: number | null;
   supplier_us_confirmed?: number | null;
+  stock_count?: number | null;
+  stock_cap?: number | null;
 };
 
 type OrderRow = {
@@ -278,6 +284,8 @@ function listingFrom(row: ListingRow): StoreListing {
     wholesaleCost: row.wholesale_cost ?? null,
     hiddenFromShop: row.hidden_from_shop === 1,
     supplierUsConfirmed: row.supplier_us_confirmed === 1,
+    stockCount: row.stock_count == null ? null : row.stock_count,
+    stockCap: row.stock_cap === 1,
   };
 }
 
@@ -330,6 +338,7 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
       : {}),
     ...(listing.aisle ? { aisle: listing.aisle } : {}),
     ...(listing.kind === "bundle" ? { kind: "bundle" as const, includes: bundlePieces(listing.productId) } : {}),
+    ...(listing.stockCap && listing.stockCount === 0 ? { soldOut: true as const } : {}),
   };
 }
 
@@ -482,6 +491,8 @@ export function publishListing(
     | "wholesaleCost"
     | "hiddenFromShop"
     | "supplierUsConfirmed"
+    | "stockCount"
+    | "stockCap"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -502,6 +513,7 @@ export function publishListing(
     aisle?: string | null;
     hiddenFromShop?: boolean;
     supplierUsConfirmed?: boolean;
+    stockCount?: number | null;
   },
 ) {
   if (!input.title.trim() || !input.sku.trim()) return { error: "The page needs a title." as const };
@@ -520,7 +532,16 @@ export function publishListing(
     const guarded = marginGuard(input.priceCents, existing.wholesaleCost);
     if (guarded) return { error: guarded satisfies string };
   }
-  if (input.published !== false && raincoatHeld(input.productId)) return { error: RAINCOAT_HOLD };
+  if (input.published !== false) {
+    const hold = draftPublishError(input.productId);
+    if (hold) return { error: hold };
+  }
+  if (
+    input.stockCount != null &&
+    (!Number.isInteger(input.stockCount) || input.stockCount < 0)
+  ) {
+    return { error: "That page is not on the store." as const };
+  }
   if (existing && existing.accountId !== accountId) {
     return { error: "That page already belongs to another account." as const };
   }
@@ -629,6 +650,11 @@ export function publishListing(
       .run(route, supplierOrderUrl, supplierEmail, input.productId);
   }
   getDb().prepare("UPDATE listings SET aisle = ? WHERE product_id = ?").run(aisle, input.productId);
+  if (input.stockCount !== undefined) {
+    getDb()
+      .prepare("UPDATE listings SET stock_count = ?, stock_cap = 1 WHERE product_id = ?")
+      .run(input.stockCount, input.productId);
+  }
   return { listing: getListing(input.productId) };
 }
 
@@ -817,6 +843,20 @@ export type ShipTo = {
   country: string;
 };
 
+function claimCappedStock(productId: string, qty: number): { ok: true } | { error: string } {
+  const db = getDb();
+  const row = db.prepare("SELECT stock_cap, stock_count FROM listings WHERE product_id = ?").get(productId) as
+    | { stock_cap: number | null; stock_count: number | null }
+    | undefined;
+  if (!row || row.stock_cap !== 1) return { ok: true };
+  if (row.stock_count == null) return { error: "That page is not on the store." };
+  const result = db
+    .prepare("UPDATE listings SET stock_count = stock_count - ? WHERE product_id = ? AND stock_cap = 1 AND stock_count >= ?")
+    .run(qty, productId, qty);
+  if (changed(result) !== 1) return { error: SOLD_OUT_LABEL };
+  return { ok: true };
+}
+
 export function createPendingOrder(input: { productId: string; qty: number; ship: ShipTo }) {
   const listing = getDb()
     .prepare("SELECT * FROM listings WHERE product_id = ? AND published = 1 AND COALESCE(hidden_from_shop, 0) = 0")
@@ -850,6 +890,7 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
     isScentedCandleListing(page) ||
     isHeldSample(page) ||
     raincoatHeld(page.productId) ||
+    garnetHeld(page.productId) ||
     (isQaCheckoutListing(page) && !qaCheckoutSeedAllowed())
   ) {
     return { error: "That page is not on the store." as const };
@@ -878,8 +919,15 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   const split = priced.split;
   const created = Date.now();
   const returnTo = resolveReturnAddress(page);
-  getDb()
-    .prepare(
+  const db = getDb();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const claimed = claimCappedStock(page.productId, qty);
+    if ("error" in claimed) {
+      db.exec("ROLLBACK");
+      return claimed;
+    }
+    db.prepare(
       `INSERT INTO orders (
          id, number, product_id, account_id, customer_name, email, qty, amount_cents,
          ship_line1, ship_city, ship_region, ship_postal, ship_country,
@@ -888,8 +936,7 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
          receipt_token_hash, stripe_fee_est_cents, stripe_fee_cents,
          return_line1, return_city, return_region, return_postal, return_country
        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
+    ).run(
       id,
       number,
       listing.product_id,
@@ -919,8 +966,19 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
       returnTo?.postal ?? null,
       returnTo?.country ?? null,
     );
-  snapshotOrderCost(id, page.productId, qty, page.priceCents);
-  return { order: getOrder(id)!, listing: listingFrom(listing), receiptToken };
+    snapshotOrderCost(id, page.productId, qty, page.priceCents);
+    db.exec("COMMIT");
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // The transaction is already closed.
+    }
+    throw error;
+  }
+  const saved = getListing(page.productId);
+  if (!saved) return { error: "That page is not on the store." as const };
+  return { order: getOrder(id)!, listing: saved, receiptToken };
 }
 
 export function attachStripeSession(orderId: string, sessionId: string) {

@@ -11,6 +11,7 @@ export function getDb() {
   const next = new DatabaseSync(path);
   next.exec(`
     PRAGMA journal_mode = WAL;
+    PRAGMA busy_timeout = 5000;
     CREATE TABLE IF NOT EXISTS accounts (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -207,6 +208,8 @@ export function getDb() {
   addColumn(next, "listings", "aisle", "TEXT");
   addColumn(next, "listings", "hidden_from_shop", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "listings", "supplier_us_confirmed", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "listings", "stock_count", "INTEGER");
+  addColumn(next, "listings", "stock_cap", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "orders", "payment_intent_id", "TEXT");
   addColumn(next, "orders", "charge_id", "TEXT");
   addColumn(next, "orders", "transfer_group", "TEXT");

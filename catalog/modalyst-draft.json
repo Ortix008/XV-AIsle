@@ -6,7 +6,8 @@
       "sku": "XV-MOD-L83",
       "description": "A pearl jewelry set presented as a ready-to-give gift.",
       "price_cents": 15025,
-      "image": "/art/products/pearl-jewelry-gift-set.jpg"
+      "image": "/art/products/pearl-jewelry-gift-set.jpg",
+      "stock_count": 2
     },
     {
       "slug": "insulated-dog-raincoat-dark-blue",
@@ -15,6 +16,7 @@
       "description": "An insulated raincoat for dogs, in dark blue. Smallest size; larger sizes are priced separately.",
       "price_cents": 5300,
       "image": "/art/products/insulated-dog-raincoat-dark-blue.jpg",
+      "stock_count": null,
       "variants": [
         { "size": "2XS", "sku": "GJ472F2-DB-2XS" },
         { "size": "XS", "sku": "GJ472F2-DB-XS" }
@@ -27,6 +29,7 @@
       "description": "A reversible stretch-fit raincoat for dogs, in green. Smallest size; larger sizes are priced separately.",
       "price_cents": 5000,
       "image": "/art/products/reversible-dog-raincoat-green.jpg",
+      "stock_count": null,
       "variants": [
         { "size": "2XS", "sku": "GJ023S0-GREEN-2XS" },
         { "size": "XS", "sku": "GJ023S0-GREEN-XS" }
@@ -38,7 +41,8 @@
       "sku": "XV-MOD-L54",
       "description": "A house flag showing an Ocicat cat by a Christmas tree.",
       "price_cents": 4800,
-      "image": "/art/products/christmas-tree-cat-house-flag.jpg"
+      "image": "/art/products/christmas-tree-cat-house-flag.jpg",
+      "stock_count": null
     },
     {
       "slug": "garnet-jewelry-gift-set",
@@ -46,7 +50,8 @@
       "sku": "XV-MOD-L81",
       "description": "A garnet jewelry set presented as a ready-to-give gift.",
       "price_cents": 4800,
-      "image": "/art/products/garnet-jewelry-gift-set.jpg"
+      "image": "/art/products/garnet-jewelry-gift-set.jpg",
+      "stock_count": 1
     }
   ]
 }

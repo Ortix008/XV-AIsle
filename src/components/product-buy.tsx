@@ -17,6 +17,7 @@ import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
+import { SOLD_OUT_LABEL } from "@/lib/sold-out";
 
 export type ProductListing = {
   productId: string;
@@ -44,6 +45,7 @@ export type ProductListing = {
   kind?: "bundle";
   includes?: { productId: string; title: string }[];
   aisle?: string | null;
+  soldOut?: boolean;
 };
 
 function productAisleCrumb(listing: ProductListing) {
@@ -187,7 +189,7 @@ export function ProductBuy({
         ) : null}
         <form {...formReveal} onSubmit={checkout} className="product-checkout">
           <div className="product-buy">
-            {held ? null : (
+            {held || listing.soldOut ? null : (
               <p className="product-ship">
                 <TruckIcon />
                 <span>{productShipLine(listing)}</span>
@@ -201,14 +203,18 @@ export function ProductBuy({
               <p className="status-chip sample-hold" role="status">
                 {SAMPLE_UNAVAILABLE}
               </p>
+            ) : listing.soldOut ? (
+              <p className="product-sold-out" role="status">
+                {SOLD_OUT_LABEL}
+              </p>
             ) : details ? null : (
               <Button type="submit" className="product-pay">
                 Continue to checkout
               </Button>
             )}
           </div>
-          {held ? null : <p className="product-pay-line">You pay right here on xvaisle.com.</p>}
-          {details && !held ? (
+            {held || listing.soldOut ? null : <p className="product-pay-line">You pay right here on xvaisle.com.</p>}
+            {details && !held && !listing.soldOut ? (
             <div className="product-details">
               <h2 className="product-checkout-label">Checkout</h2>
               <label className="product-field">

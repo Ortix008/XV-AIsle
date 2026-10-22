@@ -7,6 +7,7 @@ import { NightMotif } from "@/components/night-motif";
 import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
 import { money } from "@/lib/money";
+import { SOLD_OUT_LABEL } from "@/lib/sold-out";
 import { shipDaysConfirmed, unconfirmedShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
 
@@ -27,6 +28,7 @@ export type ShopCard = {
   brand?: string;
   kind?: "bundle";
   aisle?: string | null;
+  soldOut?: boolean;
 };
 
 function eyebrow(listing: ShopCard) {
@@ -53,6 +55,7 @@ export function ShopGrid({
   hideWhenEmpty = false,
   tiles = false,
   band = false,
+  seed,
 }: {
   kicker: string;
   title: string;
@@ -67,8 +70,9 @@ export function ShopGrid({
   hideWhenEmpty?: boolean;
   tiles?: boolean;
   band?: boolean;
+  seed?: ShopCard[];
 }) {
-  const [listings, setListings] = useState<ShopCard[] | null>(null);
+  const [listings, setListings] = useState<ShopCard[] | null>(seed ?? null);
 
   useEffect(() => {
     fetch(`/api/store/listings${query}`)
@@ -190,6 +194,7 @@ export function ShopGrid({
                     {eyebrow(listing)}
                   </p>
                   <h3 className="shop-card-title">{listing.title}</h3>
+                  {listing.soldOut ? <p className="shop-card-stock">{SOLD_OUT_LABEL}</p> : null}
                   <p className="shop-card-price">
                   {money(listing.priceCents / 100)}
                   {listing.sample ? null : (
