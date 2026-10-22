@@ -17,6 +17,7 @@ import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
+import { SOLD_OUT_LABEL } from "@/lib/sold-out";
 
 export type ProductListing = {
   productId: string;
@@ -44,6 +45,9 @@ export type ProductListing = {
   kind?: "bundle";
   includes?: { productId: string; title: string }[];
   aisle?: string | null;
+  soldOut?: boolean;
+  offers?: { size: string; sku: string; soldOut?: boolean }[];
+  specs?: string[];
 };
 
 function productAisleCrumb(listing: ProductListing) {
@@ -91,6 +95,7 @@ export function ProductBuy({
   const [region, setRegion] = useState("");
   const [postal, setPostal] = useState("");
   const [details, setDetails] = useState(false);
+  const [offerSku, setOfferSku] = useState(() => listing.offers?.find((offer) => !offer.soldOut)?.sku ?? "");
   const nameRef = useRef<HTMLInputElement>(null);
   const check =
     listing.checkedBy && listing.checkedOn && listing.checkedNote
@@ -120,6 +125,7 @@ export function ProductBuy({
       body: JSON.stringify({
         productId: listing.productId,
         qty,
+        sku: listing.offers?.length ? offerSku : undefined,
         name,
         email,
         line1,
@@ -180,6 +186,15 @@ export function ProductBuy({
           {listing.sample ? <span className="product-sample">Sample</span> : null}
         </div>
         <p className="product-desc">{listing.description}</p>
+        {listing.specs && listing.specs.length > 0 ? (
+          <ul className="product-specs">
+            {listing.specs.map((spec) => (
+              <li className="product-spec" key={spec}>
+                {spec}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {testMode && !qaCheckout ? (
           <p className="product-test" role="status">
             Test mode
@@ -187,7 +202,7 @@ export function ProductBuy({
         ) : null}
         <form {...formReveal} onSubmit={checkout} className="product-checkout">
           <div className="product-buy">
-            {held ? null : (
+            {held || listing.soldOut ? null : (
               <p className="product-ship">
                 <TruckIcon />
                 <span>{productShipLine(listing)}</span>
@@ -197,9 +212,31 @@ export function ProductBuy({
               Quantity
               <Input className="product-qty" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
             </label>
+            {listing.offers && listing.offers.length > 0 && !listing.soldOut ? (
+              <div className="product-sizes">
+                {listing.offers.map((offer) => (
+                  <label className="product-size" key={offer.sku}>
+                    <input
+                      type="radio"
+                      name="size"
+                      value={offer.sku}
+                      checked={offerSku === offer.sku}
+                      disabled={offer.soldOut === true}
+                      onChange={() => setOfferSku(offer.sku)}
+                    />
+                    {offer.size}
+                    {offer.soldOut ? <span className="product-sold-out">{SOLD_OUT_LABEL}</span> : null}
+                  </label>
+                ))}
+              </div>
+            ) : null}
             {held ? (
               <p className="status-chip sample-hold" role="status">
                 {SAMPLE_UNAVAILABLE}
+              </p>
+            ) : listing.soldOut ? (
+              <p className="product-sold-out" role="status">
+                {SOLD_OUT_LABEL}
               </p>
             ) : details ? null : (
               <Button type="submit" className="product-pay">
@@ -207,8 +244,8 @@ export function ProductBuy({
               </Button>
             )}
           </div>
-          {held ? null : <p className="product-pay-line">You pay right here on xvaisle.com.</p>}
-          {details && !held ? (
+            {held || listing.soldOut ? null : <p className="product-pay-line">You pay right here on xvaisle.com.</p>}
+            {details && !held && !listing.soldOut ? (
             <div className="product-details">
               <h2 className="product-checkout-label">Checkout</h2>
               <label className="product-field">

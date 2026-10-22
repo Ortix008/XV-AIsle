@@ -4,7 +4,10 @@ import { bundlePriceRejection } from "../bundles";
 import { getProduct } from "../catalog";
 import { compareAtRejection } from "../honest-price";
 import { isQaCheckoutListing, qaCheckoutSeedAllowed } from "../qa-checkout";
+import { draftPublishError, garnetHeld } from "../draft-holds";
+import { claimSkuStock, listingStock, orderSku, writeSkuStock } from "./listing-stock";
 import { isHeldSample, isScentedCandleListing, isWoodTrayListing } from "../shelf-holds";
+import { raincoatHeld } from "../size-chart";
 import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseListingRoute, type ListingRoute } from "../order-flags";
 import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
@@ -21,6 +24,7 @@ export type StoreListing = {
   sku: string;
   title: string;
   description: string;
+  specs?: string[];
   priceCents: number;
   image: string;
   supplierName: string;
@@ -57,6 +61,9 @@ export type StoreListing = {
   returnCountry: string | null;
   /** Private. Cents. Shoppers and resellers never receive this. */
   wholesaleCost: number | null;
+  stockCount: number | null;
+  stockCap: boolean;
+  offers: { size: string; sku: string; stockCount: number | null }[];
 };
 
 export type StoreOrder = {
@@ -131,6 +138,7 @@ type ListingRow = {
   sku: string;
   title: string;
   description: string;
+  specs?: string | null;
   price_cents: number;
   image: string;
   supplier_name: string;
@@ -166,6 +174,9 @@ type ListingRow = {
   wholesale_cost?: number | null;
   hidden_from_shop?: number | null;
   supplier_us_confirmed?: number | null;
+  stock_count?: number | null;
+  stock_cap?: number | null;
+  size_offer?: string | null;
 };
 
 type OrderRow = {
@@ -235,6 +246,17 @@ type OrderRow = {
   receipt_token_hash?: string | null;
 };
 
+function parseSpecs(raw: string | null | undefined) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) return [];
+    return parsed;
+  } catch {
+    return [];
+  }
+}
+
 function listingFrom(row: ListingRow): StoreListing {
   return {
     productId: row.product_id,
@@ -242,6 +264,7 @@ function listingFrom(row: ListingRow): StoreListing {
     sku: row.sku,
     title: row.title,
     description: row.description,
+    specs: parseSpecs(row.specs),
     priceCents: row.price_cents,
     image: row.image,
     supplierName: row.supplier_name,
@@ -277,6 +300,8 @@ function listingFrom(row: ListingRow): StoreListing {
     wholesaleCost: row.wholesale_cost ?? null,
     hiddenFromShop: row.hidden_from_shop === 1,
     supplierUsConfirmed: row.supplier_us_confirmed === 1,
+    stockCap: row.stock_cap === 1,
+    ...listingStock(row.product_id, row.sku, row.size_offer, row.stock_count == null ? null : row.stock_count),
   };
 }
 
@@ -309,6 +334,7 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     sku: listing.sku,
     title: sample && !listing.title.endsWith(" (Sample)") ? `${listing.title} (Sample)` : listing.title,
     description: listing.description,
+    ...(listing.specs && listing.specs.length > 0 ? { specs: listing.specs } : {}),
     priceCents: listing.priceCents,
     image: listing.image,
     supplierName: isHeldSample(listing) ? "" : listing.supplierName,
@@ -329,6 +355,19 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
       : {}),
     ...(listing.aisle ? { aisle: listing.aisle } : {}),
     ...(listing.kind === "bundle" ? { kind: "bundle" as const, includes: bundlePieces(listing.productId) } : {}),
+    ...(listing.offers.length > 0
+      ? {
+          offers: listing.offers.map((offer) => ({
+            size: offer.size,
+            sku: offer.sku,
+            ...(offer.stockCount === 0 ? { soldOut: true as const } : {}),
+          })),
+        }
+      : {}),
+    ...(listing.stockCap &&
+    (listing.offers.length > 0 ? listing.offers.every((offer) => offer.stockCount === 0) : listing.stockCount === 0)
+      ? { soldOut: true as const }
+      : {}),
   };
 }
 
@@ -481,6 +520,9 @@ export function publishListing(
     | "wholesaleCost"
     | "hiddenFromShop"
     | "supplierUsConfirmed"
+    | "stockCount"
+    | "stockCap"
+    | "offers"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -501,6 +543,7 @@ export function publishListing(
     aisle?: string | null;
     hiddenFromShop?: boolean;
     supplierUsConfirmed?: boolean;
+    stockCount?: number | null;
   },
 ) {
   if (!input.title.trim() || !input.sku.trim()) return { error: "The page needs a title." as const };
@@ -519,6 +562,19 @@ export function publishListing(
     const guarded = marginGuard(input.priceCents, existing.wholesaleCost);
     if (guarded) return { error: guarded satisfies string };
   }
+  if (input.published !== false) {
+    const hold = draftPublishError(input.productId);
+    if (hold) return { error: hold };
+  }
+  if (
+    input.stockCount != null &&
+    (!Number.isInteger(input.stockCount) || input.stockCount < 0)
+  ) {
+    return { error: "That page is not on the store." as const };
+  }
+  if (input.stockCount !== undefined && (existing?.offers.length ?? 0) > 0) {
+    return { error: "That page is not on the store." as const };
+  }
   if (existing && existing.accountId !== accountId) {
     return { error: "That page already belongs to another account." as const };
   }
@@ -536,6 +592,7 @@ export function publishListing(
   const struck = compareAtRejection({
     title: input.title,
     description: input.description,
+    specs: existing?.specs ?? [],
     brand: brand.text,
     whyItCosts: whyItCosts.text,
     whyWePicked: whyWePicked.text,
@@ -627,6 +684,7 @@ export function publishListing(
       .run(route, supplierOrderUrl, supplierEmail, input.productId);
   }
   getDb().prepare("UPDATE listings SET aisle = ? WHERE product_id = ?").run(aisle, input.productId);
+  if (input.stockCount !== undefined) writeSkuStock(input.productId, input.sku, input.stockCount);
   return { listing: getListing(input.productId) };
 }
 
@@ -815,7 +873,7 @@ export type ShipTo = {
   country: string;
 };
 
-export function createPendingOrder(input: { productId: string; qty: number; ship: ShipTo }) {
+export function createPendingOrder(input: { productId: string; qty: number; ship: ShipTo; sku?: string }) {
   const listing = getDb()
     .prepare("SELECT * FROM listings WHERE product_id = ? AND published = 1 AND COALESCE(hidden_from_shop, 0) = 0")
     .get(input.productId) as
@@ -847,6 +905,8 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
     isWoodTrayListing(page) ||
     isScentedCandleListing(page) ||
     isHeldSample(page) ||
+    raincoatHeld(page.productId) ||
+    garnetHeld(page.productId) ||
     (isQaCheckoutListing(page) && !qaCheckoutSeedAllowed())
   ) {
     return { error: "That page is not on the store." as const };
@@ -872,21 +932,29 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
     if (page.supplierAccountId) pauseListing(page.productId);
     return { error: problem };
   }
+  const chosen = orderSku(page.offers, page.sku, input.sku);
+  if ("error" in chosen) return chosen;
   const split = priced.split;
   const created = Date.now();
   const returnTo = resolveReturnAddress(page);
-  getDb()
-    .prepare(
+  const db = getDb();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const claimed = claimSkuStock(page.productId, chosen.sku, qty);
+    if ("error" in claimed) {
+      db.exec("ROLLBACK");
+      return claimed;
+    }
+    db.prepare(
       `INSERT INTO orders (
          id, number, product_id, account_id, customer_name, email, qty, amount_cents,
          ship_line1, ship_city, ship_region, ship_postal, ship_country,
          stripe_session_id, status, supplier_ref, supplier_detail, created_at,
          transfer_group, fee_bps, platform_fee_cents, supplier_amount_cents, reseller_amount_cents, supplier_account_id,
          receipt_token_hash, stripe_fee_est_cents, stripe_fee_cents,
-         return_line1, return_city, return_region, return_postal, return_country
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
+         return_line1, return_city, return_region, return_postal, return_country, variant_sku
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
       id,
       number,
       listing.product_id,
@@ -915,9 +983,21 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
       returnTo?.region ?? null,
       returnTo?.postal ?? null,
       returnTo?.country ?? null,
+      chosen.sku,
     );
-  snapshotOrderCost(id, page.productId, qty, page.priceCents);
-  return { order: getOrder(id)!, listing: listingFrom(listing), receiptToken };
+    snapshotOrderCost(id, page.productId, qty, page.priceCents);
+    db.exec("COMMIT");
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // The transaction is already closed.
+    }
+    throw error;
+  }
+  const saved = getListing(page.productId);
+  if (!saved) return { error: "That page is not on the store." as const };
+  return { order: getOrder(id)!, listing: saved, receiptToken };
 }
 
 export function attachStripeSession(orderId: string, sessionId: string) {

@@ -11,6 +11,8 @@ import {
 } from "../shelf-holds";
 import { RETURNS_EMAILED } from "../return-address";
 import { samplePriceCents, sampleStarters } from "../sample-shelf";
+import { garnetHeld } from "../draft-holds";
+import { raincoatHeld } from "../size-chart";
 import { getDb } from "./db";
 import { platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { getListing, publishListing } from "./store";
@@ -58,7 +60,7 @@ export function visibleOnShop(listing: {
   hiddenFromShop?: boolean;
   title?: string | null;
 }) {
-  if (isWoodTrayListing(listing) || isScentedCandleListing(listing)) return false;
+  if (isWoodTrayListing(listing) || isScentedCandleListing(listing) || raincoatHeld(listing.productId) || garnetHeld(listing.productId)) return false;
   if (!listing.published || listing.hiddenFromShop) return false;
   if (isSampleListing(listing) && !demoSeedEnabled()) return false;
   if (isQaCheckoutListing(listing) && !demoSeedEnabled()) return false;

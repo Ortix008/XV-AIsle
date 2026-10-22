@@ -29,6 +29,7 @@ export type PublishBody = {
   whyItCosts?: string | null;
   hiddenFromShop?: boolean;
   supplierUsConfirmed?: boolean;
+  stockCount?: number | null;
   /** Ignored. The server uses PLATFORM_FEE_BPS. */
   feeBps?: number | null;
   /** Ignored. The server recomputes the split. */
@@ -142,6 +143,7 @@ export function publishForAccount(account: PublicAccount, input: PublishBody) {
     whyItCosts: input.whyItCosts,
     ...(input.hiddenFromShop !== undefined ? { hiddenFromShop: input.hiddenFromShop } : {}),
     ...(input.supplierUsConfirmed !== undefined ? { supplierUsConfirmed: input.supplierUsConfirmed } : {}),
+    ...(input.stockCount !== undefined ? { stockCount: input.stockCount } : {}),
   });
   if ("error" in result) return { status: 400 as const, error: result.error };
   return { status: 200 as const, listing: result.listing };

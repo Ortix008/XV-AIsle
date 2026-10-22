@@ -1,0 +1,106 @@
+{
+  "products": [
+    {
+      "slug": "pearl-jewelry-gift-set",
+      "title": "Simulated Pearl Jewelry Gift Set",
+      "sku": "XV-MOD-L83",
+      "description": "Three simulated pearl necklaces and a pair of earrings, boxed with a bow and ready to give.",
+      "specs": [
+        "White simulated pearls with gold plate.",
+        "Two 22-inch necklaces.",
+        "One adjustable 16–18 inch necklace.",
+        "2-inch lever-back earrings for pierced ears."
+      ],
+      "price_cents": 15025,
+      "image": "/art/products/pearl-jewelry-gift-set.jpg",
+      "stock_count": 2
+    },
+    {
+      "slug": "insulated-dog-raincoat-dark-blue",
+      "title": "Insulated Dog Raincoat, Dark Blue",
+      "sku": "XV-MOD-L47",
+      "description": "Keeps your dog dry outside and cozy inside, with a waterproof shell and a soft sherpa lining.",
+      "specs": [
+        "Polyurethane shell with popcorn sherpa lining.",
+        "Reflective piping.",
+        "Rain hood that tucks away or wears up.",
+        "Two adjustable bungee cord stoppers.",
+        "Sizes: 2XS and XS."
+      ],
+      "price_cents": 5300,
+      "image": "/art/products/insulated-dog-raincoat-dark-blue.jpg",
+      "variants": [
+        {
+          "size": "2XS",
+          "sku": "GJ472F2-DB-2XS",
+          "stock_count": 30
+        },
+        {
+          "size": "XS",
+          "sku": "GJ472F2-DB-XS",
+          "stock_count": 41
+        }
+      ]
+    },
+    {
+      "slug": "reversible-dog-raincoat-green",
+      "title": "Reversible Stretch Dog Raincoat, Green",
+      "sku": "XV-MOD-L51",
+      "description": "Two coats in one. Wear the waterproof side out in the rain, or flip it to the printed side.",
+      "specs": [
+        "Waterproof PVA on one side, water-resistant printed polyester on the other.",
+        "Shell 100% polyurethane, lining 100% polyester.",
+        "Hook-and-loop closure.",
+        "Back bungee adjustment.",
+        "Adjustable rain hood that tucks away.",
+        "Belly coverage.",
+        "Sizes: 2XS and XS."
+      ],
+      "price_cents": 5000,
+      "image": "/art/products/reversible-dog-raincoat-green.jpg",
+      "variants": [
+        {
+          "size": "2XS",
+          "sku": "GJ023S0-GREEN-2XS",
+          "stock_count": 25
+        },
+        {
+          "size": "XS",
+          "sku": "GJ023S0-GREEN-XS",
+          "stock_count": 161
+        }
+      ]
+    },
+    {
+      "slug": "christmas-tree-cat-house-flag",
+      "title": "Christmas Cat House Flag",
+      "sku": "XV-MOD-L54",
+      "description": "A watercolor-style Ocicat in a green bow tie, sitting by a decorated Christmas tree. Hang it for the holidays.",
+      "specs": [
+        "Heavy-duty polyester with heat-set dyes.",
+        "About 28 x 40 inches. Size may vary slightly.",
+        "Sleeve fits a flag pole.",
+        "Printed on both sides. The back is a mirror image.",
+        "Flag only. Pole and bracket sold separately."
+      ],
+      "price_cents": 4800,
+      "image": "/art/products/christmas-tree-cat-house-flag.jpg",
+      "stock_count": 999
+    },
+    {
+      "slug": "garnet-jewelry-gift-set",
+      "title": "Garnet Jewelry Gift Set",
+      "sku": "XV-MOD-L81",
+      "description": "A necklace, earrings and bracelet in white simulated pearls with faceted garnet, boxed with a bow and ready to give.",
+      "specs": [
+        "Gold plate.",
+        "Adjustable 16–18 inch necklace.",
+        "1-inch French-wire earrings for pierced ears.",
+        "Adjustable 7.5-inch bracelet with clasp."
+      ],
+      "price_cents": 4800,
+      "image": "/art/products/garnet-jewelry-gift-set.jpg",
+      "stock_count": 1
+    }
+  ]
+}

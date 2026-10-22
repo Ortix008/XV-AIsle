@@ -65,6 +65,7 @@ export async function POST(request: Request) {
     region?: string;
     postal?: string;
     country?: string;
+    sku?: string;
   } | null;
   if (!body?.productId) return Response.json({ error: "Choose a product." }, { status: 400 });
   const compareAt = compareAtRejection(body);
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
   const created = createPendingOrder({
     productId: body.productId,
     qty: body.qty ?? 1,
+    sku: typeof body.sku === "string" ? body.sku : undefined,
     ship: {
       name: body.name ?? "",
       email: body.email ?? "",

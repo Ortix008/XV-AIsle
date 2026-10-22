@@ -51,6 +51,7 @@ export async function POST(request: Request) {
     whyItCosts?: string;
     hiddenFromShop?: boolean;
     supplierUsConfirmed?: boolean;
+    stockCount?: unknown;
     kind?: string;
     itemIds?: unknown;
     aisle?: string;
@@ -87,6 +88,9 @@ export async function POST(request: Request) {
     whyItCosts: typeof body.whyItCosts === "string" ? body.whyItCosts : undefined,
     ...(typeof body.hiddenFromShop === "boolean" ? { hiddenFromShop: body.hiddenFromShop } : {}),
     ...(typeof body.supplierUsConfirmed === "boolean" ? { supplierUsConfirmed: body.supplierUsConfirmed } : {}),
+    ...(body.stockCount === null || (typeof body.stockCount === "number" && Number.isInteger(body.stockCount) && body.stockCount >= 0)
+      ? { stockCount: body.stockCount }
+      : {}),
   });
   if (result.status !== 200 || !result.listing) {
     const status = result.status === 200 ? 400 : result.status;

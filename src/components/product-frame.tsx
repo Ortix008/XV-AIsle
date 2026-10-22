@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { CatalogPhoto } from "@/components/catalog-photo";
 
 export function ProductFrame({
   src,
@@ -16,14 +16,7 @@ export function ProductFrame({
   return (
     <div className="product-frame">
       {src ? (
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          priority={priority}
-          sizes={sizes}
-          className={zoom ? "media-zoom object-cover object-center" : "object-cover object-center"}
-        />
+        <CatalogPhoto src={src} alt={alt} sizes={sizes} priority={priority} zoom={zoom} />
       ) : (
         <div className="product-placeholder" aria-hidden>
           <span>XV</span>
