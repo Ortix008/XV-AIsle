@@ -186,7 +186,9 @@ const publicTowel = publicShopListing(withOpen.listing, false);
 if ("supplierCostCents" in publicTowel || "supplierShippingCents" in publicTowel || "feeBps" in publicTowel) {
   throw new Error("public listing should hide cost and margin");
 }
-if (publicTowel.shipsFrom !== "Elizabeth, NJ") throw new Error("public listing should show ships from");
+if ("shipsFrom" in publicTowel || "supplierOrigin" in publicTowel || "origin" in publicTowel) {
+  throw new Error("public listing should hide the place");
+}
 const kept = publishListing(joined.account.id, towel);
 if ("error" in kept || kept.listing?.shipsFrom !== "Elizabeth, NJ") {
   throw new Error("open info should stay when a later save omits it");
@@ -378,6 +380,19 @@ if (
 }
 for (const sentence of ["We do not promise income.", "Buyers pay on xvaisle.com."]) {
   if (!resellerPage.includes(sentence)) throw new Error("honest reseller copy should stay");
+}
+const earnings =
+  "We don't promise any amount you'll make. Full terms come when the reseller program opens.";
+const termsPage = readFileSync(join(process.cwd(), "src/app/shop/reseller/terms/page.tsx"), "utf8");
+for (const [file, source] of [
+  ["reseller page", resellerPage],
+  ["reseller terms", termsPage],
+] as const) {
+  if (source.includes("We do not quote example earnings")) throw new Error(`${file} still quotes example earnings`);
+  if (!source.includes(earnings)) throw new Error(`${file} should use the approved earnings line`);
+  if (!source.includes("We do not promise income. A listing can sell, or it can sell nothing.")) {
+    throw new Error(`${file} should keep the sentences before the earnings line`);
+  }
 }
 for (const file of ["src/components/policy-article.tsx", "src/app/shop/contact/page.tsx"]) {
   const source = readFileSync(join(process.cwd(), file), "utf8");

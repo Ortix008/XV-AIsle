@@ -25,7 +25,6 @@ export function ResellerWaitlist() {
 
   return (
     <form onSubmit={onSubmit} className="flex max-w-md flex-col gap-3">
-      <h2 className="text-2xl">Reseller program coming soon.</h2>
       <label className="flex flex-col gap-1 text-base">
         Email
         <Input

@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -36,7 +36,7 @@ async function main() {
   const { closeDb, getDb } = await import("../src/lib/server/db");
   const { signUp } = await import("../src/lib/server/accounts");
   const { startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
-  const { SAMPLE_ORDER_NUMBER, SAMPLE_RETURN_PARTS } = await import("../src/lib/sample-shelf");
+  const { SAMPLE_ORDER_NUMBER, SAMPLE_RETURN_PARTS, sampleStarters } = await import("../src/lib/sample-shelf");
   const { receiptHtml, receiptText, sampleReceiptHtml } = await import("../src/lib/server/order-mail");
   const { buyerOrder, presentOrder, publicListing, resellerListing } = await import("../src/lib/server/order-view");
   const { saveReturnsAddress } = await import("../src/lib/server/settings");
@@ -44,6 +44,7 @@ async function main() {
   const { createPendingOrder, fulfillPaidOrder, getListing, getOrder, listPublished, publishListing } = await import(
     "../src/lib/server/store"
   );
+  const { orderSummary } = await import("../src/lib/server/order-summary");
   const { visibleOnShop } = await import("../src/lib/server/starter-shelf");
   const {
     listSupplierReturns,
@@ -95,12 +96,90 @@ async function main() {
       TRACKING_SHIP,
     "a sample region is not a US location",
   );
+  const sheet = sampleStarters.find((item) => item.productId === "sheet-pan");
+  if (!sheet) throw new Error("sample sheet pan");
+  const unconfirmed = productShipLine({ ...sheet, supplierUsConfirmed: false, shipsFrom: "Elizabeth, NJ" });
+  assert(unconfirmed === TRACKING_SHIP, "an unconfirmed product uses the tracking line");
+  assert(unconfirmed === unconfirmedShipLine({ ...sheet, supplierUsConfirmed: false, shipsFrom: "Elizabeth, NJ" }), "the product line matches the shop grid for an unconfirmed supplier");
+  assert(unconfirmed !== US_SUPPLIER_SHIP, "an unconfirmed product does not claim a US supplier");
+  assert(!/\d/.test(unconfirmed), "the unconfirmed product line has no day numbers");
+  const confirmed = {
+    ...sheet,
+    supplierUsConfirmed: true as const,
+    shipsFrom: "Elizabeth, NJ",
+  };
   assert(
-    productShipLine({ supplierName: "Northwharf Goods", shipDaysMin: 2, shipDaysMax: 4 }) ===
-      "Northwharf Goods ships it to you. Our best estimate is 2–4 days after you pay.",
-    "a confirmed window names the product days",
+    productShipLine(confirmed) ===
+      `Our expected window is ${sheet.shipDaysMin}–${sheet.shipDaysMax} days after you pay.`,
+    "a confirmed US supplier with both ship days names that window",
   );
-  assert(receiptShipWindow(2, 2) === "Usually ships in 2 business days.", "equal days collapse to one number");
+  assert(
+    productShipLine({ ...confirmed, shipDaysMax: null }) === US_SUPPLIER_SHIP,
+    "a confirmed US supplier missing a ship-day bound uses the US supplier line",
+  );
+  assert(
+    productShipLine({ ...confirmed, shipsFrom: "Toronto, ON" }) === TRACKING_SHIP,
+    "ship days without a confirmed US supplier use the tracking line",
+  );
+  const facts = readFileSync(join(process.cwd(), "src/lib/order-facts.ts"), "utf8");
+  const shipFn = facts.slice(facts.indexOf("export function productShipLine"), facts.indexOf("export function etaFromListing"));
+  assert(!shipFn.includes("2–4") && !shipFn.includes("2-4"), "the product ship line does not hard-code a day window");
+  const buy = readFileSync(join(process.cwd(), "src/components/product-buy.tsx"), "utf8");
+  assert(
+    !buy.includes("Tracking is emailed when it ships."),
+    "the product page does not append a second tracking sentence",
+  );
+  const retiredShip = ["Usually", "ships", "in"].join(" ");
+  for (const root of ["src", "scripts"]) {
+    const pending = [join(process.cwd(), root)];
+    while (pending.length > 0) {
+      const dir = pending.pop();
+      if (!dir) break;
+      for (const entry of readdirSync(dir)) {
+        const path = join(dir, entry);
+        if (statSync(path).isDirectory()) {
+          pending.push(path);
+          continue;
+        }
+        if (!/\.(ts|tsx|js|mjs|html|md|txt)$/.test(entry)) continue;
+        assert(!readFileSync(path, "utf8").includes(retiredShip), `${path} still says ${retiredShip}`);
+      }
+    }
+  }
+  const confirmedShip = {
+    supplierName: "Northwharf Goods",
+    shipsFrom: "Elizabeth, NJ",
+    supplierUsConfirmed: true as const,
+  };
+  assert(
+    receiptShipWindow(2, 2, confirmedShip) === "Our expected window is 2 days after you pay.",
+    "equal days collapse to one number",
+  );
+  assert(
+    receiptShipWindow(2, 4, confirmedShip) === "Our expected window is 2–4 days after you pay.",
+    "a confirmed receipt names the product window",
+  );
+  const unconfirmedWithDays = {
+    supplierName: "Example Supply",
+    shipsFrom: "Elizabeth, NJ",
+    supplierUsConfirmed: false as const,
+  };
+  assert(
+    receiptShipWindow(2, 4, unconfirmedWithDays) === unconfirmedShipLine(unconfirmedWithDays),
+    "an unconfirmed product with ship days uses the unconfirmed line",
+  );
+  assert(
+    receiptShipWindow(2, 4, unconfirmedWithDays) === TRACKING_SHIP,
+    "an unconfirmed receipt with ship days uses the tracking line",
+  );
+  assert(
+    receiptShipWindow(2, 4) === TRACKING_SHIP,
+    "ship days alone do not name a window",
+  );
+  assert(
+    receiptShipWindow(null, 4, confirmedShip) === US_SUPPLIER_SHIP,
+    "a confirmed receipt missing a day bound uses the US supplier line",
+  );
   assert(receiptShipWindow(0, 0) === TRACKING_SHIP, "a receipt without days and without a US supplier uses tracking only");
   assert(getDb().prepare("SELECT name FROM sqlite_master WHERE name = 'supplier_returns'").get(), "supplier_returns exists");
 
@@ -199,7 +278,7 @@ async function main() {
   assert(kept.listing.hiddenFromShop === true && kept.listing.supplierUsConfirmed === true, "republish keeps omitted shelf flags");
   assert(
     productShipLine(kept.listing) === US_SUPPLIER_SHIP,
-    "a confirmed US supplier with no day window uses the US line",
+    "a confirmed US supplier with no day window uses the US supplier fallback",
   );
   const hiddenPublic = JSON.stringify(publicListing(kept.listing));
   assert(!hiddenPublic.includes("hiddenFromShop"), "a hidden listing's public shape still omits the hide flag");
@@ -273,6 +352,65 @@ async function main() {
   const confirmedReceipt = await GET(new Request(`http://127.0.0.1/api/store/receipt?token=${pending.receiptToken}`));
   const confirmedBody = (await confirmedReceipt.json()) as { order?: { returnAddress?: string } };
   assert(confirmedBody.order?.returnAddress?.includes(STREET), "a confirmed order page shows the supplier street");
+  getDb().prepare("UPDATE listings SET supplier_us_confirmed = 0, ships_from = ? WHERE product_id = 'return-pan'").run("Elizabeth, NJ");
+  const daysWithoutConfirm = getListing("return-pan");
+  if (!daysWithoutConfirm) throw new Error("unconfirmed return pan");
+  assert(
+    daysWithoutConfirm.shipDaysMin === 2 &&
+      daysWithoutConfirm.shipDaysMax === 4 &&
+      daysWithoutConfirm.supplierUsConfirmed === false,
+    "the unconfirmed product keeps its ship days",
+  );
+  const unconfirmedSummary = orderSummary(pending.order);
+  assert(
+    unconfirmedSummary.eta === TRACKING_SHIP,
+    "an unconfirmed order summary with ship days uses the tracking line",
+  );
+  assert(
+    unconfirmedSummary.eta != null && !unconfirmedSummary.eta.includes("Our expected window"),
+    "an unconfirmed order summary does not name a window",
+  );
+  const unconfirmedMail = receiptText({
+    number: pending.order.number,
+    title: daysWithoutConfirm.title,
+    qty: pending.order.qty,
+    amountCents: pending.order.amountCents,
+    shipsFrom: daysWithoutConfirm.shipsFrom,
+    shipDaysMin: daysWithoutConfirm.shipDaysMin,
+    shipDaysMax: daysWithoutConfirm.shipDaysMax,
+    supplierName: daysWithoutConfirm.supplierName,
+    supplierUsConfirmed: daysWithoutConfirm.supplierUsConfirmed,
+    receiptUrl: "http://127.0.0.1/shop/order?token=example",
+  });
+  assert(
+    unconfirmedMail.includes(`Shipping: ${TRACKING_SHIP}`),
+    "an unconfirmed receipt email with ship days uses the tracking line",
+  );
+  assert(!unconfirmedMail.includes("Our expected window"), "an unconfirmed receipt email does not name a window");
+  getDb().prepare("UPDATE listings SET supplier_us_confirmed = 1 WHERE product_id = 'return-pan'").run();
+  const confirmedDays = getListing("return-pan");
+  if (!confirmedDays) throw new Error("confirmed return pan");
+  const confirmedSummary = orderSummary(pending.order);
+  assert(
+    confirmedSummary.eta === "Our expected window is 2–4 days after you pay.",
+    "a confirmed order summary names the window",
+  );
+  const confirmedMail = receiptText({
+    number: pending.order.number,
+    title: confirmedDays.title,
+    qty: pending.order.qty,
+    amountCents: pending.order.amountCents,
+    shipsFrom: confirmedDays.shipsFrom,
+    shipDaysMin: confirmedDays.shipDaysMin,
+    shipDaysMax: confirmedDays.shipDaysMax,
+    supplierName: confirmedDays.supplierName,
+    supplierUsConfirmed: confirmedDays.supplierUsConfirmed,
+    receiptUrl: "http://127.0.0.1/shop/order?token=example",
+  });
+  assert(
+    confirmedMail.includes("Shipping: Our expected window is 2–4 days after you pay."),
+    "a confirmed receipt email names the window",
+  );
   getDb().prepare("UPDATE listings SET supplier_us_confirmed = 0, ships_from = NULL WHERE product_id = 'return-pan'").run();
 
   const blankOrder = createPendingOrder({
@@ -293,7 +431,24 @@ async function main() {
   });
   assert(!blankReceipt.includes(RETURNS_EMAILED), "the receipt email omits the return line when there is no address");
   assert(!blankReceipt.includes("Need to send it back"), "a receipt without a return address omits the returns line");
-  assert(blankReceipt.includes("Usually ships in 2-4 business days."), "a confirmed window names the days");
+  assert(blankReceipt.includes(TRACKING_SHIP), "days without a confirmed supplier stay on the tracking line");
+  assert(!blankReceipt.includes("Our expected window"), "an unconfirmed receipt does not name a window");
+  const confirmedWindow = receiptText({
+    number: blankOrder.order.number,
+    title: "Named pan",
+    qty: 1,
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    supplierName: "Northwharf Goods",
+    shipsFrom: "Elizabeth, NJ",
+    supplierUsConfirmed: true,
+    receiptUrl: "http://127.0.0.1/shop/order?token=example",
+    returnAddress: null,
+  });
+  assert(
+    confirmedWindow.includes("Our expected window is 2–4 days after you pay."),
+    "a confirmed receipt email names the window",
+  );
   assert(!blankReceipt.includes(STREET), "the fallback email has no street");
   assert(!blankReceipt.includes("Ships from"), "a receipt with no origin omits ships-from");
   const blankHtml = receiptHtml({
@@ -321,10 +476,12 @@ async function main() {
   assert(blankHtml.includes("padding:22px 28px 0"), "the receipt button sits in the content padding");
   const sampleHtml = sampleReceiptHtml();
   assert(sampleHtml.includes("https://x.com/intent/post"), "the sample receipt shares through the X web intent");
-  assert(sampleHtml.includes("Share your find on X"), "the sample receipt names the share button");
+  assert(sampleHtml.includes("Share this find"), "the sample receipt names the share button");
+  assert(!sampleHtml.includes("TODO("), "the sample receipt renders no TODO( string");
   assert(sampleHtml.includes("Quarter sheet pan and rack"), "the sample receipt uses the sample product title");
   assert(sampleHtml.includes(SAMPLE_ORDER_NUMBER), "the sample receipt uses the shared order number");
-  assert(sampleHtml.includes("Usually ships in 2-4 business days"), "the sample receipt uses the sample ship window");
+  assert(sampleHtml.includes(TRACKING_SHIP), "the sample receipt stays on the tracking line until the supplier is confirmed");
+  assert(!sampleHtml.includes("Our expected window"), "the sample receipt does not name a window");
   assert(sampleHtml.includes(">Shipping<"), "the receipt labels the ship window Shipping");
   assert(sampleHtml.includes("100 Example Street"), "the sample receipt includes the placeholder street");
   assert(sampleHtml.includes("Sample City") && sampleHtml.includes("00000"), "the sample receipt includes the placeholder city and ZIP");

@@ -1,7 +1,7 @@
 const mission =
   "XV-AIsle exists to remove one of retail's oldest barriers, the cost of holding stock.";
 const missionBody =
-  "We're building one trusted US marketplace for established brands, independent resellers and everyday shoppers. Brands reach customers beyond their own channels. Soon, resellers will build a business on curation and service, not inventory.";
+  "We connect established brands, independent resellers and everyday shoppers in one trusted US marketplace. Brands reach customers beyond their own channels. Resellers build a business on curation and service, not inventory. Shoppers buy products that are reviewed before they're listed, from their shelf to your home. Every listing, order and partnership is held to the same standard: trust that is earned, not\u00A0assumed.";
 const vision =
   "Commerce where opportunity isn't limited to those who can afford inventory, and where anyone, from any background, can build a business of their own.";
 
@@ -9,16 +9,18 @@ export function MissionValues() {
   return (
     <>
     <section className="vm" aria-labelledby="mission">
-      <div className="vm-floor" />
-      <div className="vm-pool" />
-      <div className="vm-haze" />
+      <div className="vm-bleed" aria-hidden>
+        <div className="vm-floor" />
+        <div className="vm-pool" />
+        <div className="vm-haze" />
+      </div>
       <div className="vm-in">
         <div className="vm-eye">Our mission</div>
         <h2 className="vm-title" id="mission">
           {mission.split("the cost of holding stock.")[0]}
           <em>the cost of holding stock.</em>
         </h2>
-        <p className="vm-body">{missionBody}</p>
+        <p className="vm-body text-pretty">{missionBody}</p>
         <div className="vm-vision">
           <div className="vm-eye">Our vision</div>
           <p>{vision}</p>
@@ -39,7 +41,7 @@ export function MissionValues() {
               <path d="M12 28v-9h8v9" />
             </svg>
             <b>Access</b>
-            <p>starting a business should take a decision, not a warehouse.</p>
+            <p>starting a business should take a decision, not a{"\u00A0"}warehouse.</p>
           </article>
           <article className="vm-card">
             <svg viewBox="0 0 32 32" aria-hidden>

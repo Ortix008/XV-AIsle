@@ -22,7 +22,7 @@ export function PasswordField({
   const id = useId();
   const [shown, setShown] = useState(false);
   return (
-    <div className="flex flex-col gap-1 text-base">
+    <div className="password-field flex flex-col gap-1 text-base">
       <label htmlFor={id}>{label}</label>
       <div className="relative">
         <Input
@@ -34,11 +34,11 @@ export function PasswordField({
           required
           minLength={minLength}
           maxLength={maxLength}
-          className="h-10 pr-10 md:text-base"
+          className="password-input pr-12 md:text-base"
         />
         <button
           type="button"
-          className="absolute inset-y-0 right-0 grid w-9 place-items-center text-muted-foreground hover:text-foreground"
+          className="password-toggle absolute inset-y-0 right-0 grid place-items-center text-muted-foreground hover:text-foreground"
           aria-pressed={shown}
           aria-label={shown ? "Hide password" : "Show password"}
           onClick={() => setShown((current) => !current)}

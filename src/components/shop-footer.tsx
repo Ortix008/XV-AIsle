@@ -9,7 +9,6 @@ const columns = [
     title: "Shop",
     links: [
       { href: "/shop", label: "Shop" },
-      { href: "/shop/usa", label: "Made in the USA" },
       { href: "/shop/small", label: "Small business" },
     ],
   },
@@ -34,7 +33,11 @@ const columns = [
   },
 ];
 
-export function ShopFooter() {
+export function ShopFooter({ showReseller = true }: { showReseller?: boolean }) {
+  const shown = columns.map((column) => ({
+    ...column,
+    links: showReseller ? column.links : column.links.filter((link) => link.href !== "/shop/reseller"),
+  }));
   return (
     <footer className="shop-footer mt-auto bg-[var(--footer)] pb-9">
       <MissionValues />
@@ -52,7 +55,7 @@ export function ShopFooter() {
               .
             </p>
           </div>
-          {columns.map((column) => (
+          {shown.map((column) => (
             <div key={column.title}>
               <h2 className="font-heading text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
                 {column.title}

@@ -195,6 +195,7 @@ function ensureQaCheckoutListing(operatorId: string) {
     shelf: "national",
     supplierAccountId: supplierId,
     supplierCostCents: QA_SUPPLIER_COST_CENTS,
+    aisle: "kitchen",
     supplierShippingCents: 0,
     published: true,
   });

@@ -1,6 +1,8 @@
 import { formatISODate } from "../business-days";
-import { receiptShipWindow, usSupplierConfirmed } from "../order-facts";
+import { SHARE_LABEL } from "../share-label";
+import { receiptShipWindow, SHOPPER_PLACE, usSupplierConfirmed } from "../order-facts";
 import { SAMPLE_ORDER_NUMBER, sampleReceiptFacts } from "../sample-shelf";
+import { publicSiteUrl } from "../config/env";
 import { buyerShareHref } from "../x-share";
 import { dollars } from "./fees";
 import { sendMail } from "./mail";
@@ -55,11 +57,10 @@ function shippingWindow(input: ReceiptFacts) {
   return receiptShipWindow(input.shipDaysMin, input.shipDaysMax, input);
 }
 
-/** A place is shown only for a confirmed US supplier. The words stay the same. */
+/** The place sentence needs a confirmed supplier in the US. The city stays off the email. */
 function visibleShipsFrom(input: ReceiptFacts) {
-  const place = input.shipsFrom?.trim() ?? "";
-  if (!place || !usSupplierConfirmed(input)) return "";
-  return place;
+  if (!usSupplierConfirmed(input)) return "";
+  return SHOPPER_PLACE;
 }
 
 function confirmedReturnAddress(address: string | null | undefined) {
@@ -81,16 +82,22 @@ export function receiptText(input: ReceiptFacts) {
   const lines = [`Thanks for your order! Your order number is ${input.number}.`, "", input.title, `Qty ${input.qty}`];
   if (input.amountCents != null) lines.push(dollars(input.amountCents));
   const shipsFrom = visibleShipsFrom(input);
-  if (shipsFrom) lines.push(`Ships from ${shipsFrom}`);
+  if (shipsFrom) lines.push(shipsFrom);
   lines.push(`Shipping: ${eta}`);
   if (returns) lines.push("", "Need to send it back? Returns go to:", returns);
   lines.push("", `See your receipt: ${input.receiptUrl}`);
-  if (input.shareUrl) lines.push(`Share your find on X: ${input.shareUrl}`);
+  if (input.shareUrl) lines.push(`${SHARE_LABEL}: ${input.shareUrl}`);
   lines.push("");
   return lines.join("\n");
 }
 
 const EMAIL_SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+
+function htmlPlace(sentence: string) {
+  return `<tr>
+    <td colspan="2" bgcolor="#15181c" style="padding:8px 0;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:16px;line-height:1.5;">${escapeHtml(sentence)}</td>
+  </tr>`;
+}
 
 function htmlRow(label: string, value: string) {
   return `<tr>
@@ -140,7 +147,7 @@ function emailButton(input: { href: string; label: string; kind: "primary" | "ou
 function actionRow(input: { receiptUrl: string; shareUrl?: string | null }) {
   const receipt = emailButton({ href: input.receiptUrl, label: "See your receipt:", kind: "outline" });
   const share = input.shareUrl
-    ? `<td class="btn-stack" valign="top" style="padding:0;font-family:${EMAIL_SANS};">${emailButton({ href: input.shareUrl, label: "Share your find on X", kind: "primary" })}</td>
+    ? `<td class="btn-stack" valign="top" style="padding:0;font-family:${EMAIL_SANS};">${emailButton({ href: input.shareUrl, label: SHARE_LABEL, kind: "primary" })}</td>
         <td class="btn-gap" width="12" style="width:12px;font-size:0;line-height:0;font-family:${EMAIL_SANS};">&nbsp;</td>`
     : "";
   return `<tr><td bgcolor="#15181c" style="padding:22px 28px 0;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};">
@@ -160,7 +167,7 @@ export function receiptHtml(input: ReceiptFacts) {
     htmlRow("Item", input.title),
     htmlRow("Qty", String(input.qty)),
     input.amountCents != null ? htmlRow("Paid", dollars(input.amountCents)) : "",
-    shipsFrom ? htmlRow("Ships from", shipsFrom) : "",
+    shipsFrom ? htmlPlace(shipsFrom) : "",
     htmlRow("Shipping", eta),
   ].join("");
   const returnsBlock = returns
@@ -217,7 +224,7 @@ ${actionRow({ receiptUrl: input.receiptUrl, shareUrl: input.shareUrl })}
 
 export function sampleReceiptHtml() {
   const sample = sampleReceiptFacts();
-  const productUrl = `https://xvaisle.com/shop/${sample.productId}`;
+  const productUrl = `${publicSiteUrl()}/shop/${sample.productId}`;
   return receiptHtml({
     number: SAMPLE_ORDER_NUMBER,
     title: sample.title,
@@ -380,7 +387,7 @@ export async function sendCustomerReceipt(input: {
 }) {
   const link = receiptUrl(input.token);
   const shareUrl = input.productId
-    ? buyerShareHref({ title: input.title, productUrl: `${appOrigin()}/shop/${input.productId}` })
+    ? buyerShareHref({ title: input.title, productUrl: `${publicSiteUrl()}/shop/${input.productId}` })
     : null;
   const facts: ReceiptFacts = { ...input, receiptUrl: link, shareUrl };
   return deliver({

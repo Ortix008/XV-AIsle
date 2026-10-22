@@ -54,8 +54,8 @@ export function JoinScreen() {
                 <span className="hero-break">Goods that </span>earn their <span className="text-primary">place.</span>
               </h1>
               <p className="mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                A night market of home, kitchen, and everyday goods.{" "}
-                {"When we've confirmed ship days with the supplier, the product page shows our best estimate."}
+                A curated market of home, kitchen, and everyday goods.{" "}
+                {"Shipping details are added to each product once its supplier confirms them."}
               </p>
               <div className="hero-actions">
                 <Link href="/shop" className="pill pill-primary">
@@ -109,7 +109,7 @@ export function JoinScreen() {
               <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
               <h2 className="text-lg">Open product info</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Each product page tells you why we picked it and our best estimate for delivery.
+                Shipping details are added to each product once its supplier confirms them.
               </p>
             </Reveal>
             <Reveal as="article" index={1} className="rounded-2xl border border-border bg-secondary p-7">
@@ -171,7 +171,7 @@ export function JoinScreen() {
         </section>
         ) : null}
       </main>
-      <ShopFooter />
+      <ShopFooter showReseller={false} />
     </div>
   );
 }

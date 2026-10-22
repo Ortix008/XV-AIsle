@@ -5,6 +5,7 @@ import { AislePicks, type AislePick } from "@/components/aisle-picks";
 import { ProductBuy } from "@/components/product-buy";
 import { ShopFrame } from "@/components/shop-frame";
 import { money } from "@/lib/money";
+import { productShipLine } from "@/lib/order-facts";
 import { accountFromToken } from "@/lib/server/accounts";
 import { publicListing } from "@/lib/server/order-view";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
@@ -12,7 +13,9 @@ import { ensureStarterShelf, isSampleListing, listedOnGrid, sampleProductReturnN
 import { isHeldSample } from "@/lib/shelf-holds";
 import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
-import { appOrigin, stripeTestMode } from "@/lib/server/stripe";
+import { publicSiteUrl } from "@/lib/config/env";
+import { stripeTestMode } from "@/lib/server/stripe";
+import { productOgImage } from "@/lib/product-og";
 import { buyerShareHref, resellerShareHref } from "@/lib/x-share";
 
 export const dynamic = "force-dynamic";
@@ -22,32 +25,27 @@ function aisleKey(listing: { kind: string; aisle: string | null }) {
   return listing.aisle;
 }
 
-function absoluteImage(origin: string, image: string) {
-  if (image.startsWith("https://") || image.startsWith("http://")) return image;
-  return `${origin}${image.startsWith("/") ? image : `/${image}`}`;
-}
-
 export async function generateMetadata({ params }: { params: Promise<{ productId: string }> }): Promise<Metadata> {
   const { productId } = await params;
   ensureStarterShelf();
   const listing = getListing(productId);
   if (!listing || !visibleOnShop(listing) || listingLoss(listing)) return { title: "Shop · XV-AIsle" };
   const shown = publicListing(listing, isSampleListing(listing));
-  const origin = appOrigin();
+  const origin = publicSiteUrl();
   const canonical = `${origin}/shop/${listing.productId}`;
-  const description = `${money(listing.priceCents / 100)}. ${listing.description}`.slice(0, 200);
-  const image = absoluteImage(origin, listing.image);
+  const description = `${money(listing.priceCents / 100)}. ${shown.description}`.slice(0, 200);
+  const image = productOgImage(origin, listing.image, shown.title);
   return {
     title: `${shown.title} · XV-AIsle`,
     description,
     alternates: { canonical },
-    openGraph: { title: shown.title, description, url: canonical, images: [{ url: image, alt: shown.title }] },
+    openGraph: { title: shown.title, description, url: canonical, images: [image] },
     twitter: {
       card: "summary_large_image",
       site: "@xvaisle",
       title: shown.title,
       description,
-      images: [image],
+      images: [image.url],
     },
   };
 }
@@ -71,7 +69,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
           kind: item.kind === "bundle" ? "bundle" : undefined,
         }))
     : [];
-  const origin = appOrigin();
+  const origin = publicSiteUrl();
   const productUrl = `${origin}/shop/${listing.productId}`;
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const account = accountFromToken(token);
@@ -87,6 +85,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
         shareHref={shareHref}
         testMode={stripeTestMode()}
         held={isHeldSample(listing)}
+        shipWindow={productShipLine(listing)}
       />
       <AislePicks aisle={aisle} picks={picks} />
     </ShopFrame>

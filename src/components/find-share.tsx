@@ -1,27 +1,14 @@
-"use client";
-
-import { useSyncExternalStore } from "react";
+import { XMark } from "@/components/x-mark";
+import { productPageUrl } from "@/lib/config/env";
+import { SHARE_LABEL } from "@/lib/share-label";
 import { buyerShareHref } from "@/lib/x-share";
 
-function subscribe() {
-  return () => {};
-}
-
-function origin() {
-  return window.location.origin;
-}
-
-function noOrigin() {
-  return null;
-}
-
 export function FindShare({ title, productId }: { title: string; productId: string }) {
-  const host = useSyncExternalStore(subscribe, origin, noOrigin);
-  if (!host) return null;
-  const href = buyerShareHref({ title, productUrl: `${host}/shop/${productId}` });
+  const href = buyerShareHref({ title, productUrl: productPageUrl(productId) });
   return (
-    <a className="pill pill-ghost" href={href} target="_blank" rel="noreferrer">
-      Share your find on X
+    <a className="pill pill-ghost gap-2" href={href} target="_blank" rel="noreferrer" aria-label="Share this find on X">
+      <XMark />
+      {SHARE_LABEL}
     </a>
   );
 }
