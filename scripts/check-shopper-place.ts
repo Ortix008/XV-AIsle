@@ -25,6 +25,18 @@ function count(text: string, needle: string) {
   return text.split(needle).length - 1;
 }
 
+function assertNoShipsFrom(text: string, name: string) {
+  assert(!text.includes("Ships from"), `${name} has no Ships from text`);
+  assert(!text.includes(SHOPPER_PLACE), `${name} has no place sentence`);
+  assert(!text.includes(CITY), `${name} has no city`);
+  assert(!text.includes("Our expected window"), `${name} has no window`);
+}
+
+function assertOnlyTracking(text: string, name: string) {
+  assertNoShipsFrom(text, name);
+  assert(text.includes(TRACKING_SHIP), `${name} shows only the tracking line`);
+}
+
 const cleaned = shopperDescription(RAW_DESCRIPTION);
 assert(cleaned === "A heavy pan.", "the engine ship sentence is cut from the description");
 assert(!cleaned.includes("Plan on") && !cleaned.includes(CITY) && !cleaned.includes("through"), "no engine ship remnant stays");
@@ -49,12 +61,19 @@ const shopperFiles = [
   "src/app/shop/return/page.tsx",
   "src/app/shop/order/page.tsx",
 ];
+const US_STATE =
+  "AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|PR|VI|GU|AS|MP";
 const interpolation =
   /\$\{[^}\n]*\b(?:supplierOrigin|shipsFrom)\b|Ships from \$\{|Ships from \{|\{supplierOrigin\}|\{shipsFrom\}|\{listing\.supplierOrigin|\{listing\.shipsFrom|\{facts\.shipsFrom|\.supplierOrigin\}|\.shipsFrom\}/;
+const cityPattern = new RegExp(
+  String.raw`\b[A-Z][a-z]+(?:[ \t]+[A-Z][a-z]+)*,[ \t]*(?:${US_STATE})\b|\$\{[^}\n]*\b(?:supplierOrigin|shipsFrom)\b[^}\n]*\}|\{[^}\n]*\b(?:listing|facts|input)\.(?:supplierOrigin|shipsFrom)\b[^}\n]*\}|Ships from \$\{|ships from \{`,
+);
 for (const file of shopperFiles) {
   const source = readFileSync(join(process.cwd(), file), "utf8");
   assert(!interpolation.test(source), `${file} interpolates a supplier place`);
   interpolation.lastIndex = 0;
+  assert(!cityPattern.test(source), `${file} has a city pattern`);
+  cityPattern.lastIndex = 0;
 }
 const productPage = readFileSync(join(process.cwd(), "src/app/shop/[productId]/page.tsx"), "utf8");
 assert(productPage.includes("shown.description"), "share text uses the shopper description");
@@ -227,11 +246,48 @@ async function main() {
   const quietShown = publicShopListing(quietPublished.listing, false);
   assert(quietShown.supplierUsConfirmed === false, "an unconfirmed public listing keeps the flag off");
   assert(!("supplierOrigin" in quietShown) && !("shipsFrom" in quietShown) && !("origin" in quietShown), "an unconfirmed public listing has no origin");
-  assert(!JSON.stringify(quietShown).includes(CITY) && quietShown.description === "A heavy pan.", "an unconfirmed public listing has no city and no engine sentence");
+  const quietJson = JSON.stringify(quietShown);
+  assert(!quietJson.includes(CITY) && quietShown.description === "A heavy pan.", "an unconfirmed public listing has no city and no engine sentence");
+  assertNoShipsFrom(quietJson, "an unconfirmed public product JSON");
+  assert(!quietJson.includes("supplierOrigin") && !quietJson.includes("shipsFrom") && !quietJson.includes('"origin"'), "an unconfirmed public product JSON has no place field");
+
+  const quietWindow = productShipLine(quietPublished.listing);
+  assert(quietWindow === TRACKING_SHIP, "an unconfirmed product window is the tracking line");
+  const quietReturnNote = "We'll email the return address when you start a return.";
+  const quietShare = "http://127.0.0.1/shop/quiet-pan";
+  const quietMarkup = renderToStaticMarkup(
+    createElement(ProductBuy, {
+      listing: { ...quietShown, image: "" },
+      returnNote: quietReturnNote,
+      shareHref: quietShare,
+      shipWindow: quietWindow,
+    }),
+  );
+  const quietProps = {
+    listing: quietShown,
+    returnNote: quietReturnNote,
+    shareHref: quietShare,
+    shipWindow: quietWindow,
+  };
+  const metadataDescription = `$26.95. ${quietShown.description}`.slice(0, 200);
+  const pageSource = `${quietMarkup}\n${JSON.stringify(quietProps)}\n${JSON.stringify({ listing: quietShown })}\n${metadataDescription}`;
+  assertOnlyTracking(quietMarkup, "an unconfirmed product page HTML");
+  assertOnlyTracking(pageSource, "an unconfirmed product page source");
+
+  const quietGrid = renderToStaticMarkup(createElement(ShopCardCopy, { listing: quietShown }));
+  const gridSource = `${quietGrid}\n${JSON.stringify({ listings: [quietShown] })}`;
+  assertOnlyTracking(quietGrid, "an unconfirmed shop grid");
+  assertOnlyTracking(gridSource, "an unconfirmed shop grid source");
+
   const quietSummary = orderSummary({ ...order, productId: "quiet-pan", number: "XV-QUIET", title: "Quiet pan" });
   assert(quietSummary.shipsFrom === null, "an unconfirmed order summary has no ships-from line");
   assert(quietSummary.eta === TRACKING_SHIP, "an unconfirmed order summary with ship days stays on the tracking line");
   assert(!JSON.stringify(quietSummary).includes(CITY) && !JSON.stringify(quietSummary).includes("Our expected window"), "an unconfirmed order summary has no city and no window");
+  const summaryCard = renderToStaticMarkup(createElement(OrderCard, { facts: quietSummary }));
+  const orderSource = `${summaryCard}\n${JSON.stringify(quietSummary)}`;
+  assertOnlyTracking(summaryCard, "an unconfirmed order card");
+  assertOnlyTracking(orderSource, "an unconfirmed order card source");
+  assertNoShipsFrom(JSON.stringify(quietSummary), "an unconfirmed order summary JSON");
 
   const receiptInput = {
     number: "XV-PLACE",
@@ -258,6 +314,8 @@ async function main() {
   assert(!quiet.includes("Ships from") && !quiet.includes(CITY) && !quiet.includes("Our expected window"), "an unconfirmed receipt text has no ships-from line, city, or window");
   assert(!quietHtml.includes("Ships from") && !quietHtml.includes(CITY) && !quietHtml.includes("Our expected window"), "an unconfirmed receipt HTML has no ships-from line, city, or window");
   assert(quiet.includes(`Shipping: ${TRACKING_SHIP}`) && quietHtml.includes(TRACKING_SHIP), "an unconfirmed receipt shows only the tracking line");
+  assertOnlyTracking(quiet, "an unconfirmed receipt text");
+  assertOnlyTracking(quietHtml, "an unconfirmed receipt HTML");
 
   console.log("shopper place checks ok");
 }
