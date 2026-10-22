@@ -1,3 +1,4 @@
+import "./ensure-node-als";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -560,10 +561,30 @@ async function main() {
   const { SESSION_COOKIE } = await import("../src/lib/server/session-cookie");
   const smallRoute = await import("../src/app/api/shops/small/route");
   const floorsRoute = await import("../src/app/api/floors/route");
+  const deskPage = (await import("../src/app/(desk)/desk/page")).default;
   const buyer = signUp({ name: "Shopper One", email: "shopper-small@example.com", password: "market-test" });
   const operator = signUp({ name: "Operator One", email: "operator-small@example.com", password: "market-test" });
-  if ("error" in buyer || "error" in operator) throw new Error("operator accounts were not created");
-  getDb().prepare("UPDATE accounts SET role = 'admin' WHERE id = ?").run(operator.account.id);
+  const unverified = signUp({ name: "Unverified Operator", email: "unverified-operator@example.com", password: "market-test" });
+  if ("error" in buyer || "error" in operator || "error" in unverified) throw new Error("operator accounts were not created");
+  getDb().prepare("UPDATE accounts SET role = 'admin', email_verified = 1 WHERE id = ?").run(operator.account.id);
+  getDb().prepare("UPDATE accounts SET role = 'admin' WHERE id = ?").run(unverified.account.id);
+  const { workAsyncStorage } = await import("next/dist/server/app-render/work-async-storage.external");
+  const { workUnitAsyncStorage } = await import("next/dist/server/app-render/work-unit-async-storage.external");
+  const { RequestCookies } = await import("next/dist/server/web/spec-extension/cookies");
+  async function deskVisit(token: string) {
+    const jar = new RequestCookies(new Headers({ cookie: `${SESSION_COOKIE}=${token}` }));
+    try {
+      const request = { route: "/desk" } as unknown as Parameters<typeof workAsyncStorage.run>[0];
+      const unit = { type: "request", phase: "render", cookies: jar } as unknown as Parameters<typeof workUnitAsyncStorage.run>[0];
+      await workAsyncStorage.run(request, () => workUnitAsyncStorage.run(unit, () => deskPage()));
+      return "";
+    } catch (error) {
+      if (error && typeof error === "object" && "digest" in error && (error as { digest?: unknown }).digest) {
+        return String((error as { digest?: unknown }).digest);
+      }
+      return error instanceof Error ? error.message : "error";
+    }
+  }
   const shopsBefore = getDb().prepare("SELECT COUNT(*) AS n FROM small_shops").get() as { n: number };
   const buyerShop = await smallRoute.POST(
     new Request("http://127.0.0.1/api/shops/small", {
@@ -591,6 +612,13 @@ async function main() {
   assert(buyerFloorWrite.status === 403, "a shopper cannot write floors");
   const signedOut = await floorsRoute.GET(new Request("http://127.0.0.1/api/floors"));
   assert(signedOut.status === 401, "floors still ask a signed-out visitor to sign in");
+  const unverifiedCookie = { cookie: `${SESSION_COOKIE}=${unverified.token}` };
+  const unverifiedFloors = await floorsRoute.GET(new Request("http://127.0.0.1/api/floors", { headers: unverifiedCookie }));
+  const unverifiedShops = await smallRoute.GET(new Request("http://127.0.0.1/api/shops/small", { headers: unverifiedCookie }));
+  assert(unverifiedFloors.status === 403, "an unverified admin cannot read floors");
+  assert(unverifiedShops.status === 403, "an unverified admin cannot read small shops");
+  const unverifiedDesk = await deskVisit(unverified.token);
+  assert(unverifiedDesk.startsWith("NEXT_REDIRECT;") && unverifiedDesk.includes(";/;"), "an unverified admin is sent home from the desk");
   const operatorShop = await smallRoute.POST(
     new Request("http://127.0.0.1/api/shops/small", {
       method: "POST",
@@ -603,6 +631,11 @@ async function main() {
     new Request("http://127.0.0.1/api/floors", { headers: { cookie: `${SESSION_COOKIE}=${operator.token}` } }),
   );
   assert(operatorFloors.status === 200, "the operator can read floors");
+  const verifiedShops = await smallRoute.GET(
+    new Request("http://127.0.0.1/api/shops/small", { headers: { cookie: `${SESSION_COOKIE}=${operator.token}` } }),
+  );
+  assert(verifiedShops.status === 200, "a verified admin can read small shops");
+  assert((await deskVisit(operator.token)) === "", "a verified admin can open the desk");
 
   console.log("shopper place checks ok");
 }

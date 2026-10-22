@@ -49,8 +49,8 @@ const memberLinks = [
 
 const operatorPaths = new Set(["/desk", "/scout", "/listings", "/marketing", "/floors", "/catalog"]);
 
-function isOperator(role: AccountRole) {
-  return role === "admin";
+function isOperator(account: { role: AccountRole; emailVerified: boolean }) {
+  return account.role === "admin" && account.emailVerified === true;
 }
 
 export function DeskShell({ children }: { children: ReactNode }) {
@@ -72,7 +72,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
 
   if (!account) return operatorPaths.has(pathname) ? <SendHome /> : <JoinScreen />;
 
-  const operator = isOperator(account.role);
+  const operator = isOperator(account);
   if (!operator && operatorPaths.has(pathname)) return <SendHome />;
   const desk = operator || !operatorPaths.has(pathname) ? children : <DeskGate />;
 
