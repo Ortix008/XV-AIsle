@@ -211,6 +211,8 @@ assert(configuredLocal === "https://xvaisle.com/shop/sheet-pan", "a localhost PU
 assert(!configuredLocal.includes("localhost") && !configuredLocal.includes("127.0.0.1"), "the configured share URL has no localhost");
 const shareMarkup = renderToStaticMarkup(createElement(FindShare, { title: "Quarter sheet pan", productId: "sheet-pan" }));
 assert(shareMarkup.includes("https://x.com/intent/post"), "the share link renders without a browser");
+assert(shareMarkup.includes("Share this find") && shareMarkup.includes('aria-label="Share this find on X"'), "the find share button uses the approved label");
+assert(shareMarkup.includes('aria-hidden="true"') && !shareMarkup.includes("TODO("), "the find share button hides the X icon and renders no TODO( string");
 assert(shareMarkup.includes("xvaisle.com") && !shareMarkup.includes("localhost") && !shareMarkup.includes("127.0.0.1"), "the rendered share link stays on the public site");
 process.env.PUBLIC_SITE_URL = "https://preview.xvaisle.com";
 const previewCard = shareCard();

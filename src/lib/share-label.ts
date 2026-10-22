@@ -1,2 +1,2 @@
-/** Placeholder until Wordy writes the share label. It names no brand. */
-export const SHARE_LABEL = "TODO(Wordy): Share this";
+/** Visible label on the share controls. The accessible name adds "on X". */
+export const SHARE_LABEL = "Share this find";

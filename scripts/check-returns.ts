@@ -476,7 +476,8 @@ async function main() {
   assert(blankHtml.includes("padding:22px 28px 0"), "the receipt button sits in the content padding");
   const sampleHtml = sampleReceiptHtml();
   assert(sampleHtml.includes("https://x.com/intent/post"), "the sample receipt shares through the X web intent");
-  assert(sampleHtml.includes("TODO(Wordy): Share this"), "the sample receipt names the share button");
+  assert(sampleHtml.includes("Share this find"), "the sample receipt names the share button");
+  assert(!sampleHtml.includes("TODO("), "the sample receipt renders no TODO( string");
   assert(sampleHtml.includes("Quarter sheet pan and rack"), "the sample receipt uses the sample product title");
   assert(sampleHtml.includes(SAMPLE_ORDER_NUMBER), "the sample receipt uses the shared order number");
   assert(sampleHtml.includes(TRACKING_SHIP), "the sample receipt stays on the tracking line until the supplier is confirmed");

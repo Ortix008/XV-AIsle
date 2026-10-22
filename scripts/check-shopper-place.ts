@@ -3,9 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { FindShare } from "../src/components/find-share";
 import { FloorsView } from "../src/components/floors-view";
 import { OrderCard } from "../src/components/order-card";
 import { ProductBuy } from "../src/components/product-buy";
+import { ShareToX } from "../src/components/share-to-x";
 import { ShopCardCopy } from "../src/components/shop-grid";
 import SmallBusinessPage from "../src/app/shop/small/page";
 import {
@@ -543,7 +545,15 @@ async function main() {
     readFileSync(join(process.cwd(), "src/lib/share-label.ts"), "utf8"),
   ].join("\n");
   assert(!shareSource.includes("Share to X") && !shareSource.includes("Share your find on X"), "share copy has no brand words");
-  assert(shareSource.includes("TODO(Wordy): Share this"), "share copy is a Wordy placeholder");
+  assert(shareSource.includes('aria-label="Share this find on X"'), "both share buttons name the action for assistive tech");
+  const shareButtons = [
+    renderToStaticMarkup(createElement(ShareToX, { href: "https://x.com/intent/post" })),
+    renderToStaticMarkup(createElement(FindShare, { title: "Quarter sheet pan", productId: "sheet-pan" })),
+  ].join("\n");
+  assert(count(shareButtons, "Share this find") === 4, "both share buttons show the approved label");
+  assert(count(shareButtons, 'aria-label="Share this find on X"') === 2, "both share buttons use the approved accessible name");
+  assert(count(shareButtons, 'aria-hidden="true"') === 2, "both share buttons hide the X icon from assistive tech");
+  assert(!shareButtons.includes("TODO("), "no TODO( string renders on the share buttons");
 
   const { signUp } = await import("../src/lib/server/accounts");
   const { getDb } = await import("../src/lib/server/db");
