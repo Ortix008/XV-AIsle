@@ -32,12 +32,20 @@ export function listSmallShops() {
   return rows.map(fromRow);
 }
 
+function withoutMadeIn(value: string) {
+  return value
+    .replace(/made in the usa/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.])/g, "$1")
+    .trim();
+}
+
+/** Shoppers see the name and what the shop makes. The city and made-in claims stay off. */
 export function publicSmallShop(shop: SmallShop) {
   return {
     id: shop.id,
-    name: shop.name,
-    city: shop.city,
-    makes: shop.makes,
+    name: withoutMadeIn(shop.name),
+    makes: withoutMadeIn(shop.makes),
   };
 }
 

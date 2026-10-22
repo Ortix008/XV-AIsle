@@ -41,7 +41,6 @@ Public store:
 
 - `/shop` Published products
 - `/shop/[productId]` Product page and card checkout
-- `/shop/usa` Made in the USA
 - `/shop/small` Small-business shelf
 - `/api/store/catalog` A platform-neutral product feed
 - `/shop/reseller` Reseller program

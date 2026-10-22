@@ -227,6 +227,63 @@ async function main() {
     returnCountry: null,
   } as StoreOrder;
   const summary = orderSummary(order);
+  const abroad = publishListing("acct-place", {
+    productId: "abroad-pan",
+    sku: "PAN-AB",
+    title: "Abroad pan",
+    description: "A heavy pan.",
+    priceCents: 2695,
+    image: "/art/mock-sheet-pan-1.png",
+    supplierName: "Harbor Towel Co",
+    supplierOrigin: "Sample City, ST",
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    shipsFrom: "Sample City, ST",
+    supplierUsConfirmed: true,
+  });
+  if ("error" in abroad || !abroad.listing) throw new Error("error" in abroad ? abroad.error : "abroad listing");
+  const abroadPublic = publicShopListing(abroad.listing, false);
+  assert(abroadPublic.supplierUsConfirmed === false, "a confirmed supplier outside the US is not published as a US supplier");
+  assert(!JSON.stringify(abroadPublic).includes("Sample City"), "public JSON has no foreign city");
+  const abroadCard = {
+    productId: "abroad-pan",
+    sku: "PAN-AB",
+    title: "Abroad pan",
+    description: "A heavy pan.",
+    priceCents: 2695,
+    image: "",
+    supplierName: "Harbor Towel Co",
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    shipsFrom: "Sample City, ST",
+    supplierUsConfirmed: true as const,
+  };
+  const abroadProduct = renderToStaticMarkup(
+    createElement(ProductBuy, {
+      listing: abroadCard,
+      returnNote: "We'll email the return address when you start a return.",
+      shareHref: "http://127.0.0.1/shop/abroad-pan",
+    }),
+  );
+  assert(!abroadProduct.includes(SHOPPER_PLACE) && !abroadProduct.includes("Sample City"), "a non-US confirmed product has no US place line and no city");
+  assert(abroadProduct.includes(TRACKING_SHIP), "a non-US confirmed product shows the tracking line");
+  const abroadGrid = renderToStaticMarkup(createElement(ShopCardCopy, { listing: abroadCard }));
+  assert(!abroadGrid.includes(SHOPPER_PLACE) && abroadGrid.includes(TRACKING_SHIP), "a non-US confirmed grid card stays on the tracking line");
+  const abroadSummary = orderSummary({ ...order, productId: "abroad-pan", number: "XV-ABROAD", title: "Abroad pan" });
+  assert(abroadSummary.shipsFrom === null, "a non-US confirmed order summary has no US place line");
+  const abroadReceipt = receiptText({
+    number: "XV-ABROAD",
+    title: "Abroad pan",
+    qty: 1,
+    amountCents: 2695,
+    shipsFrom: "Sample City, ST",
+    supplierName: "Harbor Towel Co",
+    supplierUsConfirmed: true,
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    receiptUrl: "http://127.0.0.1/shop/order?token=example",
+  });
+  assert(!abroadReceipt.includes(SHOPPER_PLACE) && !abroadReceipt.includes("Sample City"), "a non-US confirmed receipt has no US place line and no city");
   assert(summary.shipsFrom === SHOPPER_PLACE, "the order summary names a US supplier");
   assert(!JSON.stringify(summary).includes(CITY), "the order summary has no city");
   assert(summary.eta === "Our expected window is 2–4 days after you pay.", "the confirmed order summary keeps the window");
@@ -443,7 +500,22 @@ async function main() {
   const publicShop = publicSmallShop(added.shop);
   const publicShopJson = JSON.stringify(publicShop);
   assert(!("madeInUsa" in publicShop), "public small-shop JSON omits madeInUsa");
+  assert(!("city" in publicShop), "public small-shop JSON omits the city");
+  assert(!publicShopJson.includes("Elizabeth"), "public small-shop JSON has no city");
   assert(!publicShopJson.includes("Made in") && !publicShopJson.includes("USA"), "public small-shop JSON has no Made in text and no USA origin");
+  assert(!smallSource.includes("shop.city"), "the small-business page does not render a city");
+  const claimed = addSmallShop("acct-place", {
+    name: "Made in the USA Towels",
+    city: "Austin, TX",
+    makes: "Made in the USA towels",
+    madeInUsa: true,
+  });
+  if ("error" in claimed) throw new Error(claimed.error);
+  const claimedPublic = publicSmallShop(claimed.shop);
+  const claimedJson = JSON.stringify(claimedPublic);
+  assert(claimedPublic.makes === "towels", "a published shop drops the made-in claim from what it makes");
+  assert(!claimedPublic.name.toLowerCase().includes("made in"), "a published shop drops the made-in claim from its name");
+  assert(!claimedJson.includes("Austin") && !claimedJson.includes("Made in"), "a published shop has no city and no made-in claim");
 
   const floors = renderToStaticMarkup(createElement(FloorsView));
   const floorsSource = readFileSync(join(process.cwd(), "src/components/floors-view.tsx"), "utf8");
@@ -462,6 +534,65 @@ async function main() {
   const footerSource = readFileSync(join(process.cwd(), "src/components/shop-footer.tsx"), "utf8");
   assert(!headerSource.includes("/shop/usa") && !headerSource.includes("Made in"), "the header has no Made in link");
   assert(!footerSource.includes("/shop/usa") && !footerSource.includes("Made in"), "the footer has no Made in link");
+  const readme = readFileSync(join(process.cwd(), "README.md"), "utf8");
+  assert(!readme.includes("/shop/usa"), "the readme does not document /shop/usa");
+  const shareSource = [
+    readFileSync(join(process.cwd(), "src/components/share-to-x.tsx"), "utf8"),
+    readFileSync(join(process.cwd(), "src/components/find-share.tsx"), "utf8"),
+    readFileSync(join(process.cwd(), "src/lib/server/order-mail.ts"), "utf8"),
+    readFileSync(join(process.cwd(), "src/lib/share-label.ts"), "utf8"),
+  ].join("\n");
+  assert(!shareSource.includes("Share to X") && !shareSource.includes("Share your find on X"), "share copy has no brand words");
+  assert(shareSource.includes("TODO(Wordy): Share this"), "share copy is a Wordy placeholder");
+
+  const { signUp } = await import("../src/lib/server/accounts");
+  const { getDb } = await import("../src/lib/server/db");
+  const { SESSION_COOKIE } = await import("../src/lib/server/session-cookie");
+  const smallRoute = await import("../src/app/api/shops/small/route");
+  const floorsRoute = await import("../src/app/api/floors/route");
+  const buyer = signUp({ name: "Shopper One", email: "shopper-small@example.com", password: "market-test" });
+  const operator = signUp({ name: "Operator One", email: "operator-small@example.com", password: "market-test" });
+  if ("error" in buyer || "error" in operator) throw new Error("operator accounts were not created");
+  getDb().prepare("UPDATE accounts SET role = 'admin' WHERE id = ?").run(operator.account.id);
+  const shopsBefore = getDb().prepare("SELECT COUNT(*) AS n FROM small_shops").get() as { n: number };
+  const buyerShop = await smallRoute.POST(
+    new Request("http://127.0.0.1/api/shops/small", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: `${SESSION_COOKIE}=${buyer.token}` },
+      body: JSON.stringify({ name: "Buyer Injected Shop", city: "Austin, TX", makes: "Made in the USA test" }),
+    }),
+  );
+  assert(buyerShop.status === 403, "a shopper cannot publish a small shop");
+  const shopsAfter = getDb().prepare("SELECT COUNT(*) AS n FROM small_shops").get() as { n: number };
+  assert(shopsAfter.n === shopsBefore.n, "a refused small shop is not stored");
+  const buyerFloors = await floorsRoute.GET(
+    new Request("http://127.0.0.1/api/floors", { headers: { cookie: `${SESSION_COOKIE}=${buyer.token}` } }),
+  );
+  const buyerFloorsBody = await buyerFloors.json();
+  assert(buyerFloors.status === 403, "a shopper cannot read floors");
+  assert(!JSON.stringify(buyerFloorsBody).toLowerCase().includes("made in"), "a shopper floors response has no made-in claim");
+  const buyerFloorWrite = await floorsRoute.POST(
+    new Request("http://127.0.0.1/api/floors", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: `${SESSION_COOKIE}=${buyer.token}` },
+      body: JSON.stringify({ floorId: "walmart", status: "open", contact: "buyer" }),
+    }),
+  );
+  assert(buyerFloorWrite.status === 403, "a shopper cannot write floors");
+  const signedOut = await floorsRoute.GET(new Request("http://127.0.0.1/api/floors"));
+  assert(signedOut.status === 401, "floors still ask a signed-out visitor to sign in");
+  const operatorShop = await smallRoute.POST(
+    new Request("http://127.0.0.1/api/shops/small", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: `${SESSION_COOKIE}=${operator.token}` },
+      body: JSON.stringify({ name: "Operator Shop", city: "Elizabeth, NJ", makes: "Cotton towels" }),
+    }),
+  );
+  assert(operatorShop.status === 200, "the operator can publish a small shop");
+  const operatorFloors = await floorsRoute.GET(
+    new Request("http://127.0.0.1/api/floors", { headers: { cookie: `${SESSION_COOKIE}=${operator.token}` } }),
+  );
+  assert(operatorFloors.status === 200, "the operator can read floors");
 
   console.log("shopper place checks ok");
 }

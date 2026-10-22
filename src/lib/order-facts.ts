@@ -67,6 +67,16 @@ export function isUsLocation(value?: string | null) {
   return US_STATE_NAMES.has(last.toLowerCase().replace(/\./g, ""));
 }
 
+/**
+ * The place sentence needs a real supplier, a US ships-from, and the confirmed flag.
+ * A public listing omits the city and carries the result on supplierUsConfirmed.
+ */
+export function shopperMayNameUsSupplier(source?: ShipSource | null) {
+  if (!source) return false;
+  if (source.shipsFrom != null) return usSupplierConfirmed(source);
+  return source.supplierUsConfirmed === true;
+}
+
 /** All three have to be true: a real supplier, a US ships-from, and the confirmed flag. */
 export function usSupplierConfirmed(source?: ShipSource | null) {
   const name = source?.supplierName?.trim() ?? "";

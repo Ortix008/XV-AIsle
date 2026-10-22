@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ShopFrame } from "@/components/shop-frame";
 import { ShopGrid } from "@/components/shop-grid";
 
-type Shop = { id: string; name: string; city: string; makes: string };
+type Shop = { id: string; name: string; makes: string };
 
 export default function SmallBusinessPage() {
   const [shops, setShops] = useState<Shop[] | null>(null);
@@ -32,8 +32,7 @@ export default function SmallBusinessPage() {
           {shops?.map((shop) => (
             <li key={shop.id} className="rounded-2xl border border-border bg-card p-5">
               <p className="text-sm font-medium">{shop.name}</p>
-              <p className="text-sm text-muted-foreground">{shop.city}</p>
-              <p className="mt-1 text-sm">{shop.makes}</p>
+              {shop.makes ? <p className="mt-1 text-sm">{shop.makes}</p> : null}
             </li>
           ))}
         </ul>

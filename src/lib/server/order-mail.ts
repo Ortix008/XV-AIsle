@@ -1,5 +1,6 @@
 import { formatISODate } from "../business-days";
-import { receiptShipWindow, SHOPPER_PLACE } from "../order-facts";
+import { SHARE_LABEL } from "../share-label";
+import { receiptShipWindow, SHOPPER_PLACE, usSupplierConfirmed } from "../order-facts";
 import { SAMPLE_ORDER_NUMBER, sampleReceiptFacts } from "../sample-shelf";
 import { publicSiteUrl } from "../config/env";
 import { buyerShareHref } from "../x-share";
@@ -56,9 +57,9 @@ function shippingWindow(input: ReceiptFacts) {
   return receiptShipWindow(input.shipDaysMin, input.shipDaysMax, input);
 }
 
-/** The place sentence is only for a confirmed supplier. The city stays off the email. */
+/** The place sentence needs a confirmed supplier in the US. The city stays off the email. */
 function visibleShipsFrom(input: ReceiptFacts) {
-  if (input.supplierUsConfirmed !== true) return "";
+  if (!usSupplierConfirmed(input)) return "";
   return SHOPPER_PLACE;
 }
 
@@ -85,7 +86,7 @@ export function receiptText(input: ReceiptFacts) {
   lines.push(`Shipping: ${eta}`);
   if (returns) lines.push("", "Need to send it back? Returns go to:", returns);
   lines.push("", `See your receipt: ${input.receiptUrl}`);
-  if (input.shareUrl) lines.push(`Share your find on X: ${input.shareUrl}`);
+  if (input.shareUrl) lines.push(`${SHARE_LABEL}: ${input.shareUrl}`);
   lines.push("");
   return lines.join("\n");
 }
@@ -146,7 +147,7 @@ function emailButton(input: { href: string; label: string; kind: "primary" | "ou
 function actionRow(input: { receiptUrl: string; shareUrl?: string | null }) {
   const receipt = emailButton({ href: input.receiptUrl, label: "See your receipt:", kind: "outline" });
   const share = input.shareUrl
-    ? `<td class="btn-stack" valign="top" style="padding:0;font-family:${EMAIL_SANS};">${emailButton({ href: input.shareUrl, label: "Share your find on X", kind: "primary" })}</td>
+    ? `<td class="btn-stack" valign="top" style="padding:0;font-family:${EMAIL_SANS};">${emailButton({ href: input.shareUrl, label: SHARE_LABEL, kind: "primary" })}</td>
         <td class="btn-gap" width="12" style="width:12px;font-size:0;line-height:0;font-family:${EMAIL_SANS};">&nbsp;</td>`
     : "";
   return `<tr><td bgcolor="#15181c" style="padding:22px 28px 0;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};">
