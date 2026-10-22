@@ -32,6 +32,15 @@ export function listSmallShops() {
   return rows.map(fromRow);
 }
 
+export function publicSmallShop(shop: SmallShop) {
+  return {
+    id: shop.id,
+    name: shop.name,
+    city: shop.city,
+    makes: shop.makes,
+  };
+}
+
 export function addSmallShop(
   accountId: string,
   input: { name: string; city: string; makes: string; madeInUsa: boolean },

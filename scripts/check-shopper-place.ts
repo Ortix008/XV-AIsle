@@ -3,9 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { FloorsView } from "../src/components/floors-view";
 import { OrderCard } from "../src/components/order-card";
 import { ProductBuy } from "../src/components/product-buy";
 import { ShopCardCopy } from "../src/components/shop-grid";
+import SmallBusinessPage from "../src/app/shop/small/page";
 import {
   SHOPPER_PLACE,
   TRACKING_SHIP,
@@ -93,7 +95,8 @@ delete process.env.STRIPE_SECRET_KEY;
 async function main() {
   const { publishListing, publicShopListing, getListing } = await import("../src/lib/server/store");
   const { orderSummary } = await import("../src/lib/server/order-summary");
-  const { receiptHtml, receiptText } = await import("../src/lib/server/order-mail");
+  const { receiptHtml, receiptText, sendCustomerReceipt } = await import("../src/lib/server/order-mail");
+  const { startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
   type StoreOrder = import("../src/lib/server/store").StoreOrder;
 
   const published = publishListing("acct-place", {
@@ -316,6 +319,149 @@ async function main() {
   assert(quiet.includes(`Shipping: ${TRACKING_SHIP}`) && quietHtml.includes(TRACKING_SHIP), "an unconfirmed receipt shows only the tracking line");
   assertOnlyTracking(quiet, "an unconfirmed receipt text");
   assertOnlyTracking(quietHtml, "an unconfirmed receipt HTML");
+
+  const confirmedMail = startMailCapture();
+  await sendCustomerReceipt({
+    to: "buyer@example.com",
+    number: receiptInput.number,
+    title: receiptInput.title,
+    qty: receiptInput.qty,
+    amountCents: receiptInput.amountCents,
+    shipsFrom: CITY,
+    supplierName: receiptInput.supplierName,
+    supplierUsConfirmed: true,
+    shipDaysMin: receiptInput.shipDaysMin,
+    shipDaysMax: receiptInput.shipDaysMax,
+    token: "place-token",
+  });
+  stopMailCapture();
+  assert(confirmedMail.length === 1, "the confirmed receipt email was captured");
+  const confirmedMessage = confirmedMail[0];
+  assert(confirmedMessage?.text.includes(SHOPPER_PLACE), "the confirmed receipt email names a US supplier");
+  assert(confirmedMessage?.html?.includes(SHOPPER_PLACE), "the confirmed receipt email HTML names a US supplier");
+  assert(
+    !confirmedMessage?.text.includes(CITY) && !confirmedMessage?.html?.includes(CITY),
+    "the confirmed receipt email has no city",
+  );
+  assert(
+    confirmedMessage?.text.includes("Shipping: Our expected window is 2–4 days after you pay."),
+    "the confirmed receipt email keeps the window",
+  );
+
+  const quietMail = startMailCapture();
+  await sendCustomerReceipt({
+    to: "buyer@example.com",
+    number: "XV-QUIET",
+    title: "Quiet pan",
+    qty: 1,
+    amountCents: 2695,
+    shipsFrom: CITY,
+    supplierName: "Harbor Towel Co",
+    supplierUsConfirmed: false,
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    token: "quiet-token",
+  });
+  stopMailCapture();
+  assert(quietMail.length === 1, "the unconfirmed receipt email was captured");
+  const quietMessage = quietMail[0];
+  assertOnlyTracking(quietMessage?.text ?? "", "an unconfirmed receipt email");
+  assertOnlyTracking(quietMessage?.html ?? "", "an unconfirmed receipt email HTML");
+  assert(
+    quietMessage?.text.includes(`Shipping: ${TRACKING_SHIP}`),
+    "an unconfirmed receipt email shows only the tracking line",
+  );
+  assert(
+    count(quietMessage?.text ?? "", "Ships from") === 0 && count(quietMessage?.html ?? "", "Ships from") === 0,
+    "an unconfirmed receipt email has no Ships from text",
+  );
+
+  const { addSmallShop, listSmallShops, publicSmallShop } = await import("../src/lib/server/small-shops");
+  const { default: usaPage } = await import("../src/app/shop/usa/page");
+  const marked = publishListing("acct-place", {
+    productId: "marked-pan",
+    sku: "PAN-M",
+    title: "Marked pan",
+    description: "A heavy pan.",
+    priceCents: 2695,
+    image: "/art/mock-sheet-pan-1.png",
+    supplierName: "Harbor Towel Co",
+    supplierOrigin: "USA",
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    shipsFrom: "USA",
+    madeInUsa: true,
+    supplierUsConfirmed: true,
+  });
+  if ("error" in marked || !marked.listing) throw new Error("error" in marked ? marked.error : "marked listing");
+  assert(marked.listing.madeInUsa === true, "the desk listing keeps madeInUsa");
+  const markedPublic = publicShopListing(marked.listing, false);
+  const markedJson = JSON.stringify(markedPublic);
+  assert(!("madeInUsa" in markedPublic), "public JSON omits madeInUsa");
+  assert(!markedJson.includes("Made in") && !markedJson.includes("USA"), "public JSON has no Made in text and no USA origin");
+  const markedReturnNote = "We'll email the return address when you start a return.";
+  const markedShare = "http://127.0.0.1/shop/marked-pan";
+  const markedMarkup = renderToStaticMarkup(
+    createElement(ProductBuy, {
+      listing: { ...markedPublic, image: "", madeInUsa: true, supplierOrigin: "USA", shipsFrom: "USA" },
+      returnNote: markedReturnNote,
+      shareHref: markedShare,
+      shipWindow: productShipLine(marked.listing),
+    }),
+  );
+  const markedSource = `${markedMarkup}\n${JSON.stringify(markedPublic)}\n${JSON.stringify({ listing: markedPublic })}`;
+  assert(!markedMarkup.includes("Made in") && !markedMarkup.includes("USA"), "a flagged product page has no Made in text and no USA origin");
+  assert(!markedSource.includes("Made in") && !markedSource.includes("USA"), "a flagged product page source has no Made in text and no USA origin");
+  assert(!markedMarkup.includes("product-note"), "a flagged national product has no product note");
+  const markedGrid = renderToStaticMarkup(
+    createElement(ShopCardCopy, {
+      listing: { ...markedPublic, madeInUsa: true, supplierOrigin: "USA", shipsFrom: "USA" },
+    }),
+  );
+  assert(!markedGrid.includes("Made in") && !markedGrid.includes("USA"), "a flagged grid card has no Made in text and no USA origin");
+  assert(!markedGrid.includes("shop-card-eyebrow"), "a flagged grid card drops the empty badge");
+  const smallGrid = renderToStaticMarkup(
+    createElement(ShopCardCopy, {
+      listing: { ...markedPublic, madeInUsa: true, shelf: "small", supplierOrigin: "USA" },
+    }),
+  );
+  assert(smallGrid.includes("Small business"), "a small-business card keeps its eyebrow");
+  assert(!smallGrid.includes("Made in") && !smallGrid.includes("USA"), "a flagged small-business card has no Made in text and no USA origin");
+
+  const smallPage = renderToStaticMarkup(createElement(SmallBusinessPage));
+  const smallSource = readFileSync(join(process.cwd(), "src/app/shop/small/page.tsx"), "utf8");
+  assert(!smallPage.includes("Made in") && !smallPage.includes("USA"), "the small-business page has no Made in text and no USA origin");
+  assert(!smallSource.includes("If an item is made in") && !smallSource.includes("Makes goods in the USA"), "the small-business sentences are gone");
+  const added = addSmallShop("acct-place", {
+    name: "Harbor Towel Co",
+    city: "Elizabeth, NJ",
+    makes: "Heavy cotton towels",
+    madeInUsa: true,
+  });
+  if ("error" in added) throw new Error(added.error);
+  assert(listSmallShops().some((shop) => shop.madeInUsa), "the small-shop record keeps madeInUsa");
+  const publicShop = publicSmallShop(added.shop);
+  const publicShopJson = JSON.stringify(publicShop);
+  assert(!("madeInUsa" in publicShop), "public small-shop JSON omits madeInUsa");
+  assert(!publicShopJson.includes("Made in") && !publicShopJson.includes("USA"), "public small-shop JSON has no Made in text and no USA origin");
+
+  const floors = renderToStaticMarkup(createElement(FloorsView));
+  const floorsSource = readFileSync(join(process.cwd(), "src/components/floors-view.tsx"), "utf8");
+  assert(!floors.includes("Made in") && !floors.includes("USA"), "the floors page has no Made in text and no USA origin");
+  assert(!floorsSource.includes("Made in the USA") && !floorsSource.includes("They make it in the USA"), "the floors made-in lines are gone");
+
+  let usaDigest = "";
+  try {
+    usaPage();
+  } catch (error) {
+    usaDigest = error && typeof error === "object" && "digest" in error ? String((error as { digest?: unknown }).digest) : "";
+  }
+  assert(usaDigest.includes("404"), "/shop/usa is a 404");
+
+  const headerSource = readFileSync(join(process.cwd(), "src/components/store-header.tsx"), "utf8");
+  const footerSource = readFileSync(join(process.cwd(), "src/components/shop-footer.tsx"), "utf8");
+  assert(!headerSource.includes("/shop/usa") && !headerSource.includes("Made in"), "the header has no Made in link");
+  assert(!footerSource.includes("/shop/usa") && !footerSource.includes("Made in"), "the footer has no Made in link");
 
   console.log("shopper place checks ok");
 }

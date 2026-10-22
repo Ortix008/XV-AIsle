@@ -33,7 +33,6 @@ function eyebrow(listing: ShopCard) {
   if (listing.kind === "bundle") return "Bundle";
   if (listing.brand) return listing.brand;
   if (listing.sample) return "Sample";
-  if (listing.madeInUsa) return "Made in the USA";
   if (listing.shelf === "small") return "Small business";
   return "";
 }
@@ -49,9 +48,7 @@ export function ShopCardCopy({ listing }: { listing: ShopCard }) {
   const phrase = shopCardShipPhrase(listing);
   return (
     <div className="shop-card-text">
-      <p className="shop-card-eyebrow" aria-hidden={label ? undefined : true}>
-        {label}
-      </p>
+      {label ? <p className="shop-card-eyebrow">{label}</p> : null}
       <h3 className="shop-card-title">{listing.title}</h3>
       <p className="shop-card-price">
         {money(listing.priceCents / 100)}

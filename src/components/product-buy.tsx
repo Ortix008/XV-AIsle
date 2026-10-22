@@ -232,7 +232,6 @@ export function ProductBuy({
             </div>
           ) : null}
         </form>
-        {listing.madeInUsa ? <p className="product-note">Made in the USA.</p> : null}
         {listing.shelf === "small" ? <p className="product-note">This is a small business.</p> : null}
         {listing.kind === "bundle" && listing.includes && listing.includes.length > 0 ? (
           <div className="product-extra">

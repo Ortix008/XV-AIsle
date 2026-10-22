@@ -314,7 +314,6 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     supplierName: isHeldSample(listing) ? "" : listing.supplierName,
     shipDaysMin: listing.shipDaysMin,
     shipDaysMax: listing.shipDaysMax,
-    madeInUsa: listing.madeInUsa,
     shelf: listing.shelf,
     sample,
     supplierUsConfirmed: listing.supplierUsConfirmed,

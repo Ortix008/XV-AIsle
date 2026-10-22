@@ -9,7 +9,6 @@ const columns = [
     title: "Shop",
     links: [
       { href: "/shop", label: "Shop" },
-      { href: "/shop/usa", label: "Made in the USA" },
       { href: "/shop/small", label: "Small business" },
     ],
   },
