@@ -47,6 +47,7 @@ export type ProductListing = {
   aisle?: string | null;
   soldOut?: boolean;
   offers?: { size: string; sku: string; soldOut?: boolean }[];
+  specs?: string[];
 };
 
 function productAisleCrumb(listing: ProductListing) {
@@ -185,6 +186,15 @@ export function ProductBuy({
           {listing.sample ? <span className="product-sample">Sample</span> : null}
         </div>
         <p className="product-desc">{listing.description}</p>
+        {listing.specs && listing.specs.length > 0 ? (
+          <ul className="product-specs">
+            {listing.specs.map((spec) => (
+              <li className="product-spec" key={spec}>
+                {spec}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {testMode && !qaCheckout ? (
           <p className="product-test" role="status">
             Test mode

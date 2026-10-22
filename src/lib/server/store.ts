@@ -24,6 +24,7 @@ export type StoreListing = {
   sku: string;
   title: string;
   description: string;
+  specs?: string[];
   priceCents: number;
   image: string;
   supplierName: string;
@@ -137,6 +138,7 @@ type ListingRow = {
   sku: string;
   title: string;
   description: string;
+  specs?: string | null;
   price_cents: number;
   image: string;
   supplier_name: string;
@@ -244,6 +246,17 @@ type OrderRow = {
   receipt_token_hash?: string | null;
 };
 
+function parseSpecs(raw: string | null | undefined) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) return [];
+    return parsed;
+  } catch {
+    return [];
+  }
+}
+
 function listingFrom(row: ListingRow): StoreListing {
   return {
     productId: row.product_id,
@@ -251,6 +264,7 @@ function listingFrom(row: ListingRow): StoreListing {
     sku: row.sku,
     title: row.title,
     description: row.description,
+    specs: parseSpecs(row.specs),
     priceCents: row.price_cents,
     image: row.image,
     supplierName: row.supplier_name,
@@ -320,6 +334,7 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     sku: listing.sku,
     title: sample && !listing.title.endsWith(" (Sample)") ? `${listing.title} (Sample)` : listing.title,
     description: listing.description,
+    ...(listing.specs && listing.specs.length > 0 ? { specs: listing.specs } : {}),
     priceCents: listing.priceCents,
     image: listing.image,
     supplierName: isHeldSample(listing) ? "" : listing.supplierName,
@@ -577,6 +592,7 @@ export function publishListing(
   const struck = compareAtRejection({
     title: input.title,
     description: input.description,
+    specs: existing?.specs ?? [],
     brand: brand.text,
     whyItCosts: whyItCosts.text,
     whyWePicked: whyWePicked.text,

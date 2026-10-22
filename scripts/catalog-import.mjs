@@ -152,7 +152,7 @@ function accountByEmail(db, email) {
   return db.prepare("SELECT id, name, role FROM accounts WHERE email = ?").get(email);
 }
 
-const DRAFT_KEYS = new Set(["slug", "title", "sku", "description", "price_cents", "image", "variants", "stock_count"]);
+const DRAFT_KEYS = new Set(["slug", "title", "sku", "description", "specs", "price_cents", "image", "variants", "stock_count"]);
 
 const RAINCOAT_VARIANTS = {
   "insulated-dog-raincoat-dark-blue": [
@@ -181,6 +181,16 @@ function stockCountOf(value) {
   return value;
 }
 
+function draftSpecs(value) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 12) return null;
+  const specs = [];
+  for (const item of value) {
+    if (typeof item !== "string" || item.length < 1 || item.length > 400 || item !== item.trim()) return null;
+    specs.push(item);
+  }
+  return specs;
+}
+
 function buildDraftRow(product) {
   const title = typeof product.title === "string" ? product.title.trim() : "";
   if (title.length < 1 || title.length > 180) return { reason: "invalid title" };
@@ -195,6 +205,8 @@ function buildDraftRow(product) {
   if (product.image !== `/art/products/${product.slug}.jpg`) return { reason: "invalid image" };
   const extra = Object.keys(product).find((key) => !DRAFT_KEYS.has(key));
   if (extra) return { reason: "private field" };
+  const specs = draftSpecs(product.specs);
+  if (!specs) return { reason: "invalid specs" };
   const expectedSizes = RAINCOAT_VARIANTS[product.slug] ?? null;
   let sizeOffer = null;
   let stockCount = null;
@@ -222,6 +234,7 @@ function buildDraftRow(product) {
       title,
       sku,
       description: product.description.trim(),
+      specs: JSON.stringify(specs),
       priceCents: product.price_cents,
       image: product.image,
       sizeOffer,
@@ -313,6 +326,7 @@ function importDraft(file, dryRun) {
   ensureColumn(db, "listings", "size_offer", "TEXT");
   ensureColumn(db, "listings", "stock_count", "INTEGER");
   ensureColumn(db, "listings", "stock_cap", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "listings", "specs", "TEXT");
 
   const insertListing = db.prepare(
     `INSERT INTO listings (
@@ -320,8 +334,8 @@ function importDraft(file, dryRun) {
        supplier_name, supplier_origin, ship_days_min, ship_days_max, published,
        made_in_usa, hidden_from_shop, supplier_us_confirmed,
        route, supplier_order_url, supplier_email,
-       supplier_cost_cents, supplier_shipping_cents, catalog_item_id, size_offer, stock_count, stock_cap
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', 0, 0, 0, 0, 1, 0, '', NULL, NULL, 0, 0, NULL, ?, ?, 1)
+       supplier_cost_cents, supplier_shipping_cents, catalog_item_id, size_offer, stock_count, specs, stock_cap
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', 0, 0, 0, 0, 1, 0, '', NULL, NULL, 0, 0, NULL, ?, ?, ?, 1)
      ON CONFLICT(product_id) DO UPDATE SET
        account_id = excluded.account_id,
        sku = excluded.sku,
@@ -344,6 +358,7 @@ function importDraft(file, dryRun) {
        supplier_shipping_cents = 0,
        catalog_item_id = NULL,
        size_offer = excluded.size_offer,
+       specs = excluded.specs,
        stock_count = listings.stock_count,
        stock_cap = 1`,
   );
@@ -379,6 +394,7 @@ function importDraft(file, dryRun) {
         row.image,
         row.sizeOffer,
         row.stockCount,
+        row.specs,
       );
       const skuList = row.counts.map((count) => count.sku);
       db.prepare(

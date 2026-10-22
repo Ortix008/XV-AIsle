@@ -218,6 +218,7 @@ export function getDb() {
   addColumn(next, "listings", "size_offer", "TEXT");
   addColumn(next, "listings", "stock_count", "INTEGER");
   addColumn(next, "listings", "stock_cap", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "listings", "specs", "TEXT");
   addColumn(next, "orders", "variant_sku", "TEXT");
   addColumn(next, "orders", "payment_intent_id", "TEXT");
   addColumn(next, "orders", "charge_id", "TEXT");

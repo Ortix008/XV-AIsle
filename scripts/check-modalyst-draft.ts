@@ -18,7 +18,15 @@ import { SOLD_OUT_LABEL } from "../src/lib/sold-out";
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-draft-")), "draft.sqlite");
 
 const CATALOG = join(process.cwd(), "catalog/modalyst-draft.json");
-const ALLOWED = ["slug", "title", "sku", "description", "price_cents", "image", "variants", "stock_count"];
+const COPY = join(process.cwd(), "catalog/modalyst-copy-oct22.md");
+const ALLOWED = ["slug", "title", "sku", "description", "specs", "price_cents", "image", "variants", "stock_count"];
+const COPY_SLUG: Record<string, string> = {
+  "XV-MOD-L83": "pearl-jewelry-gift-set",
+  "XV-MOD-L81": "garnet-jewelry-gift-set",
+  "XV-MOD-L47": "insulated-dog-raincoat-dark-blue",
+  "XV-MOD-L51": "reversible-dog-raincoat-green",
+  "XV-MOD-L54": "christmas-tree-cat-house-flag",
+};
 const STOCK: Record<string, number | null> = {
   "pearl-jewelry-gift-set": 2,
   "garnet-jewelry-gift-set": 1,
@@ -61,8 +69,47 @@ function assert(condition: unknown, message: string) {
 }
 
 function textOf(html: string, className: string) {
-  const match = html.match(new RegExp(`class="${className}">([^<]*)`));
-  return match?.[1] ?? "";
+  return textsOf(html, className)[0] ?? "";
+}
+
+function textsOf(html: string, className: string) {
+  return [...html.matchAll(new RegExp(`class="${className}"[^>]*>([^<]*)`, "g"))].map((match) => match[1] ?? "");
+}
+
+type ApprovedProduct = {
+  sku: string;
+  status: "approved" | "HOLD";
+  title: string;
+  description: string;
+  specs: string[];
+};
+
+function approvedCopy(file: string) {
+  const products: ApprovedProduct[] = [];
+  for (const block of file.split(/^### /m).slice(1)) {
+    const head = block.split("\n")[0] ?? "";
+    const sku = head.match(/\((XV-MOD-L\d+)\)/)?.[1];
+    if (!sku) continue;
+    const status = head.includes("Status: HOLD") ? "HOLD" : head.includes("Status: approved") ? "approved" : null;
+    const title = block.match(/^- Title: (.*)$/m)?.[1];
+    const description = block.match(/^- Description: (.*)$/m)?.[1];
+    const specs = block
+      .split("\n")
+      .filter((line) => line.startsWith("  - "))
+      .map((line) => line.slice(4));
+    if (status !== "HOLD" && status !== "approved") throw new Error(`the copy file is missing a status for ${sku}`);
+    if (title == null || description == null || specs.length === 0) throw new Error(`the copy file is missing lines for ${sku}`);
+    products.push({ sku, status, title, description, specs });
+  }
+  const label = file.match(/^- Label: (.*)$/m)?.[1] ?? "";
+  return { products, label };
+}
+
+function linesAfter(file: string, prefix: string) {
+  return file
+    .split("\n")
+    .filter((line) => line.startsWith(prefix))
+    .map((line) => line.slice(prefix.length));
 }
 
 const PHOTO_SHA256: Record<string, string> = {
@@ -145,7 +192,39 @@ async function main() {
   assert(!/cost|shipping|source_url|supplier_|route|https?:|margin/i.test(raw), "the draft catalog has no cost, shipping, supplier, route, or margin");
   const parsed = JSON.parse(raw) as { products: Array<Record<string, unknown>> };
   assert(parsed.products.length === 5, "the draft catalog has five products");
+  const copyFile = readFileSync(COPY, "utf8");
+  const approved = approvedCopy(copyFile);
+  const titleLines = linesAfter(copyFile, "- Title: ");
+  const descriptionLines = linesAfter(copyFile, "- Description: ");
+  const bulletLines = linesAfter(copyFile, "  - ");
+  const labelLines = linesAfter(copyFile, "- Label: ");
+  const parsedSpecs = approved.products.flatMap((item) => item.specs);
+  assert(
+    titleLines.length === approved.products.length && titleLines.every((line, index) => line === approved.products[index]?.title),
+    "each title is the file line",
+  );
+  assert(
+    descriptionLines.length === approved.products.length &&
+      descriptionLines.every((line, index) => line === approved.products[index]?.description),
+    "each description is the file line",
+  );
+  assert(
+    bulletLines.length === parsedSpecs.length && bulletLines.every((line, index) => line === parsedSpecs[index]),
+    "each spec bullet is the file line",
+  );
+  assert(labelLines.length === 1 && labelLines[0] === approved.label && approved.label === SOLD_OUT_LABEL, "the sold-out label is the file line");
+  assert(!readFileSync(join(process.cwd(), "src/lib/sold-out.ts"), "utf8").includes("TODO(Wordy)"), "sold out has no placeholder");
+  const holdSkus = approved.products.filter((item) => item.status === "HOLD").map((item) => item.sku);
+  const liveSkus = approved.products.filter((item) => item.status === "approved").map((item) => item.sku);
+  assert(holdSkus.join(",") === "XV-MOD-L81,XV-MOD-L47,XV-MOD-L51", "garnet and both raincoats are on hold");
+  assert(liveSkus.join(",") === "XV-MOD-L83,XV-MOD-L54", "pearl and the flag are approved");
+  const copyBySku = new Map(approved.products.map((item) => [item.sku, item]));
   for (const product of parsed.products) {
+    const copy = copyBySku.get(String(product.sku));
+    if (!copy) throw new Error("missing copy");
+    assert(product.slug === COPY_SLUG[copy.sku], "the catalog slug matches the sku");
+    assert(product.title === copy.title && product.description === copy.description, "the catalog text equals the file");
+    assert(JSON.stringify(product.specs) === JSON.stringify(copy.specs), "the catalog specs equal the file");
     assert(Object.keys(product).every((key) => ALLOWED.includes(key)), "a draft product keeps only the public fields");
     const slug = String(product.slug);
     assert(product.image === `/art/products/${slug}.jpg`, "the image path is the jpg");
@@ -207,7 +286,9 @@ async function main() {
       supplier_cost_cents: number;
       supplier_shipping_cents: number;
       image: string;
+      title: string;
       description: string;
+      specs: string | null;
       sku: string;
       size_offer: string | null;
       stock_count: number | null;
@@ -237,7 +318,12 @@ async function main() {
       };
       assert(counted.stock_count === product.stock_count, "the single sku keeps its count");
     }
-    assert(row.description === product.description, "the stored description is the public catalog text");
+    const copy = copyBySku.get(String(product.sku));
+    if (!copy) throw new Error("missing copy");
+    assert(row.title === copy.title, "the stored title equals the file");
+    assert(row.description === copy.description, "the stored description equals the file");
+    assert(row.specs === JSON.stringify(copy.specs), "the stored specs equal the file");
+    if (copy.status === "HOLD") assert(row.published === 0 && row.hidden_from_shop === 1, `${copy.sku} stays unpublished`);
     const catalog = db.prepare("SELECT id FROM supplier_catalog WHERE id = ?").get(`import-${slug}`);
     assert(!catalog, "a draft does not write a supplier catalog row");
     assert(!listPublished().some((item) => item.productId === slug), "the shop list hides the draft");
@@ -266,6 +352,19 @@ async function main() {
     if (slug === "christmas-tree-cat-house-flag") assert(!shown.includes("999"), "the flag count stays off the shopper page");
     }
     assert(textOf(html, "product-desc") === page.description, "the shopper description is the catalog description");
+    const buyHtml = renderToStaticMarkup(
+      createElement(ProductBuy, { listing: page, returnNote: "", shareHref: "https://example.com/draft" }),
+    );
+    const soldHtml = renderToStaticMarkup(
+      createElement(ProductBuy, { listing: { ...page, soldOut: true }, returnNote: "", shareHref: "https://example.com/draft" }),
+    );
+    assert(textOf(buyHtml, "product-title") === copy.title, "the rendered title equals the file");
+    assert(textOf(buyHtml, "product-desc") === copy.description, "the rendered description equals the file");
+    assert(JSON.stringify(textsOf(buyHtml, "product-spec")) === JSON.stringify(copy.specs), "the rendered specs equal the file");
+    assert(textOf(soldHtml, "product-sold-out") === approved.label, "the rendered sold-out label equals the file");
+    assert(textOf(soldHtml, "product-title") === copy.title && textOf(soldHtml, "product-desc") === copy.description, "sold-out copy equals the file");
+    assert(JSON.stringify(textsOf(soldHtml, "product-spec")) === JSON.stringify(copy.specs), "sold-out specs equal the file");
+    assert(!buyHtml.includes("TODO(Wordy)") && !soldHtml.includes("TODO(Wordy)"), "the product page has no sold-out placeholder");
     assert(textOf(html, "product-ship") === TRACKING_SHIP, "a draft shows only the tracking line");
     assert(!html.includes("Made in") && !html.includes("USA"), "a draft shows no made-in claim");
     assert(!/\d+\s*[–-]\s*\d+\s*days/.test(html), "a draft shows no ship-day window");
@@ -278,6 +377,7 @@ async function main() {
     const hold = draftPublishError(slug);
     const liveLater = slug === "pearl-jewelry-gift-set" || slug === "christmas-tree-cat-house-flag";
     assert(eligibleToPublishLater(slug) === liveLater && (hold == null) === liveLater, "only the pearl set and the flag can go live later");
+    assert((copy.status === "HOLD") === (hold != null) && (copy.status === "approved") === liveLater, `${copy.sku} publish status matches the file`);
     const attempt = publishListing(operatorId, {
       productId: slug,
       sku: listing.sku,
@@ -323,6 +423,11 @@ async function main() {
       };
       assert(back.published === 0 && back.hidden_from_shop === 1 && Object.is(back.stock_count, STOCK[slug]), "eligibility does not publish the draft");
     }
+    const flag = db.prepare("SELECT published, hidden_from_shop FROM listings WHERE product_id = ?").get(slug) as {
+      published: number;
+      hidden_from_shop: number;
+    };
+    assert(flag.published === 0 && flag.hidden_from_shop === 1, `${copy.sku} is not published`);
     rendered.push({
       name: textOf(html, "product-title"),
       price: textOf(html, "product-price"),
@@ -505,6 +610,17 @@ async function main() {
     const slug = String(product.slug);
     const row = stockOf(slug);
     assert(row.published === 0 && row.hidden === 1 && row.stockCap === 1, "a reimport keeps every draft unpublished");
+    const stored = db.prepare("SELECT title, description, specs, published FROM listings WHERE product_id = ?").get(slug) as {
+      title: string;
+      description: string;
+      specs: string;
+      published: number;
+    };
+    const copy = copyBySku.get(String(product.sku));
+    assert(
+      copy != null && stored.published === 0 && stored.title === copy.title && stored.description === copy.description && stored.specs === JSON.stringify(copy.specs),
+      `${product.sku} stays unpublished with the file copy`,
+    );
   }
 
   const mark = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
@@ -516,7 +632,10 @@ async function main() {
   assert(mark.includes(".product-frame") && mark.includes("aspect-ratio: 4 / 5") && mark.includes("position: relative"), "the product frame reserves its box");
   assert(mark.includes(".product-frame > img[width]") && mark.includes(".mark-tile img[width]"), "a sized photo stays inside the frame");
   const pearl = "/art/products/pearl-jewelry-gift-set.jpg";
-  const frameHtml = renderToStaticMarkup(createElement(ProductFrame, { src: pearl, alt: "Pearl Jewelry Gift Set", sizes: "280px", priority: true }));
+  const pearlCopy = copyBySku.get("XV-MOD-L83");
+  const blueCopy = copyBySku.get("XV-MOD-L47");
+  if (!pearlCopy || !blueCopy) throw new Error("missing copy");
+  const frameHtml = renderToStaticMarkup(createElement(ProductFrame, { src: pearl, alt: pearlCopy.title, sizes: "280px", priority: true }));
   assert(frameHtml.includes('loading="lazy"'), "a draft photo lazy-loads");
   assert(frameHtml.includes('width="1920"') && frameHtml.includes('height="1920"'), "a draft photo has fixed dimensions");
   assert(!frameHtml.includes("preload"), "a draft photo is not preloaded");
@@ -525,8 +644,9 @@ async function main() {
   const buyListing = {
     productId: pearlId,
     sku: "XV-MOD-L83",
-    title: "Pearl Jewelry Gift Set",
-    description: "A pearl jewelry set presented as a ready-to-give gift.",
+    title: pearlCopy.title,
+    description: pearlCopy.description,
+    specs: pearlCopy.specs,
     priceCents: 15025,
     image: pearl,
     supplierName: "",
@@ -537,7 +657,8 @@ async function main() {
   const soldBuy = renderToStaticMarkup(
     createElement(ProductBuy, { listing: { ...buyListing, soldOut: true }, returnNote: "", shareHref: "https://example.com/pearl" }),
   );
-  assert(soldBuy.includes(SOLD_OUT_LABEL) && !soldBuy.includes("Continue to checkout"), "a sold-out listing shows the placeholder and no checkout");
+  assert(textOf(soldBuy, "product-sold-out") === approved.label && !soldBuy.includes("Continue to checkout"), "a sold-out listing shows sold out and no checkout");
+  assert(textOf(soldBuy, "product-title") === pearlCopy.title && JSON.stringify(textsOf(soldBuy, "product-spec")) === JSON.stringify(pearlCopy.specs), "a sold-out listing renders the file");
   const openBuy = renderToStaticMarkup(
     createElement(ProductBuy, { listing: { ...buyListing, soldOut: false }, returnNote: "", shareHref: "https://example.com/pearl" }),
   );
@@ -547,6 +668,10 @@ async function main() {
       listing: {
         ...buyListing,
         productId: "insulated-dog-raincoat-dark-blue",
+        sku: "XV-MOD-L47",
+        title: blueCopy.title,
+        description: blueCopy.description,
+        specs: blueCopy.specs,
         offers: [
           { size: "2XS", sku: "GJ472F2-DB-2XS", soldOut: true },
           { size: "XS", sku: "GJ472F2-DB-XS" },
@@ -556,7 +681,8 @@ async function main() {
       shareHref: "https://example.com/coat",
     }),
   );
-  assert(sizedBuy.includes("2XS") && sizedBuy.includes("XS") && sizedBuy.includes(SOLD_OUT_LABEL), "a sold-out size shows the placeholder");
+  assert(sizedBuy.includes("2XS") && sizedBuy.includes("XS") && textOf(sizedBuy, "product-sold-out") === approved.label, "a sold-out size shows sold out");
+  assert(JSON.stringify(textsOf(sizedBuy, "product-spec")) === JSON.stringify(blueCopy.specs), "a sized listing renders the file");
   assert(sizedBuy.includes("Continue to checkout") && !sizedBuy.includes("30") && !sizedBuy.includes("41"), "the other size can still be bought");
   const gridHtml = renderToStaticMarkup(
     createElement(ShopGrid, {
@@ -568,7 +694,7 @@ async function main() {
       seed: [
         {
           productId: pearlId,
-          title: "Pearl Jewelry Gift Set",
+          title: pearlCopy.title,
           priceCents: 15025,
           image: pearl,
           supplierOrigin: "",
@@ -579,7 +705,7 @@ async function main() {
       ],
     }),
   );
-  assert(gridHtml.includes("shop-card-stock") && gridHtml.includes(SOLD_OUT_LABEL), "a sold-out card shows the placeholder");
+  assert(textOf(gridHtml, "shop-card-stock") === approved.label && textOf(gridHtml, "shop-card-title") === pearlCopy.title, "a sold-out card shows sold out");
   console.log(JSON.stringify(rendered));
   console.log("modalyst draft checks ok");
   db.close();

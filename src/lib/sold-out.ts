@@ -1,2 +1,1 @@
-/** Placeholder until Wordy sends the sold-out line. */
-export const SOLD_OUT_LABEL = "TODO(Wordy): Sold out";
+export const SOLD_OUT_LABEL = "Sold out";
