@@ -152,9 +152,195 @@ function accountByEmail(db, email) {
   return db.prepare("SELECT id, name, role FROM accounts WHERE email = ?").get(email);
 }
 
+const DRAFT_KEYS = new Set(["slug", "title", "sku", "description", "price_cents", "image"]);
+
+function buildDraftRow(product) {
+  const title = typeof product.title === "string" ? product.title.trim() : "";
+  if (title.length < 1 || title.length > 180) return { reason: "invalid title" };
+  const sku = typeof product.sku === "string" ? product.sku.trim() : "";
+  if (sku.length < 1 || sku.length > 40) return { reason: "invalid sku" };
+  if (typeof product.description !== "string") return { reason: "invalid description" };
+  if (product.description.length > 4000) return { reason: "description is too long" };
+  if (typeof product.price_cents !== "number" || !Number.isInteger(product.price_cents) || product.price_cents < 500) {
+    return { reason: "price is too low" };
+  }
+  if (typeof product.image !== "string" || !IMAGE.test(product.image)) return { reason: "invalid image" };
+  if (product.image !== `/art/products/${product.slug}.jpg`) return { reason: "invalid image" };
+  const extra = Object.keys(product).find((key) => !DRAFT_KEYS.has(key));
+  if (extra) return { reason: "private field" };
+  return {
+    row: {
+      slug: product.slug,
+      title,
+      sku,
+      description: product.description.trim(),
+      priceCents: product.price_cents,
+      image: product.image,
+    },
+  };
+}
+
+function importDraft(file, dryRun) {
+  const operatorEmail = process.env.STORE_OPERATOR_EMAIL?.trim().toLowerCase() ?? "";
+  if (!operatorEmail) {
+    fail("Set STORE_OPERATOR_EMAIL.");
+    return;
+  }
+  const products = readProducts(file);
+  if (!products) {
+    fail("The catalog file could not be read.");
+    return;
+  }
+  const counts = countSlugs(products);
+  const skipped = [];
+  const ready = [];
+  const seen = new Set();
+  for (const product of products) {
+    const slug = slugOf(product);
+    if (!SLUG.test(slug)) {
+      skipped.push({ slug: "row", reason: "invalid slug" });
+      continue;
+    }
+    if (counts.get(slug) > 1) {
+      if (!seen.has(slug)) skipped.push({ slug, reason: "duplicate slug" });
+      seen.add(slug);
+      continue;
+    }
+    seen.add(slug);
+    const built = buildDraftRow(product);
+    if (built.reason) skipped.push({ slug, reason: built.reason });
+    else ready.push(built.row);
+  }
+
+  const path = process.env.DATABASE_PATH ?? "data/xvaisle.sqlite";
+  let db;
+  try {
+    db = new DatabaseSync(path);
+  } catch {
+    fail("The store database could not be opened.");
+    return;
+  }
+  const operator = accountByEmail(db, operatorEmail);
+  if (!operator) {
+    fail("The operator account is not on file.");
+    db.close();
+    return;
+  }
+
+  const ownerStmt = db.prepare("SELECT account_id FROM listings WHERE product_id = ?");
+  const blocked = new Set();
+  for (const row of ready) {
+    const existing = ownerStmt.get(row.slug);
+    if (existing && existing.account_id !== operator.id) {
+      skipped.push({ slug: row.slug, reason: "belongs to another account" });
+      blocked.add(row.slug);
+    }
+  }
+  const accepted = ready.filter((row) => !blocked.has(row.slug));
+  if (skipped.length > 0) {
+    for (const item of skipped) line(item.slug, `skipped: ${item.reason}`);
+    for (const row of accepted) line(row.slug, "skipped: run aborted");
+    process.exitCode = 1;
+    db.close();
+    return;
+  }
+  if (dryRun) {
+    for (const row of accepted) line(row.slug, "hidden");
+    db.close();
+    return;
+  }
+
+  ensureColumn(db, "listings", "made_in_usa", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "listings", "hidden_from_shop", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "listings", "supplier_us_confirmed", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "listings", "route", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(db, "listings", "supplier_order_url", "TEXT");
+  ensureColumn(db, "listings", "supplier_email", "TEXT");
+  ensureColumn(db, "listings", "supplier_cost_cents", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "listings", "supplier_shipping_cents", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "listings", "catalog_item_id", "TEXT");
+
+  const insertListing = db.prepare(
+    `INSERT INTO listings (
+       product_id, account_id, sku, title, description, price_cents, image,
+       supplier_name, supplier_origin, ship_days_min, ship_days_max, published,
+       made_in_usa, hidden_from_shop, supplier_us_confirmed,
+       route, supplier_order_url, supplier_email,
+       supplier_cost_cents, supplier_shipping_cents, catalog_item_id
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', 0, 0, 0, 0, 1, 0, '', NULL, NULL, 0, 0, NULL)
+     ON CONFLICT(product_id) DO UPDATE SET
+       account_id = excluded.account_id,
+       sku = excluded.sku,
+       title = excluded.title,
+       description = excluded.description,
+       price_cents = excluded.price_cents,
+       image = excluded.image,
+       supplier_name = '',
+       supplier_origin = '',
+       ship_days_min = 0,
+       ship_days_max = 0,
+       published = 0,
+       made_in_usa = 0,
+       hidden_from_shop = 1,
+       supplier_us_confirmed = 0,
+       route = '',
+       supplier_order_url = NULL,
+       supplier_email = NULL,
+       supplier_cost_cents = 0,
+       supplier_shipping_cents = 0,
+       catalog_item_id = NULL`,
+  );
+  const catalogTable = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'supplier_catalog'").get();
+  const clearCatalog = catalogTable ? db.prepare("DELETE FROM supplier_catalog WHERE id = ?") : null;
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    for (const row of accepted) {
+      const existing = ownerStmt.get(row.slug);
+      if (existing && existing.account_id !== operator.id) {
+        const owned = new Error("owned");
+        owned.slug = row.slug;
+        throw owned;
+      }
+      insertListing.run(row.slug, operator.id, row.sku, row.title, row.description, row.priceCents, row.image);
+      clearCatalog?.run(`import-${row.slug}`);
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // The transaction is already closed.
+    }
+    if (error instanceof Error && error.slug) {
+      line(error.slug, "skipped: belongs to another account");
+      for (const row of accepted) {
+        if (row.slug !== error.slug) line(row.slug, "skipped: run aborted");
+      }
+    } else {
+      fail("The catalog was not written.");
+    }
+    process.exitCode = 1;
+    db.close();
+    return;
+  }
+
+  for (const row of accepted) line(row.slug, "hidden");
+  db.close();
+}
+
 function main() {
   const dryRun = process.argv.includes("--dry-run");
-  const args = process.argv.slice(2).filter((arg) => arg !== "--dry-run");
+  const draft = process.argv.includes("--draft");
+  const args = process.argv.slice(2).filter((arg) => arg !== "--dry-run" && arg !== "--draft");
+  if (draft) {
+    if (args.length !== 1) {
+      fail("Pass the public JSON path.");
+      return;
+    }
+    importDraft(args[0], dryRun);
+    return;
+  }
   if (args.length !== 2) {
     fail("Pass the public JSON path and the private JSON path.");
     return;
