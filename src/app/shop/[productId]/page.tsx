@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
   const shown = publicListing(listing, isSampleListing(listing));
   const origin = publicSiteUrl();
   const canonical = `${origin}/shop/${listing.productId}`;
-  const description = `${money(listing.priceCents / 100)}. ${listing.description}`.slice(0, 200);
+  const description = `${money(listing.priceCents / 100)}. ${shown.description}`.slice(0, 200);
   const image = productOgImage(origin, listing.image, shown.title);
   return {
     title: `${shown.title} · XV-AIsle`,

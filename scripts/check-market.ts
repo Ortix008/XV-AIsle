@@ -175,7 +175,9 @@ const publicTowel = publicShopListing(withOpen.listing, false);
 if ("supplierCostCents" in publicTowel || "supplierShippingCents" in publicTowel || "feeBps" in publicTowel) {
   throw new Error("public listing should hide cost and margin");
 }
-if (publicTowel.shipsFrom !== "Elizabeth, NJ") throw new Error("public listing should show ships from");
+if ("shipsFrom" in publicTowel || "supplierOrigin" in publicTowel || "origin" in publicTowel) {
+  throw new Error("public listing should hide the place");
+}
 const kept = publishListing(joined.account.id, towel);
 if ("error" in kept || kept.listing?.shipsFrom !== "Elizabeth, NJ") {
   throw new Error("open info should stay when a later save omits it");

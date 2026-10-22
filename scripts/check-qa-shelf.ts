@@ -145,7 +145,11 @@ async function main() {
   assert(sheet.supplierAccountId == null && scraper.supplierAccountId == null, "seeded samples are not linked to a supplier account");
   assert(sheet.supplierName === "Northwharf Goods", "the database still knows the seeded supplier");
   const shownSheet = publicShopListing(sheet, true);
-  assert(shownSheet.supplierName === "" && shownSheet.supplierOrigin === "", "the shopper listing drops the seeded supplier");
+  assert(shownSheet.supplierName === "", "the shopper listing drops the seeded supplier");
+  assert(
+    !("supplierOrigin" in shownSheet) && !("shipsFrom" in shownSheet) && !("origin" in shownSheet),
+    "the shopper listing has no origin",
+  );
   const heldOrder = createPendingOrder({ productId: "sheet-pan", qty: 1, ship });
   assert("error" in heldOrder, "checkout refuses a sample with no real supplier");
   assert(getListing("sheet-pan")?.published === true, "refusing the sample does not delete it");

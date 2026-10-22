@@ -33,7 +33,7 @@ const shipTo = {
 async function main() {
   const { closeDb, getDb } = await import("../src/lib/server/db");
   const { signUp } = await import("../src/lib/server/accounts");
-  const { addBusinessDays } = await import("../src/lib/business-days");
+  const { addBusinessDays, formatISODate } = await import("../src/lib/business-days");
   const { setMailDelivery, startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
   const { delayFor, placeFor, shipFor } = await import("../src/lib/server/order-actions");
   const { acceptDelayRefund, flagShippingDelays, remindUnplacedOrders } = await import("../src/lib/server/order-routing");
@@ -228,12 +228,13 @@ async function main() {
   flagShippingDelays(Date.UTC(2026, 9, 15, 0));
   assert(getOrder(openId)?.delayFlaggedAt != null, "no ship window means 7 business days");
 
-  const notice = await delayFor(noTotp, openId, "2026-10-21");
+  const expectedOn = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const notice = await delayFor(noTotp, openId, expectedOn);
   assert("error" in notice && notice.status === 403, "the delay notice needs an authenticator");
-  const sent = await delayFor(admin, openId, "2026-10-21");
+  const sent = await delayFor(admin, openId, expectedOn);
   assert(!("error" in sent), "an admin can send the delay notice");
   const delayMail = captured.find((message) => message.subject.includes("running late") && message.text.includes("XV-"));
-  assert(delayMail?.text.includes("October 21, 2026"), "the delay notice gives the new date");
+  assert(delayMail?.text.includes(formatISODate(expectedOn)), "the delay notice gives the new date");
   assert(delayMail?.text.includes("full refund"), "the delay notice offers a full refund");
   assert(!delayMail?.text.includes(STREET), "the delay notice has no street address");
   const token = delayMail?.text.match(/delay=([a-f0-9]+)/)?.[1] ?? "";
@@ -263,7 +264,7 @@ async function main() {
   const liveId = await paid("route-live");
   getDb().prepare("UPDATE orders SET status = 'needs_placing', paid_at = ?, charge_id = 'ch_live' WHERE id = ?").run(monday, liveId);
   flagShippingDelays(Date.UTC(2026, 9, 20, 12));
-  const liveNotice = await delayFor(admin, liveId, "2026-10-21");
+  const liveNotice = await delayFor(admin, liveId, expectedOn);
   assert(!("error" in liveNotice), "the live-key order can be noticed");
   const liveToken = captured.filter((message) => message.subject.includes("running late")).at(-1)?.text.match(/delay=([a-f0-9]+)/)?.[1] ?? "";
   process.env.STRIPE_SECRET_KEY = "sk_live_routing";

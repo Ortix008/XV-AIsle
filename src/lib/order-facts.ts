@@ -2,6 +2,21 @@
 
 export const US_SUPPLIER_SHIP = "Ships from a US supplier. Tracking emailed when it ships.";
 export const TRACKING_SHIP = "Tracking emailed when it ships.";
+/** Place line a shopper may see. No city, no supplier name. */
+export const SHOPPER_PLACE = "Ships from a US supplier.";
+
+const ENGINE_SHIP_SENTENCE = /Ships from [^.\n]{0,240} through [^.\n]{0,240}\./g;
+
+/** Drop the desk engine's "Ships from … through …" sentence. The rest of the description stays. */
+export function shopperDescription(value: string) {
+  return value
+    .replace(ENGINE_SHIP_SENTENCE, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 const US_STATE_CODES = new Set([
   "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA",
@@ -51,11 +66,15 @@ export function isUsLocation(value?: string | null) {
   return US_STATE_NAMES.has(last.toLowerCase().replace(/\./g, ""));
 }
 
-/** All three have to be true: a real supplier, a US ships-from, and the confirmed flag. */
+/**
+ * All three have to be true: a real supplier, a US ships-from, and the confirmed flag.
+ * Shopper JSON omits the place after that check, so a missing shipsFrom property keeps the flag.
+ */
 export function usSupplierConfirmed(source?: ShipSource | null) {
+  if (source?.supplierUsConfirmed !== true) return false;
+  if (source && !Object.prototype.hasOwnProperty.call(source, "shipsFrom")) return true;
   const name = source?.supplierName?.trim() ?? "";
   if (!name || isStoreSupplier(name)) return false;
-  if (source?.supplierUsConfirmed !== true) return false;
   return isUsLocation(source?.shipsFrom);
 }
 

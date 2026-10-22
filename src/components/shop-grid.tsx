@@ -16,7 +16,7 @@ export type ShopCard = {
   priceCents: number;
   image: string;
   supplierName?: string;
-  supplierOrigin: string;
+  supplierOrigin?: string;
   shipsFrom?: string | null;
   supplierUsConfirmed?: boolean;
   shipDaysMin: number;
@@ -35,8 +35,32 @@ function eyebrow(listing: ShopCard) {
   if (listing.sample) return "Sample";
   if (listing.madeInUsa) return "Made in the USA";
   if (listing.shelf === "small") return "Small business";
-  if (usSupplierConfirmed(listing) && listing.supplierOrigin.trim()) return listing.supplierOrigin;
   return "";
+}
+
+export function shopCardShipPhrase(listing: ShopCard) {
+  if (listing.sample) return null;
+  if (usSupplierConfirmed(listing) && shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax)) {
+    return `ships from a US supplier in ${listing.shipDaysMin}–${listing.shipDaysMax} days`;
+  }
+  return unconfirmedShipLine(listing);
+}
+
+export function ShopCardCopy({ listing }: { listing: ShopCard }) {
+  const label = eyebrow(listing);
+  const phrase = shopCardShipPhrase(listing);
+  return (
+    <div className="shop-card-text">
+      <p className="shop-card-eyebrow" aria-hidden={label ? undefined : true}>
+        {label}
+      </p>
+      <h3 className="shop-card-title">{listing.title}</h3>
+      <p className="shop-card-price">
+        {money(listing.priceCents / 100)}
+        {phrase ? <> · {phrase}</> : null}
+      </p>
+    </div>
+  );
 }
 
 export function ShopGrid({
@@ -185,28 +209,7 @@ export function ShopGrid({
                 ) : (
                   <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
                 )}
-                <div className="shop-card-text">
-                  <p className="shop-card-eyebrow" aria-hidden={eyebrow(listing) ? undefined : true}>
-                    {eyebrow(listing)}
-                  </p>
-                  <h3 className="shop-card-title">{listing.title}</h3>
-                  <p className="shop-card-price">
-                  {money(listing.priceCents / 100)}
-                  {listing.sample ? null : (
-                    <>
-                      {" · "}
-                      {usSupplierConfirmed(listing) &&
-                      shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax) ? (
-                        <>
-                          ships from {listing.supplierOrigin} in {listing.shipDaysMin}–{listing.shipDaysMax} days
-                        </>
-                      ) : (
-                        unconfirmedShipLine(listing)
-                      )}
-                    </>
-                  )}
-                  </p>
-                </div>
+                <ShopCardCopy listing={listing} />
               </Link>
             </Reveal>
           );
