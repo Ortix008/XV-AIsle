@@ -4,6 +4,7 @@ const qty = Number(process.env.STOCK_QTY);
 const result = createPendingOrder({
   productId: process.env.STOCK_PRODUCT ?? "",
   qty,
+  sku: process.env.STOCK_SKU || undefined,
   ship: {
     name: "Example Buyer",
     email: "buyer@example.com",

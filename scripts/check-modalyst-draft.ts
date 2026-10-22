@@ -1,8 +1,8 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MarkTile } from "../src/components/mark-tile";
@@ -22,9 +22,19 @@ const ALLOWED = ["slug", "title", "sku", "description", "price_cents", "image", 
 const STOCK: Record<string, number | null> = {
   "pearl-jewelry-gift-set": 2,
   "garnet-jewelry-gift-set": 1,
-  "christmas-tree-cat-house-flag": null,
+  "christmas-tree-cat-house-flag": 999,
   "insulated-dog-raincoat-dark-blue": null,
   "reversible-dog-raincoat-green": null,
+};
+const VARIANT_STOCK: Record<string, Array<{ size: string; sku: string; stock_count: number }>> = {
+  "insulated-dog-raincoat-dark-blue": [
+    { size: "2XS", sku: "GJ472F2-DB-2XS", stock_count: 30 },
+    { size: "XS", sku: "GJ472F2-DB-XS", stock_count: 41 },
+  ],
+  "reversible-dog-raincoat-green": [
+    { size: "2XS", sku: "GJ023S0-GREEN-2XS", stock_count: 25 },
+    { size: "XS", sku: "GJ023S0-GREEN-XS", stock_count: 161 },
+  ],
 };
 const SHIP = {
   name: "Example Buyer",
@@ -89,10 +99,23 @@ function runDraft(path: string) {
   });
 }
 
-function raceOrder(productId: string) {
+function setStock(email: string, extra: string[]) {
+  return spawnSync(process.execPath, ["scripts/set-stock.mjs", ...extra], {
+    env: { ...process.env, DATABASE_PATH: process.env.DATABASE_PATH, STORE_OPERATOR_EMAIL: email },
+    encoding: "utf8",
+  });
+}
+
+function raceOrder(productId: string, sku = "") {
   return new Promise<{ ok: boolean; error: string | null }>((resolve, reject) => {
     const child = spawn(process.execPath, ["--import", "tsx", "scripts/stock-order-once.ts"], {
-      env: { ...process.env, DATABASE_PATH: process.env.DATABASE_PATH, STOCK_PRODUCT: productId, STOCK_QTY: "1" },
+      env: {
+        ...process.env,
+        DATABASE_PATH: process.env.DATABASE_PATH,
+        STOCK_PRODUCT: productId,
+        STOCK_QTY: "1",
+        STOCK_SKU: sku,
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let out = "";
@@ -135,11 +158,14 @@ async function main() {
     const box = jpegBox(bytes);
     const expected = PRODUCT_PHOTO_SIZE[`/art/products/${slug}.jpg`];
     assert(expected && box.width === expected.width && box.height === expected.height, "the jpeg size matches the layout box");
-    const sizes = RAIN_SIZES[slug];
-    if (sizes) assert(JSON.stringify(product.variants) === JSON.stringify(sizes), "the raincoat offers only 2XS and XS");
-    else assert(product.variants == null, "only the raincoats have sizes");
-    assert(Object.hasOwn(product, "stock_count"), "each draft names its stock");
-    assert(Object.is(product.stock_count, STOCK[slug]), "the draft stock is the operator count");
+    const variants = VARIANT_STOCK[slug];
+    if (variants) {
+      assert(!Object.hasOwn(product, "stock_count"), "a sized draft keeps stock on each size");
+      assert(JSON.stringify(product.variants) === JSON.stringify(variants), "the raincoat stock is per size");
+    } else {
+      assert(product.variants == null, "only the raincoats have sizes");
+      assert(Object.is(product.stock_count, STOCK[slug]), "the draft stock is the operator count");
+    }
   }
   const imageConfig = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
   assert(!imageConfig.includes("unoptimized: true") && !imageConfig.includes("formats:"), "the image pipeline keeps the webp default");
@@ -196,7 +222,21 @@ async function main() {
     assert(row.sku === product.sku, "the listing sku stays the catalog sku");
     const sizes = RAIN_SIZES[slug] ?? null;
     assert(row.size_offer === (sizes ? JSON.stringify(sizes) : null), "the stored sizes are the offered sizes");
-    assert(row.stock_cap === 1 && Object.is(row.stock_count, STOCK[slug]), "the stored stock is the catalog count");
+    assert(row.stock_cap === 1 && Object.is(row.stock_count, STOCK[slug]), "the stored parent stock is the single-sku count");
+    const variants = VARIANT_STOCK[slug];
+    if (variants) {
+      for (const variant of variants) {
+        const counted = db.prepare("SELECT stock_count FROM listing_stock WHERE product_id = ? AND sku = ?").get(slug, variant.sku) as {
+          stock_count: number;
+        };
+        assert(counted.stock_count === variant.stock_count, "each size keeps its own count");
+      }
+    } else {
+      const counted = db.prepare("SELECT stock_count FROM listing_stock WHERE product_id = ? AND sku = ?").get(slug, product.sku) as {
+        stock_count: number;
+      };
+      assert(counted.stock_count === product.stock_count, "the single sku keeps its count");
+    }
     assert(row.description === product.description, "the stored description is the public catalog text");
     const catalog = db.prepare("SELECT id FROM supplier_catalog WHERE id = ?").get(`import-${slug}`);
     assert(!catalog, "a draft does not write a supplier catalog row");
@@ -216,6 +256,15 @@ async function main() {
       ),
     );
     assert(!("stockCount" in page) && !("stockCap" in page) && !("soldOut" in page), "a shopper listing hides the stock count");
+    const shown = JSON.stringify(page);
+    assert(!shown.includes("stockCount") && !shown.includes("stock_count"), "a shopper listing has no stock field");
+    if (variants) {
+      const offers = "offers" in page ? page.offers : undefined;
+      assert(offers != null && offers.every((offer) => !("stockCount" in offer)), "a sized listing shows its sizes without a count");
+      assert(offers != null && offers.length === variants.length, "a sized listing shows each size");
+    } else {
+    if (slug === "christmas-tree-cat-house-flag") assert(!shown.includes("999"), "the flag count stays off the shopper page");
+    }
     assert(textOf(html, "product-desc") === page.description, "the shopper description is the catalog description");
     assert(textOf(html, "product-ship") === TRACKING_SHIP, "a draft shows only the tracking line");
     assert(!html.includes("Made in") && !html.includes("USA"), "a draft shows no made-in claim");
@@ -257,6 +306,12 @@ async function main() {
       assert("error" in forcedOrder && forcedOrder.error === "That page is not on the store.", "a held draft cannot be ordered");
       const after = db.prepare("SELECT stock_count FROM listings WHERE product_id = ?").get(slug) as { stock_count: number | null };
       assert(Object.is(after.stock_count, held.stock_count), "a blocked checkout does not change stock");
+      for (const variant of VARIANT_STOCK[slug] ?? []) {
+        const counted = db.prepare("SELECT stock_count FROM listing_stock WHERE product_id = ? AND sku = ?").get(slug, variant.sku) as {
+          stock_count: number;
+        };
+        assert(counted.stock_count === variant.stock_count, "a blocked checkout does not change a size count");
+      }
       db.prepare("UPDATE listings SET published = 0, hidden_from_shop = 1 WHERE product_id = ?").run(slug);
     } else {
       assert(!("error" in attempt) && attempt.listing?.published === true, "the pearl set and the flag are eligible to publish");
@@ -277,8 +332,25 @@ async function main() {
 
   function stockOf(productId: string) {
     return db.prepare(
-      "SELECT stock_count AS stockCount, stock_cap AS stockCap, published, hidden_from_shop AS hidden FROM listings WHERE product_id = ?",
-    ).get(productId) as { stockCount: number | null; stockCap: number; published: number; hidden: number };
+      `SELECT s.stock_count AS stockCount, l.stock_cap AS stockCap, l.published, l.hidden_from_shop AS hidden, l.sku
+       FROM listings l
+       LEFT JOIN listing_stock s ON s.product_id = l.product_id AND s.sku = l.sku
+       WHERE l.product_id = ?`,
+    ).get(productId) as { stockCount: number | null; stockCap: number; published: number; hidden: number; sku: string };
+  }
+  function setCount(productId: string, count: number | null) {
+    const sku = stockOf(productId).sku;
+    db.prepare(
+      `INSERT INTO listing_stock (product_id, sku, stock_count) VALUES (?, ?, ?)
+       ON CONFLICT(product_id, sku) DO UPDATE SET stock_count = excluded.stock_count`,
+    ).run(productId, sku, count);
+    db.prepare("UPDATE listings SET stock_count = ? WHERE product_id = ?").run(count, productId);
+  }
+  function variantCount(productId: string, sku: string) {
+    const row = db.prepare("SELECT stock_count FROM listing_stock WHERE product_id = ? AND sku = ?").get(productId, sku) as
+      | { stock_count: number | null }
+      | undefined;
+    return row?.stock_count;
   }
   function sell(productId: string) {
     db.prepare("UPDATE listings SET published = 1, hidden_from_shop = 0, supplier_account_id = ? WHERE product_id = ?").run(operatorId, productId);
@@ -297,16 +369,18 @@ async function main() {
   assert(soldPage?.soldOut === true && !("stockCount" in soldPage), "zero stock is sold out without a count");
   const blockedSale = createPendingOrder({ productId: pearlId, qty: 1, ship: SHIP });
   assert("error" in blockedSale && blockedSale.error === SOLD_OUT_LABEL && stockOf(pearlId).stockCount === 0, "zero stock blocks checkout");
-  db.prepare("UPDATE listings SET stock_count = 1 WHERE product_id = ?").run(pearlId);
+  setCount(pearlId, 1);
   const over = createPendingOrder({ productId: pearlId, qty: 2, ship: SHIP });
   assert("error" in over && over.error === SOLD_OUT_LABEL && stockOf(pearlId).stockCount === 1, "checkout cannot take more than the stock");
-  db.prepare("UPDATE listings SET stock_cap = 0, stock_count = 0 WHERE product_id = ?").run(pearlId);
+  setCount(pearlId, 0);
+  db.prepare("UPDATE listings SET stock_cap = 0 WHERE product_id = ?").run(pearlId);
   const legacy = getListing(pearlId);
   const legacyPage = legacy ? publicShopListing(legacy, false) : null;
   assert(legacyPage != null && legacyPage.soldOut !== true, "an uncapped listing is not sold out");
   const legacyOrder = createPendingOrder({ productId: pearlId, qty: 1, ship: SHIP });
   assert(!("error" in legacyOrder) && stockOf(pearlId).stockCount === 0 && stockOf(pearlId).stockCap === 0, "an uncapped listing does not decrement");
-  db.prepare("UPDATE listings SET stock_cap = 1, stock_count = 1 WHERE product_id = ?").run(pearlId);
+  db.prepare("UPDATE listings SET stock_cap = 1 WHERE product_id = ?").run(pearlId);
+  setCount(pearlId, 1);
   closeDb();
   const raced = await Promise.all([raceOrder(pearlId), raceOrder(pearlId)]);
   db = openDb();
@@ -317,6 +391,8 @@ async function main() {
 
   const flagId = "christmas-tree-cat-house-flag";
   sell(flagId);
+  assert(stockOf(flagId).stockCount === 999, "the flag starts at 999");
+  setCount(flagId, null);
   const unnamed = createPendingOrder({ productId: flagId, qty: 1, ship: SHIP });
   assert("error" in unnamed && unnamed.error === "That page is not on the store." && stockOf(flagId).stockCount == null, "an unset stock count cannot be ordered");
   const flag = getListing(flagId);
@@ -338,27 +414,97 @@ async function main() {
     !("error" in counted) && counted.listing?.published === false && counted.listing.stockCount === 1 && counted.listing.stockCap,
     "the operator can set stock without publishing",
   );
-  db.prepare("UPDATE listings SET stock_count = 4 WHERE product_id = ?").run(flagId);
+  setCount(flagId, 4);
   const unchanged = publishListing(operatorId, { ...flagInput, published: false });
   assert(!("error" in unchanged) && stockOf(flagId).stockCount === 4, "an omitted stock count stays as the operator left it");
   const invalid = publishListing(operatorId, { ...flagInput, published: false, stockCount: -1 });
   assert("error" in invalid && invalid.error === "That page is not on the store." && stockOf(flagId).stockCount === 4, "a bad stock count is refused");
   sell(flagId);
-  db.prepare("UPDATE listings SET stock_count = 1, stock_cap = 1 WHERE product_id = ?").run(flagId);
+  setCount(flagId, 1);
+  db.prepare("UPDATE listings SET stock_cap = 1 WHERE product_id = ?").run(flagId);
   const flagOrder = createPendingOrder({ productId: flagId, qty: 1, ship: SHIP });
   assert(!("error" in flagOrder) && stockOf(flagId).stockCount === 0, "a counted flag decrements");
   const flagAgain = createPendingOrder({ productId: flagId, qty: 1, ship: SHIP });
   assert("error" in flagAgain && flagAgain.error === SOLD_OUT_LABEL && stockOf(flagId).stockCount === 0, "a sold-out flag cannot be ordered");
+
+  const blueId = "insulated-dog-raincoat-dark-blue";
+  sell(flagId);
+  db.prepare("UPDATE listings SET size_offer = ?, stock_cap = 1 WHERE product_id = ?").run(
+    JSON.stringify([
+      { size: "2XS", sku: "FLAG-2XS" },
+      { size: "XS", sku: "FLAG-XS" },
+    ]),
+    flagId,
+  );
+  db.prepare("INSERT INTO listing_stock (product_id, sku, stock_count) VALUES (?, 'FLAG-2XS', 30), (?, 'FLAG-XS', 41)").run(flagId, flagId);
+  const missingSize = createPendingOrder({ productId: flagId, qty: 1, ship: SHIP });
+  assert("error" in missingSize && missingSize.error === "That page is not on the store." && variantCount(flagId, "FLAG-2XS") === 30, "a sized listing needs a size");
+  const sized = createPendingOrder({ productId: flagId, qty: 1, sku: "FLAG-2XS", ship: SHIP });
+  assert(!("error" in sized) && variantCount(flagId, "FLAG-2XS") === 29 && variantCount(flagId, "FLAG-XS") === 41, "one size decrements on its own");
+  const savedSku = db.prepare("SELECT variant_sku FROM orders WHERE product_id = ? ORDER BY created_at DESC LIMIT 1").get(flagId) as {
+    variant_sku: string;
+  };
+  assert(savedSku.variant_sku === "FLAG-2XS", "the order keeps the size sku");
+  db.prepare("UPDATE listing_stock SET stock_count = 0 WHERE product_id = ? AND sku = 'FLAG-2XS'").run(flagId);
+  const sizeBlocked = createPendingOrder({ productId: flagId, qty: 1, sku: "FLAG-2XS", ship: SHIP });
+  assert(
+    "error" in sizeBlocked && sizeBlocked.error === SOLD_OUT_LABEL && variantCount(flagId, "FLAG-2XS") === 0 && variantCount(flagId, "FLAG-XS") === 41,
+    "a sold-out size blocks checkout",
+  );
+  const otherSize = createPendingOrder({ productId: flagId, qty: 1, sku: "FLAG-XS", ship: SHIP });
+  assert(!("error" in otherSize) && variantCount(flagId, "FLAG-XS") === 40, "the other size still sells");
+  db.prepare("UPDATE listing_stock SET stock_count = 1 WHERE product_id = ? AND sku = 'FLAG-XS'").run(flagId);
+  closeDb();
+  const sizeRace = await Promise.all([raceOrder(flagId, "FLAG-XS"), raceOrder(flagId, "FLAG-XS")]);
+  db = openDb();
+  const sizeWins = sizeRace.filter((item) => item.ok);
+  const sizeLosses = sizeRace.filter((item) => !item.ok);
+  assert(sizeWins.length === 1 && sizeLosses.length === 1 && sizeLosses[0]?.error === SOLD_OUT_LABEL, "one size cannot be sold twice at once");
+  assert(variantCount(flagId, "FLAG-XS") === 0 && variantCount(flagId, "FLAG-2XS") === 0, "the race leaves that size at 0");
+  assert(variantCount(blueId, "GJ472F2-DB-2XS") === 30 && variantCount(blueId, "GJ472F2-DB-XS") === 41, "the raincoat counts stay on their own rows");
+
+  const buyer = signUp({ name: "Stock Buyer", email: "stock-buyer@example.com", password: "import-test" });
+  if ("error" in buyer) throw new Error(buyer.error);
+  closeDb();
+  const refused = setStock("stock-buyer@example.com", ["--sku", "GJ472F2-DB-2XS", "--count", "1"]);
+  assert(refused.status !== 0 && refused.stderr.includes("Only an operator can set stock."), "a buyer cannot set stock");
+  db = openDb();
+  assert(variantCount(blueId, "GJ472F2-DB-2XS") === 30, "a refused update leaves the count");
+  db.prepare("UPDATE accounts SET role = 'admin' WHERE id = ?").run(operatorId);
+  db.prepare("UPDATE listings SET published = 0, hidden_from_shop = 1 WHERE product_id = ?").run(flagId);
+  closeDb();
+  const updated = setStock("draft-operator@example.com", ["--sku", "GJ472F2-DB-2XS", "--count", "29"]);
+  if (updated.status !== 0) throw new Error(updated.stderr || updated.stdout || "stock update failed");
+  assert(updated.stdout.includes("GJ472F2-DB-2XS → 29") && !updated.stdout.includes("published"), "the operator script sets one count");
+  const unknown = setStock("draft-operator@example.com", ["--sku", "NO-SUCH-SKU", "--count", "1"]);
+  assert(unknown.status !== 0, "an unknown sku is refused");
+  const countFile = join(dirname(process.env.DATABASE_PATH ?? ""), "counts.json");
+  writeFileSync(
+    countFile,
+    JSON.stringify([
+      { sku: "GJ023S0-GREEN-XS", stock_count: 160 },
+      { sku: "XV-MOD-L54", stock_count: 1000 },
+    ]),
+  );
+  const filed = setStock("draft-operator@example.com", ["--file", countFile]);
+  if (filed.status !== 0) throw new Error(filed.stderr || filed.stdout || "stock file failed");
+  db = openDb();
+  assert(variantCount(blueId, "GJ472F2-DB-2XS") === 29 && variantCount(blueId, "GJ472F2-DB-XS") === 41, "the script updates one raincoat size");
+  assert(variantCount("reversible-dog-raincoat-green", "GJ023S0-GREEN-XS") === 160, "the stock file updates a size");
+  assert(stockOf(flagId).stockCount === 1000 && stockOf(flagId).published === 0 && stockOf(blueId).published === 0, "a stock update does not publish");
 
   closeDb();
   const restored = runDraft(CATALOG);
   if (restored.status !== 0) throw new Error(restored.stderr || restored.stdout || "draft reimport failed");
   assert(!restored.stdout.includes("published"), "a draft reimport does not publish");
   db = openDb();
+  assert(variantCount(blueId, "GJ472F2-DB-2XS") === 29, "a reimport leaves the operator count");
+  assert(stockOf(flagId).stockCount === 1000 && stockOf(flagId).published === 0 && stockOf(flagId).hidden === 1, "a reimport leaves the flag unpublished");
+  assert(variantCount(flagId, "FLAG-2XS") == null, "a reimport drops a size that is not in the catalog");
   for (const product of parsed.products) {
     const slug = String(product.slug);
     const row = stockOf(slug);
-    assert(row.published === 0 && row.hidden === 1 && row.stockCap === 1 && Object.is(row.stockCount, STOCK[slug]), "reimport restores the unpublished stock");
+    assert(row.published === 0 && row.hidden === 1 && row.stockCap === 1, "a reimport keeps every draft unpublished");
   }
 
   const mark = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
@@ -396,6 +542,22 @@ async function main() {
     createElement(ProductBuy, { listing: { ...buyListing, soldOut: false }, returnNote: "", shareHref: "https://example.com/pearl" }),
   );
   assert(!openBuy.includes("TODO(Wordy)") && openBuy.includes("Continue to checkout"), "an in-stock listing keeps checkout");
+  const sizedBuy = renderToStaticMarkup(
+    createElement(ProductBuy, {
+      listing: {
+        ...buyListing,
+        productId: "insulated-dog-raincoat-dark-blue",
+        offers: [
+          { size: "2XS", sku: "GJ472F2-DB-2XS", soldOut: true },
+          { size: "XS", sku: "GJ472F2-DB-XS" },
+        ],
+      },
+      returnNote: "",
+      shareHref: "https://example.com/coat",
+    }),
+  );
+  assert(sizedBuy.includes("2XS") && sizedBuy.includes("XS") && sizedBuy.includes(SOLD_OUT_LABEL), "a sold-out size shows the placeholder");
+  assert(sizedBuy.includes("Continue to checkout") && !sizedBuy.includes("30") && !sizedBuy.includes("41"), "the other size can still be bought");
   const gridHtml = renderToStaticMarkup(
     createElement(ShopGrid, {
       kicker: "Shop",

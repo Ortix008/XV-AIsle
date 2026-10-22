@@ -5,7 +5,7 @@ import { getProduct } from "../catalog";
 import { compareAtRejection } from "../honest-price";
 import { isQaCheckoutListing, qaCheckoutSeedAllowed } from "../qa-checkout";
 import { draftPublishError, garnetHeld } from "../draft-holds";
-import { SOLD_OUT_LABEL } from "../sold-out";
+import { claimSkuStock, listingStock, orderSku, writeSkuStock } from "./listing-stock";
 import { isHeldSample, isScentedCandleListing, isWoodTrayListing } from "../shelf-holds";
 import { raincoatHeld } from "../size-chart";
 import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseListingRoute, type ListingRoute } from "../order-flags";
@@ -62,6 +62,7 @@ export type StoreListing = {
   wholesaleCost: number | null;
   stockCount: number | null;
   stockCap: boolean;
+  offers: { size: string; sku: string; stockCount: number | null }[];
 };
 
 export type StoreOrder = {
@@ -173,6 +174,7 @@ type ListingRow = {
   supplier_us_confirmed?: number | null;
   stock_count?: number | null;
   stock_cap?: number | null;
+  size_offer?: string | null;
 };
 
 type OrderRow = {
@@ -284,8 +286,8 @@ function listingFrom(row: ListingRow): StoreListing {
     wholesaleCost: row.wholesale_cost ?? null,
     hiddenFromShop: row.hidden_from_shop === 1,
     supplierUsConfirmed: row.supplier_us_confirmed === 1,
-    stockCount: row.stock_count == null ? null : row.stock_count,
     stockCap: row.stock_cap === 1,
+    ...listingStock(row.product_id, row.sku, row.size_offer, row.stock_count == null ? null : row.stock_count),
   };
 }
 
@@ -338,7 +340,19 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
       : {}),
     ...(listing.aisle ? { aisle: listing.aisle } : {}),
     ...(listing.kind === "bundle" ? { kind: "bundle" as const, includes: bundlePieces(listing.productId) } : {}),
-    ...(listing.stockCap && listing.stockCount === 0 ? { soldOut: true as const } : {}),
+    ...(listing.offers.length > 0
+      ? {
+          offers: listing.offers.map((offer) => ({
+            size: offer.size,
+            sku: offer.sku,
+            ...(offer.stockCount === 0 ? { soldOut: true as const } : {}),
+          })),
+        }
+      : {}),
+    ...(listing.stockCap &&
+    (listing.offers.length > 0 ? listing.offers.every((offer) => offer.stockCount === 0) : listing.stockCount === 0)
+      ? { soldOut: true as const }
+      : {}),
   };
 }
 
@@ -493,6 +507,7 @@ export function publishListing(
     | "supplierUsConfirmed"
     | "stockCount"
     | "stockCap"
+    | "offers"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -540,6 +555,9 @@ export function publishListing(
     input.stockCount != null &&
     (!Number.isInteger(input.stockCount) || input.stockCount < 0)
   ) {
+    return { error: "That page is not on the store." as const };
+  }
+  if (input.stockCount !== undefined && (existing?.offers.length ?? 0) > 0) {
     return { error: "That page is not on the store." as const };
   }
   if (existing && existing.accountId !== accountId) {
@@ -650,11 +668,7 @@ export function publishListing(
       .run(route, supplierOrderUrl, supplierEmail, input.productId);
   }
   getDb().prepare("UPDATE listings SET aisle = ? WHERE product_id = ?").run(aisle, input.productId);
-  if (input.stockCount !== undefined) {
-    getDb()
-      .prepare("UPDATE listings SET stock_count = ?, stock_cap = 1 WHERE product_id = ?")
-      .run(input.stockCount, input.productId);
-  }
+  if (input.stockCount !== undefined) writeSkuStock(input.productId, input.sku, input.stockCount);
   return { listing: getListing(input.productId) };
 }
 
@@ -843,21 +857,7 @@ export type ShipTo = {
   country: string;
 };
 
-function claimCappedStock(productId: string, qty: number): { ok: true } | { error: string } {
-  const db = getDb();
-  const row = db.prepare("SELECT stock_cap, stock_count FROM listings WHERE product_id = ?").get(productId) as
-    | { stock_cap: number | null; stock_count: number | null }
-    | undefined;
-  if (!row || row.stock_cap !== 1) return { ok: true };
-  if (row.stock_count == null) return { error: "That page is not on the store." };
-  const result = db
-    .prepare("UPDATE listings SET stock_count = stock_count - ? WHERE product_id = ? AND stock_cap = 1 AND stock_count >= ?")
-    .run(qty, productId, qty);
-  if (changed(result) !== 1) return { error: SOLD_OUT_LABEL };
-  return { ok: true };
-}
-
-export function createPendingOrder(input: { productId: string; qty: number; ship: ShipTo }) {
+export function createPendingOrder(input: { productId: string; qty: number; ship: ShipTo; sku?: string }) {
   const listing = getDb()
     .prepare("SELECT * FROM listings WHERE product_id = ? AND published = 1 AND COALESCE(hidden_from_shop, 0) = 0")
     .get(input.productId) as
@@ -916,13 +916,15 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
     if (page.supplierAccountId) pauseListing(page.productId);
     return { error: problem };
   }
+  const chosen = orderSku(page.offers, page.sku, input.sku);
+  if ("error" in chosen) return chosen;
   const split = priced.split;
   const created = Date.now();
   const returnTo = resolveReturnAddress(page);
   const db = getDb();
   db.exec("BEGIN IMMEDIATE");
   try {
-    const claimed = claimCappedStock(page.productId, qty);
+    const claimed = claimSkuStock(page.productId, chosen.sku, qty);
     if ("error" in claimed) {
       db.exec("ROLLBACK");
       return claimed;
@@ -934,8 +936,8 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
          stripe_session_id, status, supplier_ref, supplier_detail, created_at,
          transfer_group, fee_bps, platform_fee_cents, supplier_amount_cents, reseller_amount_cents, supplier_account_id,
          receipt_token_hash, stripe_fee_est_cents, stripe_fee_cents,
-         return_line1, return_city, return_region, return_postal, return_country
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         return_line1, return_city, return_region, return_postal, return_country, variant_sku
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       number,
@@ -965,6 +967,7 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
       returnTo?.region ?? null,
       returnTo?.postal ?? null,
       returnTo?.country ?? null,
+      chosen.sku,
     );
     snapshotOrderCost(id, page.productId, qty, page.priceCents);
     db.exec("COMMIT");

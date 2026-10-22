@@ -8,7 +8,8 @@ export function getDb() {
   if (db) return db;
   const path = process.env.DATABASE_PATH ?? "data/xvaisle.sqlite";
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
-  const next = new DatabaseSync(path);
+  const open = DatabaseSync as unknown as new (location: string, options: { timeout: number }) => DatabaseSync;
+  const next = new open(path, { timeout: 5000 });
   next.exec(`
     PRAGMA journal_mode = WAL;
     PRAGMA busy_timeout = 5000;
@@ -156,6 +157,12 @@ export function getDb() {
       approved INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS listing_stock (
+      product_id TEXT NOT NULL,
+      sku TEXT NOT NULL,
+      stock_count INTEGER,
+      PRIMARY KEY (product_id, sku)
+    );
     CREATE TABLE IF NOT EXISTS order_seq (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       next_number INTEGER NOT NULL
@@ -208,8 +215,10 @@ export function getDb() {
   addColumn(next, "listings", "aisle", "TEXT");
   addColumn(next, "listings", "hidden_from_shop", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "listings", "supplier_us_confirmed", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "listings", "size_offer", "TEXT");
   addColumn(next, "listings", "stock_count", "INTEGER");
   addColumn(next, "listings", "stock_cap", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "orders", "variant_sku", "TEXT");
   addColumn(next, "orders", "payment_intent_id", "TEXT");
   addColumn(next, "orders", "charge_id", "TEXT");
   addColumn(next, "orders", "transfer_group", "TEXT");

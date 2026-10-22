@@ -171,9 +171,14 @@ function sameOffer(value, expected) {
     const got = value[index];
     if (!got || typeof got !== "object") return false;
     const keys = Object.keys(got);
-    if (keys.length !== 2 || !keys.includes("size") || !keys.includes("sku")) return false;
+    if (keys.length !== 3 || !keys.includes("size") || !keys.includes("sku") || !keys.includes("stock_count")) return false;
     return got.size === item.size && got.sku === item.sku;
   });
+}
+
+function stockCountOf(value) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) return null;
+  return value;
 }
 
 function buildDraftRow(product) {
@@ -191,14 +196,26 @@ function buildDraftRow(product) {
   const extra = Object.keys(product).find((key) => !DRAFT_KEYS.has(key));
   if (extra) return { reason: "private field" };
   const expectedSizes = RAINCOAT_VARIANTS[product.slug] ?? null;
+  let sizeOffer = null;
+  let stockCount = null;
+  let counts = [];
   if (expectedSizes) {
+    if (Object.hasOwn(product, "stock_count")) return { reason: "invalid stock" };
     if (!sameOffer(product.variants, expectedSizes)) return { reason: "invalid sizes" };
-  } else if (product.variants != null) {
-    return { reason: "invalid sizes" };
+    for (const item of product.variants) {
+      const count = stockCountOf(item.stock_count);
+      if (count == null) return { reason: "invalid stock" };
+      counts.push({ sku: item.sku, stockCount: count });
+    }
+    sizeOffer = JSON.stringify(expectedSizes);
+  } else {
+    if (product.variants != null) return { reason: "invalid sizes" };
+    if (!Object.hasOwn(product, "stock_count")) return { reason: "missing stock" };
+    const count = stockCountOf(product.stock_count);
+    if (count == null) return { reason: "invalid stock" };
+    stockCount = count;
+    counts = [{ sku, stockCount: count }];
   }
-  if (!Object.hasOwn(product, "stock_count")) return { reason: "missing stock" };
-  const stock = product.stock_count;
-  if (stock !== null && (typeof stock !== "number" || !Number.isInteger(stock) || stock < 0)) return { reason: "invalid stock" };
   return {
     row: {
       slug: product.slug,
@@ -207,8 +224,9 @@ function buildDraftRow(product) {
       description: product.description.trim(),
       priceCents: product.price_cents,
       image: product.image,
-      sizeOffer: expectedSizes ? JSON.stringify(expectedSizes) : null,
-      stockCount: stock,
+      sizeOffer,
+      stockCount,
+      counts,
     },
   };
 }
@@ -326,8 +344,18 @@ function importDraft(file, dryRun) {
        supplier_shipping_cents = 0,
        catalog_item_id = NULL,
        size_offer = excluded.size_offer,
-       stock_count = excluded.stock_count,
+       stock_count = listings.stock_count,
        stock_cap = 1`,
+  );
+  db.exec(`CREATE TABLE IF NOT EXISTS listing_stock (
+    product_id TEXT NOT NULL,
+    sku TEXT NOT NULL,
+    stock_count INTEGER,
+    PRIMARY KEY (product_id, sku)
+  )`);
+  const insertStock = db.prepare(
+    `INSERT INTO listing_stock (product_id, sku, stock_count) VALUES (?, ?, ?)
+     ON CONFLICT(product_id, sku) DO NOTHING`,
   );
   const catalogTable = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'supplier_catalog'").get();
   const clearCatalog = catalogTable ? db.prepare("DELETE FROM supplier_catalog WHERE id = ?") : null;
@@ -352,6 +380,11 @@ function importDraft(file, dryRun) {
         row.sizeOffer,
         row.stockCount,
       );
+      const skuList = row.counts.map((count) => count.sku);
+      db.prepare(
+        `DELETE FROM listing_stock WHERE product_id = ? AND sku NOT IN (${skuList.map(() => "?").join(", ")})`,
+      ).run(row.slug, ...skuList);
+      for (const count of row.counts) insertStock.run(row.slug, count.sku, count.stockCount);
       clearCatalog?.run(`import-${row.slug}`);
     }
     db.exec("COMMIT");

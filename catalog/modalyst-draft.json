@@ -16,10 +16,9 @@
       "description": "An insulated raincoat for dogs, in dark blue. Smallest size; larger sizes are priced separately.",
       "price_cents": 5300,
       "image": "/art/products/insulated-dog-raincoat-dark-blue.jpg",
-      "stock_count": null,
       "variants": [
-        { "size": "2XS", "sku": "GJ472F2-DB-2XS" },
-        { "size": "XS", "sku": "GJ472F2-DB-XS" }
+        { "size": "2XS", "sku": "GJ472F2-DB-2XS", "stock_count": 30 },
+        { "size": "XS", "sku": "GJ472F2-DB-XS", "stock_count": 41 }
       ]
     },
     {
@@ -29,10 +28,9 @@
       "description": "A reversible stretch-fit raincoat for dogs, in green. Smallest size; larger sizes are priced separately.",
       "price_cents": 5000,
       "image": "/art/products/reversible-dog-raincoat-green.jpg",
-      "stock_count": null,
       "variants": [
-        { "size": "2XS", "sku": "GJ023S0-GREEN-2XS" },
-        { "size": "XS", "sku": "GJ023S0-GREEN-XS" }
+        { "size": "2XS", "sku": "GJ023S0-GREEN-2XS", "stock_count": 25 },
+        { "size": "XS", "sku": "GJ023S0-GREEN-XS", "stock_count": 161 }
       ]
     },
     {
@@ -42,7 +40,7 @@
       "description": "A house flag showing an Ocicat cat by a Christmas tree.",
       "price_cents": 4800,
       "image": "/art/products/christmas-tree-cat-house-flag.jpg",
-      "stock_count": null
+      "stock_count": 999
     },
     {
       "slug": "garnet-jewelry-gift-set",

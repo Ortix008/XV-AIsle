@@ -46,6 +46,7 @@ export type ProductListing = {
   includes?: { productId: string; title: string }[];
   aisle?: string | null;
   soldOut?: boolean;
+  offers?: { size: string; sku: string; soldOut?: boolean }[];
 };
 
 function productAisleCrumb(listing: ProductListing) {
@@ -93,6 +94,7 @@ export function ProductBuy({
   const [region, setRegion] = useState("");
   const [postal, setPostal] = useState("");
   const [details, setDetails] = useState(false);
+  const [offerSku, setOfferSku] = useState(() => listing.offers?.find((offer) => !offer.soldOut)?.sku ?? "");
   const nameRef = useRef<HTMLInputElement>(null);
   const check =
     listing.checkedBy && listing.checkedOn && listing.checkedNote
@@ -122,6 +124,7 @@ export function ProductBuy({
       body: JSON.stringify({
         productId: listing.productId,
         qty,
+        sku: listing.offers?.length ? offerSku : undefined,
         name,
         email,
         line1,
@@ -199,6 +202,24 @@ export function ProductBuy({
               Quantity
               <Input className="product-qty" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
             </label>
+            {listing.offers && listing.offers.length > 0 && !listing.soldOut ? (
+              <div className="product-sizes">
+                {listing.offers.map((offer) => (
+                  <label className="product-size" key={offer.sku}>
+                    <input
+                      type="radio"
+                      name="size"
+                      value={offer.sku}
+                      checked={offerSku === offer.sku}
+                      disabled={offer.soldOut === true}
+                      onChange={() => setOfferSku(offer.sku)}
+                    />
+                    {offer.size}
+                    {offer.soldOut ? <span className="product-sold-out">{SOLD_OUT_LABEL}</span> : null}
+                  </label>
+                ))}
+              </div>
+            ) : null}
             {held ? (
               <p className="status-chip sample-hold" role="status">
                 {SAMPLE_UNAVAILABLE}
