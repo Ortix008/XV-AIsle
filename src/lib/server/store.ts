@@ -5,6 +5,7 @@ import { getProduct } from "../catalog";
 import { compareAtRejection } from "../honest-price";
 import { isQaCheckoutListing, qaCheckoutSeedAllowed } from "../qa-checkout";
 import { isHeldSample, isScentedCandleListing, isWoodTrayListing } from "../shelf-holds";
+import { RAINCOAT_HOLD, raincoatHeld } from "../size-chart";
 import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseListingRoute, type ListingRoute } from "../order-flags";
 import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
@@ -519,6 +520,7 @@ export function publishListing(
     const guarded = marginGuard(input.priceCents, existing.wholesaleCost);
     if (guarded) return { error: guarded satisfies string };
   }
+  if (input.published !== false && raincoatHeld(input.productId)) return { error: RAINCOAT_HOLD };
   if (existing && existing.accountId !== accountId) {
     return { error: "That page already belongs to another account." as const };
   }
@@ -847,6 +849,7 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
     isWoodTrayListing(page) ||
     isScentedCandleListing(page) ||
     isHeldSample(page) ||
+    raincoatHeld(page.productId) ||
     (isQaCheckoutListing(page) && !qaCheckoutSeedAllowed())
   ) {
     return { error: "That page is not on the store." as const };

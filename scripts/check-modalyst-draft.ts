@@ -14,7 +14,17 @@ import { PRODUCT_PHOTO_SIZE } from "../src/lib/product-photo";
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-draft-")), "draft.sqlite");
 
 const CATALOG = join(process.cwd(), "catalog/modalyst-draft.json");
-const ALLOWED = ["slug", "title", "sku", "description", "price_cents", "image"];
+const ALLOWED = ["slug", "title", "sku", "description", "price_cents", "image", "variants"];
+const RAIN_SIZES: Record<string, Array<{ size: string; sku: string }>> = {
+  "insulated-dog-raincoat-dark-blue": [
+    { size: "2XS", sku: "GJ472F2-DB-2XS" },
+    { size: "XS", sku: "GJ472F2-DB-XS" },
+  ],
+  "reversible-dog-raincoat-green": [
+    { size: "2XS", sku: "GJ023S0-GREEN-2XS" },
+    { size: "XS", sku: "GJ023S0-GREEN-XS" },
+  ],
+};
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -61,7 +71,7 @@ function runDraft(path: string) {
 
 async function main() {
   const raw = readFileSync(CATALOG, "utf8");
-  assert(!/cost|shipping|source_url|supplier_|route|https?:/i.test(raw), "the draft catalog has no cost, shipping, supplier, or route");
+  assert(!/cost|shipping|source_url|supplier_|route|https?:|margin/i.test(raw), "the draft catalog has no cost, shipping, supplier, route, or margin");
   const parsed = JSON.parse(raw) as { products: Array<Record<string, unknown>> };
   assert(parsed.products.length === 5, "the draft catalog has five products");
   for (const product of parsed.products) {
@@ -77,15 +87,22 @@ async function main() {
     const box = jpegBox(bytes);
     const expected = PRODUCT_PHOTO_SIZE[`/art/products/${slug}.jpg`];
     assert(expected && box.width === expected.width && box.height === expected.height, "the jpeg size matches the layout box");
+    const sizes = RAIN_SIZES[slug];
+    if (sizes) assert(JSON.stringify(product.variants) === JSON.stringify(sizes), "the raincoat offers only 2XS and XS");
+    else assert(product.variants == null, "only the raincoats have sizes");
   }
   const imageConfig = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
   assert(!imageConfig.includes("unoptimized: true") && !imageConfig.includes("formats:"), "the image pipeline keeps the webp default");
 
   const { signUp } = await import("../src/lib/server/accounts");
   const { closeDb } = await import("../src/lib/server/db");
-  const { createPendingOrder, getListing, listPublished, publicShopListing } = await import("../src/lib/server/store");
+  const { createPendingOrder, getListing, listPublished, publicShopListing, publishListing } = await import("../src/lib/server/store");
+  const { visibleOnShop } = await import("../src/lib/server/starter-shelf");
+  const { RAINCOAT_HOLD, SOURCED_SIZE_CHART } = await import("../src/lib/size-chart");
+  assert(SOURCED_SIZE_CHART == null, "no sourced size chart exists");
   const operator = signUp({ name: "Draft Operator", email: "draft-operator@example.com", password: "import-test" });
   if ("error" in operator) throw new Error(operator.error);
+  const operatorId = operator.account.id;
   closeDb();
 
   const imported = runDraft(CATALOG);
@@ -114,6 +131,8 @@ async function main() {
       supplier_shipping_cents: number;
       image: string;
       description: string;
+      sku: string;
+      size_offer: string | null;
     };
     assert(row.published === 0 && row.hidden_from_shop === 1, "the listing stays unpublished and hidden");
     assert(row.made_in_usa === 0 && row.supplier_us_confirmed === 0, "the listing is not a made-in or confirmed supplier");
@@ -121,6 +140,9 @@ async function main() {
     assert(row.route === "" && row.supplier_order_url == null && row.supplier_email == null, "the listing has no order route or supplier address");
     assert(row.supplier_cost_cents === 0 && row.supplier_shipping_cents === 0, "the listing has no supplier cost or shipping");
     assert(row.image === product.image, "the stored image path is the held jpg");
+    assert(row.sku === product.sku, "the listing sku stays the catalog sku");
+    const sizes = RAIN_SIZES[slug] ?? null;
+    assert(row.size_offer === (sizes ? JSON.stringify(sizes) : null), "the stored sizes are the offered sizes");
     const catalog = db.prepare("SELECT id FROM supplier_catalog WHERE id = ?").get(`import-${slug}`);
     assert(!catalog, "a draft does not write a supplier catalog row");
     assert(!listPublished().some((item) => item.productId === slug), "the shop list hides the draft");
@@ -148,6 +170,37 @@ async function main() {
       ship: { name: "Example Buyer", email: "buyer@example.com", line1: "100 Example Street", city: "Sample City", region: "ST", postal: "00000", country: "US" },
     });
     assert("error" in checkout && checkout.error === "That page is not on the store.", "a hidden draft cannot be ordered");
+    if (sizes) {
+      const attempt = publishListing(operatorId, {
+        productId: slug,
+        sku: listing.sku,
+        title: listing.title,
+        description: listing.description,
+        priceCents: listing.priceCents,
+        image: listing.image,
+        supplierName: listing.supplierName,
+        supplierOrigin: listing.supplierOrigin,
+        shipDaysMin: 0,
+        shipDaysMax: 0,
+        published: true,
+      });
+      assert("error" in attempt && attempt.error === RAINCOAT_HOLD, "a raincoat cannot publish without a size chart");
+      const held = db.prepare("SELECT published, hidden_from_shop FROM listings WHERE product_id = ?").get(slug) as {
+        published: number;
+        hidden_from_shop: number;
+      };
+      assert(held.published === 0 && held.hidden_from_shop === 1, "the raincoat stays unpublished without a size chart");
+      db.prepare("UPDATE listings SET published = 1, hidden_from_shop = 0 WHERE product_id = ?").run(slug);
+      const forced = getListing(slug);
+      assert(forced != null && !visibleOnShop(forced), "a raincoat stays off the shop without a size chart");
+      const forcedOrder = createPendingOrder({
+        productId: slug,
+        qty: 1,
+        ship: { name: "Example Buyer", email: "buyer@example.com", line1: "100 Example Street", city: "Sample City", region: "ST", postal: "00000", country: "US" },
+      });
+      assert("error" in forcedOrder && forcedOrder.error === "That page is not on the store.", "a raincoat cannot be ordered without a size chart");
+      db.prepare("UPDATE listings SET published = 0, hidden_from_shop = 1 WHERE product_id = ?").run(slug);
+    }
     rendered.push({
       name: textOf(html, "product-title"),
       price: textOf(html, "product-price"),

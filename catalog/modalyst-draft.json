@@ -14,7 +14,11 @@
       "sku": "XV-MOD-L47",
       "description": "An insulated raincoat for dogs, in dark blue. Smallest size; larger sizes are priced separately.",
       "price_cents": 5300,
-      "image": "/art/products/insulated-dog-raincoat-dark-blue.jpg"
+      "image": "/art/products/insulated-dog-raincoat-dark-blue.jpg",
+      "variants": [
+        { "size": "2XS", "sku": "GJ472F2-DB-2XS" },
+        { "size": "XS", "sku": "GJ472F2-DB-XS" }
+      ]
     },
     {
       "slug": "reversible-dog-raincoat-green",
@@ -22,7 +26,11 @@
       "sku": "XV-MOD-L51",
       "description": "A reversible stretch-fit raincoat for dogs, in green. Smallest size; larger sizes are priced separately.",
       "price_cents": 5000,
-      "image": "/art/products/reversible-dog-raincoat-green.jpg"
+      "image": "/art/products/reversible-dog-raincoat-green.jpg",
+      "variants": [
+        { "size": "2XS", "sku": "GJ023S0-GREEN-2XS" },
+        { "size": "XS", "sku": "GJ023S0-GREEN-XS" }
+      ]
     },
     {
       "slug": "christmas-tree-cat-house-flag",
