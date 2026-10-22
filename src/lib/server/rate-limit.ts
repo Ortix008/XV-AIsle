@@ -1,8 +1,27 @@
 import { getDb } from "./db";
 
+/** Longest window any caller passes to allowAttempt. Rows older than this cannot still count. */
+export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+
+const RATE_SWEEP_GAP_MS = 60 * 1000;
+
+let lastRateSweep = 0;
+
+/** Deletes rate_hits older than the longest bucket so the table stays bounded. */
+export function sweepRateHits(now = Date.now()) {
+  getDb().prepare("DELETE FROM rate_hits WHERE at < ?").run(now - RATE_LIMIT_WINDOW_MS);
+  lastRateSweep = now;
+}
+
+function sweepRateHitsOnWrite(now: number) {
+  if (now - lastRateSweep < RATE_SWEEP_GAP_MS) return;
+  sweepRateHits(now);
+}
+
 export function allowAttempt(key: string, limit: number, windowMs: number) {
   const db = getDb();
   const now = Date.now();
+  sweepRateHitsOnWrite(now);
   db.prepare("DELETE FROM rate_hits WHERE key = ? AND at < ?").run(key, now - windowMs);
   const row = db.prepare("SELECT COUNT(*) AS n FROM rate_hits WHERE key = ? AND at >= ?").get(key, now - windowMs) as {
     n: number;

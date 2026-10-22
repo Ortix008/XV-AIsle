@@ -37,7 +37,7 @@ async function checkPasswordReset() {
   process.env.DATABASE_PATH = ":memory:";
   const { signUp, requestPasswordReset, consumePasswordReset, signIn } = await import("../src/lib/server/accounts");
   const { COMMON_PASSWORD, PASSWORD_CHANGED_SUBJECT, PASSWORD_CHANGED_TEXT } = await import("../src/lib/signup-copy");
-  const { startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
+  const { logBackgroundMailError, setMailDelivery, startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
   const { getDb } = await import("../src/lib/server/db");
 
   const created = signUp({ name: "Reset Buyer", email: "reset-buyer@example.com", password: "old-password" });
@@ -115,6 +115,58 @@ async function checkPasswordReset() {
   if ("error" in signedIn) throw new Error("the new password signs in");
   const oldPassword = signIn({ email: "reset-buyer@example.com", password: "old-password" });
   if (!("error" in oldPassword)) throw new Error("the old password stops working");
+
+  const resetCapture = startMailCapture();
+  const askedAgain = await requestPasswordReset("reset-buyer@example.com");
+  const laterToken =
+    resetCapture.find((message) => message.subject === "Reset your XV-AIsle password")?.text.match(/token=([a-f0-9]+)/)?.[1] ?? "";
+  stopMailCapture();
+  if (!askedAgain.ok || laterToken.length < 32) throw new Error("a later reset still emails a link");
+  const poison = "leak-buyer@example.com token=deadbeefcafebabe https://xvaisle.com/reset/confirm?token=deadbeefcafebabe";
+  const mailErrors: string[] = [];
+  const writeMailError = console.error;
+  const rejections: unknown[] = [];
+  const onRejection = (reason: unknown) => {
+    rejections.push(reason);
+  };
+  process.on("unhandledRejection", onRejection);
+  console.error = (...args: unknown[]) => {
+    mailErrors.push(args.map((part) => String(part)).join(" "));
+  };
+  try {
+    logBackgroundMailError(new Error(poison));
+    setMailDelivery(async () => {
+      throw new Error(poison);
+    });
+    const changed = consumePasswordReset(laterToken, "third-password");
+    if ("error" in changed) throw new Error(changed.error);
+    await requestPasswordReset("reset-buyer@example.com");
+    const { POST: signupPost } = await import("../src/app/api/account/signup/route");
+    const taken = await signupPost(
+      new Request("http://127.0.0.1:4317/api/account/signup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Reset Buyer",
+          email: "reset-buyer@example.com",
+          password: "old-password",
+          confirmPassword: "old-password",
+        }),
+      }),
+    );
+    if (taken.status !== 200) throw new Error("a taken signup still answers 200 when mail fails");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  } finally {
+    console.error = writeMailError;
+    setMailDelivery(null);
+    process.off("unhandledRejection", onRejection);
+  }
+  if (rejections.length !== 0) throw new Error("background mail is caught");
+  const mailLog = mailErrors.join("\n");
+  if (!mailLog.includes("Mail was not sent.")) throw new Error("background mail logs that it failed");
+  if (mailLog.includes("@") || mailLog.includes(laterToken) || mailLog.includes("deadbeef") || mailLog.includes("reset/confirm")) {
+    throw new Error("background mail logs omit the address and the token");
+  }
   console.log("password reset emails a one-time link");
 }
 
@@ -152,7 +204,12 @@ async function postJson(path: string, body: unknown, headers: Record<string, str
       body: JSON.stringify(body),
     }),
   );
-  const payload = (await response.json().catch(() => null)) as { error?: string; message?: string; account?: { id: string } } | null;
+  const payload = (await response.json().catch(() => null)) as {
+    error?: string;
+    message?: string;
+    notice?: boolean;
+    account?: { id: string };
+  } | null;
   return { status: response.status, body: payload, cookie: response.headers.get("set-cookie") };
 }
 
@@ -168,6 +225,20 @@ async function checkSignInHardening() {
   const { COMMON_PASSWORD, SIGNUP_CHECK_EMAIL, SIGNUP_TAKEN_SUBJECT, SIGNUP_TAKEN_TEXT } = await import("../src/lib/signup-copy");
   const db = getDb();
   db.prepare("DELETE FROM rate_hits").run();
+  const { allowAttempt, sweepRateHits, RATE_LIMIT_WINDOW_MS } = await import("../src/lib/server/rate-limit");
+  sweepRateHits(Date.now() - 61_000);
+  const staleAt = Date.now() - RATE_LIMIT_WINDOW_MS - 1_000;
+  db.prepare("INSERT INTO rate_hits (key, at) VALUES (?, ?)").run("aged:foreign", staleAt);
+  db.prepare("INSERT INTO rate_hits (key, at) VALUES (?, ?)").run("fresh:foreign", Date.now());
+  if (!allowAttempt("sweep:writer", 5, 1_000)) throw new Error("a sweep write should be allowed");
+  const aged = db.prepare("SELECT COUNT(*) AS n FROM rate_hits WHERE key = ?").get("aged:foreign") as { n: number | bigint };
+  const freshHits = db.prepare("SELECT COUNT(*) AS n FROM rate_hits WHERE key = ?").get("fresh:foreign") as { n: number | bigint };
+  if (Number(aged.n) !== 0) throw new Error("rate hits older than the longest window are swept");
+  if (Number(freshHits.n) !== 1) throw new Error("a fresh rate hit survives the sweep");
+  db.prepare("INSERT INTO rate_hits (key, at) VALUES (?, ?)").run("aged:later", staleAt);
+  if (!allowAttempt("sweep:writer", 5, 1_000)) throw new Error("a second sweep write should be allowed");
+  const later = db.prepare("SELECT COUNT(*) AS n FROM rate_hits WHERE key = ?").get("aged:later") as { n: number | bigint };
+  if (Number(later.n) !== 1) throw new Error("the rate sweep does not run on every write");
 
   const real = signUp({ name: "Rate Real", email: "rate-real@example.com", password: "old-password" });
   const other = signUp({ name: "Rate Other", email: "rate-other@example.com", password: "old-password" });
@@ -231,6 +302,45 @@ async function checkSignInHardening() {
   if (commonNew.status !== 400 || commonExisting.status !== 400 || commonNew.body?.error !== COMMON_PASSWORD || commonExisting.body?.error !== COMMON_PASSWORD) {
     throw new Error("signup refuses a common password the same way for a new or existing email");
   }
+  if (commonNew.body?.notice === true || commonExisting.body?.notice === true) {
+    throw new Error("a signup error is not a notice");
+  }
+  const numberEmail = await postJson("signup", {
+    name: "Typed Person",
+    email: 1,
+    password: "old-password",
+    confirmPassword: "old-password",
+  });
+  const objectPassword = await postJson("signup", {
+    name: "Typed Person",
+    email: "typed-password@example.com",
+    password: { secret: true },
+    confirmPassword: "old-password",
+  });
+  if (numberEmail.status !== 400 || objectPassword.status !== 400) {
+    throw new Error("a non-string email or password is a 400");
+  }
+  if (db.prepare("SELECT id FROM accounts WHERE email = ?").get("typed-password@example.com")) {
+    throw new Error("a non-string password does not open an account");
+  }
+  const { signupFeedbackState } = await import("../src/lib/signup-feedback");
+  const { readFileSync } = await import("node:fs");
+  const noticed = signupFeedbackState({ kind: "notice", message: "Check your email." });
+  if (noticed.notice !== "Check your email." || noticed.error !== null) {
+    throw new Error("a notice flag is a notice without looking at the copy");
+  }
+  const prefixed = signupFeedbackState({ kind: "error", message: COMMON_PASSWORD });
+  if (prefixed.error !== COMMON_PASSWORD || prefixed.notice !== null) {
+    throw new Error("an error flag stays an error when the copy starts with TODO(Wordy)");
+  }
+  const screen = readFileSync(new URL("../src/components/auth-screens.tsx", import.meta.url), "utf8");
+  const signupScreen = screen.slice(
+    screen.indexOf("export function SignUpScreen"),
+    screen.indexOf("export function ResetRequestScreen"),
+  );
+  if (signupScreen.includes("TODO(Wordy)") || signupScreen.includes("startsWith") || !signupScreen.includes("signupFeedbackState")) {
+    throw new Error("the signup screen uses the notice flag");
+  }
   if (commonNew.body?.message || commonExisting.body?.message || db.prepare("SELECT id FROM accounts WHERE email = ?").get("common-new@example.com")) {
     throw new Error("a common password does not open an account or say to check email");
   }
@@ -251,6 +361,9 @@ async function checkSignInHardening() {
   if (created.status !== 200 || again.status !== 200) throw new Error("signup answers the same way for a new and existing email");
   if (created.body?.message !== SIGNUP_CHECK_EMAIL || again.body?.message !== SIGNUP_CHECK_EMAIL) {
     throw new Error("signup says to check email");
+  }
+  if (created.body?.notice !== true || again.body?.notice !== true) {
+    throw new Error("signup marks the check-email response as a notice");
   }
   if (created.cookie || again.cookie || created.body?.account || again.body?.error) {
     throw new Error("signup does not reveal whether the email exists");
@@ -446,6 +559,83 @@ async function checkSignInHardening() {
   setNodeEnv(previousNodeEnv);
   if (previousAppUrl == null) delete process.env.APP_URL;
   else process.env.APP_URL = previousAppUrl;
+
+  const { assertProductionAppUrl } = await import("../src/lib/server/same-origin");
+  const bootErrors: string[] = [];
+  const writeBoot = console.error;
+  console.error = (...args: unknown[]) => {
+    bootErrors.push(args.map((part) => String(part)).join(" "));
+  };
+  const bootEnv = process.env.NODE_ENV;
+  const bootUrl = process.env.APP_URL;
+  const bootPhase = process.env.NEXT_PHASE;
+  try {
+    setNodeEnv("development");
+    delete process.env.APP_URL;
+    assertProductionAppUrl();
+    setNodeEnv("production");
+    process.env.NEXT_PHASE = "phase-production-build";
+    assertProductionAppUrl();
+    delete process.env.NEXT_PHASE;
+    let missingThrew = false;
+    try {
+      assertProductionAppUrl();
+    } catch {
+      missingThrew = true;
+    }
+    if (!missingThrew) throw new Error("production refuses to boot without APP_URL");
+    process.env.APP_URL = "not a url";
+    let invalidThrew = false;
+    try {
+      assertProductionAppUrl();
+    } catch {
+      invalidThrew = true;
+    }
+    if (!invalidThrew) throw new Error("production refuses to boot with an invalid APP_URL");
+    process.env.APP_URL = "https://xvaisle.com";
+    assertProductionAppUrl();
+    if (!bootErrors.join("\n").includes("APP_URL is missing or invalid")) {
+      throw new Error("a bad APP_URL is logged at boot");
+    }
+  } finally {
+    console.error = writeBoot;
+    setNodeEnv(bootEnv);
+    if (bootUrl == null) delete process.env.APP_URL;
+    else process.env.APP_URL = bootUrl;
+    if (bootPhase == null) delete process.env.NEXT_PHASE;
+    else process.env.NEXT_PHASE = bootPhase;
+  }
+
+  const { trustProxyChecklist } = await import("../scripts/deploy-ready");
+  const ready = trustProxyChecklist("1");
+  const unset = trustProxyChecklist(undefined);
+  if (!ready.ok || !ready.label.includes("Caddy") || !ready.label.includes("TRUST_PROXY=1")) {
+    throw new Error("TRUST_PROXY=1 matches Caddy");
+  }
+  if (unset.ok || !unset.label.includes("TRUST_PROXY=1") || !unset.label.includes("Caddy") || /leave it unset/i.test(unset.label)) {
+    throw new Error("an unset TRUST_PROXY is not ready behind Caddy");
+  }
+  const example = readFileSync(new URL("../.env.example", import.meta.url), "utf8");
+  const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
+  const compose = readFileSync(new URL("../docker-compose.yml", import.meta.url), "utf8");
+  const deploy = readFileSync(new URL("./deploy-ready.ts", import.meta.url), "utf8");
+  const bootFile = readFileSync(new URL("../src/instrumentation.ts", import.meta.url), "utf8");
+  for (const [name, text] of [
+    [".env.example", example],
+    ["README", readme],
+    ["deploy-ready", deploy],
+  ] as const) {
+    if (!text.includes("TRUST_PROXY") || !text.includes("Caddy")) {
+      throw new Error(`${name} should set TRUST_PROXY=1 behind Caddy`);
+    }
+    if (/leave it unset/i.test(text)) throw new Error(`${name} should not say to leave TRUST_PROXY unset`);
+  }
+  if (!compose.includes('TRUST_PROXY: "1"') || !compose.includes("caddy")) {
+    throw new Error("Docker Compose sets TRUST_PROXY=1 behind Caddy");
+  }
+  if (!bootFile.includes("assertProductionAppUrl()") || !bootFile.includes("sweepRateHits()")) {
+    throw new Error("boot checks APP_URL and sweeps rate hits");
+  }
 
   console.log("sign-in hardening checks ok");
 }

@@ -3,7 +3,7 @@ import { isAccountRole, type AccountRole } from "../account";
 import { isCommonPassword } from "../common-passwords";
 import { COMMON_PASSWORD, PASSWORD_CHANGED_SUBJECT, PASSWORD_CHANGED_TEXT } from "../signup-copy";
 import { changed, getDb } from "./db";
-import { sendMail, sendVerificationLink } from "./mail";
+import { logBackgroundMailError, sendMail, sendVerificationLink } from "./mail";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password";
 import { acceptedTotpStep, authSecretReady, decryptSecret, encryptSecret, generateTotpSecret } from "./totp";
 
@@ -211,7 +211,7 @@ export async function requestPasswordReset(email: string) {
     to: row.email,
     subject: "Reset your XV-AIsle password",
     text: `Choose a new password:\n${link}\n\nThis link works once and then expires. If you didn't ask for it, you can ignore this email.\n`,
-  });
+  }).catch(logBackgroundMailError);
   return { ok: true as const };
 }
 
@@ -240,7 +240,7 @@ export function consumePasswordReset(token: string, password: string) {
       to: owner.email,
       subject: PASSWORD_CHANGED_SUBJECT,
       text: PASSWORD_CHANGED_TEXT,
-    });
+    }).catch(logBackgroundMailError);
   }
   return { ok: true as const };
 }

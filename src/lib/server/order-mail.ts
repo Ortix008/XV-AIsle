@@ -355,7 +355,11 @@ async function deliver(message: OutboundMail) {
     console.info(`Mail not sent (no address): ${message.subject}`);
     return { sent: false as const };
   }
-  return sendMail(message);
+  try {
+    return await sendMail(message);
+  } catch {
+    return { sent: false as const };
+  }
 }
 
 export async function sendCustomerReceipt(input: {

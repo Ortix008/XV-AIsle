@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Account } from "./account";
+import type { SignupFeedback } from "./signup-feedback";
 
 export type ConnectState = {
   stripeAccountId: string;
@@ -41,7 +42,7 @@ type AccountApi = {
   connect: ConnectState | null;
   sellerLedger: boolean;
   reserve: ReserveState | null;
-  signUp: (input: { name: string; email: string; password: string; confirmPassword: string }) => Promise<string | null>;
+  signUp: (input: { name: string; email: string; password: string; confirmPassword: string }) => Promise<SignupFeedback>;
   totpChallenge: string | null;
   signIn: (input: { email: string; password: string }) => Promise<string | null>;
   submitTotp: (code: string) => Promise<string | null>;
@@ -136,10 +137,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, email, password, confirmPassword }),
         });
-        if (!response.ok) return readError(response);
-        const data = (await response.json().catch(() => null)) as { message?: string } | null;
+        if (!response.ok) return { kind: "error", message: await readError(response) };
+        const data = (await response.json().catch(() => null)) as { message?: string; notice?: boolean } | null;
         await refresh();
-        return data?.message ?? null;
+        if (data?.notice === true) return { kind: "notice", message: data.message ?? "" };
+        return { kind: "error", message: data?.message ?? "The account service did not answer." };
       },
       signIn: async ({ email, password }) => {
         const response = await fetch("/api/account/signin", {

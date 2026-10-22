@@ -17,6 +17,19 @@ function line(ok: boolean, label: string) {
   console.log(`${ok ? "ready" : "open "}  ${label}`);
 }
 
+export function trustProxyChecklist(value: string | undefined) {
+  if (value === "1") {
+    return {
+      ok: true,
+      label: "TRUST_PROXY=1 behind Caddy, so sign-in limits use the last forwarding hop",
+    };
+  }
+  return {
+    ok: false,
+    label: "TRUST_PROXY is unset. Docker Compose sets TRUST_PROXY=1 behind Caddy so rate limits use the visitor address",
+  };
+}
+
 async function main() {
   loadEnvFile(".env.local");
   loadEnvFile(".env");
@@ -88,8 +101,8 @@ async function main() {
       : "DEMO_SEED is off. Sample products stay out of the public shop",
   );
   line(database.startsWith("/") || database.startsWith("/data"), `Database path is ${database}. Use a disk path such as /data/xvaisle.sqlite`);
-  if (process.env.TRUST_PROXY === "1") line(true, "TRUST_PROXY=1, so sign-in limits use the last forwarding hop");
-  else line(true, "TRUST_PROXY is unset. Leave it unset until a reverse proxy appends the visitor address");
+  const trust = trustProxyChecklist(process.env.TRUST_PROXY);
+  line(trust.ok, trust.label);
 
   if (process.env.STRIPE_CARD_CHECKOUT_ONLY === "1" && stripe) {
     const card = await preferCardCheckout();
@@ -101,4 +114,6 @@ async function main() {
   closeDb();
 }
 
-main();
+if (process.argv.some((arg) => arg.includes("scripts/deploy-ready"))) {
+  void main();
+}

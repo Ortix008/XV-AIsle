@@ -8,6 +8,7 @@ import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAccount } from "@/lib/account-store";
+import { signupFeedbackState } from "@/lib/signup-feedback";
 
 function AuthScreen({
   title,
@@ -242,14 +243,10 @@ export function SignUpScreen({ showX = false, xDisabled = false }: { showX?: boo
     }
     setPending(true);
     setNotice(null);
-    const message = await signUp({ name, email, password, confirmPassword });
-    if (message?.startsWith("TODO(Wordy)")) {
-      setNotice(message);
-      setError(null);
-    } else {
-      setNotice(null);
-      setError(message);
-    }
+    const result = await signUp({ name, email, password, confirmPassword });
+    const feedback = signupFeedbackState(result);
+    setNotice(feedback.notice);
+    setError(feedback.error);
     setPending(false);
   }
 

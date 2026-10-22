@@ -23,7 +23,7 @@ Resellers share their shop link anywhere. Buyers pay on xvaisle.com.
 
 Next.js 16 (App Router) and React 19, TypeScript, Tailwind 4. One Node process. Accounts, orders, listings, and settings sit in a SQLite file (`node:sqlite`) at `DATABASE_PATH` (default `data/xvaisle.sqlite`). Passwords are hashed with scrypt. Sessions are random tokens stored only as a SHA-256 hash, in an HttpOnly cookie.
 
-The public package is `docker-compose.yml`: the app container plus Caddy for HTTPS on `xvaisle.com`.
+The public package is `docker-compose.yml`: the app container plus Caddy for HTTPS on `xvaisle.com`. Compose sets `TRUST_PROXY=1` so rate limits use the visitor address Caddy appends.
 
 ## What you can open
 
@@ -113,7 +113,7 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | Name | Purpose |
 | --- | --- |
 | `APP_URL` | Stripe success and cancel URLs. Compose sets `https://xvaisle.com`. |
-| `TRUST_PROXY` | Set to `1` behind Caddy so rate limits use the visitor address. |
+| `TRUST_PROXY` | Set to `1` behind Caddy. Docker Compose sets `1` so rate limits use the visitor address. |
 | `DATABASE_PATH` | SQLite file. Compose sets `/data/xvaisle.sqlite`. |
 | `STRIPE_SECRET_KEY` | Platform secret or restricted key. Test mode unless `STRIPE_ALLOW_LIVE=1`. |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret for `https://xvaisle.com/api/billing/webhook`. |
