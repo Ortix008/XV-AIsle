@@ -120,6 +120,24 @@ async function checkPasswordReset() {
 
 const MISMATCH = "That email and password do not match.";
 
+function setNodeEnv(value: string | undefined) {
+  const env = process.env as Record<string, string | undefined>;
+  if (value == null) delete env.NODE_ENV;
+  else env.NODE_ENV = value;
+}
+
+function totpChallenge(result: object) {
+  if (!("challenge" in result)) return null;
+  const challenge = (result as { challenge?: unknown }).challenge;
+  return typeof challenge === "string" ? challenge : null;
+}
+
+function errorText(result: object) {
+  if (!("error" in result)) return null;
+  const error = (result as { error?: unknown }).error;
+  return typeof error === "string" ? error : null;
+}
+
 async function postJson(path: string, body: unknown, headers: Record<string, string> = {}) {
   const route =
     path === "signin"
@@ -320,49 +338,51 @@ async function checkSignInHardening() {
   const enabled = confirmTotp(totpAccount.account.id, totpCode(started.secret));
   const otherEnabled = confirmTotp(totpOther.account.id, totpCode(otherStarted.secret));
   if ("error" in enabled || "error" in otherEnabled) throw new Error("totp confirm failed");
-  const challenge = signIn({ email: "totp-person@example.com", password: "old-password" });
-  if (!("challenge" in challenge)) throw new Error("totp sign-in asks for a code");
+  const challenge = totpChallenge(signIn({ email: "totp-person@example.com", password: "old-password" }));
+  if (!challenge) throw new Error("totp sign-in asks for a code");
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const wrong = finishTotpSignIn(challenge.challenge, "000000");
-    if (!("error" in wrong) || !wrong.error.includes("did not match")) throw new Error("a wrong code is refused");
+    const wrong = finishTotpSignIn(challenge, "000000");
+    const wrongError = errorText(wrong);
+    if (!wrongError?.includes("did not match")) throw new Error("a wrong code is refused");
     const left = db.prepare("SELECT COUNT(*) AS n FROM login_challenges WHERE account_id = ?").get(totpAccount.account.id) as {
       n: number;
     };
     if (left.n !== 1) throw new Error("the challenge stays until the fifth miss");
   }
-  const fifth = finishTotpSignIn(challenge.challenge, "000000");
-  if (!("error" in fifth)) throw new Error("the fifth code is refused");
+  const fifth = finishTotpSignIn(challenge, "000000");
+  if (!errorText(fifth)) throw new Error("the fifth code is refused");
   const gone = db.prepare("SELECT COUNT(*) AS n FROM login_challenges WHERE account_id = ?").get(totpAccount.account.id) as {
     n: number;
   };
   if (gone.n !== 0) throw new Error("five wrong codes delete the challenge");
-  const expired = finishTotpSignIn(challenge.challenge, totpCode(started.secret));
-  if (!("error" in expired) || !expired.error.includes("expired")) throw new Error("a deleted challenge cannot be reused");
+  const expired = finishTotpSignIn(challenge, totpCode(started.secret));
+  const expiredError = errorText(expired);
+  if (!expiredError?.includes("expired")) throw new Error("a deleted challenge cannot be reused");
 
   db.prepare("DELETE FROM rate_hits").run();
   const at = Date.now();
   const code = totpCode(started.secret, at + 30_000);
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const next = signIn({ email: "totp-person@example.com", password: "old-password" });
-    if (!("challenge" in next)) throw new Error("totp still asks for a code");
-    const miss = await postJson("signin", { challenge: next.challenge, code: "000000" });
+    const next = totpChallenge(signIn({ email: "totp-person@example.com", password: "old-password" }));
+    if (!next) throw new Error("totp still asks for a code");
+    const miss = await postJson("signin", { challenge: next, code: "000000" });
     if (miss.status !== 400) throw new Error("totp misses before the account limit stay a mismatch");
   }
-  const totpBlocked = signIn({ email: "totp-person@example.com", password: "old-password" });
-  if (!("challenge" in totpBlocked)) throw new Error("totp challenge was not issued");
-  const totpLimited = await postJson("signin", { challenge: totpBlocked.challenge, code: "000000" });
+  const totpBlocked = totpChallenge(signIn({ email: "totp-person@example.com", password: "old-password" }));
+  if (!totpBlocked) throw new Error("totp challenge was not issued");
+  const totpLimited = await postJson("signin", { challenge: totpBlocked, code: "000000" });
   if (totpLimited.status !== 429) throw new Error("the per-account totp limit still throttles");
-  const otherChallenge = signIn({ email: "totp-other@example.com", password: "old-password" });
-  if (!("challenge" in otherChallenge)) throw new Error("another account still reaches totp");
-  const otherCode = await postJson("signin", { challenge: otherChallenge.challenge, code: "000000" });
+  const otherChallenge = totpChallenge(signIn({ email: "totp-other@example.com", password: "old-password" }));
+  if (!otherChallenge) throw new Error("another account still reaches totp");
+  const otherCode = await postJson("signin", { challenge: otherChallenge, code: "000000" });
   if (otherCode.status !== 400) throw new Error("one totp account does not throttle another");
-  const fresh = signIn({ email: "totp-person@example.com", password: "old-password" });
-  if (!("challenge" in fresh)) throw new Error("the owner can still start totp");
-  const accepted = await postJson("signin", { challenge: fresh.challenge, code });
+  const fresh = totpChallenge(signIn({ email: "totp-person@example.com", password: "old-password" }));
+  if (!fresh) throw new Error("the owner can still start totp");
+  const accepted = await postJson("signin", { challenge: fresh, code });
   if (accepted.status !== 200 || !accepted.body?.account) throw new Error("a current code still signs in after throttling");
-  const replayLogin = signIn({ email: "totp-person@example.com", password: "old-password" });
-  if (!("challenge" in replayLogin)) throw new Error("replay sign-in asks for a code");
-  const replay = finishTotpSignIn(replayLogin.challenge, code);
+  const replayLogin = totpChallenge(signIn({ email: "totp-person@example.com", password: "old-password" }));
+  if (!replayLogin) throw new Error("replay sign-in asks for a code");
+  const replay = finishTotpSignIn(replayLogin, code);
   if (!("error" in replay)) throw new Error("a used authenticator code cannot be replayed");
   const storedStep = db.prepare("SELECT totp_last_step FROM accounts WHERE id = ?").get(totpAccount.account.id) as {
     totp_last_step: number | null;
@@ -371,7 +391,7 @@ async function checkSignInHardening() {
 
   const previousNodeEnv = process.env.NODE_ENV;
   const previousAppUrl = process.env.APP_URL;
-  process.env.NODE_ENV = "production";
+  setNodeEnv("production");
   process.env.APP_URL = "https://xvaisle.com";
   const { proxy } = await import("../src/proxy");
   const { NextRequest } = await import("next/server");
@@ -420,11 +440,10 @@ async function checkSignInHardening() {
   if (allowed.headers.get("referrer-policy") === "no-referrer") {
     throw new Error("sign-in does not send Referrer-Policy no-referrer");
   }
-  process.env.NODE_ENV = "development";
+  setNodeEnv("development");
   const dev = proxy(new NextRequest("http://127.0.0.1:4317/", { method: "GET" }));
   if (dev.headers.get("strict-transport-security")) throw new Error("development does not add HSTS");
-  if (previousNodeEnv == null) delete process.env.NODE_ENV;
-  else process.env.NODE_ENV = previousNodeEnv;
+  setNodeEnv(previousNodeEnv);
   if (previousAppUrl == null) delete process.env.APP_URL;
   else process.env.APP_URL = previousAppUrl;
 
