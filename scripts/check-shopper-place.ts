@@ -603,6 +603,32 @@ async function main() {
   assert(nitpickPublic.makes === "bowls.", "the retest made-in line tidies to bowls.");
   assert(!nitpickJson.includes("american made") && !nitpickJson.includes("made-in-usa"), "the retest line drops spaced and hyphenated claims");
   assert(!nitpickJson.includes("u.s") && !nitpickJson.includes("united states") && !nitpickJson.includes("usa-made"), "the retest line drops the dotted and united-states claims");
+  const spaced = addSmallShop("acct-place", {
+    name: "Spaced Claim Shop",
+    city: "Elizabeth, NJ",
+    makes: "Made in USA mugs, bowls. Made in USA, plates.",
+    madeInUsa: true,
+  });
+  if ("error" in spaced) throw new Error(spaced.error);
+  assert(publicSmallShop(spaced.shop).makes === "mugs, bowls. plates.", "stripping a made-in claim keeps the space after a period");
+  const plainPeriods = addSmallShop("acct-place", {
+    name: "Plain Bowls",
+    city: "Austin, TX",
+    makes: "bowls. plates.",
+    madeInUsa: false,
+  });
+  if ("error" in plainPeriods) throw new Error(plainPeriods.error);
+  assert(publicSmallShop(plainPeriods.shop).makes === "bowls. plates.", "bowls. plates. stays as is when there is no made-in claim");
+  const emptyClaim = addSmallShop("acct-place", {
+    name: "Made in USA",
+    city: "Austin, TX",
+    makes: "Made in USA",
+    madeInUsa: true,
+  });
+  assert(
+    "error" in emptyClaim && emptyClaim.error === "Add the business name.",
+    "a shop whose name and description are only a made-in claim is refused with the existing name error",
+  );
 
   const floors = renderToStaticMarkup(createElement(FloorsView));
   const floorsSource = readFileSync(join(process.cwd(), "src/components/floors-view.tsx"), "utf8");
@@ -703,12 +729,27 @@ async function main() {
   const malformedShopsBody = (await malformedShops.json()) as { error?: string };
   assert(malformedFloors.status === 401 && malformedFloorsBody.error === "Sign in first.", "a malformed session cookie on floors is a 401");
   assert(malformedShops.status === 401 && malformedShopsBody.error === "Sign in first.", "a malformed session cookie on small shops is a 401");
+  getDb()
+    .prepare(
+      `INSERT INTO small_shops (id, account_id, name, city, makes, made_in_usa, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run("saved-empty-card", "acct-place", "Made in USA", "Austin, TX", "Made in USA", 1, Date.now());
   const storeSmall = await import("../src/app/api/store/small/route");
   const publicShops = await storeSmall.GET();
-  const publicShopsBody = (await publicShops.json()) as { shops?: { makes?: string }[] };
+  const publicShopsBody = (await publicShops.json()) as { shops?: { id?: string; name?: string; makes?: string }[] };
   const publicMakes = JSON.stringify(publicShopsBody).toLowerCase();
   assert(publicShops.status === 200, "the public small-shop list loads");
+  assert(publicMakes.includes("mugs, bowls. plates."), "the public list keeps the space after a period");
   assert(publicMakes.includes("mugs."), "the public list keeps the tidied product from a mixed made-in line");
+  assert(
+    !(publicShopsBody.shops ?? []).some((shop) => shop.id === "saved-empty-card"),
+    "an already-saved empty card stays off the public list",
+  );
+  assert(
+    !(publicShopsBody.shops ?? []).some((shop) => !/[a-z0-9]/i.test(shop.name ?? "") && !/[a-z0-9]/i.test(shop.makes ?? "")),
+    "the public list hides a shop with nothing left after the made-in text is stripped",
+  );
   assert(publicMakes.includes("made in batches"), "the public list keeps ordinary made-in words");
   assert(!publicMakes.includes("made in usa") && !publicMakes.includes("made in the us"), "the public list drops made-in place claims");
   assert(!publicMakes.includes("american made") && !publicMakes.includes("american-made"), "the public list drops american made");
@@ -731,6 +772,18 @@ async function main() {
   assert(unverifiedShops.status === 403, "an unverified admin cannot read small shops");
   const unverifiedDesk = await deskVisit(unverified.token);
   assert(unverifiedDesk.startsWith("NEXT_REDIRECT;") && unverifiedDesk.includes(";/;"), "an unverified admin is sent home from the desk");
+  const emptyBefore = getDb().prepare("SELECT COUNT(*) AS n FROM small_shops").get() as { n: number };
+  const emptyCard = await smallRoute.POST(
+    new Request("http://127.0.0.1/api/shops/small", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: `${SESSION_COOKIE}=${operator.token}` },
+      body: JSON.stringify({ name: "Made in USA", city: "Austin, TX", makes: "Made in USA", madeInUsa: true }),
+    }),
+  );
+  const emptyBody = (await emptyCard.json()) as { error?: string };
+  const emptyAfter = getDb().prepare("SELECT COUNT(*) AS n FROM small_shops").get() as { n: number };
+  assert(emptyCard.status === 400 && emptyBody.error === "Add the business name.", "Nitpick's empty made-in shop is a 400 with the existing name error");
+  assert(emptyAfter.n === emptyBefore.n, "Nitpick's empty made-in shop is not stored");
   const operatorShop = await smallRoute.POST(
     new Request("http://127.0.0.1/api/shops/small", {
       method: "POST",
@@ -747,6 +800,8 @@ async function main() {
     new Request("http://127.0.0.1/api/shops/small", { headers: { cookie: `${SESSION_COOKIE}=${operator.token}` } }),
   );
   assert(verifiedShops.status === 200, "a verified admin can read small shops");
+  const verifiedBody = await verifiedShops.json();
+  assert(JSON.stringify(verifiedBody).includes("saved-empty-card"), "the operator list still returns the saved empty shop");
   assert((await deskVisit(operator.token)) === "", "a verified admin can open the desk");
 
   console.log("shopper place checks ok");

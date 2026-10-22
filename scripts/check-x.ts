@@ -55,6 +55,13 @@ assert(
 );
 assert(!authScreens.includes("/brand/logo-official-xo.png"), "Continue with X does not use the old logo");
 assert(!authScreens.includes("auth-email-row"), "Continue with X is not beside the email field");
+const releaseChecklist = readFileSync(join(process.cwd(), "docs/release-checklist.md"), "utf8");
+for (const name of ["X_CLIENT_ID", "X_CLIENT_SECRET", "X_REDIRECT_URI"]) {
+  assert(releaseChecklist.includes(name), `the release checklist names ${name}`);
+}
+assert(/never print the values/i.test(releaseChecklist), "the release checklist says never to print the X login values");
+assert(releaseChecklist.includes("Continue with X"), "the release checklist asks the smoke test to show Continue with X");
+assert(!/sk_live_|sk_test_|ghp_|xox[baprs]-|-----BEGIN/.test(releaseChecklist), "the release checklist has no secret values");
 
 const saved = {
   id: process.env.X_CLIENT_ID,
