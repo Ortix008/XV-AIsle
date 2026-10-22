@@ -16,6 +16,8 @@
  * Supplier shipping is added once per order, not once per unit.
  */
 
+import { shelfOperatorId } from "./store-operator";
+
 export const FEE_BPS_MIN = 800;
 export const FEE_BPS_MAX = 1200;
 export const FEE_BPS_DEFAULT = 1000;
@@ -44,6 +46,7 @@ export const RESELLER_RESERVE_DAYS_DEFAULT = 120;
 export const RESELLER_RESERVE_CAP_MIN = 0;
 export const RESELLER_RESERVE_CAP_MAX = 100_000_000;
 export const RESELLER_RESERVE_CAP_DEFAULT = 10000;
+
 export const US_TRANSFER_HOLD_MS = 730 * 24 * 60 * 60 * 1000;
 export const TRANSFER_HOLD_WARNING_MS = 14 * 24 * 60 * 60 * 1000;
 export const BUYER_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -87,6 +90,16 @@ export function sellerLedgerEnabled() {
 
 export function platformFeeBps() {
   return clampedInt(process.env.PLATFORM_FEE_BPS, FEE_BPS_DEFAULT, FEE_BPS_MIN, FEE_BPS_MAX);
+}
+
+export function ownStoreAccountId() {
+  return shelfOperatorId();
+}
+
+export function isOwnStore(accountId: string | null | undefined) {
+  if (!accountId) return false;
+  const operatorId = ownStoreAccountId();
+  return operatorId != null && accountId === operatorId;
 }
 
 export function stripeFeeBps() {
@@ -172,8 +185,13 @@ export function quoteSplit(input: {
   supplierCostCents: number;
   supplierShippingCents: number;
   feeBps: number | null;
+  sellerAccountId?: string | null;
 }): Split {
-  const feeBps = sellerLedgerEnabled() ? (input.feeBps ?? platformFeeBps()) : 0;
+  const feeBps = isOwnStore(input.sellerAccountId)
+    ? 0
+    : sellerLedgerEnabled()
+      ? (input.feeBps ?? platformFeeBps())
+      : 0;
   const grossCents = input.priceCents * input.qty;
   const platformFeeCents = Math.round((grossCents * feeBps) / 10000);
   const stripeFeeCents = estimateStripeFee(grossCents);

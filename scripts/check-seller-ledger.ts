@@ -28,10 +28,10 @@ const ship = {
 
 async function main() {
   const fees = await import("../src/lib/server/fees");
-  const { signUp } = await import("../src/lib/server/accounts");
+  const { getAccount, signUp } = await import("../src/lib/server/accounts");
   const { getDb } = await import("../src/lib/server/db");
   const { releaseTransfers } = await import("../src/lib/server/ledger");
-  const { quoteForAccount } = await import("../src/lib/server/publish");
+  const { publishForAccount, quoteForAccount } = await import("../src/lib/server/publish");
   const { POST } = await import("../src/app/api/store/listings/quote/route");
   const { setStripeFetch } = await import("../src/lib/server/stripe");
   const { createPendingOrder, getOrder, publishListing } = await import("../src/lib/server/store");
@@ -157,6 +157,61 @@ async function main() {
   const page = renderToStaticMarkup(createElement(ResellerPage));
   assert(!page.includes("8–12") && !page.includes("120 days"), "the reseller page does not describe the seller ledger");
 
+  db.prepare(
+    `INSERT INTO connected_accounts (
+       account_id, stripe_account_id, charges_enabled, payouts_enabled, details_submitted, requirements_due, transfers_status, updated_at
+     ) VALUES (?, 'acct_ledger_operator', 1, 1, 1, '', 'active', ?)`,
+  ).run(admin.id, Date.now());
+  db.prepare(
+    `INSERT INTO connected_accounts (
+       account_id, stripe_account_id, charges_enabled, payouts_enabled, details_submitted, requirements_due, transfers_status, updated_at
+     ) VALUES (?, 'acct_ledger_supplier', 1, 1, 1, '', 'active', ?)`,
+  ).run(supplier.id, Date.now());
+  const operatorAccount = getAccount(admin.id);
+  const resellerAccount = getAccount(reseller.id);
+  if (!operatorAccount || !resellerAccount) throw new Error("ledger accounts missing");
+  const ownPage = {
+    sku: "LEDGER",
+    title: "Own ledger pan",
+    description: "One pan.",
+    image: "/art/mock-sheet-pan-1.png",
+    supplierName: "Example Goods",
+    supplierOrigin: "US",
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    catalogItemId: "cat-ledger",
+    priceCents: 2000,
+    feeBps: 1200,
+  };
+  process.env.STORE_OPERATOR_EMAIL = admin.email;
+  const ownOff = fees.quoteSplit({
+    priceCents: 2000,
+    qty: 1,
+    supplierCostCents: 400,
+    supplierShippingCents: 0,
+    feeBps: 1200,
+    sellerAccountId: admin.id,
+  });
+  assert(ownOff.feeBps === 0 && ownOff.platformFeeCents === 0, "an own-store split is free while the flag is off");
+  const resellerOff = fees.quoteSplit({
+    priceCents: 2000,
+    qty: 1,
+    supplierCostCents: 400,
+    supplierShippingCents: 0,
+    feeBps: 1200,
+    sellerAccountId: reseller.id,
+  });
+  assert(resellerOff.feeBps === 0 && resellerOff.platformFeeCents === 0, "a reseller split stays free while the flag is off");
+  const ownOffPage = publishForAccount(operatorAccount, { ...ownPage, productId: "own-ledger-off" });
+  assert(ownOffPage.status === 200 && ownOffPage.listing?.feeBps === 0, "an own-store publish stores zero while the flag is off");
+  const ownOffOrder = createPendingOrder({ productId: "own-ledger-off", qty: 1, ship });
+  if ("error" in ownOffOrder) throw new Error(ownOffOrder.error);
+  assert(ownOffOrder.order.feeBps === 0 && ownOffOrder.order.platformFeeCents === 0, "an own-store checkout stores zero while the flag is off");
+  console.log("pass an own-store split is free while the flag is off");
+  console.log("pass a reseller split stays free while the flag is off");
+  console.log("pass an own-store publish stores zero while the flag is off");
+  console.log("pass an own-store checkout stores zero while the flag is off");
+
   process.env.SELLER_LEDGER_ENABLED = "1";
   const on = fees.quoteSplit({
     priceCents: 2000,
@@ -165,7 +220,50 @@ async function main() {
     supplierShippingCents: 0,
     feeBps: 1000,
   });
-  assert(on.platformFeeCents === 200, "the same split charges 10% after the flag is turned on");
+  assert(on.platformFeeCents === 200 && on.feeBps === 1000 && on.resellerAmountCents === 1312, "the same split charges 10% after the flag is turned on");
+  const ownOn = fees.quoteSplit({
+    priceCents: 2000,
+    qty: 1,
+    supplierCostCents: 400,
+    supplierShippingCents: 0,
+    feeBps: 1000,
+    sellerAccountId: admin.id,
+  });
+  assert(ownOn.feeBps === 0 && ownOn.platformFeeCents === 0 && ownOn.resellerAmountCents === 1512, "an own-store split stays free after the flag is turned on");
+  const ownOnPage = publishForAccount(operatorAccount, { ...ownPage, productId: "own-ledger-on" });
+  assert(ownOnPage.status === 200 && ownOnPage.listing?.feeBps === 0, "an own-store publish stores zero with the flag on");
+  const ownOnOrder = createPendingOrder({ productId: "own-ledger-on", qty: 1, ship });
+  if ("error" in ownOnOrder) throw new Error(ownOnOrder.error);
+  assert(ownOnOrder.order.feeBps === 0 && ownOnOrder.order.platformFeeCents === 0, "an own-store checkout stores zero with the flag on");
+  const resellerOnPage = publishForAccount(resellerAccount, { ...ownPage, productId: "reseller-ledger-on", title: "Reseller ledger pan" });
+  assert(resellerOnPage.status === 200 && resellerOnPage.listing?.feeBps === 1000, "a reseller publish stores 10% with the flag on");
+  delete process.env.STORE_OPERATOR_EMAIL;
+  const missed = fees.quoteSplit({
+    priceCents: 2000,
+    qty: 1,
+    supplierCostCents: 400,
+    supplierShippingCents: 0,
+    feeBps: 1000,
+    sellerAccountId: admin.id,
+  });
+  assert(missed.feeBps === 1000 && missed.platformFeeCents === 200, "an unset operator email charges the reseller fee");
+  process.env.STORE_OPERATOR_EMAIL = admin.email;
+  const notOperator = fees.quoteSplit({
+    priceCents: 2000,
+    qty: 1,
+    supplierCostCents: 400,
+    supplierShippingCents: 0,
+    feeBps: 1000,
+    sellerAccountId: reseller.id,
+  });
+  assert(notOperator.feeBps === 1000 && notOperator.platformFeeCents === 200, "an account that is not the operator pays the reseller fee");
+  delete process.env.STORE_OPERATOR_EMAIL;
+  console.log("pass an own-store split stays free after the flag is turned on");
+  console.log("pass an own-store publish stores zero with the flag on");
+  console.log("pass an own-store checkout stores zero with the flag on");
+  console.log("pass a reseller publish stores 10% with the flag on");
+  console.log("pass an unset operator email charges the reseller fee");
+  console.log("pass an account that is not the operator pays the reseller fee");
   assert(
     fees.reserveHoldCents({ payoutCents: 1500, heldCents: 0, bps: 1000, capCents: 10000 }) === 150,
     "the reserve calculation returns after the flag is turned on",

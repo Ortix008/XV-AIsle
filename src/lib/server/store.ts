@@ -786,6 +786,7 @@ function pricedSplit(listing: StoreListing, qty: number) {
     supplierCostCents,
     supplierShippingCents,
     feeBps: platformFeeBps(),
+    sellerAccountId: listing.accountId,
   });
   return { split };
 }
