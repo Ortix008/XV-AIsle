@@ -245,6 +245,8 @@ async function postJson(path: string, body: unknown, headers: Record<string, str
   return { status: response.status, body: payload, cookie: response.headers.get("set-cookie") };
 }
 
+const LOCKOUT = "Too many tries. Wait a few minutes and try again.";
+
 async function checkSignInHardening() {
   delete process.env.TRUST_PROXY;
   process.env.SUPPORT_EMAIL = "support@example.test";
@@ -316,9 +318,69 @@ async function checkSignInHardening() {
   const otherStill = await postJson("signin", { email: "rate-other@example.com", password: "wrong-pass" }, { "x-forwarded-for": "198.51.100.4" });
   if (otherStill.status !== 400) throw new Error("without TRUST_PROXY one account does not fill a shared bucket");
   const throttled = await postJson("signin", { email: "rate-real@example.com", password: "wrong-pass" }, { "x-forwarded-for": "203.0.113.77" });
-  if (throttled.status !== 429) throw new Error("the per-account sign-in limit still throttles");
+  if (throttled.status !== 429 || throttled.body?.error !== LOCKOUT || throttled.cookie) {
+    throw new Error("the per-account sign-in limit still throttles");
+  }
   const owner = await postJson("signin", { email: "rate-real@example.com", password: "old-password" }, { "x-forwarded-for": "203.0.113.77" });
-  if (owner.status !== 200 || !owner.body?.account) throw new Error("the right password is not locked out");
+  if (owner.status !== 429 || owner.body?.error !== LOCKOUT || owner.cookie || owner.body?.account) {
+    throw new Error("the right password is locked out with the same reply");
+  }
+
+  const lockEmail = "lock-buyer@example.com";
+  const lockPassword = "old-password";
+  const lockedAccount = signUp({ name: "Lock Buyer", email: lockEmail, password: lockPassword });
+  if ("error" in lockedAccount) throw new Error(lockedAccount.error);
+  let fortieth: { status: number; body: { error?: string } | null; cookie: string | null } | null = null;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const miss = await postJson("signin", { email: lockEmail, password: "wrong-pass" }, { "x-forwarded-for": "198.51.100.40" });
+    if (attempt < 8) {
+      if (miss.status !== 400) throw new Error("the first eight wrong passwords stay a mismatch");
+    } else if (miss.status !== 429 || miss.body?.error !== LOCKOUT || miss.cookie) {
+      throw new Error("later wrong passwords are the lockout reply");
+    }
+    fortieth = miss;
+  }
+  const stillLocked = await postJson("signin", { email: lockEmail, password: lockPassword }, { "x-forwarded-for": "198.51.100.41" });
+  if (
+    stillLocked.status !== 429 ||
+    stillLocked.body?.error !== fortieth?.body?.error ||
+    stillLocked.body?.error !== LOCKOUT ||
+    stillLocked.cookie ||
+    stillLocked.body?.account
+  ) {
+    throw new Error("forty wrong passwords then the correct one gets no session");
+  }
+
+  process.env.TRUST_PROXY = "1";
+  try {
+    const lockedIp = "203.0.113.40";
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const miss = await postJson(
+        "signin",
+        { email: `ip-miss-${attempt}@example.com`, password: "wrong-pass" },
+        { "x-forwarded-for": lockedIp },
+      );
+      if (miss.status !== 400) throw new Error("an IP bucket fills on misses");
+    }
+    const fromSameIp = await postJson(
+      "signin",
+      { email: "rate-other@example.com", password: "old-password" },
+      { "x-forwarded-for": lockedIp },
+    );
+    if (fromSameIp.status !== 429 || fromSameIp.body?.error !== LOCKOUT || fromSameIp.cookie || fromSameIp.body?.account) {
+      throw new Error("a full IP bucket refuses the correct password");
+    }
+    const fromOtherIp = await postJson(
+      "signin",
+      { email: "rate-other@example.com", password: "old-password" },
+      { "x-forwarded-for": "203.0.113.41" },
+    );
+    if (fromOtherIp.status !== 200 || !fromOtherIp.cookie || !fromOtherIp.body?.account) {
+      throw new Error("another IP can still sign in when only the first IP is locked");
+    }
+  } finally {
+    delete process.env.TRUST_PROXY;
+  }
 
   const commonNew = await postJson("signup", {
     name: "Common Person",
@@ -376,6 +438,32 @@ async function checkSignInHardening() {
   }
   if (commonNew.body?.message || commonExisting.body?.message || db.prepare("SELECT id FROM accounts WHERE email = ?").get("common-new@example.com")) {
     throw new Error("a common password does not open an account or say to check email");
+  }
+  const { isCommonPassword } = await import("../src/lib/common-passwords");
+  for (const weak of ["Password123!", "aaaaaaaa", "xvaisle1", "Summer2026"]) {
+    if (!isCommonPassword(weak)) throw new Error(`${weak} is still treated as strong`);
+    const slug = weak.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const email = `weak-${slug}@example.com`;
+    const refused = await postJson("signup", {
+      name: "Weak Person",
+      email,
+      password: weak,
+      confirmPassword: weak,
+    });
+    if (refused.status !== 400 || refused.body?.error !== COMMON_PASSWORD || refused.cookie || refused.body?.account) {
+      throw new Error(`${weak} is still accepted`);
+    }
+    const strong = `shelf-maple-${slug.length}-ok`;
+    if (isCommonPassword(strong)) throw new Error("the follow-up password is weak");
+    const stronger = await postJson("signup", {
+      name: "Weak Person",
+      email,
+      password: strong,
+      confirmPassword: strong,
+    });
+    if (stronger.status !== 200 || stronger.body?.notice !== true || stronger.body?.message !== SIGNUP_CHECK_EMAIL || stronger.cookie) {
+      throw new Error(`${weak} blocked a stronger password`);
+    }
   }
 
   const captured = startMailCapture();

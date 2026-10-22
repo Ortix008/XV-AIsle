@@ -18,6 +18,15 @@ function sweepRateHitsOnWrite(now: number) {
   sweepRateHits(now);
 }
 
+/** True when this key is already full. Does not record a new hit. */
+export function rateLimited(key: string, limit: number, windowMs: number) {
+  const now = Date.now();
+  const row = getDb().prepare("SELECT COUNT(*) AS n FROM rate_hits WHERE key = ? AND at >= ?").get(key, now - windowMs) as {
+    n: number | bigint;
+  };
+  return Number(row.n) >= limit;
+}
+
 export function allowAttempt(key: string, limit: number, windowMs: number) {
   const db = getDb();
   const now = Date.now();
@@ -50,9 +59,23 @@ export function allowClient(request: Request, bucket: string, limit: number, win
   return allowAttempt(key, limit, windowMs);
 }
 
+/** True when that visitor's bucket is already full. */
+export function clientLimited(request: Request, bucket: string, limit: number, windowMs: number) {
+  const key = clientBucket(request, bucket);
+  if (!key) return false;
+  return rateLimited(key, limit, windowMs);
+}
+
 /** Per-account limit. An empty id does not fall back to one shared bucket. */
 export function allowAccount(bucket: string, account: string, limit: number, windowMs: number) {
   const id = account.trim().toLowerCase();
   if (!id) return true;
   return allowAttempt(`${bucket}:account:${id.slice(0, 200)}`, limit, windowMs);
+}
+
+/** True when that account's bucket is already full. */
+export function accountLimited(bucket: string, account: string, limit: number, windowMs: number) {
+  const id = account.trim().toLowerCase();
+  if (!id) return false;
+  return rateLimited(`${bucket}:account:${id.slice(0, 200)}`, limit, windowMs);
 }

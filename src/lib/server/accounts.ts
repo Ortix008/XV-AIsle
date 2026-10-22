@@ -297,8 +297,7 @@ export function signIn(input: { email: string; password: string }) {
     burnPasswordCheck(input.password);
     return { error: "That email and password do not match." as const };
   }
-  // Misses are throttled per account at the route. A correct password still signs in,
-  // so an attacker cannot lock the owner out.
+  // The sign-in route refuses this call while the account or visitor bucket is full.
   const passwordOk = verifyPassword(input.password, row.password_salt, row.password_hash);
   if (!passwordOk) {
     const fails = (row.failed_logins ?? 0) + 1;

@@ -167,6 +167,17 @@ const COMMON = [
 
 const COMMON_PASSWORDS = new Set<string>(COMMON);
 
+function compactPassword(password: string) {
+  return password.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 export function isCommonPassword(password: string) {
-  return COMMON_PASSWORDS.has(password.toLowerCase());
+  const lower = password.toLowerCase();
+  if (COMMON_PASSWORDS.has(lower)) return true;
+  const compact = compactPassword(password);
+  if (compact.length > 0 && COMMON_PASSWORDS.has(compact)) return true;
+  if (compact.length >= 8 && /^(.)\1+$/.test(compact)) return true;
+  if (lower.includes("xvaisle")) return true;
+  if (/(?:spring|summer|autumn|fall|winter)\s*20\d{2}/i.test(lower)) return true;
+  return false;
 }
