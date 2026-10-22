@@ -524,6 +524,12 @@ async function main() {
     { makes: "American-made towels", label: "American-made" },
     { makes: "MADE IN AMERICA towels", label: "MADE IN AMERICA" },
     { makes: "USA made towels", label: "USA made" },
+    { makes: "American made towels", label: "American made" },
+    { makes: "Made-in-USA towels", label: "Made-in-USA" },
+    { makes: "Made in the U.S.A. towels", label: "Made in the U.S.A." },
+    { makes: "Made in U.S. towels", label: "Made in U.S." },
+    { makes: "USA-made towels", label: "USA-made" },
+    { makes: "Made in the United States towels", label: "Made in the United States" },
   ];
   for (const variant of madeInVariants) {
     const shop = addSmallShop("acct-place", {
@@ -558,6 +564,45 @@ async function main() {
   assert(!mixedJson.includes("made in america"), "a mixed line drops MADE IN AMERICA");
   assert(!mixedJson.includes("usa made"), "a mixed line drops USA made");
   assert(!mixedJson.includes("elizabeth"), "a mixed line drops the city");
+  assert(mixedPublic.makes === "mugs.", "a mixed made-in line tidies to the product and one period");
+  assert(!mixedPublic.makes.includes(",,") && !mixedPublic.makes.startsWith(",") && !/ {2}/.test(mixedPublic.makes), "a mixed line has no leftover commas or double spaces");
+  const punctuated = addSmallShop("acct-place", {
+    name: "Punctuation Shop",
+    city: "Austin, TX",
+    makes: "Made in USA mugs.,,,,",
+    madeInUsa: true,
+  });
+  if ("error" in punctuated) throw new Error(punctuated.error);
+  assert(publicSmallShop(punctuated.shop).makes === "mugs.", "stripped punctuation collapses to mugs.");
+  const leadingComma = addSmallShop("acct-place", {
+    name: "Comma Shop",
+    city: "Austin, TX",
+    makes: "Made in USA, , cotton  towels",
+    madeInUsa: true,
+  });
+  if ("error" in leadingComma) throw new Error(leadingComma.error);
+  const leadingPublic = publicSmallShop(leadingComma.shop);
+  assert(leadingPublic.makes === "cotton towels", "a stripped line drops the leading comma and the extra space");
+  const ordinary = addSmallShop("acct-place", {
+    name: "Batch Shop",
+    city: "Austin, TX",
+    makes: "bowls made in batches",
+    madeInUsa: false,
+  });
+  if ("error" in ordinary) throw new Error(ordinary.error);
+  assert(publicSmallShop(ordinary.shop).makes === "bowls made in batches", "ordinary made-in words stay");
+  const nitpick = addSmallShop("acct-place", {
+    name: "Nitpick Claim Shop",
+    city: "Elizabeth, NJ",
+    makes: "American made bowls. Made-in-USA. Made in the U.S.A. USA-made. Made in the United States",
+    madeInUsa: true,
+  });
+  if ("error" in nitpick) throw new Error(nitpick.error);
+  const nitpickPublic = publicSmallShop(nitpick.shop);
+  const nitpickJson = JSON.stringify(nitpickPublic).toLowerCase();
+  assert(nitpickPublic.makes === "bowls.", "the retest made-in line tidies to bowls.");
+  assert(!nitpickJson.includes("american made") && !nitpickJson.includes("made-in-usa"), "the retest line drops spaced and hyphenated claims");
+  assert(!nitpickJson.includes("u.s") && !nitpickJson.includes("united states") && !nitpickJson.includes("usa-made"), "the retest line drops the dotted and united-states claims");
 
   const floors = renderToStaticMarkup(createElement(FloorsView));
   const floorsSource = readFileSync(join(process.cwd(), "src/components/floors-view.tsx"), "utf8");
@@ -663,11 +708,14 @@ async function main() {
   const publicShopsBody = (await publicShops.json()) as { shops?: { makes?: string }[] };
   const publicMakes = JSON.stringify(publicShopsBody).toLowerCase();
   assert(publicShops.status === 200, "the public small-shop list loads");
-  assert(publicMakes.includes("mugs"), "the public list keeps the product from a mixed made-in line");
-  assert(!publicMakes.includes("made in"), "the public list drops every made-in claim");
-  assert(!publicMakes.includes("american-made"), "the public list drops american-made");
-  assert(!publicMakes.includes("usa made"), "the public list drops usa made");
+  assert(publicMakes.includes("mugs."), "the public list keeps the tidied product from a mixed made-in line");
+  assert(publicMakes.includes("made in batches"), "the public list keeps ordinary made-in words");
+  assert(!publicMakes.includes("made in usa") && !publicMakes.includes("made in the us"), "the public list drops made-in place claims");
+  assert(!publicMakes.includes("american made") && !publicMakes.includes("american-made"), "the public list drops american made");
+  assert(!publicMakes.includes("usa made") && !publicMakes.includes("usa-made"), "the public list drops usa made");
+  assert(!publicMakes.includes("united states") && !publicMakes.includes("u.s"), "the public list drops united states and dotted abbreviations");
   assert(!publicMakes.includes("america"), "the public list drops america");
+  assert(!publicMakes.includes(",,,") && !publicMakes.includes("mugs.,"), "the public list does not leave stacked punctuation");
   assert(!publicMakes.includes("elizabeth") && !publicMakes.includes("austin"), "the public list drops cities");
   const returnsSource = readFileSync(join(process.cwd(), "src/app/shop/returns/page.tsx"), "utf8");
   const damagedLine =

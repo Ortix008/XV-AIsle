@@ -32,16 +32,85 @@ export function listSmallShops() {
   return rows.map(fromRow);
 }
 
+const PLACE_CLAIM = /made in (?:the united states|united states|the usa|usa|america|the us|us)\b/g;
+const SHORT_CLAIM = /\b(?:american made|usa made)\b/g;
+
+/** Lowercase, drop dots, turn hyphens into spaces, and collapse whitespace. `starts` maps each normalized index to the original. */
+function normalizeMadeIn(value: string) {
+  let normalized = "";
+  const starts: number[] = [];
+  let i = 0;
+  while (i < value.length) {
+    const ch = value[i]!;
+    if (ch === ".") {
+      i += 1;
+      continue;
+    }
+    if (ch === "-" || /\s/.test(ch)) {
+      const at = i;
+      i += 1;
+      while (i < value.length && (value[i] === "-" || value[i] === "." || /\s/.test(value[i]!))) i += 1;
+      if (normalized.length > 0) {
+        starts.push(at);
+        normalized += " ";
+      }
+      continue;
+    }
+    starts.push(i);
+    normalized += ch.toLowerCase();
+    i += 1;
+  }
+  if (normalized.endsWith(" ")) {
+    normalized = normalized.slice(0, -1);
+    starts.pop();
+  }
+  return { normalized, starts };
+}
+
+function claimRanges(value: string) {
+  const { normalized, starts } = normalizeMadeIn(value);
+  const ranges: Array<[number, number]> = [];
+  for (const pattern of [PLACE_CLAIM, SHORT_CLAIM]) {
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null = pattern.exec(normalized);
+    while (match) {
+      const from = starts[match.index];
+      const endNorm = match.index + match[0].length;
+      const to = endNorm < starts.length ? starts[endNorm] : value.length;
+      if (from != null && to > from) ranges.push([from, to]);
+      match = pattern.exec(normalized);
+    }
+  }
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged: Array<[number, number]> = [];
+  for (const range of ranges) {
+    const last = merged.at(-1);
+    if (!last || range[0] > last[1]) merged.push([range[0], range[1]]);
+    else last[1] = Math.max(last[1], range[1]);
+  }
+  return merged;
+}
+
+function tidyRemainder(value: string) {
+  let text = value.replace(/\s+/g, " ").trim();
+  text = text.replace(/\s+([,.;:!?])/g, "$1");
+  text = text.replace(/(?:\s*\.\s*|,\s*){2,}/g, (chunk) => (chunk.includes(".") ? "." : ", "));
+  text = text.replace(/^[\s,]+/, "");
+  text = text.replace(/\s{2,}/g, " ");
+  text = text.replace(/\s+([,.;:!?])/g, "$1");
+  return text.trim();
+}
+
 function withoutMadeIn(value: string) {
-  return value
-    .replace(/made in the usa/gi, "")
-    .replace(/made in america/gi, "")
-    .replace(/made in usa/gi, "")
-    .replace(/american-made/gi, "")
-    .replace(/usa made/gi, "")
-    .replace(/\s{2,}/g, " ")
-    .replace(/\s+([,.])/g, "$1")
-    .trim();
+  const ranges = claimRanges(value);
+  let kept = "";
+  let cursor = 0;
+  for (const [from, to] of ranges) {
+    kept += value.slice(cursor, from);
+    cursor = to;
+  }
+  kept += value.slice(cursor);
+  return tidyRemainder(kept);
 }
 
 /** Shoppers see the name and what the shop makes. The city and made-in claims stay off. */
