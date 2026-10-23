@@ -73,6 +73,19 @@ assert(
   postLaunch.includes("Buyer order list on /account (deferred; the receipt email covers it for launch)."),
   "post-launch defers the buyer order list",
 );
+assert(postLaunch.includes("## Cleanup before Oct 28"), "post-launch has the Oct 28 cleanup section");
+assert(postLaunch.includes("Test order XV-1004."), "post-launch lists test order XV-1004");
+assert(postLaunch.includes("The pending guest test order."), "post-launch lists the pending guest test order");
+assert(
+  postLaunch.includes("Unverified buyer account named QA Smoke, from the smoke test."),
+  "post-launch lists the QA Smoke unverified buyer account",
+);
+assert(postLaunch.includes("Unverified buyer from the X login test."), "post-launch lists the unverified buyer from the X login test");
+assert(!postLaunch.includes("XO"), "post-launch does not name the X login test account");
+assert(
+  postLaunch.includes("Glow: the orphan bullet dot in the Contact block on /shop/returns."),
+  "post-launch lists Glow's orphan bullet on the returns contact block",
+);
 
 const saved = {
   id: process.env.X_CLIENT_ID,
@@ -104,11 +117,23 @@ function restoreEnv() {
 
 assert(X_SCOPES === "users.read tweet.read", "scopes are users.read and tweet.read");
 assert(xScopesAllowed(X_SCOPES), "the fixed scope list is allowed");
+assert(xScopesAllowed("tweet.read users.read"), "the two read scopes are allowed in either order");
 assert(!xScopesAllowed("users.read tweet.read offline.access"), "offline.access is refused");
 assert(!xScopesAllowed("users.read tweet.read users.email"), "users.email is refused");
 assert(!xScopesAllowed("tweet.write tweet.read users.read"), "tweet.write is refused");
+assert(!xScopesAllowed("users.read tweet.read media.write"), "media.write is refused");
+assert(!xScopesAllowed("users.read tweet.read follows.read"), "follows.read is refused");
+assert(!xScopesAllowed("users.read tweet.read like.read"), "like.read is refused");
+assert(!xScopesAllowed("users.read tweet.read dm.read"), "dm.read is refused");
+assert(!xScopesAllowed("users.read tweet.read bookmark.read"), "bookmark.read is refused");
+assert(!xScopesAllowed("users.read tweet.read block.read"), "block.read is refused");
+assert(!xScopesAllowed("users.read tweet.read list.read"), "list.read is refused");
+assert(!xScopesAllowed("users.read tweet.read mute.read"), "mute.read is refused");
+assert(!xScopesAllowed("users.read tweet.read space.read"), "space.read is refused");
 assert(!xScopesAllowed("users.read"), "tweet.read is required");
+assert(!xScopesAllowed("tweet.read"), "users.read is required");
 assert(!X_SCOPES.includes("offline.access"), "the shipped scope string has no refresh scope");
+assert(!X_SCOPES.includes("users.email") && !X_SCOPES.includes("tweet.write") && !X_SCOPES.includes("media.write"), "the shipped scope string has no extra scope");
 
 assert(!statesMatch(undefined, "a".repeat(43)), "missing expected state fails");
 assert(!statesMatch("a".repeat(43), undefined), "missing received state fails");
