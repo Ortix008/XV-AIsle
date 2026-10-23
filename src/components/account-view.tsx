@@ -160,7 +160,7 @@ export function AccountView() {
           </Link>
         ) : null}
         {params.get("verified") === "1" ? <p className="text-base">Email verified.</p> : null}
-        {account.role === "buyer" || account.role === "reseller" ? (
+        {account.role === "reseller" ? (
           <p className="text-pretty text-base leading-relaxed text-muted-foreground">
             <Link href="/shop/reseller" className="auth-text-link">
               Reseller program coming soon.

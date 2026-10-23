@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { FindShare } from "@/components/find-share";
-import { TRACKING_SHIP } from "@/lib/order-facts";
+import { SHOPPER_PLACE, TRACKING_SHIP } from "@/lib/order-facts";
 import { RETURNS_EMAILED } from "@/lib/return-address";
 
 export type OrderCardFacts = {
@@ -42,9 +42,8 @@ export function OrderCard({ facts, children }: { facts: OrderCardFacts; children
           </div>
         ) : null}
         {shipsFrom ? (
-          <div>
-            <dt className="text-xs tracking-wide text-muted-foreground">Ships from</dt>
-            <dd className="mt-1">{shipsFrom}</dd>
+          <div className="sm:col-span-2">
+            <dd className="mt-1">{SHOPPER_PLACE}</dd>
           </div>
         ) : null}
         <div>

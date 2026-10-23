@@ -1,23 +1,26 @@
-import { cookies } from "next/headers";
 import { accountFromToken } from "@/lib/server/accounts";
-import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
-import { SESSION_COOKIE } from "@/lib/server/session-cookie";
+import { operatorOnly } from "@/lib/server/access";
+import { allowClient } from "@/lib/server/rate-limit";
+import { sessionTokenFromRequest } from "@/lib/server/session-cookie";
 import { addSmallShop, listSmallShops } from "@/lib/server/small-shops";
 
-export async function GET() {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  const account = accountFromToken(token);
-  if (!account) return Response.json({ error: "Sign in first." }, { status: 401 });
+function accountFrom(request: Request) {
+  return accountFromToken(sessionTokenFromRequest(request));
+}
+
+export async function GET(request: Request) {
+  const denied = operatorOnly(accountFrom(request));
+  if (denied) return Response.json({ error: denied.error }, { status: denied.status });
   return Response.json({ shops: listSmallShops() });
 }
 
 export async function POST(request: Request) {
-  if (!allowAttempt(clientBucket(request, "small-shop"), 20, 10 * 60 * 1000)) {
+  if (!allowClient(request, "small-shop", 20, 10 * 60 * 1000)) {
     return Response.json({ error: "Too many updates. Wait a few minutes." }, { status: 429 });
   }
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  const account = accountFromToken(token);
-  if (!account) return Response.json({ error: "Sign in first." }, { status: 401 });
+  const account = accountFrom(request);
+  const denied = operatorOnly(account);
+  if (denied || !account) return Response.json({ error: denied?.error ?? "Sign in first." }, { status: denied?.status ?? 401 });
   const body = (await request.json().catch(() => null)) as {
     name?: string;
     city?: string;

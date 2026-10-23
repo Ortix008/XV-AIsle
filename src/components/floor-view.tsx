@@ -146,7 +146,7 @@ export function FloorView() {
             Market
           </p>
           <h1 className="mt-1 max-w-xl text-balance text-[1.75rem] leading-tight font-semibold tracking-tight text-white sm:text-4xl">
-            The first US trend market that keeps it.
+            {"A curated US market, with every item reviewed before it's listed."}
           </h1>
         </div>
       </div>

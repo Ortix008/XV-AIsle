@@ -10,7 +10,7 @@ export default function ShippingPage() {
       <p>For now we ship only within the United States, so checkout only accepts US addresses.</p>
       <p>Once your payment goes through, the supplier ships it straight to your door.</p>
       <p>Every product page shows that item&apos;s own shipping window.</p>
-      <p>{"That window is our best estimate, so we can't promise a specific delivery day."}</p>
+      <p>That window is an estimate. Your tracking email shows the latest.</p>
       <p>{"Once your order is on its way, we'll email you tracking."}</p>
       <p>
         {

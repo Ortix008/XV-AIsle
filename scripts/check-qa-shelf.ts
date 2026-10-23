@@ -50,6 +50,16 @@ async function main() {
   const { ensureStarterShelf, listedOnGrid, visibleOnShop } = await import("../src/lib/server/starter-shelf");
   const { setStripeFetch } = await import("../src/lib/server/stripe");
   const { POST } = await import("../src/app/api/store/checkout/route");
+  const closedCheckout = await POST(
+    new Request("http://127.0.0.1/api/store/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId: QA_CHECKOUT_PRODUCT_ID, qty: 1 }),
+    }),
+  );
+  const closedBody = (await closedCheckout.json()) as { error?: string };
+  assert(closedCheckout.status === 503 && closedBody.error === "Card checkout isn't open yet.", "shoppers hear that card checkout is not open yet");
+  assert(!JSON.stringify(closedBody).includes("STRIPE_"), "the checkout error does not name an environment variable");
 
   const env = process.env as Record<string, string | undefined>;
   getDb()
@@ -79,6 +89,7 @@ async function main() {
   ensureStarterShelf();
   const seeded = getListing(QA_CHECKOUT_PRODUCT_ID);
   assert(seeded?.published, "preview seed publishes the QA listing");
+  assert(seeded?.aisle === "kitchen", "the QA fixture breadcrumb uses the kitchen aisle");
   assert(Boolean(seeded?.supplierAccountId), "the QA listing has a test supplier account");
   const supplier = getDb().prepare("SELECT id, role, email FROM accounts WHERE email = ?").get(QA_SUPPLIER_EMAIL) as
     | { id: string; role: string; email: string }
@@ -121,7 +132,11 @@ async function main() {
   const { isHeldSample } = await import("../src/lib/shelf-holds");
   const { QA_TEST_BANNER, SAMPLE_UNAVAILABLE } = await import("../src/lib/shelf-copy");
   assert(QA_TEST_BANNER === "Test mode. No real money moves on this page.", "the test banner is the approved line");
-  assert(SAMPLE_UNAVAILABLE === "Not available yet. Check back soon.", "the sample note is the approved line");
+  assert(
+    SAMPLE_UNAVAILABLE.replaceAll("\u00A0", " ") === "Not available yet. Check back soon.",
+    "the sample note is the approved line",
+  );
+  assert(SAMPLE_UNAVAILABLE.endsWith("\u00A0soon."), "soon stays with the word before it");
   const sheet = getListing("sheet-pan");
   const scraper = getListing("bench-scraper");
   if (!sheet || !scraper || !isHeldSample(sheet) || !isHeldSample(scraper)) {
@@ -130,7 +145,11 @@ async function main() {
   assert(sheet.supplierAccountId == null && scraper.supplierAccountId == null, "seeded samples are not linked to a supplier account");
   assert(sheet.supplierName === "Northwharf Goods", "the database still knows the seeded supplier");
   const shownSheet = publicShopListing(sheet, true);
-  assert(shownSheet.supplierName === "" && shownSheet.supplierOrigin === "", "the shopper listing drops the seeded supplier");
+  assert(shownSheet.supplierName === "", "the shopper listing drops the seeded supplier");
+  assert(
+    !("supplierOrigin" in shownSheet) && !("shipsFrom" in shownSheet) && !("origin" in shownSheet),
+    "the shopper listing has no origin",
+  );
   const heldOrder = createPendingOrder({ productId: "sheet-pan", qty: 1, ship });
   assert("error" in heldOrder, "checkout refuses a sample with no real supplier");
   assert(getListing("sheet-pan")?.published === true, "refusing the sample does not delete it");
@@ -277,6 +296,22 @@ async function main() {
     "the live-shelf guard stays closed in production",
   );
   getDb().prepare("UPDATE listings SET published = 1 WHERE product_id = ?").run(QA_CHECKOUT_PRODUCT_ID);
+  assert(
+    visibleOnShop({
+      productId: QA_CHECKOUT_PRODUCT_ID,
+      supplierName: "QA Test Supplier",
+      published: true,
+    }) === false,
+    "production keeps qa-checkout off the shop even when the row is published",
+  );
+  const { default: ProductPage } = await import("../src/app/shop/[productId]/page");
+  let digest = "";
+  try {
+    await ProductPage({ params: Promise.resolve({ productId: QA_CHECKOUT_PRODUCT_ID }) });
+  } catch (error) {
+    digest = error instanceof Error ? String((error as { digest?: string }).digest ?? error.message) : "";
+  }
+  assert(digest.includes("404"), "production /shop/qa-checkout returns 404");
   const liveOrder = createPendingOrder({ productId: ship.productId, qty: ship.qty, ship });
   assert("error" in liveOrder, "production checkout refuses the fixture");
 

@@ -185,6 +185,8 @@ export function getDb() {
   addColumn(next, "accounts", "locked_until", "INTEGER");
   addColumn(next, "accounts", "totp_secret", "TEXT");
   addColumn(next, "accounts", "totp_enabled", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(next, "accounts", "totp_last_step", "INTEGER");
+  addColumn(next, "login_challenges", "fails", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "listings", "made_in_usa", "INTEGER NOT NULL DEFAULT 0");
   addColumn(next, "listings", "shelf", "TEXT NOT NULL DEFAULT 'national'");
   addColumn(next, "listings", "supplier_account_id", "TEXT");
@@ -263,6 +265,7 @@ export function getDb() {
   );
   migrateSupplierReturns(next);
   migrateMoneyFlow(next);
+  addColumn(next, "listings", "import_images", "TEXT");
   db = next;
   return next;
 }

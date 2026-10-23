@@ -57,15 +57,21 @@ export function totpCode(secret: string, at = Date.now()) {
   return String(bin % 1_000_000).padStart(6, "0");
 }
 
-export function verifyTotp(secret: string, code: string, at = Date.now()) {
+/** Time step that matched, including one step of clock skew. Null when the code does not match. */
+export function acceptedTotpStep(secret: string, code: string, at = Date.now()) {
   const normalized = code.replace(/\s/g, "");
-  if (!/^\d{6}$/.test(normalized)) return false;
+  if (!/^\d{6}$/.test(normalized)) return null;
   const given = Buffer.from(normalized);
+  const base = Math.floor(at / 30_000);
   for (const skew of [-1, 0, 1]) {
     const expected = Buffer.from(totpCode(secret, at + skew * 30_000));
-    if (given.length === expected.length && timingSafeEqual(given, expected)) return true;
+    if (given.length === expected.length && timingSafeEqual(given, expected)) return base + skew;
   }
-  return false;
+  return null;
+}
+
+export function verifyTotp(secret: string, code: string, at = Date.now()) {
+  return acceptedTotpStep(secret, code, at) !== null;
 }
 
 function base32Encode(buf: Buffer) {

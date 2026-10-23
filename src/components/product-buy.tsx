@@ -13,7 +13,7 @@ import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
 import { QA_CHECKOUT_PRODUCT_ID } from "@/lib/qa-checkout";
 import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE } from "@/lib/shelf-copy";
-import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
+import { productShipLine, SHOPPER_PLACE, shopperDescription, shopperMayNameUsSupplier } from "@/lib/order-facts";
 import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
@@ -26,7 +26,7 @@ export type ProductListing = {
   priceCents: number;
   image: string;
   supplierName: string;
-  supplierOrigin: string;
+  supplierOrigin?: string;
   shipDaysMin: number;
   shipDaysMax: number;
   madeInUsa?: boolean;
@@ -56,29 +56,20 @@ function productAisleCrumb(listing: ProductListing) {
   return { name: slug, href: null };
 }
 
-function TruckIcon() {
-  return (
-    <svg className="product-truck" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M3 7.5h11.2v8.2H3V7.5zm12.2 1.6h2.4l2.9 3.1v3.5h-5.3V9.1zM7.1 16.2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4zm9.2 0a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4z"
-      />
-    </svg>
-  );
-}
-
 export function ProductBuy({
   listing,
   returnNote,
   shareHref,
   testMode = false,
   held = false,
+  shipWindow,
 }: {
   listing: ProductListing;
   returnNote: string;
   shareHref: string;
   testMode?: boolean;
   held?: boolean;
+  shipWindow?: string;
 }) {
   const formReveal = useReveal<HTMLFormElement>(1);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +91,7 @@ export function ProductBuy({
   const world = nightWorldForListing(listing);
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
   const aisleCrumb = productAisleCrumb(listing);
+  const shipping = shipWindow ?? productShipLine(listing);
 
   useEffect(() => {
     if (details) nameRef.current?.focus();
@@ -179,7 +171,7 @@ export function ProductBuy({
           <p className="product-price">{money(listing.priceCents / 100)}</p>
           {listing.sample ? <span className="product-sample">Sample</span> : null}
         </div>
-        <p className="product-desc">{listing.description}</p>
+        <p className="product-desc">{shopperDescription(listing.description)}</p>
         {testMode && !qaCheckout ? (
           <p className="product-test" role="status">
             Test mode
@@ -187,20 +179,14 @@ export function ProductBuy({
         ) : null}
         <form {...formReveal} onSubmit={checkout} className="product-checkout">
           <div className="product-buy">
-            {held ? null : (
-              <p className="product-ship">
-                <TruckIcon />
-                <span>{productShipLine(listing)}</span>
-              </p>
-            )}
             <label className="product-qty-field">
               Quantity
               <Input className="product-qty" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
             </label>
             {held ? (
-              <p className="status-chip sample-hold" role="status">
+              <button type="button" className="sample-hold" disabled aria-disabled="true">
                 {SAMPLE_UNAVAILABLE}
-              </p>
+              </button>
             ) : details ? null : (
               <Button type="submit" className="product-pay">
                 Continue to checkout
@@ -246,10 +232,6 @@ export function ProductBuy({
             </div>
           ) : null}
         </form>
-        {usSupplierConfirmed(listing) && !listing.shipsFrom?.trim() && listing.supplierOrigin.trim() ? (
-          <p className="product-note">Ships from {listing.supplierOrigin}.</p>
-        ) : null}
-        {listing.madeInUsa ? <p className="product-note">Made in the USA.</p> : null}
         {listing.shelf === "small" ? <p className="product-note">This is a small business.</p> : null}
         {listing.kind === "bundle" && listing.includes && listing.includes.length > 0 ? (
           <div className="product-extra">
@@ -293,18 +275,15 @@ export function ProductBuy({
         <section className="product-extra">
           <h2 className="text-lg">Shipping & returns</h2>
           <dl className="mt-3 space-y-3 text-base">
-            {usSupplierConfirmed(listing) && listing.shipsFrom?.trim() ? (
+            {shopperMayNameUsSupplier(listing) ? (
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">Ships from</dt>
-                <dd className="mt-1">{listing.shipsFrom}</dd>
+                <dd className="mt-1">{SHOPPER_PLACE}</dd>
               </div>
             ) : null}
-            {held ? null : (
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">Shipping</dt>
-                <dd className="mt-1">{productShipLine(listing)}</dd>
-              </div>
-            )}
+            <div>
+              <dt className="text-sm font-medium text-muted-foreground">Shipping</dt>
+              <dd className="mt-1">{shipping}</dd>
+            </div>
             <div>
               <dt className="text-sm font-medium text-muted-foreground">Returns</dt>
               <dd className="mt-1">You can start a return within {RETURN_WINDOW_DAYS} days of delivery.</dd>

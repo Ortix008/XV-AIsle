@@ -1,5 +1,5 @@
 /** Exact eyebrow on the homepage hero. */
-export const HERO_EYEBROW = "A US Trend Market";
+export const HERO_EYEBROW = "A curated US market";
 
 /**
  * Previous live headline.

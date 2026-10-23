@@ -6,12 +6,18 @@ export async function register() {
   const { flagRefundDeadlines, sweepStuckFulfillment } = await import("./lib/server/store");
   const { releaseMatured } = await import("./lib/server/ledger");
   const { notifyUnshippedDelays } = await import("./lib/server/order-routing");
+  const { assertProductionAppUrl } = await import("./lib/server/same-origin");
+  const { assertProductionSupportEmail } = await import("./lib/signup-copy");
+  const { sweepRateHits } = await import("./lib/server/rate-limit");
   try {
     ensureStarterShelf();
   } catch (error) {
     console.error("Starter shelf did not publish.", error);
   }
   if (process.env.NEXT_PHASE === "phase-production-build") return;
+  assertProductionAppUrl();
+  assertProductionSupportEmail();
+  sweepRateHits();
   const sweep = async () => {
     await sweepStuckFulfillment();
     flagRefundDeadlines();

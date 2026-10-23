@@ -9,8 +9,7 @@ export default function ResellerTermsPage() {
     <PolicyArticle kicker="Store" title="Reseller program coming soon.">
       <p>Reseller program coming soon.</p>
       <p>
-        We do not promise income. A listing can sell, or it can sell nothing. We do not quote example earnings, and we
-        do not say what you will make.
+        {`We do not promise income. A listing can sell, or it can sell nothing. We don't promise any amount you'll make. Full terms come when the reseller program opens.`}
       </p>
       <p>XV can remove a listing that breaks these rules.</p>
       <p>

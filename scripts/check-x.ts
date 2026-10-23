@@ -1,8 +1,15 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { xCallbackLogLine } from "../src/app/api/auth/x/callback/route";
+import { FindShare } from "../src/components/find-share";
+import { MissionValues } from "../src/components/mission-values";
+import { productPageUrl } from "../src/lib/config/env";
 import { RESELLER_DISCLOSURE } from "../src/lib/policies";
+import { productOgImage } from "../src/lib/product-og";
+import { SHARE_IMAGE_ALT, shareCard, shareCardMetadata } from "../src/lib/share-card";
 import { profileFromXCode } from "../src/lib/server/x-auth";
 import { sessionCookieOptions } from "../src/lib/server/session-cookie";
 import { buyerShareHref, resellerShareHref, xIntentUrl } from "../src/lib/x-share";
@@ -48,6 +55,24 @@ assert(
 );
 assert(!authScreens.includes("/brand/logo-official-xo.png"), "Continue with X does not use the old logo");
 assert(!authScreens.includes("auth-email-row"), "Continue with X is not beside the email field");
+const releaseChecklist = readFileSync(join(process.cwd(), "docs/release-checklist.md"), "utf8");
+for (const name of ["X_CLIENT_ID", "X_CLIENT_SECRET", "X_REDIRECT_URI"]) {
+  assert(releaseChecklist.includes(name), `the release checklist names ${name}`);
+}
+assert(/never print the values/i.test(releaseChecklist), "the release checklist says never to print the X login values");
+assert(releaseChecklist.includes("A receipt email arrives after a 4242 test checkout."), "the release checklist includes the 4242 receipt email");
+assert(releaseChecklist.includes("A full Continue with X login completes."), "the release checklist includes a full Continue with X login");
+assert(
+  releaseChecklist.includes("Stripe is confirmed in TEST mode. Check the key prefix type only. Do not print the key."),
+  "the release checklist checks Stripe test mode by prefix type only",
+);
+assert(releaseChecklist.includes("banned-words.md"), "the release checklist parses banned-words.md against live pages");
+assert(!/sk_live_|sk_test_|ghp_|xox[baprs]-|-----BEGIN/.test(releaseChecklist), "the release checklist has no secret values");
+const postLaunch = readFileSync(join(process.cwd(), "docs/post-launch.md"), "utf8");
+assert(
+  postLaunch.includes("Buyer order list on /account (deferred; the receipt email covers it for launch)."),
+  "post-launch defers the buyer order list",
+);
 
 const saved = {
   id: process.env.X_CLIENT_ID,
@@ -55,6 +80,7 @@ const saved = {
   redirect: process.env.X_REDIRECT_URI,
   nodeEnv: process.env.NODE_ENV,
   appUrl: process.env.APP_URL,
+  site: process.env.PUBLIC_SITE_URL,
 };
 
 function setNodeEnv(value: string | undefined) {
@@ -72,6 +98,8 @@ function restoreEnv() {
   process.env.X_REDIRECT_URI = saved.redirect;
   setNodeEnv(saved.nodeEnv);
   setAppUrl(saved.appUrl);
+  if (saved.site == null) delete process.env.PUBLIC_SITE_URL;
+  else process.env.PUBLIC_SITE_URL = saved.site;
 }
 
 assert(X_SCOPES === "users.read tweet.read", "scopes are users.read and tweet.read");
@@ -128,7 +156,7 @@ assert(devCookies.sameSite === "lax", "oauth cookies are SameSite=Lax");
 assert(devCookies.path === "/", "oauth cookies use the site path");
 assert(devCookies.maxAge === 600, "oauth cookies last 10 minutes");
 assert(devCookies.secure === false, "an http APP_URL leaves oauth cookies unset for Secure");
-assert(sessionCookieOptions().secure === false, "an http APP_URL leaves the session cookie unset for Secure");
+assert(sessionCookieOptions().secure === true, "production marks the session cookie Secure even when APP_URL is http");
 setAppUrl("https://xvaisle.com");
 setNodeEnv("development");
 assert(xOauthCookieOptions().secure === true, "an https APP_URL marks oauth cookies Secure");
@@ -188,6 +216,54 @@ const buyer = new URL(
 assert(buyer.searchParams.get("text") === "Quarter sheet pan and rack", "buyer text is only the product name");
 assert(!buyer.searchParams.get("text")?.includes(RESELLER_DISCLOSURE), "buyer text omits the ad line");
 assert(!new URL(buyer.searchParams.get("url") ?? "").searchParams.has("ref"), "buyer url drops a referral");
+
+setAppUrl("http://127.0.0.1:4317");
+delete process.env.PUBLIC_SITE_URL;
+const localShare = buyerShareHref({ title: "Quarter sheet pan", productUrl: "http://127.0.0.1:4317/shop/sheet-pan" });
+const localTarget = new URL(localShare).searchParams.get("url") ?? "";
+assert(localTarget === "https://xvaisle.com/shop/sheet-pan", "share ignores a localhost product URL and APP_URL");
+assert(!localShare.includes("localhost") && !localShare.includes("127.0.0.1"), "the share URL has no localhost");
+process.env.PUBLIC_SITE_URL = "http://localhost:4317";
+const configuredLocal = productPageUrl("sheet-pan");
+assert(configuredLocal === "https://xvaisle.com/shop/sheet-pan", "a localhost PUBLIC_SITE_URL falls back to the public site");
+assert(!configuredLocal.includes("localhost") && !configuredLocal.includes("127.0.0.1"), "the configured share URL has no localhost");
+const shareMarkup = renderToStaticMarkup(createElement(FindShare, { title: "Quarter sheet pan", productId: "sheet-pan" }));
+assert(shareMarkup.includes("https://x.com/intent/post"), "the share link renders without a browser");
+assert(shareMarkup.includes("Share this find") && shareMarkup.includes('aria-label="Share this find on X"'), "the find share button uses the approved label");
+assert(shareMarkup.includes('aria-hidden="true"') && !shareMarkup.includes("TODO("), "the find share button hides the X icon and renders no TODO( string");
+assert(shareMarkup.includes("xvaisle.com") && !shareMarkup.includes("localhost") && !shareMarkup.includes("127.0.0.1"), "the rendered share link stays on the public site");
+process.env.PUBLIC_SITE_URL = "https://preview.xvaisle.com";
+const previewCard = shareCard();
+assert(previewCard.url === "https://preview.xvaisle.com/og/og-image.png", "the share card uses PUBLIC_SITE_URL when it is public");
+delete process.env.PUBLIC_SITE_URL;
+const card = shareCard();
+assert(card.url === "https://xvaisle.com/og/og-image.png", "the share card defaults to the public site");
+assert(card.url.startsWith("https://"), "the share card image is absolute");
+assert(card.width === 1200 && card.height === 630, "the share card is 1200 by 630");
+assert(card.card === "summary_large_image", "the share card is a large image");
+assert(card.alt === SHARE_IMAGE_ALT, "the share card uses the approved alt text");
+const tags = JSON.stringify(shareCardMetadata());
+assert(tags.includes("https://xvaisle.com/og/og-image.png"), "og and twitter images are the absolute public card");
+assert(tags.includes("summary_large_image"), "twitter card is summary_large_image");
+assert(!tags.includes("localhost") && !tags.includes("127.0.0.1"), "share card tags have no localhost");
+const productCard = productOgImage("https://xvaisle.com", "/art/mock-sheet-pan-1.png", "Quarter sheet pan");
+assert(productCard.url === "https://xvaisle.com/art/mock-sheet-pan-1.png", "a product card image is absolute");
+assert(productCard.width === 1152 && productCard.height === 864, "a product card uses the file's real size");
+assert(!String(productCard.url).includes("localhost") && !String(productCard.url).includes("127.0.0.1"), "a product card image has no localhost");
+const siteCard = productOgImage("https://xvaisle.com", "", "Missing photo");
+assert(siteCard.url === "https://xvaisle.com/og/og-image.png", "a product without a photo uses the site card");
+assert(siteCard.width === 1200 && siteCard.height === 630, "the site card on a product is 1200 by 630");
+const productPage = readFileSync(join(process.cwd(), "src/app/shop/[productId]/page.tsx"), "utf8");
+assert(productPage.includes("productOgImage"), "product share cards set image width and height");
+const mission = renderToStaticMarkup(createElement(MissionValues));
+assert(
+  mission.includes("Shoppers buy products that are reviewed before they") &&
+    mission.includes("from their shelf to your home."),
+  "the mission sentence renders without a browser",
+);
+setAppUrl(saved.appUrl);
+if (saved.site == null) delete process.env.PUBLIC_SITE_URL;
+else process.env.PUBLIC_SITE_URL = saved.site;
 
 const code = "code-marker-9f3a2c-not-an-oauth-name";
 const secret = "secret-marker-b7c1-not-an-oauth-name";

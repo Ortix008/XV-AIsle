@@ -322,6 +322,86 @@ async function main() {
   if ("error" in second) throw new Error(second.error);
   assert(second.order.feeBps === 1000, "checkout recomputes the platform fee from config");
 
+  const operatorJoin = signUp({ name: "Operator", email: "operator-fees@xvaisle.test", password: "market-test" });
+  const otherAdminJoin = signUp({ name: "Other Admin", email: "other-admin-fees@xvaisle.test", password: "market-test" });
+  if ("error" in operatorJoin || "error" in otherAdminJoin) throw new Error("own-store accounts");
+  db.prepare("UPDATE accounts SET role = 'admin', email_verified = 1 WHERE id = ?").run(operatorJoin.account.id);
+  db.prepare("UPDATE accounts SET role = 'admin', email_verified = 1 WHERE id = ?").run(otherAdminJoin.account.id);
+  db.prepare(
+    `INSERT INTO connected_accounts (
+       account_id, stripe_account_id, charges_enabled, payouts_enabled, details_submitted, requirements_due, transfers_status, updated_at
+     ) VALUES (?, 'acct_fee_operator', 0, 1, 1, '', 'active', ?)`,
+  ).run(operatorJoin.account.id, Date.now());
+  db.prepare(
+    `INSERT INTO connected_accounts (
+       account_id, stripe_account_id, charges_enabled, payouts_enabled, details_submitted, requirements_due, transfers_status, updated_at
+     ) VALUES (?, 'acct_fee_other_admin', 0, 1, 1, '', 'active', ?)`,
+  ).run(otherAdminJoin.account.id, Date.now());
+  const operator = getAccount(operatorJoin.account.id);
+  const otherAdmin = getAccount(otherAdminJoin.account.id);
+  if (!operator || !otherAdmin) throw new Error("own-store accounts missing");
+  process.env.STORE_OPERATOR_EMAIL = operator.email;
+
+  const ownQuote = quoteForAccount({ catalogItemId: "cat-fee", priceCents: 2000, sellerAccountId: operator.id });
+  if (ownQuote.status !== 200) throw new Error(ownQuote.error);
+  assert(ownQuote.quote.platformFeeCents === 0, "an own-store quote charges no platform fee");
+  console.log("pass an own-store quote charges no platform fee");
+  const ownListed = publishForAccount(operator, {
+    ...base,
+    productId: "own-pan",
+    priceCents: 2000,
+    feeBps: 800,
+    platformFeeCents: 1,
+  });
+  assert(ownListed.status === 200 && ownListed.listing?.feeBps === 0, "an own-store listing stores a zero fee");
+  assert(ownListed.listing?.feeBps === 0, "a client fee basis is ignored for an own-store listing");
+  console.log("pass an own-store listing stores a zero fee");
+  console.log("pass a client fee basis is ignored for an own-store listing");
+  const ownOrder = createPendingOrder({ productId: "own-pan", qty: 1, ship });
+  if ("error" in ownOrder) throw new Error(ownOrder.error);
+  assert(ownOrder.order.feeBps === 0 && ownOrder.order.platformFeeCents === 0, "an own-store checkout stores a zero fee");
+  console.log("pass an own-store checkout stores a zero fee");
+
+  const otherQuote = quoteForAccount({ catalogItemId: "cat-fee", priceCents: 2000, sellerAccountId: otherAdmin.id });
+  if (otherQuote.status !== 200) throw new Error(otherQuote.error);
+  assert(otherQuote.quote.platformFeeCents === 200, "an admin that is not the operator pays the reseller fee");
+  const otherListed = publishForAccount(otherAdmin, {
+    ...base,
+    productId: "other-admin-pan",
+    priceCents: 2000,
+    feeBps: 800,
+  });
+  assert(otherListed.status === 200 && otherListed.listing?.feeBps === 1000, "an admin that is not the operator stores the reseller fee");
+  console.log("pass an admin that is not the operator pays the reseller fee");
+
+  process.env.PLATFORM_FEE_BPS = "1100";
+  const resellerAtEleven = quoteForAccount({ catalogItemId: "cat-fee", priceCents: 2000, sellerAccountId: otherAdmin.id });
+  if (resellerAtEleven.status !== 200) throw new Error(resellerAtEleven.error);
+  assert(resellerAtEleven.quote.platformFeeCents === 220, "PLATFORM_FEE_BPS changes the reseller fee");
+  const ownAtEleven = quoteForAccount({ catalogItemId: "cat-fee", priceCents: 2000, sellerAccountId: operator.id });
+  if (ownAtEleven.status !== 200) throw new Error(ownAtEleven.error);
+  assert(ownAtEleven.quote.platformFeeCents === 0, "PLATFORM_FEE_BPS does not change the own-store fee");
+  const ownAtElevenListing = publishForAccount(operator, { ...base, productId: "own-eleven-pan", priceCents: 2000 });
+  assert(ownAtElevenListing.status === 200 && ownAtElevenListing.listing?.feeBps === 0, "an own-store publish stays at zero when the platform fee is 11%");
+  const otherAtEleven = publishForAccount(otherAdmin, { ...base, productId: "other-eleven-pan", priceCents: 2000 });
+  assert(otherAtEleven.status === 200 && otherAtEleven.listing?.feeBps === 1100, "a non-operator publish stores 11%");
+  console.log("pass PLATFORM_FEE_BPS changes only the reseller fee");
+  delete process.env.PLATFORM_FEE_BPS;
+
+  delete process.env.STORE_OPERATOR_EMAIL;
+  const unsetQuote = quoteForAccount({ catalogItemId: "cat-fee", priceCents: 2000, sellerAccountId: operator.id });
+  if (unsetQuote.status !== 200) throw new Error(unsetQuote.error);
+  assert(unsetQuote.quote.platformFeeCents === 200, "an unset operator email does not zero the fee");
+  const unsetListed = publishForAccount(operator, { ...base, productId: "unset-operator-pan", priceCents: 2000 });
+  assert(unsetListed.status === 200 && unsetListed.listing?.feeBps === 1000, "an unset operator email stores the reseller fee");
+  const unsetOrder = createPendingOrder({ productId: "unset-operator-pan", qty: 1, ship });
+  if ("error" in unsetOrder) throw new Error(unsetOrder.error);
+  assert(
+    unsetOrder.order.feeBps === 1000 && unsetOrder.order.platformFeeCents === 200,
+    "an unset operator email charges the reseller fee at checkout",
+  );
+  console.log("pass an unset operator email does not zero the fee");
+
   process.env.STRIPE_SECRET_KEY = "sk_test_fees";
   const calls: { url: string; idempotency: string | null; body: string }[] = [];
   let failReversals = false;

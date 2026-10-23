@@ -8,6 +8,7 @@ import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAccount } from "@/lib/account-store";
+import { signupFeedbackState } from "@/lib/signup-feedback";
 
 function AuthScreen({
   title,
@@ -223,6 +224,7 @@ export function SignUpScreen({ showX = false, xDisabled = false }: { showX?: boo
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const nameId = useId();
   const emailId = useId();
@@ -240,8 +242,11 @@ export function SignUpScreen({ showX = false, xDisabled = false }: { showX?: boo
       return;
     }
     setPending(true);
-    const message = await signUp({ name, email, password, confirmPassword });
-    setError(message);
+    setNotice(null);
+    const result = await signUp({ name, email, password, confirmPassword });
+    const feedback = signupFeedbackState(result);
+    setNotice(feedback.notice);
+    setError(feedback.error);
     setPending(false);
   }
 
@@ -302,6 +307,7 @@ export function SignUpScreen({ showX = false, xDisabled = false }: { showX?: boo
             </p>
           ) : null}
         </div>
+        {notice ? <p className="text-base">{notice}</p> : null}
         {error && error !== confirmError && !staleMismatch ? (
           <p className="text-base text-late" role="alert">
             {error}

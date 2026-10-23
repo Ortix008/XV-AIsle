@@ -92,9 +92,20 @@ if (verifyStripeSignature("{}", header, "secret")) throw new Error("bad signatur
 const { allowAttempt, clientBucket } = await import("../src/lib/server/rate-limit");
 if (!allowAttempt("test:ip", 2, 60_000) || !allowAttempt("test:ip", 2, 60_000)) throw new Error("rate limit should allow two");
 if (allowAttempt("test:ip", 2, 60_000)) throw new Error("rate limit should block the third");
+const rateDb = getDb();
+const agedHit = Date.now() - 20_000;
+rateDb.prepare("INSERT INTO rate_hits (key, at) VALUES (?, ?)").run("long:window", agedHit);
+rateDb.prepare("INSERT INTO rate_hits (key, at) VALUES (?, ?)").run("short:window", agedHit);
+if (!allowAttempt("short:window", 5, 5_000)) throw new Error("a short window should allow a new hit");
+const keptLong = rateDb.prepare("SELECT COUNT(*) AS n FROM rate_hits WHERE key = ?").get("long:window") as { n: number };
+if (keptLong.n !== 1) throw new Error("a short window must not delete another key's hits");
+const staleShort = rateDb.prepare("SELECT COUNT(*) AS n FROM rate_hits WHERE key = ? AND at < ?").get("short:window", Date.now() - 5_000) as {
+  n: number;
+};
+if (staleShort.n !== 0) throw new Error("a key still drops its own expired hits");
 delete process.env.TRUST_PROXY;
 const spoofed = new Request("http://127.0.0.1/", { headers: { "x-forwarded-for": "1.2.3.4" } });
-if (clientBucket(spoofed, "signin") !== "signin:local") throw new Error("forwarded header should be ignored");
+if (clientBucket(spoofed, "signin") !== null) throw new Error("forwarded header should be ignored");
 process.env.TRUST_PROXY = "1";
 const trusted = new Request("http://127.0.0.1/", { headers: { "x-forwarded-for": "9.9.9.9, 203.0.113.5" } });
 if (clientBucket(trusted, "signin") !== "signin:203.0.113.5") throw new Error("expected the proxy hop");
@@ -175,7 +186,9 @@ const publicTowel = publicShopListing(withOpen.listing, false);
 if ("supplierCostCents" in publicTowel || "supplierShippingCents" in publicTowel || "feeBps" in publicTowel) {
   throw new Error("public listing should hide cost and margin");
 }
-if (publicTowel.shipsFrom !== "Elizabeth, NJ") throw new Error("public listing should show ships from");
+if ("shipsFrom" in publicTowel || "supplierOrigin" in publicTowel || "origin" in publicTowel) {
+  throw new Error("public listing should hide the place");
+}
 const kept = publishListing(joined.account.id, towel);
 if ("error" in kept || kept.listing?.shipsFrom !== "Elizabeth, NJ") {
   throw new Error("open info should stay when a later save omits it");
@@ -367,6 +380,19 @@ if (
 }
 for (const sentence of ["We do not promise income.", "Buyers pay on xvaisle.com."]) {
   if (!resellerPage.includes(sentence)) throw new Error("honest reseller copy should stay");
+}
+const earnings =
+  "We don't promise any amount you'll make. Full terms come when the reseller program opens.";
+const termsPage = readFileSync(join(process.cwd(), "src/app/shop/reseller/terms/page.tsx"), "utf8");
+for (const [file, source] of [
+  ["reseller page", resellerPage],
+  ["reseller terms", termsPage],
+] as const) {
+  if (source.includes("We do not quote example earnings")) throw new Error(`${file} still quotes example earnings`);
+  if (!source.includes(earnings)) throw new Error(`${file} should use the approved earnings line`);
+  if (!source.includes("We do not promise income. A listing can sell, or it can sell nothing.")) {
+    throw new Error(`${file} should keep the sentences before the earnings line`);
+  }
 }
 for (const file of ["src/components/policy-article.tsx", "src/app/shop/contact/page.tsx"]) {
   const source = readFileSync(join(process.cwd(), file), "utf8");

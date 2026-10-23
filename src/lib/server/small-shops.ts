@@ -32,6 +32,111 @@ export function listSmallShops() {
   return rows.map(fromRow);
 }
 
+const PLACE_CLAIM = /made in (?:the united states|united states|the usa|usa|america|the us|us)\b/g;
+const SHORT_CLAIM = /\b(?:american made|usa made)\b/g;
+
+/** Lowercase, drop dots, turn hyphens into spaces, and collapse whitespace. `starts` maps each normalized index to the original. */
+function normalizeMadeIn(value: string) {
+  let normalized = "";
+  const starts: number[] = [];
+  let i = 0;
+  while (i < value.length) {
+    const ch = value[i]!;
+    if (ch === ".") {
+      i += 1;
+      continue;
+    }
+    if (ch === "-" || /\s/.test(ch)) {
+      const at = i;
+      i += 1;
+      while (i < value.length && (value[i] === "-" || value[i] === "." || /\s/.test(value[i]!))) i += 1;
+      if (normalized.length > 0) {
+        starts.push(at);
+        normalized += " ";
+      }
+      continue;
+    }
+    starts.push(i);
+    normalized += ch.toLowerCase();
+    i += 1;
+  }
+  if (normalized.endsWith(" ")) {
+    normalized = normalized.slice(0, -1);
+    starts.pop();
+  }
+  return { normalized, starts };
+}
+
+function claimRanges(value: string) {
+  const { normalized, starts } = normalizeMadeIn(value);
+  const ranges: Array<[number, number]> = [];
+  for (const pattern of [PLACE_CLAIM, SHORT_CLAIM]) {
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null = pattern.exec(normalized);
+    while (match) {
+      const from = starts[match.index];
+      const endNorm = match.index + match[0].length;
+      const to = endNorm < starts.length ? starts[endNorm] : value.length;
+      if (from != null && to > from) ranges.push([from, to]);
+      match = pattern.exec(normalized);
+    }
+  }
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged: Array<[number, number]> = [];
+  for (const range of ranges) {
+    const last = merged.at(-1);
+    if (!last || range[0] > last[1]) merged.push([range[0], range[1]]);
+    else last[1] = Math.max(last[1], range[1]);
+  }
+  return merged;
+}
+
+function tidyRemainder(value: string) {
+  let text = value.replace(/\s+/g, " ").trim();
+  text = text.replace(/\s+([,.;:!?])/g, "$1");
+  text = text.replace(/(?:[.,]\s*){2,}/g, (chunk: string, offset: number, whole: string) => {
+    const next = whole[offset + chunk.length] ?? "";
+    if (!chunk.includes(".")) return ", ";
+    return /[a-z0-9]/i.test(next) ? ". " : ".";
+  });
+  text = text.replace(/^[\s,]+/, "");
+  text = text.replace(/\s{2,}/g, " ");
+  text = text.replace(/\s+([,.;:!?])/g, "$1");
+  return text.trim();
+}
+
+function hasShopperText(value: string) {
+  return /[a-z0-9]/i.test(value);
+}
+
+function withoutMadeIn(value: string) {
+  const ranges = claimRanges(value);
+  let kept = "";
+  let cursor = 0;
+  for (const [from, to] of ranges) {
+    kept += value.slice(cursor, from);
+    cursor = to;
+  }
+  kept += value.slice(cursor);
+  return tidyRemainder(kept);
+}
+
+/** Shoppers see the name and what the shop makes. The city and made-in claims stay off. */
+export function publicSmallShop(shop: SmallShop) {
+  return {
+    id: shop.id,
+    name: withoutMadeIn(shop.name),
+    makes: withoutMadeIn(shop.makes),
+  };
+}
+
+/** A card with no letters or digits left after the made-in text is stripped stays off public pages. */
+export function listPublicSmallShops() {
+  return listSmallShops()
+    .map(publicSmallShop)
+    .filter((shop) => hasShopperText(shop.name) || hasShopperText(shop.makes));
+}
+
 export function addSmallShop(
   accountId: string,
   input: { name: string; city: string; makes: string; madeInUsa: boolean },
@@ -42,6 +147,9 @@ export function addSmallShop(
   if (name.length < 2 || name.length > 80) return { error: "Add the business name." as const };
   if (city.length < 2 || city.length > 80) return { error: "Add the city." as const };
   if (makes.length < 2 || makes.length > 200) return { error: "Say what they make, in a short line." as const };
+  if (!hasShopperText(withoutMadeIn(name)) && !hasShopperText(withoutMadeIn(makes))) {
+    return { error: "Add the business name." as const };
+  }
   const id = randomUUID();
   getDb()
     .prepare(

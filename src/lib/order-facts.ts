@@ -1,7 +1,23 @@
-/** Shopper-facing ship copy. A window is confirmed only when both day counts are set. */
+/** Shopper-facing ship copy. A product window needs a confirmed supplier and both day counts. */
 
 export const US_SUPPLIER_SHIP = "Ships from a US supplier. Tracking emailed when it ships.";
 export const TRACKING_SHIP = "Tracking emailed when it ships.";
+/** Place line a shopper may see. No city, no supplier name. */
+export const SHOPPER_PLACE = "Ships from a US supplier.";
+
+const ENGINE_SHIP_SENTENCE =
+  /Ships from [^.\n]{0,240} through [^.\n]{0,240}\.(?:\s*Plan on [^.\n]{0,160} days\.)?(?:\s*This is an import, not a week-of order\.)?/g;
+
+/** Drop the desk engine's ship sentence, including its day plan and import clause. */
+export function shopperDescription(value: string) {
+  return value
+    .replace(ENGINE_SHIP_SENTENCE, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 const US_STATE_CODES = new Set([
   "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA",
@@ -51,6 +67,16 @@ export function isUsLocation(value?: string | null) {
   return US_STATE_NAMES.has(last.toLowerCase().replace(/\./g, ""));
 }
 
+/**
+ * The place sentence needs a real supplier, a US ships-from, and the confirmed flag.
+ * A public listing omits the city and carries the result on supplierUsConfirmed.
+ */
+export function shopperMayNameUsSupplier(source?: ShipSource | null) {
+  if (!source) return false;
+  if (source.shipsFrom != null) return usSupplierConfirmed(source);
+  return source.supplierUsConfirmed === true;
+}
+
 /** All three have to be true: a real supplier, a US ships-from, and the confirmed flag. */
 export function usSupplierConfirmed(source?: ShipSource | null) {
   const name = source?.supplierName?.trim() ?? "";
@@ -63,27 +89,43 @@ export function unconfirmedShipLine(source?: ShipSource | null) {
   return usSupplierConfirmed(source) ? US_SUPPLIER_SHIP : TRACKING_SHIP;
 }
 
-/** Receipt and order pages. A hyphen, and a single number when the two days match. */
-export function receiptShipWindow(min?: number | null, max?: number | null, source?: ShipSource | null) {
-  if (!shipDaysConfirmed(min, max)) return unconfirmedShipLine(source);
-  const lo = min ?? 0;
-  const hi = max ?? 0;
-  const span = lo === hi ? String(lo) : `${lo}-${hi}`;
-  return `Usually ships in ${span} business days.`;
-}
-
-/** Product page. An en dash, and a single number when the two days match. */
+/** Product page, receipts, order pages, and mail. The US line and the day window require a confirmed US supplier. */
 export function productShipLine(
   listing: ShipSource & { supplierName: string; shipDaysMin?: number | null; shipDaysMax?: number | null },
-) {
-  if (!shipDaysConfirmed(listing.shipDaysMin, listing.shipDaysMax)) return unconfirmedShipLine(listing);
-  const lo = listing.shipDaysMin ?? 0;
-  const hi = listing.shipDaysMax ?? 0;
-  const span = lo === hi ? String(lo) : `${lo}–${hi}`;
-  return `${listing.supplierName} ships it to you. Our best estimate is ${span} days after you pay.`;
+): string {
+  if (!usSupplierConfirmed(listing)) return TRACKING_SHIP;
+  const min = listing.shipDaysMin;
+  const max = listing.shipDaysMax;
+  if (
+    typeof min !== "number" ||
+    typeof max !== "number" ||
+    !Number.isInteger(min) ||
+    !Number.isInteger(max) ||
+    min <= 0 ||
+    max <= 0 ||
+    min > max
+  ) {
+    return US_SUPPLIER_SHIP;
+  }
+  const span = min === max ? String(min) : `${min}–${max}`;
+  return `Our expected window is ${span} days after you pay.`;
 }
 
-/** Arrival copy for an order. Confirmed days use the receipt window. Anything else uses the unconfirmed line. */
+/** Receipts, the order page, and mail. A day window needs a confirmed supplier and confirmed ship days. */
+export function receiptShipWindow(min?: number | null, max?: number | null, source?: ShipSource | null) {
+  const daysReady =
+    shipDaysConfirmed(min, max) &&
+    typeof min === "number" &&
+    typeof max === "number" &&
+    Number.isInteger(min) &&
+    Number.isInteger(max) &&
+    min <= max;
+  if (!usSupplierConfirmed(source) || !daysReady) return unconfirmedShipLine(source);
+  const span = min === max ? String(min) : `${min}–${max}`;
+  return `Our expected window is ${span} days after you pay.`;
+}
+
+/** Arrival copy for an order. Same confirmed-supplier rule as the product page. */
 export function etaFromListing(
   listing:
     | (ShipSource & { deliveryTime?: string | null; shipDaysMin?: number | null; shipDaysMax?: number | null })

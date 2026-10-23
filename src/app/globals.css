@@ -90,6 +90,8 @@
   --chip-line: #ffffff26;
   --footer: #050607;
   --link: #c9cdc9;
+  --tap: 44px;
+  --mark: 32px;
   --glow: 0 0 0 2px #07080a, 0 0 0 4px #3ddc84, 0 0 24px rgba(61, 220, 132, 0.28);
   --chart-1: #3ddc84;
   --chart-2: #9aa09c;
@@ -143,9 +145,12 @@
   html {
     @apply font-sans;
     scroll-behavior: smooth;
+    overflow-x: clip;
   }
   body {
     @apply bg-background text-foreground;
+    max-width: 100%;
+    overflow-x: clip;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
@@ -583,7 +588,8 @@
     0 0 36px rgba(61, 220, 132, 0.1);
 }
 
-.product-placeholder {
+.product-placeholder,
+.product-mark {
   position: absolute;
   inset: 0;
   display: grid;
@@ -593,6 +599,26 @@
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.24em;
+}
+
+.product-mark {
+  background: #101416;
+}
+
+.product-mark img {
+  width: 80px;
+  height: 80px;
+}
+
+.password-field .password-input,
+.password-toggle {
+  height: var(--tap);
+  min-height: var(--tap);
+}
+
+.password-toggle {
+  width: var(--tap);
+  min-width: var(--tap);
 }
 
 @media (min-width: 640px) {
@@ -705,6 +731,11 @@
   transition: transform 0.35s ease;
 }
 
+.store-header .header-tools {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
 .store-header.is-compact .store-header-bar {
   transform: scale(0.97);
 }
@@ -728,7 +759,7 @@
 
 .nav-fold-link {
   display: flex;
-  min-height: 44px;
+  min-height: var(--tap);
   align-items: center;
   border-bottom: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
   color: var(--foreground);
@@ -1258,8 +1289,8 @@ video.auth-plate-media {
 .hero-aisle {
   position: relative;
   min-height: 92vh;
-  overflow: hidden;
-  background: #07080a;
+  overflow: clip;
+  background: #07080a url("/brand/hero-aisle-pedestals.webp") center 58% / cover no-repeat;
 }
 
 .hero-eyebrow {
@@ -1285,6 +1316,7 @@ video.auth-plate-media {
 .hero-aisle-stage {
   position: absolute;
   inset: 0;
+  overflow: clip;
   pointer-events: none;
 }
 
@@ -1376,6 +1408,7 @@ video.auth-plate-media {
 .xv-flow {
   width: 100%;
   height: 100%;
+  max-width: 100%;
 }
 
 .xv-flow-light {
@@ -1815,13 +1848,19 @@ video.auth-plate-media {
 
 .vm {
   position: relative;
-  overflow: hidden;
+  overflow: clip;
   isolation: isolate;
   padding: 120px 0 110px;
   border-top: 1px solid #ffffff0d;
   background: #050807;
   color: #eef3f0;
   font: 16px/1.6 var(--font-sans);
+}
+.vm-bleed {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  pointer-events: none;
 }
 .vm-floor,
 .vm-pool,
@@ -1958,9 +1997,14 @@ video.auth-plate-media {
 
 .brand-logo {
   display: block;
-  width: 115px;
-  height: 32px;
+  width: calc(var(--mark) * 115 / 32);
+  height: var(--mark);
   max-width: none;
+}
+
+.shop-footer .brand-logo {
+  width: calc(var(--mark) * 115 / 32);
+  height: var(--mark);
 }
 
 .brand-mark {
@@ -2013,6 +2057,16 @@ a.tap-link,
   line-height: 1.2;
 }
 
+/* Hero reseller chip only. Solid surface above the parcel canvas and glow. */
+.hero-aisle .status-chip {
+  position: relative;
+  isolation: isolate;
+  min-height: 44px;
+  border: 1px solid color-mix(in srgb, var(--em) 35%, transparent);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
 .qa-test-band {
   display: flex;
   grid-column: 1 / -1;
@@ -2024,10 +2078,32 @@ a.tap-link,
   background: var(--surface);
 }
 
-.sample-hold {
+button.sample-hold {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   box-sizing: border-box;
-  justify-content: center;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--em-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--body);
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+button.sample-hold:disabled {
+  opacity: 1;
+  background: var(--surface);
+  color: var(--body);
+  border-color: var(--em-line);
 }
 
 button.auth-x:disabled {
@@ -2376,21 +2452,6 @@ button.contact-submit {
   text-align: center;
 }
 
-.product-ship {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  color: var(--body);
-  font-size: 16px;
-  line-height: 1.5;
-}
-
-.product-truck {
-  flex: 0 0 auto;
-  margin-top: 2px;
-  color: var(--em);
-}
-
 .product-qty-field,
 .product-field {
   display: flex;
@@ -2477,6 +2538,30 @@ button.contact-submit {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+@media (max-width: 767px) {
+  .product-page .policy-links,
+  .shop-footer .footer-links {
+    gap: 8px;
+  }
+
+  .product-page .policy-links a,
+  .shop-footer .footer-links a,
+  .shop-footer p a.tap-link {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: 44px;
+  }
+
+  .desk-header-action {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    height: 44px;
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 390px) {
@@ -2658,4 +2743,5 @@ button.contact-submit {
   font-size: 16px;
   line-height: 1;
 }
+
 

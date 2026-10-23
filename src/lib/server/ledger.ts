@@ -3,6 +3,7 @@ import {
   BUYER_WINDOW_MS,
   disputeClawback,
   holdState,
+  isOwnStore,
   platformFeeBps,
   sellerLedgerEnabled,
   refundClawback,
@@ -716,7 +717,7 @@ function actualResellerShare(order: StoreOrder, actualFee: number | null) {
   }
   const current: Split = {
     grossCents: order.amountCents,
-    feeBps: order.feeBps ?? platformFeeBps(),
+    feeBps: isOwnStore(order.accountId) ? (order.feeBps ?? 0) : (order.feeBps ?? platformFeeBps()),
     platformFeeCents: order.platformFeeCents,
     stripeFeeCents: estimate,
     supplierAmountCents: order.supplierAmountCents,

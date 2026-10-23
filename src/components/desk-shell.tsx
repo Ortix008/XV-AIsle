@@ -45,13 +45,12 @@ function reviewCount(
 const memberLinks = [
   { href: "/orders", label: "Orders" },
   { href: "/account", label: "Profile" },
-  { href: "/shop/reseller", label: "Reseller program coming soon." },
 ];
 
 const operatorPaths = new Set(["/desk", "/scout", "/listings", "/marketing", "/floors", "/catalog"]);
 
-function isOperator(role: AccountRole) {
-  return role === "admin";
+function isOperator(account: { role: AccountRole; emailVerified: boolean }) {
+  return account.role === "admin" && account.emailVerified === true;
 }
 
 export function DeskShell({ children }: { children: ReactNode }) {
@@ -73,7 +72,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
 
   if (!account) return operatorPaths.has(pathname) ? <SendHome /> : <JoinScreen />;
 
-  const operator = isOperator(account.role);
+  const operator = isOperator(account);
   if (!operator && operatorPaths.has(pathname)) return <SendHome />;
   const desk = operator || !operatorPaths.has(pathname) ? children : <DeskGate />;
 
@@ -90,19 +89,19 @@ export function DeskShell({ children }: { children: ReactNode }) {
           <BrandMark />
         </Link>
         <div className="flex items-center gap-4">
-          <p className="hidden text-xs text-muted-foreground md:block">The first US trend market</p>
+          <p className="hidden text-xs text-muted-foreground md:block">Your corner of a curated US market</p>
           <Link
             href="/shop"
             className="rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:shadow-[0_0_24px_rgba(61,220,132,0.45)]"
           >
             Shop
           </Link>
-          <Link href="/account" className="text-xs text-muted-foreground hover:text-foreground">
+          <Link href="/account" className="desk-header-action text-xs text-muted-foreground hover:text-foreground">
             Account
           </Link>
           <button
             type="button"
-            className="text-xs text-muted-foreground hover:text-foreground md:hidden"
+            className="desk-header-action text-xs text-muted-foreground hover:text-foreground md:hidden"
             onClick={signOut}
           >
             Sign out

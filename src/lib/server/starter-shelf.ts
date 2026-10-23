@@ -13,6 +13,7 @@ import { RETURNS_EMAILED } from "../return-address";
 import { samplePriceCents, sampleStarters } from "../sample-shelf";
 import { getDb } from "./db";
 import { platformFeeBps, quoteSplit, saleBlock } from "./fees";
+import { shelfOperatorId } from "./store-operator";
 import { getListing, publishListing } from "./store";
 
 /** Preview and local checks only. Production never seeds, even when the flag is set. */
@@ -78,13 +79,6 @@ export function listedOnGrid(listing: {
 }) {
   if (isQaCheckoutListing(listing)) return false;
   return visibleOnShop(listing);
-}
-
-function shelfOperatorId() {
-  const preferred = process.env.STORE_OPERATOR_EMAIL?.trim().toLowerCase();
-  if (!preferred) return null;
-  const row = getDb().prepare("SELECT id FROM accounts WHERE email = ?").get(preferred) as { id: string } | undefined;
-  return row?.id ?? null;
 }
 
 /** Take Wood Tray off the shelf without deleting the row. Runs on every boot. */
@@ -179,6 +173,7 @@ function ensureQaCheckoutListing(operatorId: string) {
     supplierCostCents: QA_SUPPLIER_COST_CENTS,
     supplierShippingCents: 0,
     feeBps: platformFeeBps(),
+    sellerAccountId: operatorId,
   });
   if (saleBlock({ priceCents: QA_PRICE_CENTS, split, supplierAccountId: supplierId })) return;
   const existing = getListing(QA_CHECKOUT_PRODUCT_ID);
@@ -200,6 +195,7 @@ function ensureQaCheckoutListing(operatorId: string) {
     shelf: "national",
     supplierAccountId: supplierId,
     supplierCostCents: QA_SUPPLIER_COST_CENTS,
+    aisle: "kitchen",
     supplierShippingCents: 0,
     published: true,
   });

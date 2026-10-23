@@ -30,6 +30,12 @@ export function stopMailCapture() {
   return messages;
 }
 
+/** Logged when background mail fails. The error object can carry an address or a token, so it stays out of the log. */
+export function logBackgroundMailError(error: unknown) {
+  void error;
+  console.error("Mail was not sent.");
+}
+
 function smtpHost() {
   return process.env.SMTP_HOST?.trim() ?? "";
 }
@@ -192,18 +198,22 @@ export async function sendMail(input: MailMessage) {
     await smtpSend(message, from);
     return { sent: true as const };
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "Mail was not sent.";
-    console.error(detail);
-    return { sent: false as const };
+    logBackgroundMailError(error);
+    throw new Error("Mail was not sent.");
   }
 }
 
 export async function sendVerificationLink(input: { to: string; link: string }) {
-  const result = await sendMail({
-    to: input.to,
-    subject: "Confirm your XVAIsle email",
-    text: `Confirm this email address for XVAIsle:\n${input.link}\n`,
-  });
+  let result: { sent: boolean };
+  try {
+    result = await sendMail({
+      to: input.to,
+      subject: "Confirm your XVAIsle email",
+      text: `Confirm this email address for XVAIsle:\n${input.link}\n`,
+    });
+  } catch {
+    result = { sent: false };
+  }
   if (!result.sent) console.info(`Verification link (mail was not sent): ${input.link}`);
   return result;
 }

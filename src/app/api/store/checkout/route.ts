@@ -1,7 +1,7 @@
 import { compareAtRejection } from "@/lib/honest-price";
 import { referralFromCookieHeader } from "@/lib/referral";
 import { attachReferrer } from "@/lib/server/money-flow";
-import { allowAttempt, clientBucket } from "@/lib/server/rate-limit";
+import { allowClient } from "@/lib/server/rate-limit";
 import { settleCheckoutSession } from "@/lib/server/ledger";
 import { orderSummary } from "@/lib/server/order-summary";
 import { buyerOrder } from "@/lib/server/order-view";
@@ -46,14 +46,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!allowAttempt(clientBucket(request, "checkout"), 8, 10 * 60 * 1000)) {
+  if (!allowClient(request, "checkout", 8, 10 * 60 * 1000)) {
     return Response.json({ error: "Too many checkout tries. Wait a few minutes." }, { status: 429 });
   }
   if (!stripeConfigured()) {
-    return Response.json(
-      { error: "Card checkout is not connected. Set STRIPE_SECRET_KEY before the store can take payment." },
-      { status: 503 },
-    );
+    console.error("Card checkout refused because STRIPE_SECRET_KEY is unset.");
+    return Response.json({ error: "Card checkout isn't open yet." }, { status: 503 });
   }
   const body = (await request.json().catch(() => null)) as {
     productId?: string;

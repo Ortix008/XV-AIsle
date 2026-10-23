@@ -10,7 +10,7 @@ import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { marginGuard, snapshotOrderCost } from "./money-flow";
 import { changed, getDb } from "./db";
-import { etaFromListing } from "../order-facts";
+import { etaFromListing, shopperDescription, usSupplierConfirmed } from "../order-facts";
 import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
 import { formatOrderReturn, resolveReturnAddress } from "./supplier-returns";
 import { requestShipment } from "./supplier";
@@ -308,18 +308,15 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     productId: listing.productId,
     sku: listing.sku,
     title: sample && !listing.title.endsWith(" (Sample)") ? `${listing.title} (Sample)` : listing.title,
-    description: listing.description,
+    description: shopperDescription(listing.description),
     priceCents: listing.priceCents,
     image: listing.image,
     supplierName: isHeldSample(listing) ? "" : listing.supplierName,
-    supplierOrigin: isHeldSample(listing) ? "" : listing.supplierOrigin,
     shipDaysMin: listing.shipDaysMin,
     shipDaysMax: listing.shipDaysMax,
-    madeInUsa: listing.madeInUsa,
     shelf: listing.shelf,
     sample,
-    supplierUsConfirmed: listing.supplierUsConfirmed,
-    ...(listing.shipsFrom ? { shipsFrom: listing.shipsFrom } : {}),
+    supplierUsConfirmed: usSupplierConfirmed(listing),
     ...(listing.deliveryTime ? { deliveryTime: listing.deliveryTime } : {}),
     ...(whyWePicked ? { whyWePicked } : {}),
     ...(listing.brand ? { brand: listing.brand } : {}),
@@ -786,6 +783,7 @@ function pricedSplit(listing: StoreListing, qty: number) {
     supplierCostCents,
     supplierShippingCents,
     feeBps: platformFeeBps(),
+    sellerAccountId: listing.accountId,
   });
   return { split };
 }
