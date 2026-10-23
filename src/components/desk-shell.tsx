@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { JoinScreen } from "@/components/home-screen";
 import { BrandMark } from "@/components/brand-mark";
 import { botIcon } from "@/components/bot-mark";
 import { Switch } from "@/components/ui/switch";
+import { SIGNED_OUT_PATH } from "@/lib/account-cache";
 import { useAccount } from "@/lib/account-store";
 import type { AccountRole } from "@/lib/account";
 import { botById, bots } from "@/lib/bots";
@@ -53,9 +54,31 @@ function isOperator(account: { role: AccountRole; emailVerified: boolean }) {
   return account.role === "admin" && account.emailVerified === true;
 }
 
+function SignOutButton({ className }: { className: string }) {
+  const router = useRouter();
+  const { signOut } = useAccount();
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={() => {
+        void signOut().then((ended) => {
+          if (!ended) return;
+          startTransition(() => {
+            router.replace(SIGNED_OUT_PATH);
+            router.refresh();
+          });
+        });
+      }}
+    >
+      Sign out
+    </button>
+  );
+}
+
 export function DeskShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { ready: accountReady, account, signOut } = useAccount();
+  const { ready: accountReady, account } = useAccount();
   const { ready, state } = useDesk();
   const latest = state.log[0];
   const anyRunning = bots.some((bot) => state.bots[bot.id].running);
@@ -99,13 +122,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
           <Link href="/account" className="desk-header-action text-xs text-muted-foreground hover:text-foreground">
             Account
           </Link>
-          <button
-            type="button"
-            className="desk-header-action text-xs text-muted-foreground hover:text-foreground md:hidden"
-            onClick={signOut}
-          >
-            Sign out
-          </button>
+          <SignOutButton className="desk-header-action text-xs text-muted-foreground hover:text-foreground md:hidden" />
         </div>
       </header>
       {operator ? (
@@ -193,13 +210,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
           <p className="px-5 pt-4 text-xs text-pretty text-muted-foreground">
             Signed in as {account.name}.
           </p>
-          <button
-            type="button"
-            className="mx-5 mt-2 mb-4 w-fit text-xs text-muted-foreground underline-offset-4 hover:underline"
-            onClick={signOut}
-          >
-            Sign out
-          </button>
+          <SignOutButton className="mx-5 mt-2 mb-4 w-fit text-xs text-muted-foreground underline-offset-4 hover:underline" />
         </nav>
         <main
           id="desk-main"

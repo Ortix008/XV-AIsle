@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Account } from "./account";
+import { accountRestoreNeedsReload } from "./account-cache";
 import type { SignupFeedback } from "./signup-feedback";
 
 export type ConnectState = {
@@ -46,7 +47,7 @@ type AccountApi = {
   totpChallenge: string | null;
   signIn: (input: { email: string; password: string }) => Promise<string | null>;
   submitTotp: (code: string) => Promise<string | null>;
-  signOut: () => void;
+  signOut: () => Promise<boolean>;
   chooseRole: (role: "reseller" | "supplier") => Promise<string | null>;
   refresh: () => Promise<void>;
 };
@@ -67,7 +68,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [totpChallenge, setTotpChallenge] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const response = await fetch("/api/account");
+    const response = await fetch("/api/account", { cache: "no-store" });
     if (!response.ok) {
       setAccount(null);
       setConnect(null);
@@ -88,8 +89,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!accountRestoreNeedsReload(window.location.pathname, event.persisted)) return;
+      window.location.reload();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
+  useEffect(() => {
     let cancel = false;
-    fetch("/api/account")
+    fetch("/api/account", { cache: "no-store" })
       .then(async (response) => {
         if (cancel) return;
         if (!response.ok) {
@@ -176,10 +186,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         return null;
       },
       signOut: () => {
-        void fetch("/api/account/signout", { method: "POST" }).finally(() => {
+        return fetch("/api/account/signout", { method: "POST", cache: "no-store" }).then((response) => {
+          if (!response.ok) return false;
           setAccount(null);
           setConnect(null);
+          setSellerLedger(false);
           setReserve(null);
+          return true;
         });
       },
       chooseRole: async (role) => {
