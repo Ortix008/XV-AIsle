@@ -10,6 +10,7 @@ import { receiptSupportLine } from "../signup-copy";
 import { appOrigin } from "./stripe";
 
 export const RECEIPT_TEST_MODE_LINE = "This is a test order. You weren't charged, and nothing will ship.";
+const RECEIPT_PAID_UP_LINE = "You're all paid up. The supplier who has your item will pack it up and send it your way.";
 
 function stripeKeyIsSkTest() {
   return (process.env.STRIPE_SECRET_KEY?.trim() ?? "").startsWith("sk_test");
@@ -221,7 +222,7 @@ export function receiptHtml(input: ReceiptFacts) {
 <tr><td bgcolor="#07080a" style="height:8px;background-color:#3ddc84;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:0;line-height:0;">&nbsp;</td></tr>
 <tr><td bgcolor="#15181c" style="padding:28px 28px 8px;background-color:#15181c;color:#3ddc84;font-family:${EMAIL_SANS};font-size:12px;letter-spacing:0.16em;">ORDER ${escapeHtml(input.number)}</td></tr>
 <tr><td bgcolor="#15181c" style="padding:0 28px 8px;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:28px;line-height:1.2;">Your order is in.</td></tr>
-<tr><td bgcolor="#15181c" style="padding:0 28px 18px;background-color:#15181c;color:#b7b1a8;font-family:${EMAIL_SANS};font-size:15px;line-height:1.5;">You're all paid up. The supplier who has your item will pack it up and send it your way.</td></tr>
+${stripeKeyIsSkTest() ? "" : `<tr><td bgcolor="#15181c" style="padding:0 28px 18px;background-color:#15181c;color:#b7b1a8;font-family:${EMAIL_SANS};font-size:15px;line-height:1.5;">${RECEIPT_PAID_UP_LINE}</td></tr>`}
 <tr><td bgcolor="#15181c" style="padding:0 28px;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
 </td></tr>

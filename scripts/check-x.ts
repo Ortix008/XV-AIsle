@@ -80,12 +80,8 @@ assert(
   postLaunch.includes("Unverified buyer account named QA Smoke, from the smoke test."),
   "post-launch lists the QA Smoke unverified buyer account",
 );
-assert(
-  postLaunch.includes(
-    "Unverified buyer account named XO, created Oct 23 around 6:47 AM ET during the X-login smoke test. Confirm with XO before removing.",
-  ),
-  "post-launch lists the XO smoke-test account and says to confirm before removing",
-);
+assert(postLaunch.includes("Unverified buyer from the X login test."), "post-launch lists the unverified buyer from the X login test");
+assert(!postLaunch.includes("XO"), "post-launch does not name the X login test account");
 assert(
   postLaunch.includes("Glow: the orphan bullet dot in the Contact block on /shop/returns."),
   "post-launch lists Glow's orphan bullet on the returns contact block",

@@ -498,6 +498,9 @@ async function main() {
     "an sk_live key never shows the test-mode line",
   );
   assert(!testReceiptText.includes("[PENDING WORDY COPY]") && !liveReceiptHtml.includes("[PENDING WORDY COPY]"), "the pending copy marker is gone");
+  const paidUp = "You're all paid up. The supplier who has your item will pack it up and send it your way.";
+  assert(!testReceiptText.includes(paidUp) && !testReceiptHtml.includes(paidUp), "an sk_test receipt hides the paid-up sentence");
+  assert(!liveReceiptText.includes(paidUp) && liveReceiptHtml.includes(paidUp), "a live receipt keeps the paid-up sentence in HTML and the text part stays without it");
   if (savedStripe == null) delete process.env.STRIPE_SECRET_KEY;
   else process.env.STRIPE_SECRET_KEY = savedStripe;
   if (savedSupport == null) delete process.env.SUPPORT_EMAIL;
