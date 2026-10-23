@@ -47,9 +47,103 @@ async function main() {
   assert(accountPage.includes('entryRedirect("/account"'), "account asks the server gate");
   assert(accountPage.includes("redirect(dest)"), "account redirects on the server");
 
-  const proxy = readFileSync(new URL("../src/proxy.ts", import.meta.url), "utf8");
-  assert(proxy.includes("entryRedirect"), "the proxy redirects before the page renders");
-  assert(proxy.includes("NextResponse.redirect"), "sign-in and account use an HTTP redirect");
+  const proxySource = readFileSync(new URL("../src/proxy.ts", import.meta.url), "utf8");
+  assert(proxySource.includes("entryRedirect"), "the proxy redirects before the page renders");
+  assert(proxySource.includes("NextResponse.redirect"), "sign-in and account use an HTTP redirect");
+
+  const { ACCOUNT_CACHE_CONTROL, SIGNED_OUT_PATH, accountRestoreNeedsReload } = await import("../src/lib/account-cache");
+  assert(SIGNED_OUT_PATH === "/sign-in", "sign out goes to the sign-in page");
+  assert(ACCOUNT_CACHE_CONTROL.includes("no-store"), "account responses are not stored");
+  assert(accountRestoreNeedsReload("/account", true), "back to a cached account page reloads");
+  assert(!accountRestoreNeedsReload("/account", false), "a normal account visit does not reload");
+  assert(!accountRestoreNeedsReload("/sign-in", true), "a restored sign-in page stays");
+  assert(!accountRestoreNeedsReload("/shop", true), "a restored shop page stays");
+
+  const store = readFileSync(new URL("../src/lib/account-store.tsx", import.meta.url), "utf8");
+  const signOut = sliceBetween(store, "signOut: () => {", "chooseRole:");
+  assert(signOut.includes('fetch("/api/account/signout"'), "sign out ends the session on the server first");
+  assert(signOut.includes("setAccount(null)"), "sign out clears the signed-in account on screen");
+  assert(signOut.includes("return false"), "a failed sign out leaves the screen alone");
+  assert(signOut.includes("return true"), "a finished sign out tells the page to leave");
+  const fetchAt = signOut.indexOf('fetch("/api/account/signout"');
+  const clearAt = signOut.indexOf("setAccount(null)");
+  assert(fetchAt < clearAt, "sign out clears the session before it drops the account on screen");
+  assert(
+    store.includes("accountRestoreNeedsReload(window.location.pathname, event.persisted)") &&
+      store.includes("window.location.reload()"),
+    "a restored account page reloads instead of showing the cached sign-in",
+  );
+  assert(store.includes('fetch("/api/account", { cache: "no-store" })'), "the account request is not reused from cache");
+  const shell = readFileSync(new URL("../src/components/desk-shell.tsx", import.meta.url), "utf8");
+  const leave = sliceBetween(shell, "function SignOutButton", "export function DeskShell");
+  assert(leave.includes("Sign out"), "the sign-out control is unchanged");
+  assert(leave.includes("router.replace(SIGNED_OUT_PATH)"), "sign out replaces the account page");
+  assert(leave.includes("router.refresh()"), "sign out refreshes server components");
+  const endedAt = leave.indexOf("if (!ended) return");
+  const replaceAt = leave.indexOf("router.replace(SIGNED_OUT_PATH)");
+  const refreshAt = leave.indexOf("router.refresh()");
+  assert(
+    endedAt >= 0 && endedAt < replaceAt && replaceAt < refreshAt,
+    "sign out leaves for sign-in and refreshes only after the session ends",
+  );
+  assert(shell.includes("Signed in as {account.name}."), "the signed-in line is unchanged");
+
+  const { NextRequest } = await import("next/server");
+  const { proxy } = await import("../src/proxy");
+  const { SESSION_COOKIE } = await import("../src/lib/server/session-cookie");
+  const { GET: accountGet } = await import("../src/app/api/account/route");
+  const { POST: signOutPost } = await import("../src/app/api/account/signout/route");
+
+  function accountRequest(token?: string) {
+    return new NextRequest("https://xvaisle.com/account", token ? { headers: { cookie: `${SESSION_COOKIE}=${token}` } } : undefined);
+  }
+
+  const signedInPage = proxy(accountRequest(created.token));
+  assert(signedInPage.status === 200 && signedInPage.headers.get("location") == null, "a signed-in account page stays");
+  assert(
+    signedInPage.headers.get("cache-control") === ACCOUNT_CACHE_CONTROL,
+    "a signed-in account page is not stored",
+  );
+
+  const signedInApi = await accountGet(
+    new Request("http://127.0.0.1/api/account", { headers: { cookie: `${SESSION_COOKIE}=${created.token}` } }),
+  );
+  const signedInBody = (await signedInApi.json()) as { account: { id: string } | null };
+  assert(signedInApi.status === 200 && signedInBody.account?.id === created.account.id, "the account API shows who is signed in");
+  assert(signedInApi.headers.get("cache-control") === ACCOUNT_CACHE_CONTROL, "the account API is not stored");
+
+  const signedOut = await signOutPost(
+    new Request("http://127.0.0.1/api/account/signout", {
+      method: "POST",
+      headers: { cookie: `${SESSION_COOKIE}=${created.token}` },
+    }),
+  );
+  const clearing = signedOut.headers.get("set-cookie") ?? "";
+  assert(signedOut.status === 200, "sign out answers");
+  assert(clearing.includes(`${SESSION_COOKIE}=`), "sign out clears the session cookie");
+  assert(clearing.toLowerCase().includes("max-age=0"), "the cleared session cookie expires immediately");
+  assert(accountFromToken(created.token) == null, "sign out ends the session");
+
+  const afterApi = await accountGet(
+    new Request("http://127.0.0.1/api/account", { headers: { cookie: `${SESSION_COOKIE}=${created.token}` } }),
+  );
+  const afterBody = (await afterApi.json()) as { account: { id: string } | null };
+  assert(afterBody.account == null, "the account API shows signed out after sign out");
+
+  const backToAccount = proxy(accountRequest(created.token));
+  const backLocation = backToAccount.headers.get("location");
+  assert(backToAccount.status === 307 || backToAccount.status === 303, "back to account after sign out redirects");
+  assert(backLocation != null && new URL(backLocation).pathname === "/sign-in", "back to account after sign out goes to sign-in");
+  assert(backToAccount.headers.get("cache-control") === ACCOUNT_CACHE_CONTROL, "the signed-out account redirect is not stored");
+
+  const signedOutPage = proxy(accountRequest());
+  const signedOutLocation = signedOutPage.headers.get("location");
+  assert(signedOutPage.status === 307 || signedOutPage.status === 303, "a signed-out account visit redirects");
+  assert(
+    signedOutLocation != null && new URL(signedOutLocation).pathname === "/sign-in",
+    "a signed-out account visit goes to sign-in",
+  );
+  assert(signedOutPage.headers.get("cache-control") === ACCOUNT_CACHE_CONTROL, "a signed-out account visit is not stored");
 
   console.log("entry checks ok");
 }

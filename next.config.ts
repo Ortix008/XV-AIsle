@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { ACCOUNT_CACHE_CONTROL } from "./src/lib/account-cache";
 
 const baseHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -52,6 +53,7 @@ const nextConfig: NextConfig = {
     const headers = process.env.NODE_ENV === "production" ? productionHeaders : baseHeaders;
     return [
       { source: "/:path*", headers },
+      { source: "/account", headers: [{ key: "Cache-Control", value: ACCOUNT_CACHE_CONTROL }] },
       {
         // Email clients load the receipt logo from another origin.
         source: "/brand/:path*",
