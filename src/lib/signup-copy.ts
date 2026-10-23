@@ -28,6 +28,12 @@ export const PASSWORD_CHANGED_SUBJECT = "Your XV-AIsle password was changed" as 
 const PASSWORD_CHANGED_TEMPLATE =
   "Your XV-AIsle password was just changed. If you did this, you're all set. If you didn't, reset your password and email us at {SUPPORT_EMAIL} so we can help.";
 
+const RECEIPT_SUPPORT_TEMPLATE = "Questions? Email us at {SUPPORT_EMAIL}.";
+
+export function receiptSupportLine() {
+  return withSupportAddress(RECEIPT_SUPPORT_TEMPLATE);
+}
+
 export function passwordChangedText() {
   return withSupportAddress(PASSWORD_CHANGED_TEMPLATE);
 }

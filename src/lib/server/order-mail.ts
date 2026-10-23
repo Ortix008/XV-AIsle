@@ -6,7 +6,14 @@ import { publicSiteUrl } from "../config/env";
 import { buyerShareHref } from "../x-share";
 import { dollars } from "./fees";
 import { sendMail } from "./mail";
+import { receiptSupportLine } from "../signup-copy";
 import { appOrigin } from "./stripe";
+
+export const RECEIPT_TEST_MODE_LINE = "This is a test order. You weren't charged, and nothing will ship.";
+
+function stripeKeyIsSkTest() {
+  return (process.env.STRIPE_SECRET_KEY?.trim() ?? "").startsWith("sk_test");
+}
 
 export type OutboundMail = {
   to: string;
@@ -87,6 +94,8 @@ export function receiptText(input: ReceiptFacts) {
   if (returns) lines.push("", "Need to send it back? Returns go to:", returns);
   lines.push("", `See your receipt: ${input.receiptUrl}`);
   if (input.shareUrl) lines.push(`${SHARE_LABEL}: ${input.shareUrl}`);
+  lines.push("", receiptSupportLine());
+  if (stripeKeyIsSkTest()) lines.push(RECEIPT_TEST_MODE_LINE);
   lines.push("");
   return lines.join("\n");
 }
@@ -142,6 +151,17 @@ function emailButton(input: { href: string; label: string; kind: "primary" | "ou
       </td>
     </tr>
   </table>`;
+}
+
+function receiptNoteRows() {
+  const notes = [receiptSupportLine()];
+  if (stripeKeyIsSkTest()) notes.push(RECEIPT_TEST_MODE_LINE);
+  return notes
+    .map(
+      (line) =>
+        `<tr><td bgcolor="#15181c" style="padding:16px 28px 0;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};font-size:15px;line-height:1.5;">${escapeHtml(line)}</td></tr>`,
+    )
+    .join("");
 }
 
 function actionRow(input: { receiptUrl: string; shareUrl?: string | null }) {
@@ -207,6 +227,7 @@ export function receiptHtml(input: ReceiptFacts) {
 </td></tr>
 ${returnsBlock}
 ${actionRow({ receiptUrl: input.receiptUrl, shareUrl: input.shareUrl })}
+${receiptNoteRows()}
 <tr><td bgcolor="#15181c" style="padding:0 28px 28px;background-color:#15181c;color:#f4f1ea;font-family:${EMAIL_SANS};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;"><tr>
 <td bgcolor="#3ddc84" width="25%" style="height:4px;background-color:#3ddc84;font-family:${EMAIL_SANS};font-size:0;line-height:0;">&nbsp;</td>

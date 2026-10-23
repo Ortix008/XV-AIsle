@@ -37,7 +37,7 @@ async function main() {
   const { signUp } = await import("../src/lib/server/accounts");
   const { startMailCapture, stopMailCapture } = await import("../src/lib/server/mail");
   const { SAMPLE_ORDER_NUMBER, SAMPLE_RETURN_PARTS, sampleStarters } = await import("../src/lib/sample-shelf");
-  const { receiptHtml, receiptText, sampleReceiptHtml } = await import("../src/lib/server/order-mail");
+  const { RECEIPT_TEST_MODE_LINE, receiptHtml, receiptText, sampleReceiptHtml } = await import("../src/lib/server/order-mail");
   const { buyerOrder, presentOrder, publicListing, resellerListing } = await import("../src/lib/server/order-view");
   const { saveReturnsAddress } = await import("../src/lib/server/settings");
   const { ensureStarterShelf, sampleProductReturnNote } = await import("../src/lib/server/starter-shelf");
@@ -467,6 +467,41 @@ async function main() {
   assert(!blankHtml.includes(US_SUPPLIER_SHIP), "a receipt without a confirmed US supplier omits the US line");
   assert(!blankHtml.includes(">Ships from<") && !blankHtml.includes("Arrival"), "blank receipt html omits an empty origin row");
   assert(!blankHtml.toLowerCase().includes("<script"), "the receipt html has no script");
+  const savedStripe = process.env.STRIPE_SECRET_KEY;
+  const savedSupport = process.env.SUPPORT_EMAIL;
+  const testSecret = `${["sk", "test"].join("_")}_receipt`;
+  const liveSecret = `${["sk", "live"].join("_")}_receipt`;
+  const supportLine = "Questions? Email us at support@example.test.";
+  const noteFacts = {
+    number: "XV-NOTE",
+    title: "Note pan",
+    qty: 1,
+    receiptUrl: "http://127.0.0.1/shop/order?token=example",
+  };
+  process.env.SUPPORT_EMAIL = "support@example.test";
+  process.env.STRIPE_SECRET_KEY = testSecret;
+  const testReceiptText = receiptText(noteFacts);
+  const testReceiptHtml = receiptHtml(noteFacts);
+  assert(testSecret.startsWith("sk_test"), "the test fixture starts with sk_test");
+  assert(testReceiptText.includes(supportLine) && testReceiptHtml.includes(supportLine), "an sk_test receipt includes the support line in text and HTML");
+  assert(
+    testReceiptText.includes(RECEIPT_TEST_MODE_LINE) && testReceiptHtml.includes(RECEIPT_TEST_MODE_LINE),
+    "an sk_test key shows the test-mode line in text and HTML",
+  );
+  process.env.STRIPE_SECRET_KEY = liveSecret;
+  const liveReceiptText = receiptText(noteFacts);
+  const liveReceiptHtml = receiptHtml(noteFacts);
+  assert(liveSecret.startsWith("sk_live"), "the live fixture starts with sk_live");
+  assert(liveReceiptText.includes(supportLine) && liveReceiptHtml.includes(supportLine), "an sk_live receipt still includes the support line");
+  assert(
+    !liveReceiptText.includes(RECEIPT_TEST_MODE_LINE) && !liveReceiptHtml.includes(RECEIPT_TEST_MODE_LINE),
+    "an sk_live key never shows the test-mode line",
+  );
+  assert(!testReceiptText.includes("[PENDING WORDY COPY]") && !liveReceiptHtml.includes("[PENDING WORDY COPY]"), "the pending copy marker is gone");
+  if (savedStripe == null) delete process.env.STRIPE_SECRET_KEY;
+  else process.env.STRIPE_SECRET_KEY = savedStripe;
+  if (savedSupport == null) delete process.env.SUPPORT_EMAIL;
+  else process.env.SUPPORT_EMAIL = savedSupport;
   assert(blankHtml.includes('bgcolor="#07080a"') && blankHtml.includes("color:#f4f1ea"), "the receipt html is dark with a light-text fallback");
   const sans = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
   assert(blankHtml.includes(sans) && !blankHtml.includes("Georgia"), "the receipt html uses the email sans stack");

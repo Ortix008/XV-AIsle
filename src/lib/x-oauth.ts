@@ -1,7 +1,11 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
-/** Read-only profile lookup. No refresh token, no post permission, no email scope. */
+/**
+ * GET /2/users/me requires users.read and tweet.read.
+ * Id, name, and handle need no further scope. Nothing else is requested.
+ */
 export const X_SCOPES = "users.read tweet.read";
+const SIGN_IN_SCOPES = new Set(["users.read", "tweet.read"]);
 
 export const X_STATE_COOKIE = "xvaisle_x_state";
 export const X_VERIFIER_COOKIE = "xvaisle_x_verifier";
@@ -13,12 +17,13 @@ const VERIFIER_PATTERN = /^[A-Za-z0-9\-._~]{43,128}$/;
 
 export function xScopesAllowed(scopes: string) {
   const parts = scopes.split(" ").filter((part) => part.length > 0);
-  if (parts.length === 0) return false;
-  if (parts.includes("offline.access")) return false;
-  if (parts.includes("users.email")) return false;
-  if (parts.includes("tweet.write")) return false;
-  if (parts.includes("media.write")) return false;
-  return parts.includes("users.read") && parts.includes("tweet.read");
+  if (parts.length !== SIGN_IN_SCOPES.size) return false;
+  const unique = new Set(parts);
+  if (unique.size !== parts.length) return false;
+  for (const part of unique) {
+    if (!SIGN_IN_SCOPES.has(part)) return false;
+  }
+  return true;
 }
 
 export function redirectUriAllowed(value: string) {
