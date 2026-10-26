@@ -273,6 +273,7 @@ function Dossier({
         <ul className="divide-y border-y">
           {view.rows.map((row) => {
             const using = row.supplier.id === view.chosen.supplier.id;
+            const speed = speedLabel(row.supplier.speed);
             return (
               <li key={row.supplier.id} className={cn("py-3", using && "-mx-2 bg-muted/60 px-2")}>
                 <div className="flex items-start justify-between gap-3">
@@ -282,10 +283,10 @@ function Dossier({
                       {using ? <span className="ml-2 text-xs font-medium text-ok">Using</span> : null}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      <span className={row.supplier.speed === "import" ? "text-late" : undefined}>
-                        {speedLabel(row.supplier.speed)}
-                      </span>
-                      {" · "}
+                      {speed ? (
+                        <span className={row.supplier.speed === "import" ? "text-late" : undefined}>{speed}</span>
+                      ) : null}
+                      {speed ? " · " : null}
                       {row.supplier.origin} · {row.supplier.rating} · {row.supplier.reviews} orders · MOQ{" "}
                       {row.supplier.moq}
                     </p>

@@ -52,7 +52,7 @@ const RATING_FLOOR = 4.6;
 const MARGIN_FLOOR = 0.25;
 
 export function speedLabel(speed: SupplierQuote["speed"]) {
-  if (speed === "pod") return "Print on demand";
+  if (speed === "pod") return "";
   if (speed === "us") return "US stock";
   return "Overseas";
 }
@@ -521,6 +521,7 @@ function scoutPass(state: DeskState, today: string): DeskState {
       discoveredOn: today,
       pickedSupplierId: null,
     };
+    const speed = speedLabel(view.chosen.supplier.speed);
     return withLog(
       {
         ...state,
@@ -528,7 +529,7 @@ function scoutPass(state: DeskState, today: string): DeskState {
         pipeline: [item, ...state.pipeline],
       },
       "scout",
-      `Filed ${product.titleLead}. ${speedLabel(view.chosen.supplier.speed)} via ${view.chosen.supplier.name} at ${money(view.chosen.list)}, ${pct(view.chosen.margin)} net.`,
+      `Filed ${product.titleLead}. ${speed ? `${speed} via ` : ""}${view.chosen.supplier.name} at ${money(view.chosen.list)}, ${pct(view.chosen.margin)} net.`,
     );
   }
 

@@ -1,9 +1,12 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createElement } from "react";
+import { createElement, Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ProductBuy } from "../src/components/product-buy";
+import { products } from "../src/lib/catalog";
+import { emptyDesk } from "../src/lib/desk-state";
+import { applyPass, assess, buildListing, speedLabel } from "../src/lib/engine";
 import { ASSEMBLED_IN_USA_SENTENCE, shopperDescription, withoutAssembledInUsa } from "../src/lib/order-facts";
 import { QA_CHECKOUT_PRODUCT_ID } from "../src/lib/qa-checkout";
 import { UNCONFIRMED_BUTTON, UNCONFIRMED_LABEL } from "../src/lib/shelf-copy";
@@ -211,6 +214,70 @@ async function main() {
   process.env.REQUIRE_SUPPLIER_CONFIRMED = "0";
   assert(sitemapListsProduct({ ...card, productId: "open-card", supplierUsConfirmed: false, shipsFrom: null }) === true, "with the switch off, an unconfirmed product can be listed");
   delete process.env.REQUIRE_SUPPLIER_CONFIRMED;
+
+  const banned = /print[-\s]on[-\s]demand|printful|printify/i;
+  function filesUnder(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return filesUnder(path);
+      return entry.name.endsWith(".ts") || entry.name.endsWith(".tsx") ? [path] : [];
+    });
+  }
+  for (const path of filesUnder(join(process.cwd(), "src"))) {
+    const source = readFileSync(path, "utf8");
+    assert(!banned.test(source), `${path} still names print-on-demand`);
+  }
+  const day = "2026-10-26";
+  let desk = { ...emptyDesk(day), queue: products.map((product) => product.id) };
+  const rendered = renderToStaticMarkup(
+    createElement(
+      Fragment,
+      null,
+      products.map((product) => {
+        const view = assess(product, day);
+        const listing = buildListing(product, day);
+        desk = applyPass(desk, "scout", day);
+        return createElement(
+          "article",
+          { key: product.id },
+          createElement("p", null, product.trend.evidence),
+          createElement("p", null, view.reason),
+          ...view.pros.map((line) => createElement("p", { key: `${product.id}-pro-${line}` }, line)),
+          ...view.cons.map((line) => createElement("p", { key: `${product.id}-con-${line}` }, line)),
+          createElement("p", null, listing.description),
+          ...view.rows.map((row) => {
+            const speed = speedLabel(row.supplier.speed);
+            return createElement(
+              "p",
+              { key: row.supplier.id },
+              speed ? createElement("span", null, speed) : null,
+              speed ? " · " : null,
+              row.supplier.origin,
+            );
+          }),
+          createElement("p", null, desk.log[0]?.text ?? ""),
+        );
+      }),
+    ),
+  );
+  const visible = rendered.replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
+  assert(!banned.test(visible), "operator views still render print-on-demand");
+  assert(speedLabel("pod") === "", "a print speed has no label");
+  assert(speedLabel("us") === "US stock", "US stock still has its label");
+  assert(speedLabel("import") === "Overseas", "an import still has its label");
+  const podOrigin = products
+    .flatMap((product) => product.suppliers)
+    .find((supplier) => supplier.speed === "pod")?.origin;
+  const podLine = renderToStaticMarkup(
+    createElement("p", null, speedLabel("pod") ? createElement("span", null, speedLabel("pod")) : null, speedLabel("pod") ? " · " : null, podOrigin),
+  );
+  assert(podLine === `<p>${podOrigin}</p>`, "a print speed does not leave an empty label");
+  const labels = products.find((product) => product.id === "lid-labels");
+  const apron = products.find((product) => product.id === "apron");
+  const tee = products.find((product) => product.id === "heavy-tee");
+  assert(labels?.trend.evidence === "photos of a home fridge labeled the way a walk-in is labeled. No reason to boat a sticker.", "the label evidence keeps the other sentences");
+  assert(apron?.trend.evidence === "cooks posting what they wear at home after service. Plain canvas, two pockets.", "the apron evidence keeps the other sentences");
+  assert(tee?.trend.evidence === "Apparel posts this month: heavyweight navy, no chest hit.", "the tee evidence keeps the other sentence");
 
   console.log("qa followup checks ok");
 }
