@@ -17,7 +17,7 @@ export function GET() {
         id: page.productId,
         title: page.title,
         description: page.description,
-        price: (page.priceCents / 100).toFixed(2),
+        price: page.priceCents >= 50 ? (page.priceCents / 100).toFixed(2) : null,
         currency: "USD",
         link: `${origin}/shop/${page.productId}`,
         image: page.image ? `${origin}${page.image}` : "",

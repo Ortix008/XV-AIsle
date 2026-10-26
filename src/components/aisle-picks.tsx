@@ -42,7 +42,7 @@ export function AislePicks({ aisle, picks }: { aisle: string | null; picks: Aisl
                 <div className="shop-card-text">
                   <p className="shop-card-eyebrow" aria-hidden />
                   <h3 className="shop-card-title">{pick.title}</h3>
-                  <p className="shop-card-price">{money(pick.priceCents / 100)}</p>
+                  {pick.priceCents >= 50 ? <p className="shop-card-price">{money(pick.priceCents / 100)}</p> : null}
                 </div>
               </Link>
             </li>

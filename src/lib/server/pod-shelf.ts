@@ -1,4 +1,4 @@
-import { POD_PLACEHOLDER_IMAGE, podPlaceholder, podShelfItems } from "../pod-shelf";
+import { podPlaceholder, podShelfItems } from "../pod-shelf";
 import { getDb } from "./db";
 import { getListing, publishListing } from "./store";
 
@@ -47,8 +47,9 @@ export function ensurePodShelf(env: PodSeedEnv = process.env) {
       sku: item.sku,
       title: podPlaceholder(item.name),
       description: podPlaceholder(item.name),
-      priceCents: item.priceCents,
-      image: POD_PLACEHOLDER_IMAGE,
+      priceCents: 0,
+      priceKnown: false,
+      image: "",
       supplierName: item.supplierName,
       supplierOrigin: "",
       shipDaysMin: 0,
@@ -57,6 +58,8 @@ export function ensurePodShelf(env: PodSeedEnv = process.env) {
       shelf: "national",
       published: true,
       supplierUsConfirmed: false,
+      ...(item.costCents == null ? {} : { supplierCostCents: item.costCents }),
+      ...(item.shippingCents == null ? {} : { supplierShippingCents: item.shippingCents }),
     });
     if ("error" in saved || !saved.listing) {
       console.error("POD shelf did not publish.", item.productId, "error" in saved ? saved.error : "missing");

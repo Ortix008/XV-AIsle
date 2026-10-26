@@ -51,8 +51,9 @@ export function ShopCardCopy({ listing }: { listing: ShopCard }) {
       {label ? <p className="shop-card-eyebrow">{label}</p> : null}
       <h3 className="shop-card-title">{listing.title}</h3>
       <p className="shop-card-price">
-        {money(listing.priceCents / 100)}
-        {phrase ? <> · {phrase}</> : null}
+        {listing.priceCents >= 50 ? money(listing.priceCents / 100) : null}
+        {listing.priceCents >= 50 && phrase ? " · " : null}
+        {phrase}
       </p>
     </div>
   );

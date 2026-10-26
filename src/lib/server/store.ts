@@ -483,6 +483,8 @@ export function publishListing(
     supplierAccountId?: string | null;
     supplierCostCents?: number;
     supplierShippingCents?: number;
+    /** False when the source file did not give a retail price. Stored as 0, not a guessed price. */
+    priceKnown?: boolean;
     feeBps?: number | null;
     catalogItemId?: string | null;
     shipsFrom?: string | null;
@@ -508,10 +510,13 @@ export function publishListing(
   if (input.image && (!input.image.startsWith("/art/") || input.image.includes(".."))) {
     return { error: "Use a picture from this market." as const };
   }
-  if (!Number.isInteger(input.priceCents) || input.priceCents < 50) return { error: "Set a price before the store can sell it." as const };
+  const priceCents = input.priceKnown === false ? 0 : input.priceCents;
+  if (input.priceKnown !== false && (!Number.isInteger(priceCents) || priceCents < 50)) {
+    return { error: "Set a price before the store can sell it." as const };
+  }
   const existing = getListing(input.productId);
   if (existing?.wholesaleCost != null && input.published !== false) {
-    const guarded = marginGuard(input.priceCents, existing.wholesaleCost);
+    const guarded = marginGuard(priceCents, existing.wholesaleCost);
     if (guarded) return { error: guarded satisfies string };
   }
   if (existing && existing.accountId !== accountId) {
@@ -585,7 +590,7 @@ export function publishListing(
       input.sku,
       input.title.trim(),
       withoutAssembledInUsa(input.description.trim()),
-      input.priceCents,
+      priceCents,
       input.image,
       input.supplierName,
       input.supplierOrigin,

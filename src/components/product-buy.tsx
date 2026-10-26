@@ -174,7 +174,7 @@ export function ProductBuy({
         {listing.brand ? <p className="product-brand">{listing.brand}</p> : null}
         <h1 className="product-title">{listing.title}</h1>
         <div className="product-price-row">
-          <p className="product-price">{money(listing.priceCents / 100)}</p>
+          {listing.priceCents >= 50 ? <p className="product-price">{money(listing.priceCents / 100)}</p> : null}
           {listing.sample ? <span className="product-sample">Sample</span> : null}
         </div>
         <p className="product-desc">{shopperDescription(listing.description)}</p>
