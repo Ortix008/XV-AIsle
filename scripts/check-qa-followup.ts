@@ -149,17 +149,21 @@ async function main() {
   assert(productPage.includes("comingSoonListing(listing)"), "the product page uses the US ship-from gate");
 
   const blank = joinResellerWaitlist("");
+  const spaces = joinResellerWaitlist("   ");
   const malformed = joinResellerWaitlist("bad@x");
   const words = joinResellerWaitlist("not-an-email");
   const saved = joinResellerWaitlist("buyer@example.com");
-  assert("error" in blank && blank.error === "Add an email.", "an empty waitlist email still asks for an email");
-  assert("error" in malformed && malformed.error === WAITLIST_EMAIL_FORMAT, "a short email uses the format placeholder");
-  assert("error" in words && words.error === WAITLIST_EMAIL_FORMAT, "a word email uses the format placeholder");
-  assert(!("error" in saved), "a full email joins the waitlist");
-  assert(WAITLIST_SAVED.startsWith("TODO(copy)") && WAITLIST_EMAIL_FORMAT.startsWith("TODO(copy)"), "the waitlist lines are TODO(copy) placeholders");
+  const approvedFormat = "That email doesn't look right. Check it and try again, like name@example.com.";
+  assert("error" in blank && blank.error === "Add an email.", "an empty waitlist email asks for an email");
+  assert("error" in spaces && spaces.error === "Add an email.", "a blank waitlist email asks for an email");
+  assert("error" in malformed && malformed.error === approvedFormat, "a short email uses the approved format line");
+  assert("error" in words && words.error === approvedFormat, "a word email uses the approved format line");
+  assert(WAITLIST_EMAIL_FORMAT === approvedFormat, "the format line is the approved sentence");
+  assert(!("error" in saved) && saved.ok === true, "a full email joins the waitlist");
+  assert(WAITLIST_SAVED === "You're on the waitlist. Thanks for joining!", "the success line is the approved sentence");
   const waitlistSource = readFileSync(join(process.cwd(), "src/components/reseller-waitlist.tsx"), "utf8");
-  assert(waitlistSource.includes("WAITLIST_SAVED"), "the waitlist form uses the success placeholder");
-  assert(!waitlistSource.includes('"Saved."'), "the waitlist form no longer hardcodes Saved.");
+  assert(waitlistSource.includes("response.ok ? WAITLIST_SAVED"), "the waitlist form shows the approved success line");
+  assert(!waitlistSource.includes("TODO(copy)") && !waitlistSource.includes('"Saved."'), "the waitlist form has no placeholder success line");
 
   const { ResellerArticle } = await import("../src/app/shop/reseller/page");
   const { ResellerTermsArticle } = await import("../src/app/shop/reseller/terms/page");
