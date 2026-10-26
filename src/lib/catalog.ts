@@ -1,7 +1,7 @@
 import { stocked } from "./stock";
 import type { Platform, Product, SupplierQuote } from "./types";
 
-/** What a shopper-facing line may say. The stored platform value stays an identifier. */
+/** What a shopper-facing sentence may say. The stored platform value stays an identifier. */
 export function trendSourceLabel(platform: Platform): string {
   switch (platform) {
     case "Posts":
@@ -23,14 +23,14 @@ function quote(
   return { id: `${productId}:${slug}`, ...input };
 }
 
-const catalogProducts: Product[] = [
+export const catalogProducts: Product[] = [
   {
     id: "sheet-pan",
     sku: "LN-PAN-Q",
     name: "Quarter sheet pan with a wire rack",
     titleLead: "Quarter sheet pan and rack",
     category: "Pans",
-    lane: "kitchen",
+    lane: "home",
     occasion: "a weeknight after a shift",
     material: "Aluminum pan, stainless rack",
     size: "9 × 13 in",
@@ -41,16 +41,16 @@ const catalogProducts: Product[] = [
     box: "One quarter sheet and one fitted rack. No parchment.",
     useLine: "One pan, one rack, dinner done. The rack keeps the chicken out of the fat.",
     colorNote: "Bare aluminum. It will darken. That is use, not a defect.",
-    hook: "You worked a line. Dinner at home should still be one pan.",
+    hook: "Dinner at home should still be one pan.",
     searchPhrase: "quarter sheet pan rack weeknight dinner",
-    keywords: ["sheet pan", "quarter sheet", "wire rack", "weeknight dinner", "line cook"],
+    keywords: ["sheet pan", "quarter sheet", "wire rack", "weeknight dinner"],
     complements: "a bench scraper and a towel that can take heat",
     trend: {
       platform: "Posts",
-      title: "Sheet-pan dinners after a double",
-      signal: "Cooks are posting the one-pan meal they make when they get home, not a ten-step recipe.",
+      title: "Sheet-pan dinners",
+      signal: "The one-pan meal they make when they get home, not a ten-step recipe.",
       evidence:
-        "line cooks posting a quarter sheet, a rack, and whatever protein was on the way home. The useful object is the pan, not a gadget.",
+        "A quarter sheet, a rack, and whatever protein was on the way home. The useful object is the pan, not a gadget.",
     },
     mockups: [
       {
@@ -60,7 +60,7 @@ const catalogProducts: Product[] = [
         src: "/art/mock-sheet-pan-1.png",
       },
       {
-        title: "After service",
+        title: "After a long day", // COPY-REVIEW
         direction: "Same pan with chicken and vegetables. Caption says it was a Tuesday.",
         layout: "line",
         src: "/art/mock-sheet-pan-2.png",
@@ -126,7 +126,7 @@ const catalogProducts: Product[] = [
     name: "Stainless bench scraper",
     titleLead: "Stainless bench scraper",
     category: "Prep",
-    lane: "kitchen",
+    lane: "home",
     occasion: "prep at home",
     material: "Stainless steel",
     size: "6 in blade",
@@ -139,7 +139,7 @@ const catalogProducts: Product[] = [
     colorNote: "One piece of steel. The edge is blunt enough for a board and sharp enough to portion.",
     hook: "The tool you actually reach for is a scraper, not a gadget.",
     searchPhrase: "stainless bench scraper dough cutter",
-    keywords: ["bench scraper", "dough cutter", "prep tool", "kitchen utensil"],
+    keywords: ["bench scraper", "dough cutter", "prep tool"],
     complements: "a wood board and the quarter sheet",
     trend: {
       platform: "TikTok",
@@ -222,7 +222,7 @@ const catalogProducts: Product[] = [
     name: "Deli-container labels, set of 48",
     titleLead: "Deli container labels, 48",
     category: "Organization",
-    lane: "kitchen",
+    lane: "home",
     occasion: "a fridge that has to make sense on Thursday",
     material: "Waterproof film, printed to order",
     size: "48 labels, 2 × 1 in",
@@ -235,12 +235,12 @@ const catalogProducts: Product[] = [
     colorNote: "Kraft ground, black type. Fields are item, date, and use-by. No logo lockup.",
     hook: "Date the quart. Future you is tired.",
     searchPhrase: "waterproof deli container labels fridge",
-    keywords: ["fridge labels", "deli containers", "meal prep", "kitchen organization"],
+    keywords: ["fridge labels", "deli containers", "meal prep"],
     complements: "the quarts you already own",
     trend: {
       platform: "Posts",
-      title: "Label the fridge like a walk-in",
-      signal: "Home cooks who work service are posting labeled quarts, not aesthetic pantry shelves.",
+      title: "Label the fridge",
+      signal: "Labeled quarts, not aesthetic pantry shelves.",
       evidence:
         "No reason to boat a sticker.",
     },
@@ -318,7 +318,7 @@ const catalogProducts: Product[] = [
     name: "Fine-mesh splatter screen, 13 inch",
     titleLead: "Splatter screen, 13 in",
     category: "Safety",
-    lane: "kitchen",
+    lane: "home",
     occasion: "a pan that will spit",
     material: "Stainless mesh, folding handle",
     size: "13 in",
@@ -331,12 +331,12 @@ const catalogProducts: Product[] = [
     colorNote: "Fine mesh, not a glass lid. You can still see the fond.",
     hook: "The burn is optional. The screen is not.",
     searchPhrase: "splatter screen stainless skillet",
-    keywords: ["splatter screen", "skillet", "kitchen safety", "frying"],
+    keywords: ["splatter screen", "skillet", "frying"],
     complements: "the sheet pan and a real towel",
     trend: {
       platform: "TikTok",
       title: "Stop getting hit by the pan",
-      signal: "Home-cook safety clips are a screen on a skillet, not a gag gift oven mitt.",
+      signal: "Safety clips are a screen on a skillet, not a gag gift oven mitt.",
       evidence:
         "Clips of bacon and chicken thighs, where the screen is the whole point. US mesh is in stock. The import version sheds wires.",
     },
@@ -411,11 +411,11 @@ const catalogProducts: Product[] = [
   {
     id: "shift-towel",
     sku: "LN-TWL-2",
-    name: "Heavy kitchen towels, pair",
-    titleLead: "Heavy kitchen towels, pair",
+    name: "Heavy towels, pair",
+    titleLead: "Heavy towels, pair",
     category: "Linens",
-    lane: "kitchen",
-    occasion: "service at home",
+    lane: "home",
+    occasion: "at home",
     material: "Cotton terry, hemmed",
     size: "16 × 26 in, two towels",
     colorway: "Natural",
@@ -426,15 +426,15 @@ const catalogProducts: Product[] = [
     useLine: "One on the handle, one on the shoulder. They are thick enough to pull a pan.",
     colorNote: "Undyed cotton. They stain. That is the job.",
     hook: "The towel is the tool. The decorative one stays in the drawer.",
-    searchPhrase: "heavy cotton kitchen towels hot pans",
-    keywords: ["kitchen towels", "side towel", "cotton towel", "line cook"],
-    complements: "the sheet pan and the apron",
+    searchPhrase: "heavy cotton towels hot pans",
+    keywords: ["towels", "side towel", "cotton towel"],
+    complements: "the sheet pan",
     trend: {
       platform: "Posts",
       title: "Side towels at home",
       signal: "The posts that land are a towel on the shoulder, not a matching set in a basket.",
       evidence:
-        "From cooks who still work a line: the home kitchen fails when the towel is thin. US cotton, two-pack, no monogram.",
+        "US cotton, two-pack, no monogram.",
     },
     mockups: [
       {
@@ -470,7 +470,7 @@ const catalogProducts: Product[] = [
         reviews: 150,
         moq: 1,
         returnWindowDays: 14,
-        note: "Weight matched a restaurant side towel. Hem is double turned.",
+        note: "Hem is double turned.",
       }),
       quote("shift-towel", "northwharf", {
         name: "Northwharf Goods",
@@ -507,8 +507,8 @@ const catalogProducts: Product[] = [
   {
     id: "apron",
     sku: "LN-APR-1",
-    name: "Waist apron, unbleached canvas",
-    titleLead: "Unbleached canvas waist apron",
+    name: "Waist, unbleached canvas",
+    titleLead: "Unbleached canvas waist",
     category: "Clothes",
     lane: "apparel",
     occasion: "a shift at home",
@@ -518,17 +518,17 @@ const catalogProducts: Product[] = [
     swatch: "#d7c4a3",
     ceiling: 32,
     neededInDays: 8,
-    box: "One apron. Ties are cotton. No chest print.",
-    useLine: "Tie it on for the hour you actually cook. Pockets hold a pen and a towel corner.",
+    box: "Ties are cotton. No chest print.",
+    useLine: "Tie it on for the hour. Pockets hold a pen and a towel corner.",
     colorNote: "Undyed canvas. A small neck-side mark only, nothing across the bib, because there is no bib.",
-    hook: "The apron is for the hour you cook, not for a slogan.",
-    searchPhrase: "canvas waist apron no logo kitchen",
-    keywords: ["waist apron", "canvas apron", "kitchen clothes", "line cook"],
+    hook: "Not for a slogan.",
+    searchPhrase: "canvas waist no logo",
+    keywords: ["waist", "canvas", "clothes"],
     complements: "the towels and the sheet pan",
     trend: {
       platform: "Posts",
       title: "Clothes that survive a pan",
-      signal: "Apparel that is moving with cooks is a plain waist apron, not a graphic tee about cooking.",
+      signal: "Apparel that is moving is a plain waist, not a graphic tee.",
       evidence:
         "Plain canvas, two pockets.",
     },
@@ -702,7 +702,7 @@ const catalogProducts: Product[] = [
     name: "Locking stainless tongs, 12 inch",
     titleLead: "Locking tongs, 12 in",
     category: "Utensils",
-    lane: "kitchen",
+    lane: "home",
     occasion: "the pan and the grill",
     material: "Stainless steel",
     size: "12 in",
@@ -715,12 +715,12 @@ const catalogProducts: Product[] = [
     colorNote: "Scalloped tips, bare steel. Silicone tips melt and hide the sear.",
     hook: "Twelve inches. Locking. No silicone.",
     searchPhrase: "12 inch locking stainless tongs",
-    keywords: ["kitchen tongs", "locking tongs", "stainless tongs", "grill tongs"],
+    keywords: ["locking tongs", "stainless tongs", "grill tongs"],
     complements: "the fish spatula and the sheet pan",
     trend: {
       platform: "Posts",
       title: "The tong test",
-      signal: "Cooks are arguing about tongs again, and the answer that repeats is 12-inch steel with a lock.",
+      signal: "The answer that repeats is 12-inch steel with a lock.",
       evidence:
         "silicone tips versus steel. The posts that get saved specify a lock and 12 inches. That SKU is in New Jersey.",
     },
@@ -799,7 +799,7 @@ const catalogProducts: Product[] = [
     titleLead: "Garlic press",
     category: "Gadgets",
     lane: "food",
-    occasion: "a clip, not a kitchen",
+    occasion: "a clip",
     material: "Zinc alloy",
     size: "One press",
     colorway: "Black",
@@ -810,8 +810,8 @@ const catalogProducts: Product[] = [
     useLine: "It is the tool in the clip. A knife still does the job faster.",
     colorNote: "Black handles. The chamber clogs. Say so if you ever revive it.",
     hook: "The clip is viral. The press is not the buy.",
-    searchPhrase: "garlic press viral kitchen gadget",
-    keywords: ["garlic press", "kitchen gadget", "viral"],
+    searchPhrase: "garlic press viral gadget",
+    keywords: ["garlic press", "viral"],
     complements: "nothing you would put next to a real prep kit",
     trend: {
       platform: "TikTok",
@@ -1002,7 +1002,7 @@ const catalogProducts: Product[] = [
     useLine: "Run the charger cord along the back of the counter. One job.",
     colorNote: "White. They disappear on a light wall and show on a dark one. Say that.",
     hook: "The cord is the mess. Twenty clips is the fix.",
-    searchPhrase: "adhesive cord clips kitchen counter",
+    searchPhrase: "adhesive cord clips counter",
     keywords: ["cord clips", "cable management", "desk organization", "utility"],
     complements: "the label maker energy, not another bin",
     trend: {
@@ -1010,7 +1010,7 @@ const catalogProducts: Product[] = [
       title: "Cord clips under the cabinet",
       signal: "Utility clips are outrunning the acrylic organizer bins in home-setup videos.",
       evidence:
-        "Desk and kitchen resets: adhesive clips along a cabinet lip. US pack of 20. Not a 200-piece import kit.",
+        "Desk resets: adhesive clips along a cabinet lip. US pack of 20. Not a 200-piece import kit.",
     },
     mockups: [
       {
@@ -1099,14 +1099,14 @@ const catalogProducts: Product[] = [
     colorNote: "Steel, not painted. Acid will mark it. That is fine.",
     hook: "Seeds stay in the press. The juice hits the pan.",
     searchPhrase: "stainless handheld lemon press",
-    keywords: ["citrus press", "lemon squeezer", "kitchen utensil", "pan sauce"],
+    keywords: ["citrus press", "lemon squeezer", "pan sauce"],
     complements: "the fish spatula and a skillet",
     trend: {
       platform: "Instagram",
       title: "The lemon at the end",
       signal: "Finish-the-dish clips end on a handheld press, not a countertop juicer.",
       evidence:
-        "Cooking clips close on a lemon over the pan. A handheld steel press from US stock. Skip the electric juicer.",
+        "Clips close on a lemon over the pan. A handheld steel press from US stock. Skip the electric juicer.",
     },
     mockups: [
       {
@@ -1279,7 +1279,7 @@ const catalogProducts: Product[] = [
     titleLead: "Heavyweight tee, ink navy",
     category: "Clothes",
     lane: "apparel",
-    occasion: "the shirt under the apron",
+    occasion: "the shirt",
     material: "Cotton jersey, printed to order",
     size: "S–XL, listed per size",
     colorway: "Ink navy",
@@ -1287,12 +1287,12 @@ const catalogProducts: Product[] = [
     ceiling: 36,
     neededInDays: 8,
     box: "One shirt. No front graphic. A small mark at the hem.",
-    useLine: "Wear it under the apron or on the way in. The weight is the point, not a joke on the chest.",
+    useLine: "Wear it on the way in. The weight is the point, not a joke on the chest.",
     colorNote: "Ink navy, not royal. The fabric is 6.5 oz. Say the ounces.",
     hook: "Heavy shirt. No sentence on the front.",
     searchPhrase: "heavyweight blank tee navy",
     keywords: ["heavyweight tee", "blank tee", "navy shirt", "cotton tee"],
-    complements: "the waist apron, not a graphic drop",
+    complements: "the waist, not a graphic drop",
     trend: {
       platform: "Posts",
       title: "Heavy blanks, not slogan shirts",

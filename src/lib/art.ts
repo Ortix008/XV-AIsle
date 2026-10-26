@@ -83,6 +83,7 @@ export const welcomeReach = [
 ] as const;
 
 export const laneArt: Record<Lane, string> = {
+  home: "/art/lane-utility.png",
   kitchen: "/art/lane-kitchen.png",
   apparel: "/art/lane-apparel.png",
   sport: "/art/lane-sport.png",

@@ -59,12 +59,14 @@ export function speedLabel(speed: SupplierQuote["speed"]) {
 
 function laneTag(lane: Product["lane"]) {
   if (lane === "party-extra") return "party extra";
+  if (lane === "home") return "home";
   if (lane === "kitchen") return "kitchen";
   return lane;
 }
 
 export function laneLabel(lane: Product["lane"]) {
   if (lane === "party-extra") return "Party extra";
+  if (lane === "home") return "Home";
   if (lane === "kitchen") return "Kitchen";
   if (lane === "apparel") return "Clothes";
   if (lane === "sport") return "Sports";

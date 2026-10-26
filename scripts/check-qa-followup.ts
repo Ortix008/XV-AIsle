@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { createElement, Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ProductBuy } from "../src/components/product-buy";
-import { products } from "../src/lib/catalog";
+import { catalogProducts, products } from "../src/lib/catalog";
 import { emptyDesk } from "../src/lib/desk-state";
-import { applyPass, assess, buildListing, speedLabel } from "../src/lib/engine";
+import { applyPass, assess, buildCampaign, buildListing, laneLabel, speedLabel } from "../src/lib/engine";
 import { ASSEMBLED_IN_USA_SENTENCE, shopperDescription, withoutAssembledInUsa } from "../src/lib/order-facts";
 import { QA_CHECKOUT_PRODUCT_ID } from "../src/lib/qa-checkout";
 import { UNCONFIRMED_BUTTON, UNCONFIRMED_LABEL } from "../src/lib/shelf-copy";
@@ -283,6 +283,53 @@ async function main() {
   assert(/tracking-\[0\.12em\][^>]*>\s*XV-AIsle Team\s*</.test(shell), "the desk sidebar says XV-AIsle Team");
   assert(!/tracking-\[0\.12em\][^>]*>\s*SI Team\s*</.test(shell), "the desk sidebar no longer says SI Team");
   assert(tee?.trend.evidence === "Apparel posts this month: heavyweight navy, no chest hit.", "the tee evidence keeps the other sentence");
+
+  const operatorBan =
+    /\b(?:cooks?|cooking|cooked|cooker|chefs?|kitchens?|service|banquet|restaurants?|aprons?)\b|\bwalk-in\b|\bline-cook\b|\bline cook\b|\bafter a double\b|\bline\b/i;
+  assert(laneLabel("home") === "Home", "a home lane renders as Home");
+  assert(
+    catalogProducts.every((product) => product.lane !== "kitchen"),
+    "the catalog seed does not keep a kitchen lane",
+  );
+  const seedSource = readFileSync(join(process.cwd(), "src/lib/catalog.ts"), "utf8");
+  assert(
+    seedSource.includes('title: "After a long day", // COPY-REVIEW'),
+    "the new mockup title is marked for copy review",
+  );
+  for (const product of catalogProducts) {
+    const view = assess(product, day);
+    const listing = buildListing(product, day);
+    const campaign = buildCampaign(product, listing);
+    const text = [
+      product.name,
+      product.titleLead,
+      laneLabel(product.lane),
+      product.occasion,
+      product.box,
+      product.useLine,
+      product.colorNote,
+      product.hook,
+      product.searchPhrase,
+      ...product.keywords,
+      product.complements,
+      product.trend.title,
+      product.trend.signal,
+      product.trend.evidence,
+      ...product.mockups.flatMap((idea) => [idea.title, idea.direction]),
+      ...product.suppliers.map((supplier) => supplier.note),
+      view.reason,
+      ...view.pros,
+      ...view.cons,
+      ...listing.titles,
+      listing.description,
+      ...listing.bullets,
+      ...listing.tags,
+      ...campaign.posts.flatMap((post) => [post.label, post.headline, post.body]),
+    ].join("\n");
+    const rendered = renderToStaticMarkup(createElement("p", null, text)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
+    const hit = rendered.match(operatorBan);
+    assert(!hit, `${product.id} still renders "${hit?.[0] ?? ""}"`);
+  }
 
   console.log("qa followup checks ok");
 }
