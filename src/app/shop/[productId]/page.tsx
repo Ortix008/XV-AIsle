@@ -10,6 +10,7 @@ import { accountFromToken } from "@/lib/server/accounts";
 import { publicListing } from "@/lib/server/order-view";
 import { isOperatorAccount } from "@/lib/server/require-operator";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
+import { ensurePodShelf } from "@/lib/server/pod-shelf";
 import { ensureStarterShelf, isSampleListing, listedOnGrid, sampleProductReturnNote, visibleOnShop } from "@/lib/server/starter-shelf";
 import { isHeldSample } from "@/lib/shelf-holds";
 import { comingSoonListing } from "@/lib/supplier-confirm";
@@ -29,6 +30,7 @@ function aisleKey(listing: { kind: string; aisle: string | null }) {
 export async function generateMetadata({ params }: { params: Promise<{ productId: string }> }): Promise<Metadata> {
   const { productId } = await params;
   ensureStarterShelf();
+  ensurePodShelf();
   const listing = getListing(productId);
   if (!listing || !visibleOnShop(listing) || listingLoss(listing)) return { title: "Shop · XV-AIsle" };
   const shown = publicListing(listing, isSampleListing(listing));
@@ -54,6 +56,7 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
 export default async function ProductPage({ params }: { params: Promise<{ productId: string }> }) {
   const { productId } = await params;
   ensureStarterShelf();
+  ensurePodShelf();
   const listing = getListing(productId);
   if (!listing || !visibleOnShop(listing) || listingLoss(listing)) notFound();
   const aisle = aisleKey(listing);

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { connection } from "next/server";
 import { isQaCheckoutListing } from "@/lib/qa-checkout";
+import { ensurePodShelf } from "@/lib/server/pod-shelf";
 import { visibleOnShop } from "@/lib/server/starter-shelf";
 import { appOrigin } from "@/lib/server/stripe";
 import { listPublished } from "@/lib/server/store";
@@ -41,6 +42,7 @@ export function sitemapListsProduct(listing: {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await connection();
+  ensurePodShelf();
   const origin = appOrigin();
   const pages = [
     ...SITEMAP_PATHS.map((path) => `${origin}${path}`),
