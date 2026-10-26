@@ -13,6 +13,7 @@ export function PolicyArticle({
   story = false,
   underHero,
   band = false,
+  operator = false,
 }: {
   kicker: string;
   title: string;
@@ -20,6 +21,7 @@ export function PolicyArticle({
   story?: boolean;
   underHero?: ReactNode;
   band?: boolean;
+  operator?: boolean;
 }) {
   const supportEmail = supportEmailForDisplay();
   const contact = (sectionClass: string) => (
@@ -32,7 +34,10 @@ export function PolicyArticle({
         </a>
         .
       </p>
-      <p>{"We'll email the return address when you start a return. Contact support to start a return."}</p>
+      <p>
+        {operator ? "We'll email the return address when you start a return. " : null}
+        Contact support to start a return.
+      </p>
     </section>
   );
   if (band) {

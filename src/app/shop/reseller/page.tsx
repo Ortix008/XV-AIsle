@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ResellerWaitlist } from "@/components/reseller-waitlist";
 import { PolicyArticle } from "@/components/policy-article";
+import { requireOperator } from "@/lib/server/require-operator";
 
 export const metadata: Metadata = { title: "Reseller program · XV-AIsle" };
 
-export default function ResellerPage() {
+export function ResellerArticle() {
   return (
-    <PolicyArticle kicker="Store" title="Reseller program coming soon.">
+    <PolicyArticle operator kicker="Store" title="Reseller program coming soon.">
       <ResellerWaitlist />
       <p>
         {`We do not promise income. A listing can sell, or it can sell nothing. We don't promise any amount you'll make. Full terms come when the reseller program opens.`}
@@ -25,4 +26,9 @@ export default function ResellerPage() {
       </p>
     </PolicyArticle>
   );
+}
+
+export default async function ResellerPage() {
+  await requireOperator();
+  return <ResellerArticle />;
 }

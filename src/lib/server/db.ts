@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { ASSEMBLED_IN_USA_SENTENCE, withoutAssembledInUsa } from "../order-facts";
 
 let db: DatabaseSync | null = null;
 
@@ -266,8 +267,21 @@ export function getDb() {
   migrateSupplierReturns(next);
   migrateMoneyFlow(next);
   addColumn(next, "listings", "import_images", "TEXT");
+  scrubAssembledInUsa(next);
   db = next;
   return next;
+}
+
+/** Stored catalog descriptions lose the exact assembled-in-the-USA sentence. */
+function scrubAssembledInUsa(database: DatabaseSync) {
+  const rows = database
+    .prepare("SELECT product_id, description FROM listings WHERE instr(description, ?) > 0")
+    .all(ASSEMBLED_IN_USA_SENTENCE) as { product_id: string; description: string }[];
+  const update = database.prepare("UPDATE listings SET description = ? WHERE product_id = ?");
+  for (const row of rows) {
+    const next = withoutAssembledInUsa(row.description);
+    if (next !== row.description) update.run(next, row.product_id);
+  }
 }
 
 /** Per-supplier return addresses, plus a product override and the copy stored on an order. */

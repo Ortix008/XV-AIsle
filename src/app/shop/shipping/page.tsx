@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyArticle } from "@/components/policy-article";
+import { viewerIsOperator } from "@/lib/server/require-operator";
 
 export const metadata: Metadata = { title: "Shipping · XV-AIsle" };
 
-export default function ShippingPage() {
+export default async function ShippingPage() {
   return (
-    <PolicyArticle band kicker="Store" title="Shipping, plain and simple">
+    <PolicyArticle band kicker="Store" title="Shipping, plain and simple" operator={await viewerIsOperator()}>
       <p>For now we ship only within the United States, so checkout only accepts US addresses.</p>
       <p>Once your payment goes through, the supplier ships it straight to your door.</p>
       <p>Every product page shows that item&apos;s own shipping window.</p>

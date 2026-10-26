@@ -1,8 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
 import { MissionValues } from "@/components/mission-values";
+import { useOptionalAccount } from "@/lib/account-store";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
+
+const RESELLER_LINKS = new Set(["/shop/reseller", "/shop/reseller/terms"]);
 
 const columns = [
   {
@@ -33,10 +38,14 @@ const columns = [
   },
 ];
 
-export function ShopFooter({ showReseller = true }: { showReseller?: boolean }) {
+export function ShopFooter({ showReseller }: { showReseller?: boolean }) {
+  const session = useOptionalAccount();
+  const account = session?.account;
+  const signedInOperator = account?.role === "admin" && account.emailVerified === true;
+  const operator = showReseller ?? signedInOperator;
   const shown = columns.map((column) => ({
     ...column,
-    links: showReseller ? column.links : column.links.filter((link) => link.href !== "/shop/reseller"),
+    links: operator ? column.links : column.links.filter((link) => !RESELLER_LINKS.has(link.href)),
   }));
   return (
     <footer className="shop-footer mt-auto bg-[var(--footer)] pb-9">

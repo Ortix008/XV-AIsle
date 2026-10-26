@@ -7,6 +7,7 @@ import { join } from "node:path";
 
 process.env.SELLER_LEDGER_ENABLED = "1";
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-connect-")), "market.sqlite");
+process.env.REQUIRE_SUPPLIER_CONFIRMED = "0";
 delete process.env.ADMIN_EMAIL;
 delete process.env.ADMIN_EMAILS;
 delete process.env.STORE_OPERATOR_EMAIL;

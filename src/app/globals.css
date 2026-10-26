@@ -1379,6 +1379,21 @@ video.auth-plate-media {
   }
 }
 
+@media (max-width: 767px) {
+  .hero-aisle-scrim {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background) 94%, transparent) 0%,
+      color-mix(in srgb, var(--background) 92%, transparent) 100%
+    );
+  }
+
+  .hero-aisle .hero-eyebrow,
+  .hero-aisle .hero-lede {
+    color: var(--foreground);
+  }
+}
+
 .hero-confirm .hero-aisle-scrim {
   background:
     linear-gradient(

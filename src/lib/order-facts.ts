@@ -8,15 +8,27 @@ export const SHOPPER_PLACE = "Ships from a US supplier.";
 const ENGINE_SHIP_SENTENCE =
   /Ships from [^.\n]{0,240} through [^.\n]{0,240}\.(?:\s*Plan on [^.\n]{0,160} days\.)?(?:\s*This is an import, not a week-of order\.)?/g;
 
-/** Drop the desk engine's ship sentence, including its day plan and import clause. */
-export function shopperDescription(value: string) {
+/** Exact catalog sentence removed from shopper copy and stored descriptions. */
+export const ASSEMBLED_IN_USA_SENTENCE = "Designed and assembled in the USA.";
+
+function tidyDescription(value: string) {
   return value
-    .replace(ENGINE_SHIP_SENTENCE, "")
     .replace(/[ \t]{2,}/g, " ")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n[ \t]+/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/** Delete only the assembled-in-the-USA sentence. Stored catalog rows use this, not a replacement. */
+export function withoutAssembledInUsa(value: string) {
+  if (!value.includes(ASSEMBLED_IN_USA_SENTENCE)) return value;
+  return tidyDescription(value.replaceAll(ASSEMBLED_IN_USA_SENTENCE, ""));
+}
+
+/** Drop the desk engine's ship sentence, including its day plan and import clause. */
+export function shopperDescription(value: string) {
+  return tidyDescription(value.replaceAll(ASSEMBLED_IN_USA_SENTENCE, "").replace(ENGINE_SHIP_SENTENCE, ""));
 }
 
 const US_STATE_CODES = new Set([
@@ -67,10 +79,7 @@ export function isUsLocation(value?: string | null) {
   return US_STATE_NAMES.has(last.toLowerCase().replace(/\./g, ""));
 }
 
-/**
- * The place sentence needs a real supplier, a US ships-from, and the confirmed flag.
- * A public listing omits the city and carries the result on supplierUsConfirmed.
- */
+/** The place sentence needs a real supplier, a US ships-from, and the confirmed flag. */
 export function shopperMayNameUsSupplier(source?: ShipSource | null) {
   if (!source) return false;
   if (source.shipsFrom != null) return usSupplierConfirmed(source);

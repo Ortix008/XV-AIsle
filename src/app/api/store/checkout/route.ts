@@ -6,7 +6,7 @@ import { settleCheckoutSession } from "@/lib/server/ledger";
 import { orderSummary } from "@/lib/server/order-summary";
 import { buyerOrder } from "@/lib/server/order-view";
 import { demoSeedEnabled } from "@/lib/server/starter-shelf";
-import { attachStripeSession, createPendingOrder, getOrder, orderByStripeSession } from "@/lib/server/store";
+import { attachStripeSession, createPendingOrder, orderByStripeSession } from "@/lib/server/store";
 import { createCheckoutSession, retrieveCheckoutSession, stripeConfigured } from "@/lib/server/stripe";
 
 const PREVIEW_SESSION = /^cs_preview_[a-z0-9_]{1,80}$/;
@@ -99,8 +99,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Stripe did not return a checkout page." }, { status: 502 });
     }
     attachStripeSession(created.order.id, session.id);
-    const saved = getOrder(created.order.id);
-    return Response.json({ url: session.url, order: saved ? buyerOrder(saved) : null });
+    return Response.json({ url: session.url });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Checkout did not open.";
     return Response.json({ error: message }, { status: 502 });

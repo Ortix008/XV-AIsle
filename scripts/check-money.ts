@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { buyerShareHref } from "../src/lib/x-share";
 
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-money-")), "market.sqlite");
+process.env.REQUIRE_SUPPLIER_CONFIRMED = "0";
 delete process.env.RESELLER_COMMISSION_BPS;
 delete process.env.PLATFORM_FEE_BPS;
 delete process.env.STRIPE_FEE_BPS;

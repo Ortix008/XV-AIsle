@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyArticle } from "@/components/policy-article";
+import { viewerIsOperator } from "@/lib/server/require-operator";
 
 export const metadata: Metadata = { title: "How we check · XV-AIsle" };
 
-export default function HowWeCheckPage() {
+export default async function HowWeCheckPage() {
   return (
-    <PolicyArticle kicker="Store" title="How we check" story>
+    <PolicyArticle kicker="Store" title="How we check" story operator={await viewerIsOperator()}>
       <p>A listing shows one price. That is the price you pay on xvaisle.com. There is no second price beside it.</p>
       <p>
         We do not publish fake discounts, countdown timers, spin wheels, or made-up stock counts. A compare-at price or a

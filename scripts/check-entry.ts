@@ -52,7 +52,7 @@ async function main() {
   assert(proxySource.includes("NextResponse.redirect"), "sign-in and account use an HTTP redirect");
 
   const { ACCOUNT_CACHE_CONTROL, SIGNED_OUT_PATH, accountRestoreNeedsReload } = await import("../src/lib/account-cache");
-  assert(SIGNED_OUT_PATH === "/sign-in", "sign out goes to the sign-in page");
+  assert(SIGNED_OUT_PATH === "/", "sign out goes home");
   assert(ACCOUNT_CACHE_CONTROL.includes("no-store"), "account responses are not stored");
   assert(accountRestoreNeedsReload("/account", true), "back to a cached account page reloads");
   assert(!accountRestoreNeedsReload("/account", false), "a normal account visit does not reload");
@@ -84,9 +84,10 @@ async function main() {
   const refreshAt = leave.indexOf("router.refresh()");
   assert(
     endedAt >= 0 && endedAt < replaceAt && replaceAt < refreshAt,
-    "sign out leaves for sign-in and refreshes only after the session ends",
+    "sign out leaves for home and refreshes only after the session ends",
   );
   assert(shell.includes("Signed in as {account.name}."), "the signed-in line is unchanged");
+  assert(shell.includes("signed-in-line") && shell.includes("md:hidden"), "the signed-in line shows on a narrow screen");
 
   const { NextRequest } = await import("next/server");
   const { proxy } = await import("../src/proxy");

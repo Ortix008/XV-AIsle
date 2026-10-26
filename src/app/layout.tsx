@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
+import { connection } from "next/server";
 import { shareCardMetadata } from "@/lib/share-card";
+import { stripeTestMode } from "@/lib/server/stripe";
 import "./globals.css";
 
 const inter = Inter({
@@ -31,7 +33,9 @@ export function generateMetadata(): Metadata {
   };
 }
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  await connection();
+  const testMode = stripeTestMode();
   return (
     <html
       lang="en"
@@ -41,6 +45,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <noscript>
           <style>{".page-enter,[data-reveal]{animation:none !important;opacity:1 !important;transform:none !important;}"}</style>
         </noscript>
+        {testMode ? (
+          <p className="product-test" role="status">
+            Test mode
+          </p>
+        ) : null}
         {children}
       </body>
     </html>

@@ -76,7 +76,7 @@ function SignOutButton({ className }: { className: string }) {
   );
 }
 
-export function DeskShell({ children }: { children: ReactNode }) {
+export function DeskShell({ children, checkoutLine }: { children: ReactNode; checkoutLine: string }) {
   const pathname = usePathname();
   const { ready: accountReady, account } = useAccount();
   const { ready, state } = useDesk();
@@ -93,7 +93,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!account) return operatorPaths.has(pathname) ? <SendHome /> : <JoinScreen />;
+  if (!account) return operatorPaths.has(pathname) ? <SendHome /> : <JoinScreen checkoutLine={checkoutLine} />;
 
   const operator = isOperator(account);
   if (!operator && operatorPaths.has(pathname)) return <SendHome />;
@@ -125,6 +125,9 @@ export function DeskShell({ children }: { children: ReactNode }) {
           <SignOutButton className="desk-header-action text-xs text-muted-foreground hover:text-foreground md:hidden" />
         </div>
       </header>
+      <p className="signed-in-line border-b border-border px-4 py-2 text-pretty text-xs leading-relaxed text-muted-foreground md:hidden">
+        Signed in as {account.name}.
+      </p>
       {operator ? (
         <div className="flex shrink-0 items-center gap-3 border-b bg-card px-4 py-2">
           <span

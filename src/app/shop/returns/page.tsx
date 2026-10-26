@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyArticle } from "@/components/policy-article";
+import { viewerIsOperator } from "@/lib/server/require-operator";
 import { supportEmailForDisplay } from "@/lib/server/settings";
 
 export const metadata: Metadata = { title: "Returns · XV-AIsle" };
 
-export default function ReturnsPage() {
+export function ReturnsCopy({ operator = false }: { operator?: boolean }) {
   const supportEmail = supportEmailForDisplay();
   return (
-    <PolicyArticle band kicker="Store" title="Need to send something back?">
+    <PolicyArticle band kicker="Store" title="Need to send something back?" operator={operator}>
       <p>You have 14 days from delivery to start a return, unless a product page says otherwise.</p>
       <p>
-        {"Just email us and we'll help you start it. We'll email the return address when you start a return."}
+        {"Just email us and we'll help you start it."}
+        {operator ? " We'll email the return address when you start a return." : ""}
       </p>
       <p>
         {"Please send items back in the condition they arrived. If a product can't be returned, its page will say so."}
@@ -42,4 +44,8 @@ export default function ReturnsPage() {
       </p>
     </PolicyArticle>
   );
+}
+
+export default async function ReturnsPage() {
+  return <ReturnsCopy operator={await viewerIsOperator()} />;
 }

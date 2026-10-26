@@ -5,16 +5,17 @@ import { AislePicks, type AislePick } from "@/components/aisle-picks";
 import { ProductBuy } from "@/components/product-buy";
 import { ShopFrame } from "@/components/shop-frame";
 import { money } from "@/lib/money";
-import { productShipLine } from "@/lib/order-facts";
+import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { accountFromToken } from "@/lib/server/accounts";
 import { publicListing } from "@/lib/server/order-view";
+import { isOperatorAccount } from "@/lib/server/require-operator";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { ensureStarterShelf, isSampleListing, listedOnGrid, sampleProductReturnNote, visibleOnShop } from "@/lib/server/starter-shelf";
 import { isHeldSample } from "@/lib/shelf-holds";
+import { requireSupplierConfirmed } from "@/lib/supplier-confirm";
 import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
 import { publicSiteUrl } from "@/lib/config/env";
-import { stripeTestMode } from "@/lib/server/stripe";
 import { productOgImage } from "@/lib/product-og";
 import { buyerShareHref, resellerShareHref } from "@/lib/x-share";
 
@@ -77,14 +78,18 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
     account?.role === "reseller"
       ? resellerShareHref({ title: listing.title, productUrl, accountId: account.id })
       : buyerShareHref({ title: listing.title, productUrl });
+  const operator = isOperatorAccount(account);
+  const held = isHeldSample(listing);
   return (
     <ShopFrame>
       <ProductBuy
         listing={publicListing(listing, isSampleListing(listing))}
         returnNote={sampleProductReturnNote(listing, returnCopyForListing(listing))}
         shareHref={shareHref}
-        testMode={stripeTestMode()}
-        held={isHeldSample(listing)}
+        held={held}
+        unconfirmed={!held && requireSupplierConfirmed() && listing.supplierUsConfirmed !== true}
+        showReturnAddress={operator}
+        nameUsSupplier={usSupplierConfirmed(listing)}
         shipWindow={productShipLine(listing)}
       />
       <AislePicks aisle={aisle} picks={picks} />

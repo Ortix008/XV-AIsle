@@ -19,7 +19,13 @@ function hasCards(count: number) {
   return count > 0;
 }
 
-export function JoinScreen() {
+export function JoinScreen({
+  checkoutLine,
+  operator = false,
+}: {
+  checkoutLine: string;
+  operator?: boolean;
+}) {
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <a
@@ -53,7 +59,7 @@ export function JoinScreen() {
               <h1 className="mt-5 text-[3.25rem] leading-[0.95] font-bold tracking-[-0.045em] sm:text-7xl lg:text-[5.5rem]">
                 <span className="hero-break">Goods that </span>earn their <span className="text-primary">place.</span>
               </h1>
-              <p className="mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+              <p className="hero-lede mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
                 A curated market of home, kitchen, and everyday goods.{" "}
                 {"Shipping details are added to each product once its supplier confirms them."}
               </p>
@@ -61,9 +67,11 @@ export function JoinScreen() {
                 <Link href="/shop" className="pill pill-primary">
                   Shop the aisles
                 </Link>
-                <Link href="/shop/reseller" className="status-chip">
-                  Reseller program coming soon.
-                </Link>
+                {operator ? (
+                  <Link href="/shop/reseller" className="status-chip">
+                    Reseller program coming soon.
+                  </Link>
+                ) : null}
               </div>
             </div>
           </div>
@@ -121,10 +129,7 @@ export function JoinScreen() {
             </Reveal>
             <Reveal as="article" index={2} className="rounded-2xl border border-border bg-secondary p-7">
               <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
-              <h2 className="text-lg">Checkout opens soon</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                When it opens, Stripe will handle your payment, so we never see your card number. Questions? We reply within 2 business days.
-              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">{checkoutLine}</p>
             </Reveal>
           </div>
         </section>
@@ -171,7 +176,7 @@ export function JoinScreen() {
         </section>
         ) : null}
       </main>
-      <ShopFooter showReseller={false} />
+      <ShopFooter showReseller={operator} />
     </div>
   );
 }

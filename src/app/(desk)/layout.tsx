@@ -1,10 +1,15 @@
 import { Suspense, type ReactNode } from "react";
+import { connection } from "next/server";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DeskShell } from "@/components/desk-shell";
+import { checkoutOpenLine } from "@/lib/checkout-open";
 import { AccountProvider } from "@/lib/account-store";
 import { DeskProvider } from "@/lib/desk-store";
+import { stripeTestMode } from "@/lib/server/stripe";
 
-export default function DeskLayout({ children }: { children: ReactNode }) {
+export default async function DeskLayout({ children }: { children: ReactNode }) {
+  await connection();
+  const checkoutLine = checkoutOpenLine(stripeTestMode());
   return (
     <TooltipProvider>
       <AccountProvider>
@@ -16,7 +21,7 @@ export default function DeskLayout({ children }: { children: ReactNode }) {
               </div>
             }
           >
-            <DeskShell>{children}</DeskShell>
+            <DeskShell checkoutLine={checkoutLine}>{children}</DeskShell>
           </Suspense>
         </DeskProvider>
       </AccountProvider>
