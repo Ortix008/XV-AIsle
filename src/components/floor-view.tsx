@@ -155,7 +155,7 @@ export function FloorView() {
         <div>
           <p className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground">
             You sell what people already want. A supplier in the US ships it. You never hold the box.
-            The SI Team finds the product, writes the page, watches the order, and drafts a post.
+            The XV-AIsle Team finds the product, writes the page, watches the order, and drafts a post.
             You still say yes before anything goes out. Share your shop link anywhere. Buyers pay on xvaisle.com.
           </p>
           <p className="mt-3 text-sm">
@@ -270,7 +270,7 @@ export function FloorView() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold tracking-tight">SI Team</h2>
+            <h2 className="text-xl font-semibold tracking-tight">XV-AIsle Team</h2>
             <p className="mt-2 text-base leading-relaxed text-muted-foreground">
               These are AI tools, not people. You still say yes before anything goes out.
             </p>
@@ -310,7 +310,7 @@ export function FloorView() {
         <section className="border-t pt-4">
           <h2 className="text-sm font-medium">What they just did</h2>
           {state.log.length === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">Nothing yet. Leave the SI Team on, or ask them to look.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Nothing yet. Leave the XV-AIsle Team on, or ask them to look.</p>
           ) : (
             <ul className="mt-2 space-y-1.5">
               {state.log.slice(0, 8).map((line) => (

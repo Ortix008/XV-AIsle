@@ -272,20 +272,26 @@ async function main() {
     createElement("p", null, speedLabel("pod") ? createElement("span", null, speedLabel("pod")) : null, speedLabel("pod") ? " · " : null, podOrigin),
   );
   assert(podLine === `<p>${podOrigin}</p>`, "a print speed does not leave an empty label");
-  const labels = products.find((product) => product.id === "lid-labels");
   const apron = products.find((product) => product.id === "apron");
-  const tee = products.find((product) => product.id === "heavy-tee");
-  assert(labels?.trend.evidence === "No reason to boat a sticker.", "the label evidence drops the kitchen clause");
   assert(apron?.trend.evidence === "Plain canvas, two pockets.", "the apron evidence drops the kitchen clause");
-  assert(!/walk-in|cooks|after service/i.test(`${labels?.trend.evidence} ${apron?.trend.evidence}`), "those two evidence lines have no kitchen or job wording");
+  assert(!/walk-in|cooks|after service/i.test(apron?.trend.evidence ?? ""), "the apron evidence has no kitchen or job wording");
+  assert(!catalogProducts.some((product) => product.id === "lid-labels" || product.id === "heavy-tee"), "the pod seed items are gone");
   assert(!/Printed in|Prints in|print shop|holding blanks|print-on-demand|\bpod\b/i.test(visible), "operator quotes do not render print text");
+  for (const rel of [
+    "src/components/desk-shell.tsx",
+    "src/components/floor-view.tsx",
+    "src/lib/art.ts",
+    "README.md",
+  ]) {
+    const source = readFileSync(join(process.cwd(), rel), "utf8");
+    assert(!source.includes("SI Team"), `${rel} no longer says SI Team`);
+    assert(source.includes("XV-AIsle Team"), `${rel} says XV-AIsle Team`);
+  }
   const shell = readFileSync(join(process.cwd(), "src/components/desk-shell.tsx"), "utf8");
   assert(/tracking-\[0\.12em\][^>]*>\s*XV-AIsle Team\s*</.test(shell), "the desk sidebar says XV-AIsle Team");
-  assert(!/tracking-\[0\.12em\][^>]*>\s*SI Team\s*</.test(shell), "the desk sidebar no longer says SI Team");
-  assert(tee?.trend.evidence === "Apparel posts this month: heavyweight navy, no chest hit.", "the tee evidence keeps the other sentence");
 
   const operatorBan =
-    /\b(?:cooks?|cooking|cooked|cooker|chefs?|kitchens?|service|banquet|restaurants?|aprons?)\b|\bwalk-in\b|\bline-cook\b|\bline cook\b|\bafter a double\b|\bline\b/i;
+    /\b(?:cooks?|cooking|cooked|cooker|chefs?|kitchens?|service|banquet|restaurants?|aprons?)\b|\bwalk-in\b|\bline-cook\b|\bline cook\b|\bafter a double\b|\bline\b|\b(?:preprinted|unprinted|printed|printing|prints|print)\b|print[-\s]on[-\s]demand|printful|printify|\bpod\b|SI Team/i;
   assert(laneLabel("home") === "Home", "a home lane renders as Home");
   assert(
     catalogProducts.every((product) => product.lane !== "kitchen"),
@@ -296,6 +302,15 @@ async function main() {
     seedSource.includes('title: "After a long day", // COPY-REVIEW'),
     "the new mockup title is marked for copy review",
   );
+  const catalogWording = seedSource.replaceAll('speed: "pod"', "");
+  assert(
+    !/\b(?:preprinted|unprinted|printed|printing|prints|print)\b|print[-\s]on[-\s]demand|printful|printify|SI Team/i.test(catalogWording),
+    "the catalog seed has no print or SI Team wording",
+  );
+  for (const path of filesUnder(join(process.cwd(), "src"))) {
+    const source = readFileSync(path, "utf8");
+    assert(!source.includes("SI Team"), `${path} still says SI Team`);
+  }
   for (const product of catalogProducts) {
     const view = assess(product, day);
     const listing = buildListing(product, day);

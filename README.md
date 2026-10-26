@@ -10,7 +10,7 @@ Signup never creates an admin. The business has two co-owner admins. Each one is
 
 Helpers in the app can find a product, write a page, watch an order, and draft a post. You still say yes before anything goes out. They do not log into a social network, a supplier site, or an ad account. Saying yes copies text. You paste it yourself.
 
-| SI Team | Job |
+| XV-AIsle Team | Job |
 | --- | --- |
 | Signal | Finds the product and a US supplier. |
 | Draft | Writes the product page after you say yes. |

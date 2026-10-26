@@ -106,6 +106,6 @@ export const parties = [
   {
     src: "/art/party-company-real.png",
     title: "The company",
-    body: "XVAIsle keeps the market, and the SI Team keeps finding the next thing people want.",
+    body: "XVAIsle keeps the market, and the XV-AIsle Team keeps finding the next thing people want.",
   },
 ] as const;

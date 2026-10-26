@@ -91,7 +91,7 @@ export function placeProduct(product: Product): { aisle: string; section: string
   if (product.id === "apron" || product.id === "bib-apron" || /apron/i.test(product.name)) {
     return { aisle: "Clothing", section: "Aprons" };
   }
-  if (product.id === "heavy-tee" || product.id === "chambray" || product.category === "Clothes") {
+  if (product.id === "chambray" || product.category === "Clothes") {
     return { aisle: "Clothing", section: "Shirts" };
   }
   if (product.category === "Safety") return { aisle: "Kitchen", section: "Gadgets" };
