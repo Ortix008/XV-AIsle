@@ -7,6 +7,7 @@ import { ProductBuy } from "../src/components/product-buy";
 import { ASSEMBLED_IN_USA_SENTENCE, shopperDescription, withoutAssembledInUsa } from "../src/lib/order-facts";
 import { QA_CHECKOUT_PRODUCT_ID } from "../src/lib/qa-checkout";
 import { UNCONFIRMED_BUTTON, UNCONFIRMED_LABEL } from "../src/lib/shelf-copy";
+import { RESELLER_DAMAGE_NOTE } from "../src/lib/reseller-copy";
 import { WAITLIST_EMAIL_FORMAT, WAITLIST_SAVED } from "../src/lib/waitlist-copy";
 
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-qa-followup-")), "qa.sqlite");
@@ -175,6 +176,16 @@ async function main() {
   assert(!publicReseller.includes(returnAddressLine), "the public reseller contact block has no return address");
   assert(!publicTerms.includes(returnAddressLine), "the public reseller terms contact block has no return address");
   assert(operatorReseller.includes(returnAddressLine), "an operator still sees the return-address line");
+  assert(RESELLER_DAMAGE_NOTE === "Item arrived damaged or defective? Email us a photo within 3 days of delivery.", "the damage line is the approved sentence");
+  assert(publicReseller.includes(RESELLER_DAMAGE_NOTE), "the public reseller contact uses the approved damage line");
+  assert(publicTerms.includes(RESELLER_DAMAGE_NOTE), "the public reseller terms contact uses the approved damage line");
+  assert(!publicReseller.includes("Contact support to start a return."), "the public reseller contact drops the old return line");
+  assert(!publicTerms.includes("Contact support to start a return."), "the public reseller terms contact drops the old return line");
+  assert(publicReseller.includes("mailto:"), "the public reseller contact already shows the support email");
+  assert(operatorReseller.includes("Contact support to start a return."), "an operator still sees the support return line");
+  assert(!operatorReseller.includes(RESELLER_DAMAGE_NOTE), "an operator keeps the return-address contact");
+  const damageSource = readFileSync(join(process.cwd(), "src/lib/reseller-copy.ts"), "utf8");
+  assert(!damageSource.includes("xvaisle.team@gmail.com"), "the damage line does not hardcode a support email");
   const resellerSource = readFileSync(join(process.cwd(), "src/app/shop/reseller/page.tsx"), "utf8");
   const termsSource = readFileSync(join(process.cwd(), "src/app/shop/reseller/terms/page.tsx"), "utf8");
   assert(!resellerSource.includes("requireOperator") && resellerSource.includes("viewerIsOperator"), "the reseller page is public");

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Reseller program · XV-AIsle" };
 
 export function ResellerArticle({ operator = false }: { operator?: boolean }) {
   return (
-    <PolicyArticle operator={operator} kicker="Store" title="Reseller program coming soon.">
+    <PolicyArticle operator={operator} resellerContact kicker="Store" title="Reseller program coming soon.">
       <ResellerWaitlist />
       <p>
         {`We do not promise income. A listing can sell, or it can sell nothing. We don't promise any amount you'll make. Full terms come when the reseller program opens.`}
