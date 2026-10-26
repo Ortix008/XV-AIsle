@@ -12,7 +12,7 @@ import { isOperatorAccount } from "@/lib/server/require-operator";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { ensureStarterShelf, isSampleListing, listedOnGrid, sampleProductReturnNote, visibleOnShop } from "@/lib/server/starter-shelf";
 import { isHeldSample } from "@/lib/shelf-holds";
-import { requireSupplierConfirmed } from "@/lib/supplier-confirm";
+import { comingSoonListing } from "@/lib/supplier-confirm";
 import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
 import { publicSiteUrl } from "@/lib/config/env";
@@ -87,7 +87,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
         returnNote={sampleProductReturnNote(listing, returnCopyForListing(listing))}
         shareHref={shareHref}
         held={held}
-        unconfirmed={!held && requireSupplierConfirmed() && listing.supplierUsConfirmed !== true}
+        unconfirmed={!held && comingSoonListing(listing)}
         showReturnAddress={operator}
         nameUsSupplier={usSupplierConfirmed(listing)}
         shipWindow={productShipLine(listing)}

@@ -170,14 +170,23 @@ async function main() {
     ...pageInput,
     productId: "ready-pan",
     supplierUsConfirmed: true,
-    shipsFrom: "Toronto, ON",
+    shipsFrom: "Austin, TX",
   });
   if ("error" in confirmed) throw new Error(confirmed.error);
+  const flaggedAbroad = publishListing(joined.account.id, {
+    ...pageInput,
+    productId: "toronto-pan",
+    supplierUsConfirmed: true,
+    shipsFrom: "Toronto, ON",
+  });
+  if ("error" in flaggedAbroad) throw new Error(flaggedAbroad.error);
   delete process.env.REQUIRE_SUPPLIER_CONFIRMED;
   const refused = createPendingOrder({ productId: "open-pan", qty: 1, ship });
   assert("error" in refused && refused.error === "That page is not on the store.", "an unconfirmed product cannot be bought");
+  const abroad = createPendingOrder({ productId: "toronto-pan", qty: 1, ship });
+  assert("error" in abroad && abroad.error === "That page is not on the store.", "a confirmed product without a US ship-from cannot be bought");
   const allowed = createPendingOrder({ productId: "ready-pan", qty: 1, ship });
-  assert(!("error" in allowed), "a confirmed product can be bought while the switch is on");
+  assert(!("error" in allowed), "a confirmed US ship-from can be bought while the switch is on");
   for (const value of ["0", "false", "off", "no"]) {
     process.env.REQUIRE_SUPPLIER_CONFIRMED = value;
     const opened = createPendingOrder({ productId: "open-pan", qty: 1, ship });

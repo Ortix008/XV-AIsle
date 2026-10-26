@@ -11,7 +11,7 @@ import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quo
 import { marginGuard, snapshotOrderCost } from "./money-flow";
 import { changed, getDb } from "./db";
 import { etaFromListing, shopperDescription, withoutAssembledInUsa } from "../order-facts";
-import { requireSupplierConfirmed } from "../supplier-confirm";
+import { comingSoonListing } from "../supplier-confirm";
 import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
 import { formatOrderReturn, resolveReturnAddress } from "./supplier-returns";
 import { requestShipment } from "./supplier";
@@ -844,7 +844,7 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
     isScentedCandleListing(page) ||
     isHeldSample(page) ||
     (isQaCheckoutListing(page) && !qaCheckoutSeedAllowed()) ||
-    (requireSupplierConfirmed() && page.supplierUsConfirmed !== true)
+    comingSoonListing(page)
   ) {
     return { error: "That page is not on the store." as const };
   }

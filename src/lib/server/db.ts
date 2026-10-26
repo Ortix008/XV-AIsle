@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { ASSEMBLED_IN_USA_SENTENCE, withoutAssembledInUsa } from "../order-facts";
+import { withoutAssembledInUsa } from "../order-facts";
 
 let db: DatabaseSync | null = null;
 
@@ -272,11 +272,15 @@ export function getDb() {
   return next;
 }
 
-/** Stored catalog descriptions lose the exact assembled-in-the-USA sentence. */
+/** Stored catalog descriptions lose made-in sentences, in any case or punctuation. */
 function scrubAssembledInUsa(database: DatabaseSync) {
   const rows = database
-    .prepare("SELECT product_id, description FROM listings WHERE instr(description, ?) > 0")
-    .all(ASSEMBLED_IN_USA_SENTENCE) as { product_id: string; description: string }[];
+    .prepare(
+      `SELECT product_id, description FROM listings
+       WHERE instr(replace(replace(lower(description), '-', ' '), '.', ' '), 'made in') > 0
+          OR instr(lower(description), 'assembled in') > 0`,
+    )
+    .all() as { product_id: string; description: string }[];
   const update = database.prepare("UPDATE listings SET description = ? WHERE product_id = ?");
   for (const row of rows) {
     const next = withoutAssembledInUsa(row.description);

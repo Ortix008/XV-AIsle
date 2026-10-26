@@ -317,7 +317,7 @@ export function SignUpScreen({ showX = false, xDisabled = false }: { showX?: boo
           {pending ? "Creating the account…" : "Create an account"}
         </Button>
         <div className="auth-signup-links">
-          <Link href="/shop/reseller/terms" className="auth-text-link">
+          <Link href="/shop/reseller" className="auth-text-link">
             Reseller terms
           </Link>
           <Link href="/sign-in" className="auth-text-link">

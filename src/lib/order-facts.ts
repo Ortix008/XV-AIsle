@@ -20,15 +20,41 @@ function tidyDescription(value: string) {
     .trim();
 }
 
-/** Delete only the assembled-in-the-USA sentence. Stored catalog rows use this, not a replacement. */
-export function withoutAssembledInUsa(value: string) {
-  if (!value.includes(ASSEMBLED_IN_USA_SENTENCE)) return value;
-  return tidyDescription(value.replaceAll(ASSEMBLED_IN_USA_SENTENCE, ""));
+/** Keep abbreviation dots from looking like the end of a sentence. */
+function protectPlaceDots(value: string) {
+  return value.replace(/u\.s\.a\.?/gi, (match) => match.replaceAll(".", "\u0001")).replace(/u\.s\./gi, (match) => match.replaceAll(".", "\u0001"));
 }
 
-/** Drop the desk engine's ship sentence, including its day plan and import clause. */
+function sentenceIsMadeInClaim(sentence: string) {
+  const flat = sentence
+    .replaceAll("\u0001", " ")
+    .toLowerCase()
+    .replace(/[.\-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (/\bmade\s+in\b/.test(flat)) return true;
+  return /\b(?:designed and )?assembled in the (?:usa|u s a|u s|us|united states)\b/.test(flat);
+}
+
+/**
+ * Delete made-in sentences in any case or punctuation, including the assembled-in-the-USA sentence.
+ * Stored catalog rows use this, not a replacement sentence.
+ */
+export function withoutAssembledInUsa(value: string) {
+  const parts = protectPlaceDots(value).split(/([.!?]+)/);
+  let kept = "";
+  for (let index = 0; index < parts.length; index += 2) {
+    const sentence = parts[index] ?? "";
+    const mark = parts[index + 1] ?? "";
+    if (sentenceIsMadeInClaim(sentence)) continue;
+    kept += sentence + mark;
+  }
+  return tidyDescription(kept.replaceAll("\u0001", "."));
+}
+
+/** Drop made-in sentences and the desk engine's ship sentence, including its day plan and import clause. */
 export function shopperDescription(value: string) {
-  return tidyDescription(value.replaceAll(ASSEMBLED_IN_USA_SENTENCE, "").replace(ENGINE_SHIP_SENTENCE, ""));
+  return tidyDescription(withoutAssembledInUsa(value).replace(ENGINE_SHIP_SENTENCE, ""));
 }
 
 const US_STATE_CODES = new Set([
