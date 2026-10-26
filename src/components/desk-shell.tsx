@@ -203,7 +203,7 @@ export function DeskShell({ children, checkoutLine }: { children: ReactNode; che
           {operator ? (
             <>
               <p className="px-5 pt-4 pb-1 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground">
-                SI Team
+                XV-AIsle Team
               </p>
               <div className="flex flex-col px-2">
                 <NavLinks pathname={pathname} showCounts />

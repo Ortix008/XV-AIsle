@@ -122,7 +122,7 @@ export function assess(
     if (chosen.supplier.speed === "import") {
       reason = needBy
         ? `Nothing from the US arrives by ${prettyDate(needBy)}. This one comes by boat in two to three weeks. Skip it unless the date can wait.`
-        : "Nothing from a US warehouse or a print shop is a good buy. This one comes from overseas. Skip it.";
+        : "Nothing from a US warehouse is a good buy. This one comes from overseas. Skip it.";
     } else if (!dated) {
       reason = needBy
         ? `Nothing arrives by ${prettyDate(needBy)}. This is the fastest option, and it is still late.`
@@ -130,7 +130,7 @@ export function assess(
     } else if (chosen.capped || chosen.margin < MARGIN_FLOOR) {
       reason = `Even the fast option keeps less than ${pct(MARGIN_FLOOR)} if the price stays under ${money(product.ceiling)}. A cheaper overseas option is listed and was not picked.`;
     } else if (chosen.supplier.speed === "pod") {
-      reason = `Printed in ${chosen.supplier.origin} after someone orders it. Nothing sits on a boat. Lowest price among the fast options${
+      reason = `Nothing sits on a boat. Lowest price among the fast options${
         needBy ? ` that arrive by ${prettyDate(needBy)}` : ""
       }.`;
     } else {
@@ -178,11 +178,7 @@ function prosFor(
       `Arrives by ${prettyDate(chosen.arrives)}, inside the ${prettyDate(needBy)} need-by.`,
     );
   }
-  if (supplier.speed === "pod") {
-    pros.push(
-      `Prints in ${supplier.origin} after the order. Nothing sits on a boat, and you are not holding blanks.`,
-    );
-  } else if (supplier.speed === "us" && supplier.shipDaysMax <= 7) {
+  if (supplier.speed === "us" && supplier.shipDaysMax <= 7) {
     pros.push(
       `US stock in ${supplier.origin}. A reorder is ${supplier.shipDaysMin}–${supplier.shipDaysMax} days, which is what a social post can promise.`,
     );
@@ -303,7 +299,7 @@ export function buildListing(
     `${product.material}. ${product.size}.`,
     "",
     supplier.speed === "pod"
-      ? `Printed in ${supplier.origin} by ${supplier.name} after checkout. Plan on ${supplier.shipDaysMin}–${supplier.shipDaysMax} days. Nothing ships from overseas.`
+      ? `Plan on ${supplier.shipDaysMin}–${supplier.shipDaysMax} days. Nothing ships from overseas.`
       : supplier.speed === "us"
         ? `Ships from ${supplier.origin} through ${supplier.name}. Plan on ${supplier.shipDaysMin}–${supplier.shipDaysMax} days.`
         : `Ships from ${supplier.origin} through ${supplier.name}. Plan on ${supplier.shipDaysMin}–${supplier.shipDaysMax} days. This is an import, not a week-of order.`,

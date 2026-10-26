@@ -242,7 +242,7 @@ const catalogProducts: Product[] = [
       title: "Label the fridge like a walk-in",
       signal: "Home cooks who work service are posting labeled quarts, not aesthetic pantry shelves.",
       evidence:
-        "photos of a home fridge labeled the way a walk-in is labeled. No reason to boat a sticker.",
+        "No reason to boat a sticker.",
     },
     mockups: [
       {
@@ -530,7 +530,7 @@ const catalogProducts: Product[] = [
       title: "Clothes that survive a pan",
       signal: "Apparel that is moving with cooks is a plain waist apron, not a graphic tee about cooking.",
       evidence:
-        "cooks posting what they wear at home after service. Plain canvas, two pockets.",
+        "Plain canvas, two pockets.",
     },
     mockups: [
       {

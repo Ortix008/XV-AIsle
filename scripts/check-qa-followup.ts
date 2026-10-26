@@ -275,8 +275,13 @@ async function main() {
   const labels = products.find((product) => product.id === "lid-labels");
   const apron = products.find((product) => product.id === "apron");
   const tee = products.find((product) => product.id === "heavy-tee");
-  assert(labels?.trend.evidence === "photos of a home fridge labeled the way a walk-in is labeled. No reason to boat a sticker.", "the label evidence keeps the other sentences");
-  assert(apron?.trend.evidence === "cooks posting what they wear at home after service. Plain canvas, two pockets.", "the apron evidence keeps the other sentences");
+  assert(labels?.trend.evidence === "No reason to boat a sticker.", "the label evidence drops the kitchen clause");
+  assert(apron?.trend.evidence === "Plain canvas, two pockets.", "the apron evidence drops the kitchen clause");
+  assert(!/walk-in|cooks|after service/i.test(`${labels?.trend.evidence} ${apron?.trend.evidence}`), "those two evidence lines have no kitchen or job wording");
+  assert(!/Printed in|Prints in|print shop|holding blanks|print-on-demand|\bpod\b/i.test(visible), "operator quotes do not render print text");
+  const shell = readFileSync(join(process.cwd(), "src/components/desk-shell.tsx"), "utf8");
+  assert(/tracking-\[0\.12em\][^>]*>\s*XV-AIsle Team\s*</.test(shell), "the desk sidebar says XV-AIsle Team");
+  assert(!/tracking-\[0\.12em\][^>]*>\s*SI Team\s*</.test(shell), "the desk sidebar no longer says SI Team");
   assert(tee?.trend.evidence === "Apparel posts this month: heavyweight navy, no chest hit.", "the tee evidence keeps the other sentence");
 
   console.log("qa followup checks ok");
