@@ -53,3 +53,11 @@ Exact text: Refunds are issued once the supplier receives the item.
 Defined at `src/lib/returns-policy.ts:9`. It is the last returns-policy line at `src/lib/returns-policy.ts:18`, rendered at `src/app/shop/returns/page.tsx:11` and served at `src/app/api/store/settings/route.ts:14`.
 
 Approved by Genie, Oct 26 2026.
+
+## Sold out
+
+Exact text: Sold out
+
+Sentence case, no punctuation. Defined at `src/lib/sold-out-label.ts:2`. The product button renders it at `src/components/product-buy.tsx:261`. The shop card renders it at `src/components/shop-grid.tsx:59`. The same card line is on aisle picks at `src/components/aisle-picks.tsx:48`. Cart and checkout return it from `src/lib/stock-caps.ts:135` when nothing is left or the quantity is above the remaining stock. That module repeats the words so the production script stays free of local imports.
+
+Approved by Genie, Oct 27 2026.
