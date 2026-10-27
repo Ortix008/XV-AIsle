@@ -29,7 +29,6 @@ export function PolicyArticle({
   resellerContact?: boolean;
 }) {
   const supportEmail = supportEmailForDisplay();
-  const contactLine = resellerContact && operator ? "Contact support to start a return." : RESELLER_DAMAGE_NOTE;
   const contact = (sectionClass: string) => (
     <section className={sectionClass}>
       <h2 className="text-lg font-semibold">Contact</h2>
@@ -42,7 +41,7 @@ export function PolicyArticle({
       </p>
       <p>
         {operator ? "We'll email the return address when you start a return. " : null}
-        {contactLine}
+        {RESELLER_DAMAGE_NOTE}
       </p>
       {resellerContact ? <p>{DAMAGE_PHOTO_LINE}</p> : null}
     </section>

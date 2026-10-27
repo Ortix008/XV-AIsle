@@ -534,9 +534,32 @@
   padding: 3.25rem calc(var(--spacing) * 5) 4rem;
 }
 
+.lost-aisle-cluster {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--container-xl);
+  margin-inline: auto;
+}
+
 @media (min-width: 640px) {
   .lost-aisle-copy {
     padding: 5rem calc(var(--spacing) * 10) 5rem;
+  }
+
+  .lost-aisle-cluster {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .lost-aisle-cluster > :not(a) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .lost-aisle-cluster > ul {
+    text-align: start;
   }
 }
 

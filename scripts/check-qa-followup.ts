@@ -206,8 +206,8 @@ async function main() {
   assert(!publicReseller.includes("Contact support to start a return."), "the public reseller contact drops the old return line");
   assert(!publicTerms.includes("Contact support to start a return."), "the public reseller terms contact drops the old return line");
   assert(publicReseller.includes("mailto:"), "the public reseller contact already shows the support email");
-  assert(operatorReseller.includes("Contact support to start a return."), "an operator still sees the support return line");
-  assert(!operatorReseller.includes(RESELLER_DAMAGE_NOTE), "an operator keeps the return-address contact");
+  assert(!operatorReseller.includes("Contact support to start a return."), "an operator drops the old support return line");
+  assert(operatorReseller.includes(RESELLER_DAMAGE_NOTE), "an operator sees the approved contact line");
   const damageSource = readFileSync(join(process.cwd(), "src/lib/reseller-copy.ts"), "utf8");
   assert(!damageSource.includes("xvaisle.team@gmail.com"), "the damage line does not hardcode a support email");
   const resellerSource = readFileSync(join(process.cwd(), "src/app/shop/reseller/page.tsx"), "utf8");
