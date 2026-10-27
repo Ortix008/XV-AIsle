@@ -15,7 +15,7 @@
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-4317}",
     "lint": "eslint",
-    "check": "tsx scripts/check-account.ts && tsx scripts/check-entry.ts && tsx scripts/check-desk.ts && tsx scripts/check-security.ts && tsx scripts/check-market.ts && tsx scripts/check-connect.ts && tsx scripts/check-fees.ts && tsx scripts/check-import.ts && tsx scripts/check-honest.ts && tsx scripts/check-routing.ts && tsx scripts/check-bundles.ts && tsx scripts/check-night.ts && tsx scripts/check-returns.ts && tsx scripts/check-delay-notice.ts && tsx scripts/check-x.ts && tsx scripts/check-money.ts && tsx scripts/check-seller-ledger.ts && tsx scripts/check-qa-shelf.ts && tsx scripts/check-modalyst.ts && tsx scripts/check-shopper-place.ts && tsx scripts/check-nitpick.ts && tsx scripts/check-qa-followup.ts"
+    "check": "tsx scripts/check-account.ts && tsx scripts/check-entry.ts && tsx scripts/check-desk.ts && tsx scripts/check-security.ts && tsx scripts/check-market.ts && tsx scripts/check-connect.ts && tsx scripts/check-fees.ts && tsx scripts/check-import.ts && tsx scripts/check-honest.ts && tsx scripts/check-routing.ts && tsx scripts/check-bundles.ts && tsx scripts/check-night.ts && tsx scripts/check-returns.ts && tsx scripts/check-delay-notice.ts && tsx scripts/check-x.ts && tsx scripts/check-money.ts && tsx scripts/check-seller-ledger.ts && tsx scripts/check-qa-shelf.ts && tsx scripts/check-modalyst.ts && tsx scripts/check-shopper-place.ts && tsx scripts/check-nitpick.ts && tsx scripts/check-qa-followup.ts && tsx scripts/check-not-found.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
