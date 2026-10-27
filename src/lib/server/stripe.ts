@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { checkoutExpiresAt } from "../stock-caps";
 
 export type CheckoutKind = "membership" | "order";
 
@@ -173,6 +174,7 @@ export async function createCheckoutSession(input: {
     : `checkout-order-${input.accountId}-${input.attemptId ?? randomUUID()}`;
   const body = new URLSearchParams();
   body.set("mode", "payment");
+  body.set("expires_at", String(checkoutExpiresAt(Date.now())));
   body.set("success_url", `${origin}${input.successPath}`);
   body.set("cancel_url", `${origin}${input.cancelPath}`);
   body.set("client_reference_id", input.orderId ?? input.accountId);

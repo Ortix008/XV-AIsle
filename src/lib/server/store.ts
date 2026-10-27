@@ -5,7 +5,14 @@ import { getProduct } from "../catalog";
 import { compareAtRejection } from "../honest-price";
 import { isQaCheckoutListing, qaCheckoutSeedAllowed } from "../qa-checkout";
 import { isHeldSample, isScentedCandleListing, isWoodTrayListing } from "../shelf-holds";
-import { cleanSupplierEmail, cleanSupplierOrderUrl, isBlockedTestOrder, parseListingRoute, type ListingRoute } from "../order-flags";
+import {
+  STOCK_REVIEW_FLAG,
+  cleanSupplierEmail,
+  cleanSupplierOrderUrl,
+  isBlockedTestOrder,
+  parseListingRoute,
+  type ListingRoute,
+} from "../order-flags";
 import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { marginGuard, snapshotOrderCost } from "./money-flow";
@@ -884,7 +891,6 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
     if (page.supplierAccountId) pauseListing(page.productId);
     return { error: problem };
   }
-  const split = priced.split;
   const created = Date.now();
   const returnTo = resolveReturnAddress(page);
   const variantId = input.variantId?.trim() || null;
@@ -893,10 +899,24 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   let stockError: string | null = null;
   try {
     const gate = evaluateStock({ productId: page.productId, variantId, qty, now: created });
+    const orderQty = gate.ok ? gate.qty : qty;
+    const charged = gate.ok ? pricedSplit(page, orderQty) : null;
+    const chargedProblem =
+      charged && !("error" in charged)
+        ? saleBlock({
+            priceCents: page.priceCents,
+            split: charged.split,
+            supplierAccountId: page.supplierAccountId,
+          })
+        : null;
     if (!gate.ok) {
       stockError = gate.error;
       db.exec("ROLLBACK");
+    } else if (!charged || "error" in charged || chargedProblem) {
+      stockError = charged && "error" in charged ? (charged.error ?? "Sold out") : (chargedProblem ?? "Sold out");
+      db.exec("ROLLBACK");
     } else {
+      const orderSplit = charged.split;
       const number = `XV-${allocateOrderNumber(true)}`;
       db.prepare(
         `INSERT INTO orders (
@@ -914,8 +934,8 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
         listing.account_id,
         ship.name.trim(),
         ship.email.trim().toLowerCase(),
-        qty,
-        split.grossCents,
+        orderQty,
+        orderSplit.grossCents,
         ship.line1.trim(),
         ship.city.trim(),
         ship.region.trim(),
@@ -923,14 +943,14 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
         (ship.country.trim() || "US").toUpperCase(),
         created,
         `order_${id}`,
-        split.feeBps,
-        split.platformFeeCents,
-        split.supplierAmountCents,
-        split.resellerAmountCents,
+        orderSplit.feeBps,
+        orderSplit.platformFeeCents,
+        orderSplit.supplierAmountCents,
+        orderSplit.resellerAmountCents,
         page.supplierAccountId,
         receiptHash(receiptToken),
-        split.stripeFeeCents,
-        split.stripeFeeCents,
+        orderSplit.stripeFeeCents,
+        orderSplit.stripeFeeCents,
         returnTo?.line1 ?? null,
         returnTo?.city ?? null,
         returnTo?.region ?? null,
@@ -938,9 +958,9 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
         returnTo?.country ?? null,
       );
       if (gate.tracked) {
-        writeHold({ orderId: id, productId: page.productId, variantId: gate.variantId, qty, now: created });
+        writeHold({ orderId: id, productId: page.productId, variantId: gate.variantId, qty: orderQty, now: created });
       }
-      snapshotOrderCost(id, page.productId, qty, page.priceCents);
+      snapshotOrderCost(id, page.productId, orderQty, page.priceCents);
       db.exec("COMMIT");
     }
   } catch (error) {
@@ -1184,7 +1204,7 @@ export async function fulfillPaidOrder(orderId: string) {
     ).run("Test order. Do not place this with a supplier.", orderId);
     return getOrder(orderId);
   }
-  const route = parseListingRoute(listing?.route);
+  const route = order.fulfillmentFlag === STOCK_REVIEW_FLAG ? "manual" : parseListingRoute(listing?.route);
   try {
     switch (route) {
       case "manual":

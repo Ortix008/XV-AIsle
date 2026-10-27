@@ -10,7 +10,7 @@ import { addBusinessDays, businessDayStamp } from "@/lib/business-days";
 import { prettyDate, todayISO } from "@/lib/dates";
 import { useDesk } from "@/lib/desk-store";
 import { money, round2 } from "@/lib/money";
-import { BLOCKED_TEST_ORDER_NUMBER } from "@/lib/order-flags";
+import { BLOCKED_TEST_ORDER_NUMBER, stockReviewNote } from "@/lib/order-flags";
 import type { Order } from "@/lib/types";
 import { cn } from "cn";
 
@@ -57,6 +57,7 @@ type DeskStoreOrder = {
   supplierRef?: string | null;
   supplierPaidCents?: number | null;
   supplierOrderUrl?: string | null;
+  fulfillmentFlag?: string | null;
   placingOverdue?: boolean;
   delayFlagged?: boolean;
   delayExpectedOn?: string | null;
@@ -196,7 +197,8 @@ function StoreOrderCard({
   onDone: () => void;
 }) {
   const blocked = order.number === BLOCKED_TEST_ORDER_NUMBER || order.status === "test";
-  const flagged = Boolean(order.placingOverdue || order.delayFlagged || order.trackingStale);
+  const review = stockReviewNote(order.fulfillmentFlag);
+  const flagged = Boolean(review || order.placingOverdue || order.delayFlagged || order.trackingStale);
   const [supplierRef, setSupplierRef] = useState(order.supplierRef ?? "");
   const [supplierPaid, setSupplierPaid] = useState("");
   const [carrier, setCarrier] = useState(order.carrier ?? "");
@@ -232,6 +234,7 @@ function StoreOrderCard({
         {statusLabel(order.status)}
         {order.supplierDetail ? ` · ${order.supplierDetail}` : ""}
       </span>
+      {canAct && review ? <span className="mt-1 block text-late">{review}</span> : null}
       {order.placingOverdue ? <span className="mt-1 block text-late">Not placed for 24 hours</span> : null}
       {order.delayFlagged ? <span className="mt-1 block text-late">Past the promised ship date</span> : null}
       {order.trackingStale ? <span className="mt-1 block text-late">Tracking has not been updated in 3 days</span> : null}

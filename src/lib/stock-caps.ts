@@ -10,26 +10,30 @@ const SOLD_OUT_LABEL = "Sold out" as const;
 export const HIDDEN_SKUS = ["20-PEARL-GS", "20-GARNET-GS"] as const;
 
 export type CapTarget = {
-  sku?: string;
-  label?: string;
+  sku: string;
   cap: number;
 };
 
-/** Flag matches the manufacturer SKU. Apparel rows match the variant label. */
+/** Every target is one SKU. A size name on another product is not a match. */
 export const STOCK_CAP_TARGETS: CapTarget[] = [
-  { sku: "DAC7237CHF", label: "Flag", cap: 999 },
-  { label: "Dark Blue 2XS", cap: 30 },
-  { label: "Dark Blue XS", cap: 42 },
-  { label: "Green 2XS", cap: 25 },
-  { label: "Green XS", cap: 161 },
+  { sku: "DAC7237CHF", cap: 999 },
+  { sku: "Dark Blue 2XS", cap: 30 },
+  { sku: "Dark Blue XS", cap: 42 },
+  { sku: "Green 2XS", cap: 25 },
+  { sku: "Green XS", cap: 161 },
 ];
 
 export const ORDER_QTY_MAX = 5;
-export const HOLD_MS = 24 * 60 * 60 * 1000;
+/** Same window as a Stripe Checkout session. */
+export const HOLD_MS = 30 * 60 * 1000;
 
-export type QtyReason = "qty" | "sold_out" | "over_stock" | "hidden" | "choose";
+export function checkoutExpiresAt(nowMs: number) {
+  return Math.floor(nowMs / 1000) + HOLD_MS / 1000;
+}
 
-export type QtyDecision = { ok: true } | { ok: false; reason: QtyReason };
+export type QtyReason = "qty" | "sold_out" | "hidden" | "choose";
+
+export type QtyDecision = { ok: true; qty: number } | { ok: false; reason: QtyReason };
 
 export type StockNumbers = { cap: number | null; onHand: number | null };
 
@@ -76,15 +80,8 @@ export function hideMatches(sku: string) {
   return HIDDEN_SKUS.some((item) => normalizeKey(item) === key);
 }
 
-export function capMatches(target: CapTarget, row: { sku: string; label: string }) {
-  const sku = normalizeKey(row.sku);
-  const label = normalizeKey(row.label);
-  if (target.sku && sku === normalizeKey(target.sku)) return true;
-  if (!target.sku && target.label) {
-    const want = normalizeKey(target.label);
-    return label === want || sku === want;
-  }
-  return false;
+export function capMatches(target: CapTarget, row: { sku: string }) {
+  return normalizeKey(row.sku) === normalizeKey(target.sku);
 }
 
 /** First run sets on-hand to the cap. A later run keeps units already sold. */
@@ -116,13 +113,13 @@ export function isSoldOut(onHand: number | null, held = 0) {
   return left != null && left <= 0;
 }
 
+/** A request above a still-positive shelf is clamped. Sold out is only an empty shelf. */
 export function decideQuantity(qty: number, left: number | null, hidden = false): QtyDecision {
   if (hidden) return { ok: false, reason: "hidden" };
   if (!Number.isInteger(qty) || qty < 1 || qty > ORDER_QTY_MAX) return { ok: false, reason: "qty" };
-  if (left == null) return { ok: true };
+  if (left == null) return { ok: true, qty };
   if (left <= 0) return { ok: false, reason: "sold_out" };
-  if (qty > left) return { ok: false, reason: "over_stock" };
-  return { ok: true };
+  return { ok: true, qty: Math.min(qty, left) };
 }
 
 export function shopperStockError(decision: QtyDecision) {
@@ -131,7 +128,6 @@ export function shopperStockError(decision: QtyDecision) {
     case "qty":
       return "Order between 1 and 5." as const;
     case "sold_out":
-    case "over_stock":
       return SOLD_OUT_LABEL;
     case "hidden":
       return "That page is not on the store." as const;
@@ -146,7 +142,7 @@ export function shopperStockError(decision: QtyDecision) {
 
 export function formatStockLog(line: {
   sku: string;
-  action: "hidden" | "unchanged" | "cap" | "not_found" | "restored" | "restore_skipped";
+  action: "hidden" | "unchanged" | "cap" | "not_found" | "ambiguous" | "restored" | "restore_skipped";
   cap?: number;
   onHand?: number;
 }) {
@@ -159,6 +155,8 @@ export function formatStockLog(line: {
       return `${line.sku} cap ${line.cap} on_hand ${line.onHand}`;
     case "not_found":
       return `${line.sku} not_found`;
+    case "ambiguous":
+      return `${line.sku} ambiguous`;
     case "restored":
       return `${line.sku} restored`;
     case "restore_skipped":
@@ -335,14 +333,41 @@ function writeRow(db: StockSql, row: WorkRow) {
   );
 }
 
-export function applyStockCaps(db: StockSql) {
-  ensureStockSchema(db);
-  const work = loadWork(db);
-  const lines: string[] = [];
-  for (const sku of HIDDEN_SKUS) {
-    const matches = work.filter((row) => normalizeKey(row.sku) === normalizeKey(sku));
-    if (matches.length === 0) lines.push(formatStockLog({ sku, action: "not_found" }));
-    for (const row of matches) {
+function rowsForSku(work: WorkRow[], sku: string) {
+  const key = normalizeKey(sku);
+  return work.filter((row) => normalizeKey(row.sku) === key);
+}
+
+export type StockCapRun = { ok: boolean; lines: string[] };
+
+/**
+ * Dry-run unless apply is true. A missing SKU or two rows with the same SKU
+ * aborts the whole run and writes nothing.
+ */
+export function runStockCaps(db: StockSql, apply: boolean): StockCapRun {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    ensureStockSchema(db);
+    const work = loadWork(db);
+    const lines: string[] = [];
+    let problems = 0;
+    function claim(sku: string) {
+      const matches = rowsForSku(work, sku);
+      if (matches.length === 0) {
+        lines.push(formatStockLog({ sku, action: "not_found" }));
+        problems += 1;
+        return null;
+      }
+      if (matches.length > 1) {
+        lines.push(formatStockLog({ sku, action: "ambiguous" }));
+        problems += 1;
+        return null;
+      }
+      return matches[0];
+    }
+    for (const sku of HIDDEN_SKUS) {
+      const row = claim(sku);
+      if (!row) continue;
       const logged = reportSku(row, sku);
       if (row.hidden === 1) {
         lines.push(formatStockLog({ sku: logged, action: "unchanged" }));
@@ -352,13 +377,10 @@ export function applyStockCaps(db: StockSql) {
       row.changed = true;
       lines.push(formatStockLog({ sku: logged, action: "hidden" }));
     }
-  }
-  for (const target of STOCK_CAP_TARGETS) {
-    const fallback = target.sku ?? target.label ?? "sku";
-    const matches = work.filter((row) => capMatches(target, row));
-    if (matches.length === 0) lines.push(formatStockLog({ sku: fallback, action: "not_found" }));
-    for (const row of matches) {
-      const logged = reportSku(row, fallback);
+    for (const target of STOCK_CAP_TARGETS) {
+      const row = claim(target.sku);
+      if (!row) continue;
+      const logged = reportSku(row, target.sku);
       const next = nextStock({ cap: row.cap, onHand: row.onHand }, target.cap);
       if (!next.changed) {
         lines.push(formatStockLog({ sku: logged, action: "unchanged", cap: next.cap, onHand: next.onHand }));
@@ -369,13 +391,27 @@ export function applyStockCaps(db: StockSql) {
       row.changed = true;
       lines.push(formatStockLog({ sku: logged, action: "cap", cap: next.cap, onHand: next.onHand }));
     }
+    if (problems > 0 || !apply) {
+      db.exec("ROLLBACK");
+      if (problems > 0) lines.push("aborted");
+      else lines.unshift("dry-run");
+      return { ok: problems === 0, lines };
+    }
+    for (const row of work) {
+      if (!row.changed) continue;
+      remember(db, row);
+      writeRow(db, row);
+    }
+    db.exec("COMMIT");
+    return { ok: true, lines };
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // The transaction was already closed.
+    }
+    throw error;
   }
-  for (const row of work) {
-    if (!row.changed) continue;
-    remember(db, row);
-    writeRow(db, row);
-  }
-  return lines;
 }
 
 type AuditRow = {

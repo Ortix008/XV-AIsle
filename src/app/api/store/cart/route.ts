@@ -17,5 +17,5 @@ export async function POST(request: Request) {
     qty: body.qty ?? 1,
   });
   if (!gate.ok) return Response.json({ error: gate.error }, { status: 400 });
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, qty: gate.qty });
 }

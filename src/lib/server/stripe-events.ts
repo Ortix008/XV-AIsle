@@ -1,6 +1,7 @@
 import { accountIdByStripe, markMember, setMembershipInactive } from "./accounts";
 import { disableConnected, refreshConnected } from "./connect";
 import { changed, getDb } from "./db";
+import { releaseHeldStock } from "./inventory";
 import {
   applyDisputeClosed,
   applyDisputeOpened,
@@ -13,6 +14,7 @@ import { retrieveCheckoutSession, retrieveSubscription, verifyStripeSignature, t
 const PLATFORM_EVENTS = [
   "checkout.session.completed",
   "checkout.session.async_payment_succeeded",
+  "checkout.session.expired",
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
@@ -173,6 +175,11 @@ async function dispatch(type: HandledEvent, event: Record<string, unknown>) {
       const id = text(eventObject(event), "id");
       if (!id) return;
       await settleCheckoutSession(await retrieveCheckoutSession(id));
+      return;
+    }
+    case "checkout.session.expired": {
+      const orderId = metadata(eventObject(event), "order_id");
+      if (orderId) releaseHeldStock(orderId);
       return;
     }
     case "customer.subscription.created":

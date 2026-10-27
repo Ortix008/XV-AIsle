@@ -7,7 +7,7 @@ import { ShopFrame } from "@/components/shop-frame";
 import { money } from "@/lib/money";
 import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { accountFromToken } from "@/lib/server/accounts";
-import { readShopStock, soldOutByProduct } from "@/lib/server/inventory";
+import { readShopStock, releaseHeldStock, soldOutByProduct } from "@/lib/server/inventory";
 import { publicListing } from "@/lib/server/order-view";
 import { isOperatorAccount } from "@/lib/server/require-operator";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
@@ -52,8 +52,17 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
   };
 }
 
-export default async function ProductPage({ params }: { params: Promise<{ productId: string }> }) {
+export default async function ProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ productId: string }>;
+  searchParams?: Promise<{ canceled?: string | string[] }>;
+}) {
   const { productId } = await params;
+  const query = searchParams ? await searchParams : {};
+  const canceled = Array.isArray(query.canceled) ? query.canceled[0] : query.canceled;
+  if (canceled) releaseHeldStock(canceled, productId);
   ensureStarterShelf();
   const listing = getListing(productId);
   if (!listing || !visibleOnShop(listing) || listingLoss(listing)) notFound();

@@ -1,4 +1,4 @@
-import { getDb } from "./db";
+import { STOCK_REVIEW_FLAG } from "../order-flags";
 import {
   HOLD_MS,
   decideQuantity,
@@ -10,6 +10,7 @@ import {
   unitsLeft,
   type StockSql,
 } from "../stock-caps";
+import { getDb } from "./db";
 
 type VariantRow = {
   id: string;
@@ -34,8 +35,10 @@ export type ShopStock = {
 };
 
 export type StockGate =
-  | { ok: true; tracked: boolean; variantId: string | null }
+  | { ok: true; tracked: boolean; variantId: string | null; qty: number }
   | { ok: false; error: "Sold out" | "Order between 1 and 5." | "That page is not on the store." | "Choose a product." };
+
+export type PaidStock = "committed" | "already" | "untracked" | "short";
 
 function database() {
   return getDb() as unknown as StockSql;
@@ -111,8 +114,8 @@ export function evaluateStock(input: { productId: string; variantId: string | nu
     const onHand = sellableOnHand(sqlInt(variant.stock_cap), sqlInt(variant.stock_on_hand));
     const decision = decideQuantity(input.qty, unitsLeft(onHand, heldQty(input.productId, variant.id, now)));
     const error = shopperStockError(decision);
-    if (error) return { ok: false, error };
-    return { ok: true, tracked: onHand != null, variantId: variant.id };
+    if (error || !decision.ok) return { ok: false, error: error ?? "Sold out" };
+    return { ok: true, tracked: onHand != null, variantId: variant.id, qty: decision.qty };
   }
   if (variants.length > 0) {
     if (visible.length === 0) return { ok: false, error: "That page is not on the store." };
@@ -121,8 +124,8 @@ export function evaluateStock(input: { productId: string; variantId: string | nu
   const onHand = sellableOnHand(sqlInt(listing.stock_cap), sqlInt(listing.stock_on_hand));
   const decision = decideQuantity(input.qty, unitsLeft(onHand, heldQty(input.productId, null, now)));
   const error = shopperStockError(decision);
-  if (error) return { ok: false, error };
-  return { ok: true, tracked: onHand != null, variantId: null };
+  if (error || !decision.ok) return { ok: false, error: error ?? "Sold out" };
+  return { ok: true, tracked: onHand != null, variantId: null, qty: decision.qty };
 }
 
 export function writeHold(input: { orderId: string; productId: string; variantId: string | null; qty: number; now: number }) {
@@ -134,39 +137,78 @@ export function writeHold(input: { orderId: string; productId: string; variantId
     .run(input.orderId, input.productId, input.variantId, input.qty, input.now);
 }
 
-/** Move a held unit into stock_on_hand once, when the order is paid. Replays do not subtract again. */
-export function commitPaidStock(orderId: string) {
+/** Drop a pending hold when checkout is canceled or the session expires. A paid hold stays. */
+export function releaseHeldStock(orderId: string, productId?: string) {
+  const db = database();
+  const order = (
+    productId
+      ? db.prepare("SELECT status FROM orders WHERE id = ? AND product_id = ?").get(orderId, productId)
+      : db.prepare("SELECT status FROM orders WHERE id = ?").get(orderId)
+  ) as { status: string } | undefined;
+  if (!order || order.status !== "pending") return false;
+  const updated = db.prepare("UPDATE stock_holds SET state = 'released' WHERE order_id = ? AND state = 'held'").run(orderId);
+  return sqlChanges(updated) === 1;
+}
+
+/**
+ * Move reserved units into stock_on_hand once, when the order is paid.
+ * A hold that already expired still decrements. If that would go below zero,
+ * the order is flagged for review and nothing is subtracted.
+ */
+export function commitPaidStock(orderId: string): PaidStock {
   const db = database();
   db.exec("BEGIN IMMEDIATE");
   try {
     const hold = db
       .prepare("SELECT product_id, variant_id, qty, state FROM stock_holds WHERE order_id = ?")
       .get(orderId) as { product_id: string; variant_id: string | null; qty: unknown; state: string } | undefined;
-    if (!hold || hold.state === "committed") {
+    if (!hold) {
       db.exec("COMMIT");
-      return;
+      return "untracked";
+    }
+    if (hold.state === "committed") {
+      db.exec("COMMIT");
+      return "already";
     }
     const qty = sqlInt(hold.qty) ?? 0;
-    const updated = hold.variant_id
-      ? db
-          .prepare(
-            `UPDATE listing_variants
-             SET stock_on_hand = stock_on_hand - ?
-             WHERE id = ? AND stock_on_hand >= ?`,
-          )
-          .run(qty, hold.variant_id, qty)
-      : db
-          .prepare(
-            `UPDATE listings
-             SET stock_on_hand = stock_on_hand - ?
-             WHERE product_id = ? AND stock_on_hand >= ?`,
-          )
-          .run(qty, hold.product_id, qty);
-    const changes = sqlChanges(updated);
+    const open = hold.state === "held" || hold.state === "released" || hold.state === "short";
+    const updated =
+      open && qty > 0
+        ? hold.variant_id
+          ? db
+              .prepare(
+                `UPDATE listing_variants
+                 SET stock_on_hand = stock_on_hand - ?
+                 WHERE id = ? AND stock_on_hand >= ?`,
+              )
+              .run(qty, hold.variant_id, qty)
+          : db
+              .prepare(
+                `UPDATE listings
+                 SET stock_on_hand = stock_on_hand - ?
+                 WHERE product_id = ? AND stock_on_hand >= ?`,
+              )
+              .run(qty, hold.product_id, qty)
+        : null;
+    const changes = updated ? sqlChanges(updated) : 0;
     if (changes === 1) {
       db.prepare("UPDATE stock_holds SET state = 'committed' WHERE order_id = ?").run(orderId);
+      db.prepare("UPDATE orders SET fulfillment_flag = NULL WHERE id = ? AND fulfillment_flag = ?").run(
+        orderId,
+        STOCK_REVIEW_FLAG,
+      );
+      db.exec("COMMIT");
+      return "committed";
     }
+    db.prepare(
+      "UPDATE orders SET fulfillment_flag = ? WHERE id = ? AND (fulfillment_flag IS NULL OR fulfillment_flag = ?)",
+    ).run(STOCK_REVIEW_FLAG, orderId, STOCK_REVIEW_FLAG);
+    db.prepare("UPDATE stock_holds SET state = 'short' WHERE order_id = ? AND state IN ('held', 'released', 'short')").run(
+      orderId,
+    );
     db.exec("COMMIT");
+    console.error("Paid order is short on stock.");
+    return "short";
   } catch (error) {
     try {
       db.exec("ROLLBACK");

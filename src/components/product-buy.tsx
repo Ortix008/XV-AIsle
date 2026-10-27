@@ -135,11 +135,14 @@ export function ProductBuy({
           ...(selected ? { variantId: selected.id } : {}),
         }),
       });
-      const cart = (await response.json().catch(() => null)) as { error?: string } | null;
+      const cart = (await response.json().catch(() => null)) as { error?: string; qty?: number } | null;
       setPending(false);
       if (!response.ok) {
         setError(cart?.error ?? "Checkout didn't open. Take a quick look at the form and try again.");
         return;
+      }
+      if (cart && typeof cart.qty === "number" && Number.isInteger(cart.qty) && cart.qty >= 1 && cart.qty < qtyShown) {
+        setQty(cart.qty);
       }
       setDetails(true);
       return;
@@ -225,8 +228,8 @@ export function ProductBuy({
                   onChange={(event) => setVariantId(event.target.value)}
                 >
                   {variants.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
+                    <option key={item.id} value={item.id} disabled={item.soldOut}>
+                      {item.soldOut ? `${item.label} ${SOLD_OUT_LABEL}` : item.label}
                     </option>
                   ))}
                 </select>

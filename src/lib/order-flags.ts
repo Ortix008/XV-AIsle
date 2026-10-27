@@ -1,4 +1,11 @@
 export const BLOCKED_TEST_ORDER_NUMBER = "XV-1001";
+export const STOCK_REVIEW_FLAG = "review";
+export const STOCK_REVIEW_NOTE =
+  "Review this order before it ships. Payment came in after the stock hold, and the shelf could not cover it.";
+
+export function stockReviewNote(flag: string | null | undefined) {
+  return flag === STOCK_REVIEW_FLAG ? STOCK_REVIEW_NOTE : null;
+}
 export const PLACE_REMIND_MS = 24 * 60 * 60 * 1000;
 export const TRACKING_STALE_MS = 3 * 24 * 60 * 60 * 1000;
 

@@ -58,6 +58,6 @@ Approved by Genie, Oct 26 2026.
 
 Exact text: Sold out
 
-Sentence case, no punctuation. Defined at `src/lib/sold-out-label.ts:2`. The product button renders it at `src/components/product-buy.tsx:261`. The shop card renders it at `src/components/shop-grid.tsx:59`. The same card line is on aisle picks at `src/components/aisle-picks.tsx:48`. Cart and checkout return it from `src/lib/stock-caps.ts:135` when nothing is left or the quantity is above the remaining stock. That module repeats the words so the production script stays free of local imports.
+Sentence case, no punctuation. Defined at `src/lib/sold-out-label.ts:2`. The product button renders it at `src/components/product-buy.tsx:264` when nothing is left. A sold-out size uses the same words as a suffix and is disabled at `src/components/product-buy.tsx:232`. The shop card renders it at `src/components/shop-grid.tsx:59`. The same card line is on aisle picks at `src/components/aisle-picks.tsx:48`. Cart and checkout return it from `src/lib/stock-caps.ts:131` when nothing is left. A quantity above a still-positive shelf is clamped to what remains and does not use this line. That module repeats the words so the production script stays free of local imports.
 
 Approved by Genie, Oct 27 2026.

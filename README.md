@@ -97,6 +97,8 @@ cp .env.example .env
 npm run dev
 ```
 
+The server needs `APP_URL` before it will take local orders. `.env.example` sets `APP_URL=http://127.0.0.1:4317`. Production will not boot when `APP_URL` is missing or not an absolute http(s) URL.
+
 Open [http://127.0.0.1:4317](http://127.0.0.1:4317) for the desk and [http://127.0.0.1:4317/shop](http://127.0.0.1:4317/shop) for the store.
 
 ```bash
@@ -111,7 +113,7 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 
 | Name | Purpose |
 | --- | --- |
-| `APP_URL` | Stripe success and cancel URLs. Compose sets `https://xvaisle.com`. |
+| `APP_URL` | Public origin. Required to boot in production and to accept local checkout. Compose sets `https://xvaisle.com`. Locally use `http://127.0.0.1:4317`. |
 | `TRUST_PROXY` | Set to `1` behind Caddy. Docker Compose sets `1` so rate limits use the visitor address. |
 | `DATABASE_PATH` | SQLite file. Compose sets `/data/xvaisle.sqlite`. |
 | `STRIPE_SECRET_KEY` | Platform secret or restricted key. Test mode unless `STRIPE_ALLOW_LIVE=1`. |
@@ -202,7 +204,9 @@ docker compose exec -e ADMIN_EMAIL=owner@example.com store npm run admin:status
 
 ## Stock caps
 
-The launch script hides Pearl (`20-PEARL-GS`) and Garnet (`20-GARNET-GS`), and sets the remaining stock for Flag `DAC7237CHF` (999), Dark Blue 2XS (30), Dark Blue XS (42), Green 2XS (25), and Green XS (161). It matches a listing SKU or a variant label. Running it again does not restock units that already sold. It writes listings, variants, and its own audit table. It does not change orders or the reseller waitlist, and it does not print keys.
+The launch script hides Pearl (`20-PEARL-GS`) and Garnet (`20-GARNET-GS`), and sets the remaining stock for Flag `DAC7237CHF` (999), Dark Blue 2XS (30), Dark Blue XS (42), Green 2XS (25), and Green XS (161). It matches the listing or variant SKU exactly. A size name on a different SKU is left alone. Running it again does not restock units that already sold. It writes listings, variants, and its own audit table. It does not change orders or the reseller waitlist, and it does not print keys.
+
+The command is a dry-run until you pass `--apply`. The dry-run prints one line per SKU and does not change stock. If any SKU is missing, or two rows share a SKU, it prints `aborted` and exits non-zero. `--apply` writes only after that plan is clean. Run the dry-run on production first, read the plan, then apply.
 
 The store container keeps SQLite on the `xvaisle_xvaisle-data` volume at `/data/xvaisle.sqlite`. Stop the store before copying that file so the backup is a complete snapshot. Restore that copy to undo the run, including any sales that happened after it. The reverse script puts back the hidden flag and the stock numbers from its audit. If a paid order already lowered a count, that SKU is left as it is and the log says `restore_skipped`. Use the backup in that case.
 
@@ -211,6 +215,12 @@ docker compose -p xvaisle stop store
 docker compose -p xvaisle run --rm --entrypoint sh store -c 'cp /data/xvaisle.sqlite /data/xvaisle.sqlite.bak'
 docker compose -p xvaisle start store
 docker compose -p xvaisle exec store node --experimental-strip-types scripts/apply-stock-caps.ts
+```
+
+Apply only after that plan lists each SKU once and does not say `aborted`:
+
+```bash
+docker compose -p xvaisle exec store node --experimental-strip-types scripts/apply-stock-caps.ts --apply
 ```
 
 Restore the backup:
