@@ -145,7 +145,9 @@ async function main() {
   const holdsBefore = JSON.stringify(getDb().prepare("SELECT * FROM stock_holds").all());
 
   const applied = applyStockCaps(db);
-  assert(applied.includes("20-PEARL-GS hidden") && applied.includes("20-GARNET-GS hidden"), "pearl and garnet are hidden");
+  assert(applied.filter((line) => line === "20-PEARL-GS hidden").length === 1, "pearl is hidden once");
+  assert(applied.filter((line) => line === "20-GARNET-GS hidden").length === 1, "garnet is hidden once");
+  assert(!applied.some((line) => line.endsWith(" unchanged")), "the first run does not also call a hide unchanged");
   assert(applied.includes("DAC7237CHF cap 999 on_hand 999"), "the flag cap is logged by sku");
   assert(applied.includes("DB-2XS cap 30 on_hand 30"), "dark blue 2xs is capped");
   assert(applied.includes("DB-XS cap 42 on_hand 42"), "dark blue xs is capped");

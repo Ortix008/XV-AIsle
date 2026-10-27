@@ -340,7 +340,7 @@ export function applyStockCaps(db: StockSql) {
   const work = loadWork(db);
   const lines: string[] = [];
   for (const sku of HIDDEN_SKUS) {
-    const matches = work.filter((row) => hideMatches(row.sku));
+    const matches = work.filter((row) => normalizeKey(row.sku) === normalizeKey(sku));
     if (matches.length === 0) lines.push(formatStockLog({ sku, action: "not_found" }));
     for (const row of matches) {
       const logged = reportSku(row, sku);
