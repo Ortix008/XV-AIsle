@@ -46,6 +46,12 @@ Defined at `src/lib/returns-policy.ts:6`. It is a returns-policy line at `src/li
 
 Approved by Genie, Oct 26 2026.
 
+## Arrived damaged
+
+Exact text: Item arrived damaged or defective? Email us a photo within 3 days of delivery.
+
+Approved by Genie, Oct 27 2026. Recorded here. This line is not rendered in the shop.
+
 ## Refund line
 
 Exact text: Refunds are issued once the supplier receives the item.

@@ -1,0 +1,14 @@
+{
+  "hide": [
+    "XV-CLEAR-CRYSTAL-ARROWHEAD-SUNCATCHER",
+    "XV-PET-SEAT-BELT-TETHER"
+  ],
+  "caps": [
+    { "sku": "XV-10-PIECE-MAGNETIC-BAG-CLIP-SET", "cap": 8 },
+    { "sku": "XV-6-INCH-YOGA-WHEEL", "cap": 148 },
+    { "sku": "XV-BEAGLE-LUAU-KITCHEN-TOWEL", "cap": 99 },
+    { "sku": "XV-CORGI-LUAU-KITCHEN-TOWEL", "cap": 999 },
+    { "sku": "XV-CELL-PHONE-LANYARD", "cap": 50 },
+    { "sku": "XV-YOGA-PILATES-RING", "cap": 100 }
+  ]
+}
