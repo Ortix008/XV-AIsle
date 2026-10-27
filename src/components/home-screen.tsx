@@ -155,7 +155,7 @@ export function JoinScreen({
               className="object-cover object-center"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/82 via-black/55 to-black/30" />
-            <Reveal className="relative z-10 flex min-h-[360px] flex-col justify-end px-5 py-12 sm:px-10">
+            <Reveal className="relative z-10 mx-auto flex min-h-[360px] w-full max-w-[1280px] flex-col justify-end px-5 py-12 sm:px-10">
               <h2 className="text-4xl text-white sm:text-5xl">Who ships</h2>
               <p className="mt-3 max-w-xl text-base leading-relaxed text-white/90">
                 Your order is sent straight to your door.

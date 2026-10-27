@@ -762,12 +762,22 @@ async function main() {
   assert(!publicMakes.includes(",,,") && !publicMakes.includes("mugs.,"), "the public list does not leave stacked punctuation");
   assert(!publicMakes.includes("elizabeth") && !publicMakes.includes("austin"), "the public list drops cities");
   const returnsSource = readFileSync(join(process.cwd(), "src/app/shop/returns/page.tsx"), "utf8");
-  const damagedLine =
-    "Something arrived damaged or wrong? Send us a photo within 3 days of delivery and we'll help make it right.";
-  assert(returnsSource.includes(damagedLine), "the returns page source uses the damaged-item line");
+  assert(returnsSource.includes("returnsPolicyLines"), "the returns page reads the approved policy module");
+  assert(
+    !returnsSource.includes("Something arrived damaged or wrong? Send us a photo within 3 days of delivery and we'll help make it right."),
+    "the returns page drops the old damaged-item line",
+  );
+  const previousReturnsSupport = process.env.SUPPORT_EMAIL;
+  process.env.SUPPORT_EMAIL = "support@example.test";
+  const { returnsPolicyLines } = await import("../src/lib/returns-policy");
   const { ReturnsCopy } = await import("../src/app/shop/returns/page");
   const returnsHtml = renderToStaticMarkup(createElement(ReturnsCopy)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
-  assert(returnsHtml.includes(damagedLine), "the returns page renders the damaged-item line");
+  for (const line of returnsPolicyLines()) {
+    assert(returnsHtml.includes(line), "the returns page renders the approved policy");
+  }
+  assert(!returnsHtml.includes("{SUPPORT_EMAIL}"), "the returns page has no unfilled placeholder");
+  if (previousReturnsSupport == null) delete process.env.SUPPORT_EMAIL;
+  else process.env.SUPPORT_EMAIL = previousReturnsSupport;
   const { NextRequest } = await import("next/server");
   const { proxy } = await import("../src/proxy");
   function deskRequest(token?: string) {
@@ -778,7 +788,10 @@ async function main() {
   assert(buyerDesk.status === 307 || buyerDesk.status === 303, "a signed-in buyer gets a server redirect from the desk");
   assert(buyerLocation != null && new URL(buyerLocation).pathname === "/", "a signed-in buyer desk redirect sends them home");
   const signedOutDesk = proxy(deskRequest());
-  assert(signedOutDesk.status === 200 && signedOutDesk.headers.get("location") == null, "a signed-out desk visit keeps the existing response");
+  const signedOutLocation = signedOutDesk.headers.get("location");
+  assert(signedOutDesk.status === 307, "a signed-out desk visit is a server redirect");
+  assert(signedOutLocation != null && new URL(signedOutLocation).pathname === "/sign-in", "a signed-out desk visit goes to sign-in");
+  assert(signedOutLocation != null && new URL(signedOutLocation).searchParams.get("next") === "/desk", "a signed-out desk visit keeps next=/desk");
   const operatorDesk = proxy(deskRequest(operator.token));
   assert(operatorDesk.status === 200 && operatorDesk.headers.get("location") == null, "a verified admin is not redirected away from the desk");
   const unverifiedCookie = { cookie: `${SESSION_COOKIE}=${unverified.token}` };

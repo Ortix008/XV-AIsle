@@ -1,11 +1,17 @@
 import { cookies } from "next/headers";
+import { returnsPolicyText } from "@/lib/returns-policy";
+import { supportAddress } from "@/lib/signup-copy";
 import { accountFromToken } from "@/lib/server/accounts";
 import { allowClient } from "@/lib/server/rate-limit";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { readReturnsAddress, readSupportEmail, saveReturnsFor, saveSupportFor } from "@/lib/server/settings";
 
 export async function GET() {
-  return Response.json({ returns: readReturnsAddress(), supportEmail: readSupportEmail() });
+  const supportEmail = supportAddress();
+  if (!supportEmail) {
+    return Response.json({ error: "SUPPORT_EMAIL is unset." }, { status: 500 });
+  }
+  return Response.json({ returns: returnsPolicyText(), supportEmail });
 }
 
 export async function POST(request: Request) {

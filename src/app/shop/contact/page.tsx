@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactForm } from "@/components/contact-form";
 import { ShopFrame } from "@/components/shop-frame";
+import { RESELLER_DAMAGE_NOTE } from "@/lib/reseller-copy";
 import { supportEmailForDisplay } from "@/lib/server/settings";
 
 export const metadata: Metadata = { title: "Contact · XV-AIsle" };
@@ -27,6 +28,7 @@ export default function ContactPage() {
                 {supportEmail}
               </a>
             </p>
+            <p>{RESELLER_DAMAGE_NOTE}</p>
             <p>Please include your order number so we can help faster.</p>
             <p>We reply within 2 business days.</p>
           </div>

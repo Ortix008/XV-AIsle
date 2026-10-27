@@ -6,12 +6,13 @@ import { ShopFrame } from "@/components/shop-frame";
 import { accountFromToken } from "@/lib/server/accounts";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
-import { isSupportEmail, readSupportEmail } from "@/lib/server/settings";
+import { isSupportEmail, readSupportEmail, supportEmailForDisplay } from "@/lib/server/settings";
 import { storeReturnCopy } from "@/lib/server/supplier-returns";
 
 export default async function ShopSafetyPage() {
   const storedEmail = readSupportEmail();
-  const supportEmail = isSupportEmail(storedEmail) ? storedEmail : "";
+  const savedEmail = isSupportEmail(storedEmail) ? storedEmail : "";
+  const supportEmail = supportEmailForDisplay();
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const account = accountFromToken(token);
   return (
@@ -76,7 +77,7 @@ export default async function ShopSafetyPage() {
         </div>
         {account?.role === "admin" ? (
           <>
-            <ReturnsForm supportEmail={supportEmail} />
+            <ReturnsForm supportEmail={savedEmail} />
             <SupplierReturnsForm />
           </>
         ) : null}

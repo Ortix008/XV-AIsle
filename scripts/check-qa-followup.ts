@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { createElement, Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ProductBuy } from "../src/components/product-buy";
-import { products } from "../src/lib/catalog";
+import { catalogProducts, products } from "../src/lib/catalog";
 import { emptyDesk } from "../src/lib/desk-state";
-import { applyPass, assess, buildListing, speedLabel } from "../src/lib/engine";
+import { applyPass, assess, buildCampaign, buildListing, laneLabel, speedLabel } from "../src/lib/engine";
 import { ASSEMBLED_IN_USA_SENTENCE, shopperDescription, withoutAssembledInUsa } from "../src/lib/order-facts";
 import { QA_CHECKOUT_PRODUCT_ID } from "../src/lib/qa-checkout";
 import { UNCONFIRMED_BUTTON, UNCONFIRMED_LABEL } from "../src/lib/shelf-copy";
@@ -166,8 +166,25 @@ async function main() {
   assert(!("error" in saved) && saved.ok === true, "a full email joins the waitlist");
   assert(WAITLIST_SAVED === "You're on the waitlist. Thanks for joining!", "the success line is the approved sentence");
   const waitlistSource = readFileSync(join(process.cwd(), "src/components/reseller-waitlist.tsx"), "utf8");
-  assert(waitlistSource.includes("response.ok ? WAITLIST_SAVED"), "the waitlist form shows the approved success line");
+  assert(waitlistSource.includes("result.ok ? WAITLIST_SAVED"), "the waitlist form shows the approved success line");
+  assert(waitlistSource.includes("new FormData"), "the first submit reads the email field");
+  assert(waitlistSource.includes("finally"), "a failed first submit clears Sending");
   assert(!waitlistSource.includes("TODO(copy)") && !waitlistSource.includes('"Saved."'), "the waitlist form has no placeholder success line");
+  const { submitResellerWaitlist } = await import("../src/lib/waitlist-submit");
+  const stalled = await submitResellerWaitlist("first@example.test", (_url, init) => {
+    return new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+    });
+  }, 30);
+  assert(stalled.ok === false && stalled.message === "Try again.", "a stalled first submit ends instead of staying on Sending");
+  const rejected = await submitResellerWaitlist("first@example.test", async () => {
+    throw new Error("network");
+  });
+  assert(rejected.ok === false && rejected.message === "Try again.", "a rejected first submit ends instead of staying on Sending");
+  const accepted = await submitResellerWaitlist("first@example.test", async () => {
+    return Response.json({ ok: true });
+  });
+  assert(accepted.ok === true && accepted.message === WAITLIST_SAVED, "a saved waitlist email uses the approved success line");
 
   const { ResellerArticle } = await import("../src/app/shop/reseller/page");
   const { ResellerTermsArticle } = await import("../src/app/shop/reseller/terms/page");
@@ -179,9 +196,13 @@ async function main() {
   assert(!publicReseller.includes(returnAddressLine), "the public reseller contact block has no return address");
   assert(!publicTerms.includes(returnAddressLine), "the public reseller terms contact block has no return address");
   assert(operatorReseller.includes(returnAddressLine), "an operator still sees the return-address line");
-  assert(RESELLER_DAMAGE_NOTE === "Item arrived damaged or defective? Email us a photo within 3 days of delivery.", "the damage line is the approved sentence");
-  assert(publicReseller.includes(RESELLER_DAMAGE_NOTE), "the public reseller contact uses the approved damage line");
-  assert(publicTerms.includes(RESELLER_DAMAGE_NOTE), "the public reseller terms contact uses the approved damage line");
+  assert(RESELLER_DAMAGE_NOTE === "Need a return? Email us your order number within 14 days of delivery.", "the contact line is the approved sentence");
+  const { DAMAGE_PHOTO_LINE } = await import("../src/lib/returns-policy");
+  assert(publicReseller.includes(RESELLER_DAMAGE_NOTE), "the public reseller contact uses the approved contact line");
+  assert(publicTerms.includes(RESELLER_DAMAGE_NOTE), "the public reseller terms contact uses the approved contact line");
+  assert(publicReseller.includes(DAMAGE_PHOTO_LINE), "the public reseller contact includes the damage-photo line");
+  assert(publicTerms.includes(DAMAGE_PHOTO_LINE), "the public reseller terms contact includes the damage-photo line");
+  assert(operatorReseller.includes(DAMAGE_PHOTO_LINE), "an operator reseller contact includes the damage-photo line");
   assert(!publicReseller.includes("Contact support to start a return."), "the public reseller contact drops the old return line");
   assert(!publicTerms.includes("Contact support to start a return."), "the public reseller terms contact drops the old return line");
   assert(publicReseller.includes("mailto:"), "the public reseller contact already shows the support email");
@@ -272,17 +293,150 @@ async function main() {
     createElement("p", null, speedLabel("pod") ? createElement("span", null, speedLabel("pod")) : null, speedLabel("pod") ? " · " : null, podOrigin),
   );
   assert(podLine === `<p>${podOrigin}</p>`, "a print speed does not leave an empty label");
-  const labels = products.find((product) => product.id === "lid-labels");
   const apron = products.find((product) => product.id === "apron");
-  const tee = products.find((product) => product.id === "heavy-tee");
-  assert(labels?.trend.evidence === "No reason to boat a sticker.", "the label evidence drops the kitchen clause");
   assert(apron?.trend.evidence === "Plain canvas, two pockets.", "the apron evidence drops the kitchen clause");
-  assert(!/walk-in|cooks|after service/i.test(`${labels?.trend.evidence} ${apron?.trend.evidence}`), "those two evidence lines have no kitchen or job wording");
+  assert(!/walk-in|cooks|after service/i.test(apron?.trend.evidence ?? ""), "the apron evidence has no kitchen or job wording");
+  assert(!catalogProducts.some((product) => product.id === "lid-labels" || product.id === "heavy-tee"), "the pod seed items are gone");
   assert(!/Printed in|Prints in|print shop|holding blanks|print-on-demand|\bpod\b/i.test(visible), "operator quotes do not render print text");
+  for (const rel of [
+    "src/components/desk-shell.tsx",
+    "src/components/floor-view.tsx",
+    "src/lib/art.ts",
+    "README.md",
+  ]) {
+    const source = readFileSync(join(process.cwd(), rel), "utf8");
+    assert(!source.includes("SI Team"), `${rel} no longer says SI Team`);
+    assert(source.includes("XV-AIsle Team"), `${rel} says XV-AIsle Team`);
+  }
   const shell = readFileSync(join(process.cwd(), "src/components/desk-shell.tsx"), "utf8");
   assert(/tracking-\[0\.12em\][^>]*>\s*XV-AIsle Team\s*</.test(shell), "the desk sidebar says XV-AIsle Team");
-  assert(!/tracking-\[0\.12em\][^>]*>\s*SI Team\s*</.test(shell), "the desk sidebar no longer says SI Team");
-  assert(tee?.trend.evidence === "Apparel posts this month: heavyweight navy, no chest hit.", "the tee evidence keeps the other sentence");
+
+  const operatorBan =
+    /\b(?:cooks?|cooking|cooked|cooker|chefs?|kitchens?|service|banquet|restaurants?|aprons?)\b|\bwalk-in\b|\bline-cook\b|\bline cook\b|\bafter a double\b|\bline\b|\b(?:preprinted|unprinted|printed|printing|prints|print)\b|print[-\s]on[-\s]demand|printful|printify|\bpod\b|SI Team/i;
+  assert(laneLabel("home") === "Home", "a home lane renders as Home");
+  assert(
+    catalogProducts.every((product) => product.lane !== "kitchen"),
+    "the catalog seed does not keep a kitchen lane",
+  );
+  const seedSource = readFileSync(join(process.cwd(), "src/lib/catalog.ts"), "utf8");
+  assert(
+    seedSource.includes('title: "After a long day", // COPY-REVIEW'),
+    "the new mockup title is marked for copy review",
+  );
+  const catalogWording = seedSource.replaceAll('speed: "pod"', "");
+  assert(
+    !/\b(?:preprinted|unprinted|printed|printing|prints|print)\b|print[-\s]on[-\s]demand|printful|printify|SI Team/i.test(catalogWording),
+    "the catalog seed has no print or SI Team wording",
+  );
+  for (const path of filesUnder(join(process.cwd(), "src"))) {
+    const source = readFileSync(path, "utf8");
+    assert(!source.includes("SI Team"), `${path} still says SI Team`);
+  }
+  for (const product of catalogProducts) {
+    const view = assess(product, day);
+    const listing = buildListing(product, day);
+    const campaign = buildCampaign(product, listing);
+    const text = [
+      product.name,
+      product.titleLead,
+      laneLabel(product.lane),
+      product.occasion,
+      product.box,
+      product.useLine,
+      product.colorNote,
+      product.hook,
+      product.searchPhrase,
+      ...product.keywords,
+      product.complements,
+      product.trend.title,
+      product.trend.signal,
+      product.trend.evidence,
+      ...product.mockups.flatMap((idea) => [idea.title, idea.direction]),
+      ...product.suppliers.map((supplier) => supplier.note),
+      view.reason,
+      ...view.pros,
+      ...view.cons,
+      ...listing.titles,
+      listing.description,
+      ...listing.bullets,
+      ...listing.tags,
+      ...campaign.posts.flatMap((post) => [post.label, post.headline, post.body]),
+    ].join("\n");
+    const rendered = renderToStaticMarkup(createElement("p", null, text)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
+    const hit = rendered.match(operatorBan);
+    assert(!hit, `${product.id} still renders "${hit?.[0] ?? ""}"`);
+  }
+
+  const { returnsPolicyText, RETURNS_POLICY_LINES } = await import("../src/lib/returns-policy");
+  const settingsRoute = await import("../src/app/api/store/settings/route");
+  const previousSupport = process.env.SUPPORT_EMAIL;
+  delete process.env.SUPPORT_EMAIL;
+  const missingSupport = await settingsRoute.GET();
+  const missingBody = (await missingSupport.json()) as { error?: string; supportEmail?: string; returns?: string };
+  assert(missingSupport.status === 500 && missingBody.error === "SUPPORT_EMAIL is unset.", "a blank SUPPORT_EMAIL is refused");
+  assert(missingBody.supportEmail == null && missingBody.returns == null, "a missing SUPPORT_EMAIL does not serve blank settings");
+  process.env.SUPPORT_EMAIL = "  support@example.test  ";
+  const settings = await settingsRoute.GET();
+  const settingsBody = (await settings.json()) as { returns?: string; supportEmail?: string };
+  assert(settings.status === 200, "settings load when SUPPORT_EMAIL is set");
+  assert(settingsBody.supportEmail === "support@example.test", "the support email comes from SUPPORT_EMAIL");
+  const approvedReturns = [
+    "Returns",
+    "You can return an item within 14 days of delivery.",
+    "Every item ships from a US supplier or maker, and returns go straight back to them.",
+    "To start a return, email us at support@example.test with your order number. We'll email you the address to send it to.",
+    "You pay return shipping, unless your item arrived damaged, defective or wrong. Then we cover it.",
+    "For a damaged or defective item, email us a photo within 3 days of delivery.",
+    "Refunds are issued once the supplier receives the item.",
+  ].join("\n");
+  const servedReturns = settingsBody.returns ?? "";
+  assert(!approvedReturns.includes("Some suppliers have stricter rules."), "the stricter-rules line is not part of the policy");
+  assert(servedReturns === approvedReturns, "the returns policy matches the approved text");
+  assert(returnsPolicyText() === approvedReturns, "the copy module matches the approved text");
+  assert(servedReturns === returnsPolicyText(), "settings serves the copy module");
+  assert(!servedReturns.includes("{SUPPORT_EMAIL}"), "the returns policy has no unfilled placeholder");
+  assert(!RETURNS_POLICY_LINES.join("\n").includes("xvaisle.team@gmail.com"), "the returns policy does not hardcode a support address");
+  assert(!servedReturns.includes("xvaisle.team@gmail.com"), "settings do not hardcode a support address");
+  const bannedSupport = ["xvaisle", "team@gmail.com"].join(".");
+  function everyFile(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name);
+      return entry.isDirectory() ? everyFile(path) : [path];
+    });
+  }
+  const hardcoded = everyFile(join(process.cwd(), "src")).filter((path) => readFileSync(path, "utf8").includes(bannedSupport));
+  assert(hardcoded.length === 0, `src hardcodes the support address: ${hardcoded.join(", ")}`);
+  const { receiptSupportLine, signupTakenText } = await import("../src/lib/signup-copy");
+  assert(receiptSupportLine() === "Questions? Email us at support@example.test.", "receipt mail uses SUPPORT_EMAIL");
+  assert(signupTakenText().includes("support@example.test"), "signup mail uses SUPPORT_EMAIL");
+  assert(!receiptSupportLine().includes(bannedSupport) && !signupTakenText().includes(bannedSupport), "mail does not hardcode a support address");
+  const { ReturnsCopy } = await import("../src/app/shop/returns/page");
+  const returnsHtml = renderToStaticMarkup(createElement(ReturnsCopy)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
+  for (const line of approvedReturns.split("\n")) {
+    assert(returnsHtml.includes(line), "the returns page renders the approved policy");
+  }
+  assert(!returnsHtml.includes("{SUPPORT_EMAIL}"), "the returns page has no unfilled placeholder");
+  assert(returnsHtml.includes("mailto:support@example.test"), "the returns contact block uses SUPPORT_EMAIL");
+  assert(returnsHtml.includes(RESELLER_DAMAGE_NOTE), "the returns contact uses the approved contact line");
+  assert(!returnsHtml.includes("Contact support to start a return."), "the returns page drops the old contact line");
+  const ContactPage = (await import("../src/app/shop/contact/page")).default;
+  const contactHtml = renderToStaticMarkup(createElement(ContactPage)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
+  assert(contactHtml.includes(RESELLER_DAMAGE_NOTE), "the contact page uses the approved contact line");
+  assert(!contactHtml.includes("Contact support to start a return."), "the contact page drops the old contact line");
+  const policyArticle = readFileSync(join(process.cwd(), "src/components/policy-article.tsx"), "utf8");
+  assert(policyArticle.includes("RESELLER_DAMAGE_NOTE") && policyArticle.includes("DAMAGE_PHOTO_LINE"), "the contact block reuses the copy constants");
+  assert(!policyArticle.includes("Need a return?") && !policyArticle.includes("For a damaged or defective item"), "the contact block does not duplicate the approved sentences");
+  assert(!returnsHtml.includes(bannedSupport), "the returns page does not fall back to a fixed address");
+  if (previousSupport == null) delete process.env.SUPPORT_EMAIL;
+  else process.env.SUPPORT_EMAIL = previousSupport;
+
+  const robots = (await import("../src/app/robots")).default();
+  const rule = Array.isArray(robots.rules) ? robots.rules[0] : robots.rules;
+  const disallow = Array.isArray(rule?.disallow) ? rule.disallow : rule?.disallow ? [rule.disallow] : [];
+  assert(!disallow.includes("/shop/reseller"), "robots allows the public reseller page");
+  for (const path of ["/account", "/desk", "/api", "/scout", "/listings", "/marketing", "/floors", "/catalog", "/membership", "/orders"]) {
+    assert(disallow.includes(path), `robots still disallows ${path}`);
+  }
 
   console.log("qa followup checks ok");
 }

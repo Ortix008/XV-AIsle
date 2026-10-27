@@ -7,7 +7,6 @@ import {
   draftDelayReply,
   draftQualityReply,
 } from "../../src/lib/engine";
-import { round2 } from "../../src/lib/money";
 import type { DeskState, Order, PipelineItem } from "../../src/lib/types";
 
 function item(
@@ -43,7 +42,6 @@ export function buildDeskFixture(today: string): DeskState {
   const apronPrice = apronListing.prices.find((price) => price.id === "target")?.retail ?? 0;
   const fishPrice = fishListing.prices.find((price) => price.id === "target")?.retail ?? 0;
   const tongPrice = tongListing.prices.find((price) => price.id === "target")?.retail ?? 0;
-  const labelPrice = assess(getProduct("lid-labels"), today).chosen.list;
   const scraperPrice = assess(getProduct("bench-scraper"), today).chosen.list;
 
   const pan = order({
@@ -124,24 +122,6 @@ export function buildDeskFixture(today: string): DeskState {
     status: "in_transit",
   });
 
-  const labels = order({
-    id: "ord-4421",
-    number: "PL-4421",
-    customer: "Sample buyer 5",
-    email: "buyer5@example.com",
-    productId: "lid-labels",
-    productName: "Deli container labels, 48",
-    qty: 2,
-    merchandise: round2(labelPrice * 2),
-    shippingPaid: 3.8,
-    placedOn: addDays(today, -1),
-    carrier: "USPS",
-    tracking: "SAMPLE-TRACK-4421",
-    eta: addDays(today, 4),
-    needBy: addDays(today, 9),
-    status: "processing",
-  });
-
   const scraper = order({
     id: "ord-4399",
     number: "PL-4399",
@@ -173,7 +153,6 @@ export function buildDeskFixture(today: string): DeskState {
     pipeline: [
       item("sheet-pan", "review", addDays(today, -2)),
       item("bench-scraper", "review", addDays(today, -2)),
-      item("lid-labels", "review", addDays(today, -1)),
       item("splatter", "review", addDays(today, -1)),
       item("shift-towel", "approved", addDays(today, -3)),
       item("apron", "approved", addDays(today, -4)),
@@ -181,9 +160,9 @@ export function buildDeskFixture(today: string): DeskState {
       item("tongs", "approved", addDays(today, -3)),
       item("garlic-press", "passed", addDays(today, -4)),
     ],
-    queue: ["court-towel", "cord-clips", "citrus-press", "favor-boxes", "heavy-tee"],
+    queue: ["court-towel", "cord-clips", "citrus-press", "favor-boxes"],
     listings: [apronListing, fishListing, tongListing],
-    orders: [fish, pan, apron, tongs, labels, scraper],
+    orders: [fish, pan, apron, tongs, scraper],
     campaigns: [buildCampaign(getProduct("fish-spatula"), fishListing)],
     log: [
       {

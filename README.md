@@ -10,7 +10,7 @@ Signup never creates an admin. The business has two co-owner admins. Each one is
 
 Helpers in the app can find a product, write a page, watch an order, and draft a post. You still say yes before anything goes out. They do not log into a social network, a supplier site, or an ad account. Saying yes copies text. You paste it yourself.
 
-| SI Team | Job |
+| XV-AIsle Team | Job |
 | --- | --- |
 | Signal | Finds the product and a US supplier. |
 | Draft | Writes the product page after you say yes. |
@@ -137,9 +137,9 @@ Do not commit `.env`, the SQLite file, or a return address. `.gitignore` already
 | `SMTP_USER` | SMTP username. Optional when the server does not require auth. |
 | `SMTP_PASS` | SMTP password. |
 | `MAIL_FROM` | From address. Required when `SMTP_HOST` is set. |
-| `SUPPORT_EMAIL` | Address in the signup and password-changed emails. Required in production. |
+| `SUPPORT_EMAIL` | Support address on the contact block, the returns policy, the settings API, and mail. Required in production. |
 | `STORE_RETURNS` | Legacy store line. Buyers are not shown it. Save each supplier's return address in admin instead, and do not put a home address here. |
-| `STORE_SUPPORT_EMAIL` | Support email shown before the operator saves one at `/shop/safety`. |
+| `STORE_SUPPORT_EMAIL` | Legacy operator-saved address. Public pages read `SUPPORT_EMAIL` instead. |
 | `STORE_OPERATOR_EMAIL` | Account that receives the two starter products. Empty means nobody does. |
 | `ADMIN_EMAIL` | Email for one run of `admin:create`, `admin:reset-password`, or `admin:status`. Signup ignores it. |
 | `ADMIN_PASSWORD` | Password for a new admin. Leave empty to type it, or omit it when promoting an account that already exists. The reset command never reads this. |

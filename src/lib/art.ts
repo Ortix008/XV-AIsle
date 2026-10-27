@@ -83,6 +83,7 @@ export const welcomeReach = [
 ] as const;
 
 export const laneArt: Record<Lane, string> = {
+  home: "/art/lane-utility.png",
   kitchen: "/art/lane-kitchen.png",
   apparel: "/art/lane-apparel.png",
   sport: "/art/lane-sport.png",
@@ -105,6 +106,6 @@ export const parties = [
   {
     src: "/art/party-company-real.png",
     title: "The company",
-    body: "XVAIsle keeps the market, and the SI Team keeps finding the next thing people want.",
+    body: "XVAIsle keeps the market, and the XV-AIsle Team keeps finding the next thing people want.",
   },
 ] as const;

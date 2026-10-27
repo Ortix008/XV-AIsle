@@ -5,6 +5,7 @@ import { Reveal } from "@/components/reveal";
 import { ShopFrame } from "@/components/shop-frame";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { RESELLER_DAMAGE_NOTE } from "@/lib/reseller-copy";
+import { DAMAGE_PHOTO_LINE } from "@/lib/returns-policy";
 import { supportEmailForDisplay } from "@/lib/server/settings";
 
 export function PolicyArticle({
@@ -24,11 +25,11 @@ export function PolicyArticle({
   underHero?: ReactNode;
   band?: boolean;
   operator?: boolean;
-  /** Public reseller pages use the approved damage line. Other pages keep the support line. */
+  /** Reseller pages also show the damage-photo line beside the contact line. */
   resellerContact?: boolean;
 }) {
   const supportEmail = supportEmailForDisplay();
-  const publicLine = resellerContact && !operator ? RESELLER_DAMAGE_NOTE : "Contact support to start a return.";
+  const contactLine = resellerContact && operator ? "Contact support to start a return." : RESELLER_DAMAGE_NOTE;
   const contact = (sectionClass: string) => (
     <section className={sectionClass}>
       <h2 className="text-lg font-semibold">Contact</h2>
@@ -41,8 +42,9 @@ export function PolicyArticle({
       </p>
       <p>
         {operator ? "We'll email the return address when you start a return. " : null}
-        {publicLine}
+        {contactLine}
       </p>
+      {resellerContact ? <p>{DAMAGE_PHOTO_LINE}</p> : null}
     </section>
   );
   if (band) {

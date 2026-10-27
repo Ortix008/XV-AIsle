@@ -2,7 +2,7 @@ export type Platform = "Posts" | "TikTok" | "Instagram";
 
 export type ShipSpeed = "us" | "pod" | "import";
 
-export type Lane = "kitchen" | "apparel" | "sport" | "utility" | "food" | "party-extra";
+export type Lane = "home" | "kitchen" | "apparel" | "sport" | "utility" | "food" | "party-extra";
 
 export type SupplierQuote = {
   id: string;

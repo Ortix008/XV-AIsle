@@ -142,7 +142,7 @@ export function DeskShell({ children, checkoutLine }: { children: ReactNode; che
                 {latest.text}
               </>
             ) : (
-              "The SI Team is quiet. Ask them to work when you are ready."
+              "The XV-AIsle Team is quiet. Ask them to work when you are ready."
             )}
           </p>
         </div>

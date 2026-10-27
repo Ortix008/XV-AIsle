@@ -4,24 +4,24 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WAITLIST_SAVED } from "@/lib/waitlist-copy";
+import { submitResellerWaitlist } from "@/lib/waitlist-submit";
 
 export function ResellerWaitlist() {
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const field = String(new FormData(event.currentTarget).get("email") ?? "");
     setPending(true);
     setMessage(null);
-    const response = await fetch("/api/store/waitlist", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    const data = (await response.json().catch(() => null)) as { error?: string } | null;
-    setMessage(response.ok ? WAITLIST_SAVED : (data?.error ?? "Try again."));
-    setPending(false);
+    try {
+      const result = await submitResellerWaitlist(field);
+      setMessage(result.ok ? WAITLIST_SAVED : result.message);
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -30,6 +30,7 @@ export function ResellerWaitlist() {
         Email
         <Input
           type="email"
+          name="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           autoComplete="email"

@@ -11,7 +11,6 @@ const PRIVATE_PREFIXES = [
   "/catalog",
   "/membership",
   "/orders",
-  "/shop/reseller",
 ];
 
 export default function robots(): MetadataRoute.Robots {

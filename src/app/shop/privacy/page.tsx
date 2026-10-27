@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyArticle } from "@/components/policy-article";
 import { viewerIsOperator } from "@/lib/server/require-operator";
+import { supportEmailForDisplay } from "@/lib/server/settings";
 
 export const metadata: Metadata = { title: "Privacy · XV-AIsle" };
 
 export default async function ShopPrivacyPage() {
   const operator = await viewerIsOperator();
+  const supportEmail = supportEmailForDisplay();
   return (
     <PolicyArticle kicker="Store" title="Privacy" operator={operator}>
       <p>
@@ -19,7 +21,7 @@ export default async function ShopPrivacyPage() {
         you can sign in.
       </p>
       <p>
-        You can reach us at xvaisle.team@gmail.com, and we reply within 2 business days. Returns go back to the
+        You can reach us at {supportEmail}, and we reply within 2 business days. Returns go back to the
         supplier{operator ? ", and we'll email the return address when you start a return" : ""}.
       </p>
       <p>

@@ -20,7 +20,7 @@ for (const product of products) {
 
 const today = todayISO();
 const pan = assess(getProduct("sheet-pan"), today, null);
-const labels = assess(getProduct("lid-labels"), today, null);
+const marked = assess(getProduct("apron"), today, null);
 const press = assess(getProduct("garlic-press"), today, null);
 const boxes = assess(getProduct("favor-boxes"), today, null);
 
@@ -30,8 +30,8 @@ if (pan.chosen.supplier.speed !== "us") {
 if (pan.rows.some((row) => row.supplier.speed === "import" && row.supplier.id === pan.chosen.supplier.id)) {
   throw new Error("sheet pan picked an import");
 }
-if (labels.chosen.supplier.speed !== "pod") {
-  throw new Error(`labels picked ${labels.chosen.supplier.name}`);
+if (marked.chosen.supplier.speed !== "pod") {
+  throw new Error(`apron picked ${marked.chosen.supplier.name}`);
 }
 if (press.chosen.supplier.speed === "import") {
   throw new Error("garlic press fell through to the boat");
@@ -84,6 +84,6 @@ if (!ordersLog.includes("No orders on this desk yet")) {
 
 console.log("desk checks ok", {
   pan: pan.chosen.supplier.name,
-  labels: labels.chosen.supplier.name,
+  apron: marked.chosen.supplier.name,
   pressMargin: Math.round(press.chosen.margin * 100),
 });
