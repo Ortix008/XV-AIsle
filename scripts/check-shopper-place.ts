@@ -778,7 +778,10 @@ async function main() {
   assert(buyerDesk.status === 307 || buyerDesk.status === 303, "a signed-in buyer gets a server redirect from the desk");
   assert(buyerLocation != null && new URL(buyerLocation).pathname === "/", "a signed-in buyer desk redirect sends them home");
   const signedOutDesk = proxy(deskRequest());
-  assert(signedOutDesk.status === 200 && signedOutDesk.headers.get("location") == null, "a signed-out desk visit keeps the existing response");
+  const signedOutLocation = signedOutDesk.headers.get("location");
+  assert(signedOutDesk.status === 307, "a signed-out desk visit is a server redirect");
+  assert(signedOutLocation != null && new URL(signedOutLocation).pathname === "/sign-in", "a signed-out desk visit goes to sign-in");
+  assert(signedOutLocation != null && new URL(signedOutLocation).searchParams.get("next") === "/desk", "a signed-out desk visit keeps next=/desk");
   const operatorDesk = proxy(deskRequest(operator.token));
   assert(operatorDesk.status === 200 && operatorDesk.headers.get("location") == null, "a verified admin is not redirected away from the desk");
   const unverifiedCookie = { cookie: `${SESSION_COOKIE}=${unverified.token}` };

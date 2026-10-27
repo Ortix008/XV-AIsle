@@ -166,8 +166,25 @@ async function main() {
   assert(!("error" in saved) && saved.ok === true, "a full email joins the waitlist");
   assert(WAITLIST_SAVED === "You're on the waitlist. Thanks for joining!", "the success line is the approved sentence");
   const waitlistSource = readFileSync(join(process.cwd(), "src/components/reseller-waitlist.tsx"), "utf8");
-  assert(waitlistSource.includes("response.ok ? WAITLIST_SAVED"), "the waitlist form shows the approved success line");
+  assert(waitlistSource.includes("result.ok ? WAITLIST_SAVED"), "the waitlist form shows the approved success line");
+  assert(waitlistSource.includes("new FormData"), "the first submit reads the email field");
+  assert(waitlistSource.includes("finally"), "a failed first submit clears Sending");
   assert(!waitlistSource.includes("TODO(copy)") && !waitlistSource.includes('"Saved."'), "the waitlist form has no placeholder success line");
+  const { submitResellerWaitlist } = await import("../src/lib/waitlist-submit");
+  const stalled = await submitResellerWaitlist("first@example.test", (_url, init) => {
+    return new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+    });
+  }, 30);
+  assert(stalled.ok === false && stalled.message === "Try again.", "a stalled first submit ends instead of staying on Sending");
+  const rejected = await submitResellerWaitlist("first@example.test", async () => {
+    throw new Error("network");
+  });
+  assert(rejected.ok === false && rejected.message === "Try again.", "a rejected first submit ends instead of staying on Sending");
+  const accepted = await submitResellerWaitlist("first@example.test", async () => {
+    return Response.json({ ok: true });
+  });
+  assert(accepted.ok === true && accepted.message === WAITLIST_SAVED, "a saved waitlist email uses the approved success line");
 
   const { ResellerArticle } = await import("../src/app/shop/reseller/page");
   const { ResellerTermsArticle } = await import("../src/app/shop/reseller/terms/page");
@@ -344,6 +361,32 @@ async function main() {
     const rendered = renderToStaticMarkup(createElement("p", null, text)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
     const hit = rendered.match(operatorBan);
     assert(!hit, `${product.id} still renders "${hit?.[0] ?? ""}"`);
+  }
+
+  const { RETURNS_EMAILED } = await import("../src/lib/return-address");
+  const settingsRoute = await import("../src/app/api/store/settings/route");
+  const previousSupport = process.env.SUPPORT_EMAIL;
+  delete process.env.SUPPORT_EMAIL;
+  const missingSupport = await settingsRoute.GET();
+  const missingBody = (await missingSupport.json()) as { error?: string; supportEmail?: string; returns?: string };
+  assert(missingSupport.status === 500 && missingBody.error === "SUPPORT_EMAIL is unset.", "a blank SUPPORT_EMAIL is refused");
+  assert(missingBody.supportEmail == null && missingBody.returns == null, "a missing SUPPORT_EMAIL does not serve blank settings");
+  process.env.SUPPORT_EMAIL = "  support@example.test  ";
+  const settings = await settingsRoute.GET();
+  const settingsBody = (await settings.json()) as { returns?: string; supportEmail?: string };
+  assert(settings.status === 200, "settings load when SUPPORT_EMAIL is set");
+  assert(settingsBody.supportEmail === "support@example.test", "the support email comes from SUPPORT_EMAIL");
+  assert(settingsBody.returns === RETURNS_EMAILED, "the returns line is the approved supplier-returns sentence");
+  assert(!settingsBody.returns?.includes("xvaisle.team@gmail.com"), "settings do not hardcode a support address");
+  if (previousSupport == null) delete process.env.SUPPORT_EMAIL;
+  else process.env.SUPPORT_EMAIL = previousSupport;
+
+  const robots = (await import("../src/app/robots")).default();
+  const rule = Array.isArray(robots.rules) ? robots.rules[0] : robots.rules;
+  const disallow = Array.isArray(rule?.disallow) ? rule.disallow : rule?.disallow ? [rule.disallow] : [];
+  assert(!disallow.includes("/shop/reseller"), "robots allows the public reseller page");
+  for (const path of ["/account", "/desk", "/api", "/scout", "/listings", "/marketing", "/floors", "/catalog", "/membership", "/orders"]) {
+    assert(disallow.includes(path), `robots still disallows ${path}`);
   }
 
   console.log("qa followup checks ok");

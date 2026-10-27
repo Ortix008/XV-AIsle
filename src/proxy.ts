@@ -37,6 +37,14 @@ function homeRedirect(request: NextRequest) {
   return withSecurity(withReferral(NextResponse.redirect(url, 307), request), request);
 }
 
+function signInRedirect(request: NextRequest, nextPath: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/sign-in";
+  url.search = "";
+  url.searchParams.set("next", nextPath);
+  return withSecurity(withReferral(NextResponse.redirect(url, 307), request), request);
+}
+
 export function proxy(request: NextRequest) {
   if (!postOriginAllowed(request)) {
     return withSecurity(NextResponse.json({}, { status: 403 }), request);
@@ -57,7 +65,8 @@ export function proxy(request: NextRequest) {
   if (path === "/desk") {
     const token = request.cookies.get(SESSION_COOKIE)?.value;
     const account = accountFromToken(token);
-    if (account && (account.role !== "admin" || !account.emailVerified)) return homeRedirect(request);
+    if (!account) return signInRedirect(request, path);
+    if (account.role !== "admin" || !account.emailVerified) return homeRedirect(request);
   }
   const response = withSecurity(withReferral(NextResponse.next(), request), request);
   if (path === "/account") response.headers.set("Cache-Control", ACCOUNT_CACHE_CONTROL);

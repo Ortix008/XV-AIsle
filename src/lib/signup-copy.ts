@@ -1,4 +1,4 @@
-function supportAddress() {
+export function supportAddress() {
   return process.env.SUPPORT_EMAIL?.trim() ?? "";
 }
 
