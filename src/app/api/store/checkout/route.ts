@@ -82,6 +82,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     productId?: string;
     qty?: number;
+    variantId?: string;
     name?: string;
     email?: string;
     line1?: string;
@@ -96,6 +97,7 @@ export async function POST(request: Request) {
   const created = createPendingOrder({
     productId: body.productId,
     qty: body.qty ?? 1,
+    variantId: typeof body.variantId === "string" ? body.variantId : null,
     ship: {
       name: body.name ?? "",
       email: body.email ?? "",
@@ -119,7 +121,7 @@ export async function POST(request: Request) {
       quantity: created.order.qty,
       customerEmail: created.order.email,
       successPath: `/shop/return?token=${encodeURIComponent(created.receiptToken)}&session_id={CHECKOUT_SESSION_ID}`,
-      cancelPath: `/shop/${created.listing.productId}`,
+      cancelPath: `/shop/${created.listing.productId}?canceled=${encodeURIComponent(created.order.id)}`,
     });
     if (!session.url || !session.id) {
       return Response.json({ error: "Stripe did not return a checkout page." }, { status: 502 });

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { ProductFrame } from "@/components/product-frame";
 import { money } from "@/lib/money";
+import { SOLD_OUT_LABEL } from "@/lib/sold-out-label";
 import { nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 
 export type AislePick = {
@@ -11,6 +12,7 @@ export type AislePick = {
   image: string;
   aisle?: string | null;
   kind?: "bundle";
+  soldOut?: boolean;
 };
 
 export function AislePicks({ aisle, picks }: { aisle: string | null; picks: AislePick[] }) {
@@ -43,6 +45,7 @@ export function AislePicks({ aisle, picks }: { aisle: string | null; picks: Aisl
                   <p className="shop-card-eyebrow" aria-hidden />
                   <h3 className="shop-card-title">{pick.title}</h3>
                   <p className="shop-card-price">{money(pick.priceCents / 100)}</p>
+                  {pick.soldOut ? <p className="shop-card-price">{SOLD_OUT_LABEL}</p> : null}
                 </div>
               </Link>
             </li>

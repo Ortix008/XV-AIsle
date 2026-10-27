@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { withoutAssembledInUsa } from "../order-facts";
+import { ensureStockSchema } from "../stock-caps";
 
 let db: DatabaseSync | null = null;
 
@@ -268,6 +269,7 @@ export function getDb() {
   migrateMoneyFlow(next);
   addColumn(next, "listings", "import_images", "TEXT");
   scrubAssembledInUsa(next);
+  ensureStockSchema(next);
   db = next;
   return next;
 }

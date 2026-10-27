@@ -24,6 +24,8 @@ export function resellerListing(listing: StoreListing) {
     "returnRegion",
     "returnPostal",
     "returnCountry",
+    "stockCap",
+    "stockOnHand",
   ]);
 }
 

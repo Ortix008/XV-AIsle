@@ -17,6 +17,7 @@ import { productShipLine, SHOPPER_PLACE, shopperDescription, shopperMayNameUsSup
 import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
+import { SOLD_OUT_LABEL } from "@/lib/sold-out-label";
 
 export type ProductListing = {
   productId: string;
@@ -46,6 +47,13 @@ export type ProductListing = {
   aisle?: string | null;
 };
 
+export type ProductVariantChoice = {
+  id: string;
+  label: string;
+  soldOut: boolean;
+  unitsLeft: number | null;
+};
+
 function productAisleCrumb(listing: ProductListing) {
   const slug = listing.kind === "bundle" ? "bundles" : listing.aisle?.trim() ?? "";
   if (!slug) return null;
@@ -65,6 +73,7 @@ export function ProductBuy({
   shipWindow,
   showReturnAddress = false,
   nameUsSupplier,
+  stock,
 }: {
   listing: ProductListing;
   returnNote: string;
@@ -74,11 +83,19 @@ export function ProductBuy({
   shipWindow?: string;
   showReturnAddress?: boolean;
   nameUsSupplier?: boolean;
+  stock?: { unitsLeft: number | null; variants: ProductVariantChoice[] };
 }) {
   const formReveal = useReveal<HTMLFormElement>(1);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [qty, setQty] = useState(1);
+  const [variantId, setVariantId] = useState("");
+  const variants = stock?.variants ?? [];
+  const selected = variants.find((item) => item.id === variantId) ?? variants.find((item) => !item.soldOut) ?? variants[0] ?? null;
+  const unitsLeft = selected ? selected.unitsLeft : (stock?.unitsLeft ?? null);
+  const soldOut = selected ? selected.soldOut : unitsLeft != null && unitsLeft <= 0;
+  const maxQty = unitsLeft == null ? 5 : Math.min(5, Math.max(1, unitsLeft));
+  const qtyShown = unitsLeft != null && unitsLeft > 0 ? Math.min(qty, maxQty) : qty;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [line1, setLine1] = useState("");
@@ -96,7 +113,7 @@ export function ProductBuy({
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
   const aisleCrumb = productAisleCrumb(listing);
   const shipping = shipWindow ?? productShipLine(listing);
-  const blocked = held || unconfirmed;
+  const blocked = held || unconfirmed || soldOut;
   const namePlace = nameUsSupplier ?? shopperMayNameUsSupplier(listing);
 
   useEffect(() => {
@@ -105,8 +122,28 @@ export function ProductBuy({
 
   async function checkout(event: FormEvent) {
     event.preventDefault();
-    if (held || unconfirmed) return;
+    if (held || unconfirmed || soldOut) return;
     if (!details) {
+      setPending(true);
+      setError(null);
+      const response = await fetch("/api/store/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: listing.productId,
+          qty: qtyShown,
+          ...(selected ? { variantId: selected.id } : {}),
+        }),
+      });
+      const cart = (await response.json().catch(() => null)) as { error?: string; qty?: number } | null;
+      setPending(false);
+      if (!response.ok) {
+        setError(cart?.error ?? "Checkout didn't open. Take a quick look at the form and try again.");
+        return;
+      }
+      if (cart && typeof cart.qty === "number" && Number.isInteger(cart.qty) && cart.qty >= 1 && cart.qty < qtyShown) {
+        setQty(cart.qty);
+      }
       setDetails(true);
       return;
     }
@@ -117,7 +154,8 @@ export function ProductBuy({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         productId: listing.productId,
-        qty,
+        qty: qtyShown,
+        ...(selected ? { variantId: selected.id } : {}),
         name,
         email,
         line1,
@@ -180,10 +218,36 @@ export function ProductBuy({
         <p className="product-desc">{shopperDescription(listing.description)}</p>
         <form {...formReveal} onSubmit={checkout} className="product-checkout">
           <div className="product-buy">
-            <label className="product-qty-field">
-              Quantity
-              <Input className="product-qty" type="number" min={1} max={5} value={qty} onChange={(event) => setQty(Number(event.target.value))} />
-            </label>
+            {variants.length > 0 ? (
+              <label className="product-qty-field">
+                <span className="sr-only">{listing.title}</span>
+                <select
+                  className="h-12 w-full rounded-lg border border-input bg-background px-3 text-base text-foreground"
+                  aria-label={listing.title}
+                  value={selected?.id ?? ""}
+                  onChange={(event) => setVariantId(event.target.value)}
+                >
+                  {variants.map((item) => (
+                    <option key={item.id} value={item.id} disabled={item.soldOut}>
+                      {item.soldOut ? `${item.label} (${SOLD_OUT_LABEL})` : item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {soldOut ? null : (
+              <label className="product-qty-field">
+                Quantity
+                <Input
+                  className="product-qty"
+                  type="number"
+                  min={1}
+                  max={maxQty}
+                  value={qtyShown}
+                  onChange={(event) => setQty(Number(event.target.value))}
+                />
+              </label>
+            )}
             {held ? (
               <button type="button" className="sample-hold" disabled aria-disabled="true">
                 {SAMPLE_UNAVAILABLE}
@@ -195,11 +259,20 @@ export function ProductBuy({
                   {UNCONFIRMED_BUTTON}
                 </button>
               </>
+            ) : soldOut ? (
+              <button type="button" className="sample-hold" disabled aria-disabled="true">
+                {SOLD_OUT_LABEL}
+              </button>
             ) : details ? null : (
-              <Button type="submit" className="product-pay">
+              <Button type="submit" className="product-pay" disabled={pending}>
                 Continue to checkout
               </Button>
             )}
+            {error && !details ? (
+              <p className="text-base text-late" role="alert" aria-live="assertive">
+                {error}
+              </p>
+            ) : null}
           </div>
           {blocked ? null : <p className="product-pay-line">You pay right here on xvaisle.com.</p>}
           {details && !blocked ? (
@@ -235,7 +308,7 @@ export function ProductBuy({
                 </p>
               ) : null}
               <Button type="submit" disabled={pending} className="product-pay">
-                {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qty) / 100)}`}
+                {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qtyShown) / 100)}`}
               </Button>
             </div>
           ) : null}

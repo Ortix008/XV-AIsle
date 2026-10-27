@@ -7,6 +7,7 @@ import { ShopFrame } from "@/components/shop-frame";
 import { money } from "@/lib/money";
 import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { accountFromToken } from "@/lib/server/accounts";
+import { readShopStock, releaseHeldStock, soldOutByProduct } from "@/lib/server/inventory";
 import { publicListing } from "@/lib/server/order-view";
 import { isOperatorAccount } from "@/lib/server/require-operator";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
@@ -51,8 +52,17 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
   };
 }
 
-export default async function ProductPage({ params }: { params: Promise<{ productId: string }> }) {
+export default async function ProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ productId: string }>;
+  searchParams?: Promise<{ canceled?: string | string[] }>;
+}) {
   const { productId } = await params;
+  const query = searchParams ? await searchParams : {};
+  const canceled = Array.isArray(query.canceled) ? query.canceled[0] : query.canceled;
+  if (canceled) releaseHeldStock(canceled, productId);
   ensureStarterShelf();
   const listing = getListing(productId);
   if (!listing || !visibleOnShop(listing) || listingLoss(listing)) notFound();
@@ -67,9 +77,12 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
           priceCents: item.priceCents,
           image: item.image,
           aisle: item.aisle,
-          kind: item.kind === "bundle" ? "bundle" : undefined,
+          kind: item.kind === "bundle" ? ("bundle" as const) : undefined,
         }))
     : [];
+  const stock = readShopStock(listing.productId);
+  const pickStock = soldOutByProduct(picks.map((pick) => pick.productId));
+  const picksWithStock = picks.map((pick) => ({ ...pick, ...(pickStock.get(pick.productId) ? { soldOut: true } : {}) }));
   const origin = publicSiteUrl();
   const productUrl = `${origin}/shop/${listing.productId}`;
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
@@ -91,8 +104,9 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
         showReturnAddress={operator}
         nameUsSupplier={usSupplierConfirmed(listing)}
         shipWindow={productShipLine(listing)}
+        stock={{ unitsLeft: stock.unitsLeft, variants: stock.variants }}
       />
-      <AislePicks aisle={aisle} picks={picks} />
+      <AislePicks aisle={aisle} picks={picksWithStock} />
     </ShopFrame>
   );
 }

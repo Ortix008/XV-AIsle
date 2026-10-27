@@ -19,6 +19,7 @@ import { markMember } from "./accounts";
 import { connectReady, getConnected } from "./connect";
 import { changed, getDb } from "./db";
 import { recordPaidSale, voidResellerCommission } from "./money-flow";
+import { commitPaidStock } from "./inventory";
 import { fulfillPaidOrder, getOrder, orderByReceiptToken, type StoreOrder } from "./store";
 import {
   createTransfer,
@@ -670,6 +671,7 @@ export async function settleCheckoutSession(session: StripeSession) {
     }
     const paid = getOrder(orderId);
     if (!paid || paid.status === "pending") return { error: "Payment is not complete." as const };
+    commitPaidStock(orderId);
     writePendingLedger(paid);
     recordPaidSale(orderId);
     const order = await fulfillPaidOrder(orderId);
