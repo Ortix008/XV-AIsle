@@ -229,7 +229,7 @@ export function ProductBuy({
                 >
                   {variants.map((item) => (
                     <option key={item.id} value={item.id} disabled={item.soldOut}>
-                      {item.soldOut ? `${item.label} ${SOLD_OUT_LABEL}` : item.label}
+                      {item.soldOut ? `${item.label} (${SOLD_OUT_LABEL})` : item.label}
                     </option>
                   ))}
                 </select>

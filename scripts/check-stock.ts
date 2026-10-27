@@ -359,7 +359,7 @@ async function main() {
       },
     }),
   );
-  assert(sizeMarkup.includes("Clay Sold out") && sizeMarkup.includes("disabled"), "a sold-out size is disabled and uses Sold out");
+  assert(sizeMarkup.includes("Clay (Sold out)") && sizeMarkup.includes("disabled"), "a sold-out size is disabled and uses Sold out");
   assert(sizeMarkup.includes(">Night<") && sizeMarkup.includes("Continue to checkout"), "an available size stays selectable");
 
   const flagBeforeLate = getDb().prepare("SELECT stock_on_hand AS on_hand FROM listings WHERE product_id = 'flag'").get() as {
@@ -429,7 +429,11 @@ async function main() {
   const { STOCK_REVIEW_NOTE } = await import("../src/lib/order-flags");
   const ordersView = readFileSync(join(process.cwd(), "src/components/orders-view.tsx"), "utf8");
   assert(ordersView.includes("stockReviewNote") && ordersView.includes(STOCK_REVIEW_NOTE) === false, "the admin list uses the review note helper");
-  assert(STOCK_REVIEW_NOTE.includes("Review this order before it ships."), "the admin review note is the stock shortfall");
+  assert(
+    STOCK_REVIEW_NOTE ===
+      "Review this order before it ships. Payment came in after the stock hold, and the shelf could not cover it.",
+    "the admin review note is the approved sentence",
+  );
 
   const { createCheckoutSession, setStripeFetch } = await import("../src/lib/server/stripe");
   process.env.STRIPE_SECRET_KEY = `${["sk", "test"].join("_")}_example`;
