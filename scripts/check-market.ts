@@ -281,7 +281,7 @@ const underpaid = await settleCheckoutSession({
 });
 if (!("error" in underpaid)) throw new Error("underpaid session should not fulfill");
 const { ensureStarterShelf } = await import("../src/lib/server/starter-shelf");
-const { saveReturnsAddress, readReturnsAddress, saveSupportEmail, readSupportEmail, supportEmailForDisplay, PUBLISHED_SUPPORT_EMAIL } =
+const { saveReturnsAddress, readReturnsAddress, saveSupportEmail, readSupportEmail, supportEmailForDisplay } =
   await import("../src/lib/server/settings");
 delete process.env.STORE_OPERATOR_EMAIL;
 ensureStarterShelf();
@@ -358,13 +358,18 @@ if (!("error" in badEmail)) throw new Error("support email should reject a bad a
 saveSupportEmail("");
 if (readSupportEmail()) throw new Error("support email should clear");
 delete process.env.STORE_SUPPORT_EMAIL;
-if (supportEmailForDisplay() !== PUBLISHED_SUPPORT_EMAIL) {
-  throw new Error("an empty support email shows the published address");
+const previousSupportEmail = process.env.SUPPORT_EMAIL;
+delete process.env.SUPPORT_EMAIL;
+if (supportEmailForDisplay() !== "") {
+  throw new Error("an empty SUPPORT_EMAIL does not invent an address");
 }
-if (PUBLISHED_SUPPORT_EMAIL !== "xvaisle.team@gmail.com") throw new Error("the published support email is xvaisle.team@gmail.com");
 saveSupportEmail("support@example.com");
-if (supportEmailForDisplay() !== "support@example.com") throw new Error("a saved support email replaces the published address");
+if (supportEmailForDisplay() !== "") throw new Error("a saved support email is not the public address");
+process.env.SUPPORT_EMAIL = "support@example.test";
+if (supportEmailForDisplay() !== "support@example.test") throw new Error("the public support email is SUPPORT_EMAIL");
 saveSupportEmail("");
+if (previousSupportEmail == null) delete process.env.SUPPORT_EMAIL;
+else process.env.SUPPORT_EMAIL = previousSupportEmail;
 const resellerPage = readFileSync(join(process.cwd(), "src/app/shop/reseller/page.tsx"), "utf8");
 if (!resellerPage.includes('title="Reseller program coming soon."')) {
   throw new Error("reseller page should say the program is coming soon");

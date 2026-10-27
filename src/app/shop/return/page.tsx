@@ -4,6 +4,14 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { AisleHero } from "@/components/aisle-hero";
 import { OrderCard, type OrderCardFacts } from "@/components/order-card";
+import {
+  CONFIRM_GIVE_UP_MS,
+  CONFIRM_POLL_MS,
+  CONFIRMING_PAYMENT,
+  PAYMENT_UNCONFIRMED,
+  confirmStep,
+  type ConfirmPayload,
+} from "@/lib/return-confirm";
 import { ShopFrame } from "@/components/shop-frame";
 
 type CheckoutSummary = OrderCardFacts & { productId: string };
@@ -20,32 +28,66 @@ function ReturnBody() {
 
   useEffect(() => {
     if (!sessionId) return;
+    const checkoutId = sessionId;
     let cancel = false;
-    fetch(`/api/store/checkout?session_id=${encodeURIComponent(sessionId)}`)
-      .then(async (response) => {
-        if (cancel) return;
-        const data = (await response.json().catch(() => null)) as {
-          error?: string;
-          order?: { number: string; supplierDetail: string | null };
-          summary?: CheckoutSummary;
-        } | null;
-        if (!response.ok) {
-          setError(data?.error ?? "Payment was not confirmed.");
+    const started = Date.now();
+    const controller = new AbortController();
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, ms);
+        controller.signal.addEventListener("abort", () => {
+          clearTimeout(timer);
+          resolve();
+        });
+      });
+    async function tick() {
+      while (!cancel) {
+        const elapsed = Date.now() - started;
+        if (elapsed >= CONFIRM_GIVE_UP_MS) {
+          setError(PAYMENT_UNCONFIRMED);
           return;
         }
-        if (data?.summary) setSummary(data.summary);
-        if (data?.order) setDetail(data.order.supplierDetail ?? "The supplier has the order.");
-        if (!data?.order && !data?.summary) setDetail("Payment is recorded.");
-      })
-      .catch(() => {
-        if (!cancel) setError("Payment was not confirmed.");
-      });
+        const attempt = new AbortController();
+        const attemptTimer = setTimeout(() => attempt.abort(), 5000);
+        try {
+          const response = await fetch(`/api/store/checkout?session_id=${encodeURIComponent(checkoutId)}`, {
+            cache: "no-store",
+            signal: AbortSignal.any([controller.signal, attempt.signal]),
+          });
+          const data = (await response.json().catch(() => null)) as (ConfirmPayload & { summary?: CheckoutSummary }) | null;
+          if (cancel) return;
+          const step = confirmStep(response.status, data);
+          if (step.kind === "paid" && data?.summary) {
+            setSummary(data.summary);
+            setDetail(step.detail);
+            setError(null);
+            return;
+          }
+          if (step.kind === "error") {
+            setError(step.message);
+            return;
+          }
+        } catch {
+          if (cancel || controller.signal.aborted) return;
+        } finally {
+          clearTimeout(attemptTimer);
+        }
+        const remaining = CONFIRM_GIVE_UP_MS - (Date.now() - started);
+        if (remaining <= 0) {
+          if (!cancel) setError(PAYMENT_UNCONFIRMED);
+          return;
+        }
+        await wait(Math.min(CONFIRM_POLL_MS, remaining));
+      }
+    }
+    void tick();
     return () => {
       cancel = true;
+      controller.abort();
     };
   }, [sessionId]);
 
-  const lede = error ?? detail ?? (sessionId ? "Confirming payment…" : null);
+  const lede = error ?? detail ?? (sessionId ? CONFIRMING_PAYMENT : null);
   const receiptHref = token ? `/shop/order?token=${encodeURIComponent(token)}` : null;
 
   return (
@@ -71,7 +113,7 @@ export default function ReturnPage() {
     <ShopFrame>
       <Suspense
         fallback={
-          <AisleHero className="hero-confirm" kicker="Order" title="After payment" lede="Confirming payment…" />
+          <AisleHero className="hero-confirm" kicker="Order" title="After payment" lede={CONFIRMING_PAYMENT} />
         }
       >
         <ReturnBody />

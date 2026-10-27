@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createElement, Fragment } from "react";
@@ -392,6 +392,26 @@ async function main() {
   assert(!servedReturns.includes("{SUPPORT_EMAIL}"), "the returns policy has no unfilled placeholder");
   assert(!RETURNS_POLICY_LINES.join("\n").includes("xvaisle.team@gmail.com"), "the returns policy does not hardcode a support address");
   assert(!servedReturns.includes("xvaisle.team@gmail.com"), "settings do not hardcode a support address");
+  const bannedSupport = ["xvaisle", "team@gmail.com"].join(".");
+  function filesUnder(dir: string): string[] {
+    const found: string[] = [];
+    for (const entry of readdirSync(dir)) {
+      const path = join(dir, entry);
+      if (statSync(path).isDirectory()) found.push(...filesUnder(path));
+      else found.push(path);
+    }
+    return found;
+  }
+  const hardcoded = filesUnder(join(process.cwd(), "src")).filter((path) => readFileSync(path, "utf8").includes(bannedSupport));
+  assert(hardcoded.length === 0, `src hardcodes the support address: ${hardcoded.join(", ")}`);
+  const { PolicyArticle } = await import("../src/components/policy-article");
+  const contactHtml = renderToStaticMarkup(createElement(PolicyArticle, { kicker: "Store", title: "Returns" }, "Body"));
+  assert(contactHtml.includes("mailto:support@example.test"), "the contact block uses SUPPORT_EMAIL");
+  assert(!contactHtml.includes(bannedSupport), "the contact block does not fall back to a fixed address");
+  const { receiptSupportLine, signupTakenText } = await import("../src/lib/signup-copy");
+  assert(receiptSupportLine() === "Questions? Email us at support@example.test.", "receipt mail uses SUPPORT_EMAIL");
+  assert(signupTakenText().includes("support@example.test"), "signup mail uses SUPPORT_EMAIL");
+  assert(!receiptSupportLine().includes(bannedSupport) && !signupTakenText().includes(bannedSupport), "mail does not hardcode a support address");
   const { ReturnsCopy } = await import("../src/app/shop/returns/page");
   const returnsHtml = renderToStaticMarkup(createElement(ReturnsCopy)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
   for (const line of approvedReturns.split("\n")) {

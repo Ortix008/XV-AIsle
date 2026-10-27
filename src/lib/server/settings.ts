@@ -1,13 +1,11 @@
 import { poBoxRejection } from "../return-address";
+import { supportAddress } from "../signup-copy";
 import type { Actor } from "./access";
 import { settingsWriteDecision } from "./access";
 import { getDb } from "./db";
 
 const RETURNS_KEY = "returns_address";
 const SUPPORT_EMAIL_KEY = "support_email";
-
-/** Shown when the operator has not saved a support address. */
-export const PUBLISHED_SUPPORT_EMAIL = "xvaisle.team@gmail.com";
 
 function readSetting(key: string, envName: "STORE_RETURNS" | "STORE_SUPPORT_EMAIL") {
   const row = getDb().prepare("SELECT value FROM settings WHERE key = ?").get(key) as
@@ -50,10 +48,10 @@ export function isSupportEmail(value: string) {
   return SUPPORT_EMAIL.test(value);
 }
 
-/** Operator setting or STORE_SUPPORT_EMAIL when valid, otherwise the published address. */
+/** Public support address. This is SUPPORT_EMAIL, not a saved or published fallback. */
 export function supportEmailForDisplay() {
-  const stored = readSupportEmail();
-  return isSupportEmail(stored) ? stored : PUBLISHED_SUPPORT_EMAIL;
+  const email = supportAddress();
+  return isSupportEmail(email) ? email : "";
 }
 
 export function saveSupportEmail(value: string) {

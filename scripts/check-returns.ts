@@ -636,6 +636,73 @@ async function main() {
   );
   delete process.env.DEMO_SEED;
 
+  const { attachStripeSession } = await import("../src/lib/server/store");
+  const { setStripeFetch } = await import("../src/lib/server/stripe");
+  const { confirmLede, confirmStep, CONFIRM_GIVE_UP_MS, CONFIRMING_PAYMENT, PAYMENT_UNCONFIRMED } = await import(
+    "../src/lib/return-confirm"
+  );
+  const paidCheckout = createPendingOrder({
+    productId: "return-pan",
+    qty: 1,
+    ship: {
+      name: "Example Buyer",
+      email: "buyer@example.com",
+      line1: "100 Example Street",
+      city: CITY,
+      region: REGION,
+      postal: POSTAL,
+      country: COUNTRY,
+    },
+  });
+  if ("error" in paidCheckout) throw new Error(paidCheckout.error);
+  const paidSession = "cs_test_paid4242";
+  attachStripeSession(paidCheckout.order.id, paidSession);
+  getDb().prepare("UPDATE orders SET status = 'paid', paid_at = ? WHERE id = ?").run(Date.now(), paidCheckout.order.id);
+  let stripeCalls = 0;
+  setStripeFetch(async () => {
+    stripeCalls += 1;
+    throw new Error("stripe should not be called for a paid order");
+  });
+  delete process.env.STRIPE_SECRET_KEY;
+  const paidLookup = await checkoutGet(new Request(`http://127.0.0.1/api/store/checkout?session_id=${paidSession}`));
+  const paidLookupBody = (await paidLookup.json()) as { summary?: { number?: string }; pending?: boolean };
+  assert(paidLookup.status === 200 && paidLookupBody.summary?.number === paidCheckout.order.number, "a paid order shows without waiting on Stripe");
+  assert(stripeCalls === 0, "a paid order does not call Stripe");
+  assert(paidLookup.headers.get("cache-control") === "no-store", "the checkout confirmation is not cached");
+  getDb().prepare("UPDATE orders SET status = 'pending' WHERE id = ?").run(paidCheckout.order.id);
+  const waiting = await checkoutGet(new Request(`http://127.0.0.1/api/store/checkout?session_id=${paidSession}`));
+  assert(waiting.status === 503, "an unpaid order still needs Stripe");
+  process.env.STRIPE_SECRET_KEY = `${["sk", "test"].join("_")}_placeholder`;
+  setStripeFetch(async () => {
+    stripeCalls += 1;
+    return Response.json({
+      id: paidSession,
+      payment_status: "unpaid",
+      status: "open",
+      metadata: { kind: "order", order_id: paidCheckout.order.id },
+      amount_total: paidCheckout.order.amountCents,
+    });
+  });
+  const pendingLookup = await checkoutGet(new Request(`http://127.0.0.1/api/store/checkout?session_id=${paidSession}`));
+  const pendingBody = (await pendingLookup.json()) as { pending?: boolean; summary?: unknown };
+  assert(pendingLookup.status === 202 && pendingBody.pending === true && pendingBody.summary == null, "an unpaid session stays pending");
+  assert(stripeCalls === 1, "an unpaid session asks Stripe once");
+  getDb().prepare("UPDATE orders SET status = 'paid' WHERE id = ?").run(paidCheckout.order.id);
+  const paidAfter = await checkoutGet(new Request(`http://127.0.0.1/api/store/checkout?session_id=${paidSession}`));
+  const paidAfterBody = (await paidAfter.json()) as { summary?: { number?: string } };
+  assert(paidAfter.status === 200 && paidAfterBody.summary?.number === paidCheckout.order.number, "a webhook-paid order shows on the next check");
+  assert(stripeCalls === 1, "a paid order still skips Stripe after the webhook");
+  setStripeFetch(null);
+  delete process.env.STRIPE_SECRET_KEY;
+  assert(confirmStep(202, { pending: true }).kind === "pending", "a pending confirmation keeps waiting");
+  assert(confirmLede(confirmStep(202, { pending: true }), 0) === CONFIRMING_PAYMENT, "a pending confirmation still says it is confirming");
+  assert(
+    confirmLede(confirmStep(202, { pending: true }), CONFIRM_GIVE_UP_MS) === PAYMENT_UNCONFIRMED,
+    "a confirmation that never arrives times out",
+  );
+  const paidStep = confirmStep(200, { summary: { number: "XV-4242" }, order: { supplierDetail: null } });
+  assert(paidStep.kind === "paid" && confirmLede(paidStep, CONFIRM_GIVE_UP_MS) === "The supplier has the order.", "a paid confirmation replaces the waiting line");
+
   closeDb();
   console.log("return address checks ok");
 }

@@ -10,38 +10,64 @@ import { attachStripeSession, createPendingOrder, orderByStripeSession } from "@
 import { createCheckoutSession, retrieveCheckoutSession, stripeConfigured } from "@/lib/server/stripe";
 
 const PREVIEW_SESSION = /^cs_preview_[a-z0-9_]{1,80}$/;
+const STRIPE_WAIT_MS = 4000;
 
-/** A DEMO_SEED preview order. Never calls Stripe. */
-function previewPaidOrder(sessionId: string) {
-  if (!demoSeedEnabled() || !PREVIEW_SESSION.test(sessionId)) return null;
+function checkoutJson(body: unknown, status = 200) {
+  return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+function paidBody(order: NonNullable<ReturnType<typeof orderByStripeSession>>) {
+  return checkoutJson({ kind: "order", order: buyerOrder(order), summary: orderSummary(order) });
+}
+
+/** A paid row already on file. Preview sessions still require DEMO_SEED. */
+function paidOnFile(sessionId: string) {
+  if (PREVIEW_SESSION.test(sessionId) && !demoSeedEnabled()) return null;
   const order = orderByStripeSession(sessionId);
   if (!order || order.status === "pending" || order.status === "test") return null;
   return order;
 }
 
+function retrieveWithTimeout(sessionId: string) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const pending = retrieveCheckoutSession(sessionId);
+  void pending.catch(() => undefined);
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Stripe did not answer.")), STRIPE_WAIT_MS);
+    timer.unref();
+  });
+  return Promise.race([pending, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
 export async function GET(request: Request) {
   const sessionId = new URL(request.url).searchParams.get("session_id");
-  if (!sessionId) return Response.json({ error: "Missing checkout." }, { status: 400 });
-  const preview = previewPaidOrder(sessionId);
-  if (preview) {
-    return Response.json({ kind: "order", order: buyerOrder(preview), summary: orderSummary(preview) });
-  }
+  if (!sessionId) return checkoutJson({ error: "Missing checkout." }, 400);
+  const recorded = paidOnFile(sessionId);
+  if (recorded) return paidBody(recorded);
   if (!stripeConfigured()) {
-    return Response.json({ error: "Stripe is not configured." }, { status: 503 });
+    return checkoutJson({ error: "Stripe is not configured." }, 503);
   }
   try {
-    const session = await retrieveCheckoutSession(sessionId);
+    const session = await retrieveWithTimeout(sessionId);
     if (session.metadata?.kind !== "order") {
-      return Response.json({ error: "That checkout is not a store order." }, { status: 400 });
+      return checkoutJson({ error: "That checkout is not a store order." }, 400);
     }
     const settled = await settleCheckoutSession(session);
     if ("order" in settled && settled.order) {
-      return Response.json({ ...settled, order: buyerOrder(settled.order), summary: orderSummary(settled.order) });
+      return checkoutJson({ ...settled, order: buyerOrder(settled.order), summary: orderSummary(settled.order) });
     }
-    return Response.json(settled);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Checkout could not be confirmed.";
-    return Response.json({ error: message }, { status: 502 });
+    const paidAfter = paidOnFile(sessionId);
+    if (paidAfter) return paidBody(paidAfter);
+    if ("error" in settled && settled.error === "Payment is not complete.") {
+      return checkoutJson({ pending: true }, 202);
+    }
+    return checkoutJson(settled);
+  } catch {
+    const paidAfter = paidOnFile(sessionId);
+    if (paidAfter) return paidBody(paidAfter);
+    return checkoutJson({ pending: true }, 202);
   }
 }
 
