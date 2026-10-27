@@ -196,7 +196,7 @@ async function main() {
   assert(!publicReseller.includes(returnAddressLine), "the public reseller contact block has no return address");
   assert(!publicTerms.includes(returnAddressLine), "the public reseller terms contact block has no return address");
   assert(operatorReseller.includes(returnAddressLine), "an operator still sees the return-address line");
-  assert(RESELLER_DAMAGE_NOTE === "Item arrived damaged or defective? Email us a photo within 3 days of delivery.", "the damage line is the approved sentence");
+  assert(RESELLER_DAMAGE_NOTE === "Need a return? Email us your order number within 14 days of delivery.", "the contact line is the approved sentence");
   assert(publicReseller.includes(RESELLER_DAMAGE_NOTE), "the public reseller contact uses the approved damage line");
   assert(publicTerms.includes(RESELLER_DAMAGE_NOTE), "the public reseller terms contact uses the approved damage line");
   assert(!publicReseller.includes("Contact support to start a return."), "the public reseller contact drops the old return line");
@@ -363,7 +363,7 @@ async function main() {
     assert(!hit, `${product.id} still renders "${hit?.[0] ?? ""}"`);
   }
 
-  const { RETURNS_EMAILED } = await import("../src/lib/return-address");
+  const { returnsPolicyText, RETURNS_POLICY_LINES } = await import("../src/lib/returns-policy");
   const settingsRoute = await import("../src/app/api/store/settings/route");
   const previousSupport = process.env.SUPPORT_EMAIL;
   delete process.env.SUPPORT_EMAIL;
@@ -376,8 +376,28 @@ async function main() {
   const settingsBody = (await settings.json()) as { returns?: string; supportEmail?: string };
   assert(settings.status === 200, "settings load when SUPPORT_EMAIL is set");
   assert(settingsBody.supportEmail === "support@example.test", "the support email comes from SUPPORT_EMAIL");
-  assert(settingsBody.returns === RETURNS_EMAILED, "the returns line is the approved supplier-returns sentence");
-  assert(!settingsBody.returns?.includes("xvaisle.team@gmail.com"), "settings do not hardcode a support address");
+  const approvedReturns = [
+    "Returns",
+    "You can return an item within 14 days of delivery.",
+    "Every item ships from a US supplier or maker, and returns go straight back to them.",
+    "To start a return, email us at support@example.test with your order number. We'll email you the address to send it to.",
+    "You pay return shipping, unless your item arrived damaged, defective or wrong. Then we cover it.",
+    "For a damaged or defective item, email us a photo within 3 days of delivery.",
+    "Some suppliers have stricter rules. When they do, a note on that product's page says so.",
+  ].join("\n");
+  const servedReturns = settingsBody.returns ?? "";
+  assert(servedReturns === approvedReturns, "the returns policy matches the approved text");
+  assert(returnsPolicyText() === approvedReturns, "the copy module matches the approved text");
+  assert(servedReturns === returnsPolicyText(), "settings serves the copy module");
+  assert(!servedReturns.includes("{SUPPORT_EMAIL}"), "the returns policy has no unfilled placeholder");
+  assert(!RETURNS_POLICY_LINES.join("\n").includes("xvaisle.team@gmail.com"), "the returns policy does not hardcode a support address");
+  assert(!servedReturns.includes("xvaisle.team@gmail.com"), "settings do not hardcode a support address");
+  const { ReturnsCopy } = await import("../src/app/shop/returns/page");
+  const returnsHtml = renderToStaticMarkup(createElement(ReturnsCopy)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
+  for (const line of approvedReturns.split("\n")) {
+    assert(returnsHtml.includes(line), "the returns page renders the approved policy");
+  }
+  assert(!returnsHtml.includes("{SUPPORT_EMAIL}"), "the returns page has no unfilled placeholder");
   if (previousSupport == null) delete process.env.SUPPORT_EMAIL;
   else process.env.SUPPORT_EMAIL = previousSupport;
 

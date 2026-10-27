@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { RETURNS_EMAILED } from "@/lib/return-address";
+import { returnsPolicyText } from "@/lib/returns-policy";
 import { supportAddress } from "@/lib/signup-copy";
 import { accountFromToken } from "@/lib/server/accounts";
 import { allowClient } from "@/lib/server/rate-limit";
@@ -11,7 +11,7 @@ export async function GET() {
   if (!supportEmail) {
     return Response.json({ error: "SUPPORT_EMAIL is unset." }, { status: 500 });
   }
-  return Response.json({ returns: RETURNS_EMAILED, supportEmail });
+  return Response.json({ returns: returnsPolicyText(), supportEmail });
 }
 
 export async function POST(request: Request) {
