@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-route-")), "route.sqlite");
+process.env.REQUIRE_SUPPLIER_CONFIRMED = "0";
 delete process.env.SUPPLIER_API_URL;
 delete process.env.SUPPLIER_API_KEY;
 delete process.env.SMTP_HOST;

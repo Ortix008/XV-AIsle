@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 process.env.SELLER_LEDGER_ENABLED = "1";
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-fees-")), "market.sqlite");
+process.env.REQUIRE_SUPPLIER_CONFIRMED = "0";
 delete process.env.PLATFORM_FEE_BPS;
 delete process.env.STRIPE_FEE_BPS;
 delete process.env.STRIPE_FEE_FIXED_CENTS;

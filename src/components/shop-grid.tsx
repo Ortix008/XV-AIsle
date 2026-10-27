@@ -19,8 +19,8 @@ export type ShopCard = {
   supplierOrigin?: string;
   shipsFrom?: string | null;
   supplierUsConfirmed?: boolean;
-  shipDaysMin: number;
-  shipDaysMax: number;
+  shipDaysMin?: number;
+  shipDaysMax?: number;
   madeInUsa?: boolean;
   shelf?: string;
   sample?: boolean;

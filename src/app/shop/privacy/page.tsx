@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyArticle } from "@/components/policy-article";
+import { viewerIsOperator } from "@/lib/server/require-operator";
 
 export const metadata: Metadata = { title: "Privacy · XV-AIsle" };
 
-export default function ShopPrivacyPage() {
+export default async function ShopPrivacyPage() {
+  const operator = await viewerIsOperator();
   return (
-    <PolicyArticle kicker="Store" title="Privacy">
+    <PolicyArticle kicker="Store" title="Privacy" operator={operator}>
       <p>
         At checkout we ask for your name, email, and shipping address. We use them to ship the order and send your
         receipt. We do not sell that information.
@@ -18,7 +20,7 @@ export default function ShopPrivacyPage() {
       </p>
       <p>
         You can reach us at xvaisle.team@gmail.com, and we reply within 2 business days. Returns go back to the
-        supplier, and {"we'll"} email the return address when you start a return.
+        supplier{operator ? ", and we'll email the return address when you start a return" : ""}.
       </p>
       <p>
         <Link href="/shop/returns" className="underline underline-offset-4">

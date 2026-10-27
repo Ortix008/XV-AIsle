@@ -16,6 +16,7 @@ import {
   TRACKING_SHIP,
   productShipLine,
   shopperDescription,
+  usSupplierConfirmed,
 } from "../src/lib/order-facts";
 
 const CITY = "Elizabeth, NJ";
@@ -124,7 +125,8 @@ async function main() {
   const shown = publicShopListing(stored!, false);
   const shownJson = JSON.stringify(shown);
   assert(!("supplierOrigin" in shown) && !("shipsFrom" in shown) && !("origin" in shown), "public JSON has no origin");
-  assert(shown.supplierUsConfirmed === true, "public JSON keeps the confirmed flag");
+  assert(!("supplierUsConfirmed" in shown), "public JSON omits the confirmed flag");
+  assert(!("shipDaysMin" in shown) && !("shipDaysMax" in shown), "public JSON omits ship days");
   assert(!shownJson.includes(CITY) && !shownJson.includes("through") && !shownJson.includes("Plan on"), "public JSON has no city and no engine sentence");
   assert(shown.description === "A heavy pan.", "public JSON cuts the engine sentence");
   assert(productShipLine(stored!) === "Our expected window is 2–4 days after you pay.", "a confirmed listing still has its window");
@@ -161,6 +163,7 @@ async function main() {
       returnNote: "We'll email the return address when you start a return.",
       shareHref: "http://127.0.0.1/shop/place-pan",
       shipWindow: productShipLine(stored!),
+      nameUsSupplier: usSupplierConfirmed(stored!),
     }),
   );
   assert(publicProduct.includes(SHOPPER_PLACE) && publicProduct.includes("Our expected window is 2–4 days after you pay."), "a public confirmed listing shows the place and the window");
@@ -246,7 +249,7 @@ async function main() {
   });
   if ("error" in abroad || !abroad.listing) throw new Error("error" in abroad ? abroad.error : "abroad listing");
   const abroadPublic = publicShopListing(abroad.listing, false);
-  assert(abroadPublic.supplierUsConfirmed === false, "a confirmed supplier outside the US is not published as a US supplier");
+  assert(!("supplierUsConfirmed" in abroadPublic), "public JSON omits the confirmed flag");
   assert(!JSON.stringify(abroadPublic).includes("Sample City"), "public JSON has no foreign city");
   const abroadCard = {
     productId: "abroad-pan",
@@ -307,7 +310,7 @@ async function main() {
   });
   if ("error" in quietPublished || !quietPublished.listing) throw new Error("error" in quietPublished ? quietPublished.error : "quiet listing");
   const quietShown = publicShopListing(quietPublished.listing, false);
-  assert(quietShown.supplierUsConfirmed === false, "an unconfirmed public listing keeps the flag off");
+  assert(!("supplierUsConfirmed" in quietShown), "public JSON omits the confirmed flag");
   assert(!("supplierOrigin" in quietShown) && !("shipsFrom" in quietShown) && !("origin" in quietShown), "an unconfirmed public listing has no origin");
   const quietJson = JSON.stringify(quietShown);
   assert(!quietJson.includes(CITY) && quietShown.description === "A heavy pan.", "an unconfirmed public listing has no city and no engine sentence");
@@ -762,8 +765,8 @@ async function main() {
   const damagedLine =
     "Something arrived damaged or wrong? Send us a photo within 3 days of delivery and we'll help make it right.";
   assert(returnsSource.includes(damagedLine), "the returns page source uses the damaged-item line");
-  const { default: ReturnsPage } = await import("../src/app/shop/returns/page");
-  const returnsHtml = renderToStaticMarkup(createElement(ReturnsPage)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
+  const { ReturnsCopy } = await import("../src/app/shop/returns/page");
+  const returnsHtml = renderToStaticMarkup(createElement(ReturnsCopy)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
   assert(returnsHtml.includes(damagedLine), "the returns page renders the damaged-item line");
   const { NextRequest } = await import("next/server");
   const { proxy } = await import("../src/proxy");

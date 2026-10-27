@@ -8,15 +8,53 @@ export const SHOPPER_PLACE = "Ships from a US supplier.";
 const ENGINE_SHIP_SENTENCE =
   /Ships from [^.\n]{0,240} through [^.\n]{0,240}\.(?:\s*Plan on [^.\n]{0,160} days\.)?(?:\s*This is an import, not a week-of order\.)?/g;
 
-/** Drop the desk engine's ship sentence, including its day plan and import clause. */
-export function shopperDescription(value: string) {
+/** Exact catalog sentence removed from shopper copy and stored descriptions. */
+export const ASSEMBLED_IN_USA_SENTENCE = "Designed and assembled in the USA.";
+
+function tidyDescription(value: string) {
   return value
-    .replace(ENGINE_SHIP_SENTENCE, "")
     .replace(/[ \t]{2,}/g, " ")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n[ \t]+/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/** Keep abbreviation dots from looking like the end of a sentence. */
+function protectPlaceDots(value: string) {
+  return value.replace(/u\.s\.a\.?/gi, (match) => match.replaceAll(".", "\u0001")).replace(/u\.s\./gi, (match) => match.replaceAll(".", "\u0001"));
+}
+
+function sentenceIsMadeInClaim(sentence: string) {
+  const flat = sentence
+    .replaceAll("\u0001", " ")
+    .toLowerCase()
+    .replace(/[.\-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (/\bmade\s+in\b/.test(flat)) return true;
+  return /\b(?:designed and )?assembled in the (?:usa|u s a|u s|us|united states)\b/.test(flat);
+}
+
+/**
+ * Delete made-in sentences in any case or punctuation, including the assembled-in-the-USA sentence.
+ * Stored catalog rows use this, not a replacement sentence.
+ */
+export function withoutAssembledInUsa(value: string) {
+  const parts = protectPlaceDots(value).split(/([.!?]+)/);
+  let kept = "";
+  for (let index = 0; index < parts.length; index += 2) {
+    const sentence = parts[index] ?? "";
+    const mark = parts[index + 1] ?? "";
+    if (sentenceIsMadeInClaim(sentence)) continue;
+    kept += sentence + mark;
+  }
+  return tidyDescription(kept.replaceAll("\u0001", "."));
+}
+
+/** Drop made-in sentences and the desk engine's ship sentence, including its day plan and import clause. */
+export function shopperDescription(value: string) {
+  return tidyDescription(withoutAssembledInUsa(value).replace(ENGINE_SHIP_SENTENCE, ""));
 }
 
 const US_STATE_CODES = new Set([
@@ -67,10 +105,7 @@ export function isUsLocation(value?: string | null) {
   return US_STATE_NAMES.has(last.toLowerCase().replace(/\./g, ""));
 }
 
-/**
- * The place sentence needs a real supplier, a US ships-from, and the confirmed flag.
- * A public listing omits the city and carries the result on supplierUsConfirmed.
- */
+/** The place sentence needs a real supplier, a US ships-from, and the confirmed flag. */
 export function shopperMayNameUsSupplier(source?: ShipSource | null) {
   if (!source) return false;
   if (source.shipsFrom != null) return usSupplierConfirmed(source);

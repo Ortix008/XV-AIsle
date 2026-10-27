@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { WAITLIST_SAVED } from "@/lib/waitlist-copy";
 
 export function ResellerWaitlist() {
   const [email, setEmail] = useState("");
@@ -19,7 +20,7 @@ export function ResellerWaitlist() {
       body: JSON.stringify({ email }),
     });
     const data = (await response.json().catch(() => null)) as { error?: string } | null;
-    setMessage(response.ok ? "Saved." : (data?.error ?? "Try again."));
+    setMessage(response.ok ? WAITLIST_SAVED : (data?.error ?? "Try again."));
     setPending(false);
   }
 

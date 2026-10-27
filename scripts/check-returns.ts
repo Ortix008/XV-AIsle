@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-returns-")), "returns.sqlite");
+process.env.REQUIRE_SUPPLIER_CONFIRMED = "0";
 delete process.env.STORE_RETURNS;
 delete process.env.DEMO_SEED;
 delete process.env.SMTP_HOST;
@@ -230,7 +231,8 @@ async function main() {
   const resellerJson = JSON.stringify(resellerListing(published.listing));
   assert(!publicJson.includes(STREET) && !publicJson.includes("returnLine1"), "the public listing omits the street");
   assert(!publicJson.includes("hiddenFromShop"), "the public listing omits the hide flag");
-  assert(publicJson.includes('"supplierUsConfirmed":false'), "the public listing includes the US confirmation");
+  assert(!publicJson.includes("supplierUsConfirmed"), "the public listing omits the US confirmation");
+  assert(!publicJson.includes("shipDaysMin") && !publicJson.includes("shipDaysMax"), "the public listing omits ship days");
   assert(!resellerJson.includes(STREET), "a reseller listing omits the street");
   const hidden = publishListing(supplierId, {
     productId: "hidden-pan",

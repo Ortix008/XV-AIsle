@@ -10,7 +10,8 @@ import { getApprovedCatalog } from "./catalog";
 import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quoteSplit, saleBlock } from "./fees";
 import { marginGuard, snapshotOrderCost } from "./money-flow";
 import { changed, getDb } from "./db";
-import { etaFromListing, shopperDescription, usSupplierConfirmed } from "../order-facts";
+import { etaFromListing, shopperDescription, withoutAssembledInUsa } from "../order-facts";
+import { comingSoonListing } from "../supplier-confirm";
 import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
 import { formatOrderReturn, resolveReturnAddress } from "./supplier-returns";
 import { requestShipment } from "./supplier";
@@ -312,11 +313,8 @@ export function publicShopListing(listing: StoreListing, sample: boolean) {
     priceCents: listing.priceCents,
     image: listing.image,
     supplierName: isHeldSample(listing) ? "" : listing.supplierName,
-    shipDaysMin: listing.shipDaysMin,
-    shipDaysMax: listing.shipDaysMax,
     shelf: listing.shelf,
     sample,
-    supplierUsConfirmed: usSupplierConfirmed(listing),
     ...(listing.deliveryTime ? { deliveryTime: listing.deliveryTime } : {}),
     ...(whyWePicked ? { whyWePicked } : {}),
     ...(listing.brand ? { brand: listing.brand } : {}),
@@ -586,7 +584,7 @@ export function publishListing(
       accountId,
       input.sku,
       input.title.trim(),
-      input.description.trim(),
+      withoutAssembledInUsa(input.description.trim()),
       input.priceCents,
       input.image,
       input.supplierName,
@@ -845,7 +843,8 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
     isWoodTrayListing(page) ||
     isScentedCandleListing(page) ||
     isHeldSample(page) ||
-    (isQaCheckoutListing(page) && !qaCheckoutSeedAllowed())
+    (isQaCheckoutListing(page) && !qaCheckoutSeedAllowed()) ||
+    comingSoonListing(page)
   ) {
     return { error: "That page is not on the store." as const };
   }

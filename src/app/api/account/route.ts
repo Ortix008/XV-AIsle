@@ -1,16 +1,21 @@
 import { cookies } from "next/headers";
+import { ACCOUNT_CACHE_CONTROL } from "@/lib/account-cache";
 import { accountFromToken, billingConfigured } from "@/lib/server/accounts";
 import { getConnected } from "@/lib/server/connect";
 import { sellerLedgerEnabled } from "@/lib/server/fees";
 import { resellerReserveSummary } from "@/lib/server/ledger";
-import { SESSION_COOKIE } from "@/lib/server/session-cookie";
+import { SESSION_COOKIE, sessionTokenFromRequest } from "@/lib/server/session-cookie";
 
-export async function GET() {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+function accountJson(body: unknown) {
+  return Response.json(body, { headers: { "Cache-Control": ACCOUNT_CACHE_CONTROL } });
+}
+
+export async function GET(request: Request) {
+  const token = sessionTokenFromRequest(request) ?? (await cookies()).get(SESSION_COOKIE)?.value;
   const account = accountFromToken(token);
-  if (!account) return Response.json({ account: null, connect: null, billing: billingConfigured() });
+  if (!account) return accountJson({ account: null, connect: null, billing: billingConfigured() });
   const connect = getConnected(account.id);
-  return Response.json({
+  return accountJson({
     account,
     connect: connect
       ? {

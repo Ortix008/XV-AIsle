@@ -4,6 +4,7 @@ import { AisleHero } from "@/components/aisle-hero";
 import { Reveal } from "@/components/reveal";
 import { ShopFrame } from "@/components/shop-frame";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
+import { RESELLER_DAMAGE_NOTE } from "@/lib/reseller-copy";
 import { supportEmailForDisplay } from "@/lib/server/settings";
 
 export function PolicyArticle({
@@ -13,6 +14,8 @@ export function PolicyArticle({
   story = false,
   underHero,
   band = false,
+  operator = false,
+  resellerContact = false,
 }: {
   kicker: string;
   title: string;
@@ -20,8 +23,12 @@ export function PolicyArticle({
   story?: boolean;
   underHero?: ReactNode;
   band?: boolean;
+  operator?: boolean;
+  /** Public reseller pages use the approved damage line. Other pages keep the support line. */
+  resellerContact?: boolean;
 }) {
   const supportEmail = supportEmailForDisplay();
+  const publicLine = resellerContact && !operator ? RESELLER_DAMAGE_NOTE : "Contact support to start a return.";
   const contact = (sectionClass: string) => (
     <section className={sectionClass}>
       <h2 className="text-lg font-semibold">Contact</h2>
@@ -32,7 +39,10 @@ export function PolicyArticle({
         </a>
         .
       </p>
-      <p>{"We'll email the return address when you start a return. Contact support to start a return."}</p>
+      <p>
+        {operator ? "We'll email the return address when you start a return. " : null}
+        {publicLine}
+      </p>
     </section>
   );
   if (band) {

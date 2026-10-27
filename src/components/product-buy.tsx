@@ -12,7 +12,7 @@ import { isStripeCheckoutUrl } from "@/lib/checkout-url";
 import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
 import { QA_CHECKOUT_PRODUCT_ID } from "@/lib/qa-checkout";
-import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE } from "@/lib/shelf-copy";
+import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE, UNCONFIRMED_BUTTON, UNCONFIRMED_LABEL } from "@/lib/shelf-copy";
 import { productShipLine, SHOPPER_PLACE, shopperDescription, shopperMayNameUsSupplier } from "@/lib/order-facts";
 import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
@@ -27,8 +27,8 @@ export type ProductListing = {
   image: string;
   supplierName: string;
   supplierOrigin?: string;
-  shipDaysMin: number;
-  shipDaysMax: number;
+  shipDaysMin?: number;
+  shipDaysMax?: number;
   madeInUsa?: boolean;
   shelf?: string;
   sample?: boolean;
@@ -60,16 +60,20 @@ export function ProductBuy({
   listing,
   returnNote,
   shareHref,
-  testMode = false,
   held = false,
+  unconfirmed = false,
   shipWindow,
+  showReturnAddress = false,
+  nameUsSupplier,
 }: {
   listing: ProductListing;
   returnNote: string;
   shareHref: string;
-  testMode?: boolean;
   held?: boolean;
+  unconfirmed?: boolean;
   shipWindow?: string;
+  showReturnAddress?: boolean;
+  nameUsSupplier?: boolean;
 }) {
   const formReveal = useReveal<HTMLFormElement>(1);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +96,8 @@ export function ProductBuy({
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
   const aisleCrumb = productAisleCrumb(listing);
   const shipping = shipWindow ?? productShipLine(listing);
+  const blocked = held || unconfirmed;
+  const namePlace = nameUsSupplier ?? shopperMayNameUsSupplier(listing);
 
   useEffect(() => {
     if (details) nameRef.current?.focus();
@@ -99,7 +105,7 @@ export function ProductBuy({
 
   async function checkout(event: FormEvent) {
     event.preventDefault();
-    if (held) return;
+    if (held || unconfirmed) return;
     if (!details) {
       setDetails(true);
       return;
@@ -172,11 +178,6 @@ export function ProductBuy({
           {listing.sample ? <span className="product-sample">Sample</span> : null}
         </div>
         <p className="product-desc">{shopperDescription(listing.description)}</p>
-        {testMode && !qaCheckout ? (
-          <p className="product-test" role="status">
-            Test mode
-          </p>
-        ) : null}
         <form {...formReveal} onSubmit={checkout} className="product-checkout">
           <div className="product-buy">
             <label className="product-qty-field">
@@ -187,14 +188,21 @@ export function ProductBuy({
               <button type="button" className="sample-hold" disabled aria-disabled="true">
                 {SAMPLE_UNAVAILABLE}
               </button>
+            ) : unconfirmed ? (
+              <>
+                <p className="text-sm font-medium text-muted-foreground">{UNCONFIRMED_LABEL}</p>
+                <button type="button" className="sample-hold" disabled aria-disabled="true">
+                  {UNCONFIRMED_BUTTON}
+                </button>
+              </>
             ) : details ? null : (
               <Button type="submit" className="product-pay">
                 Continue to checkout
               </Button>
             )}
           </div>
-          {held ? null : <p className="product-pay-line">You pay right here on xvaisle.com.</p>}
-          {details && !held ? (
+          {blocked ? null : <p className="product-pay-line">You pay right here on xvaisle.com.</p>}
+          {details && !blocked ? (
             <div className="product-details">
               <h2 className="product-checkout-label">Checkout</h2>
               <label className="product-field">
@@ -275,7 +283,7 @@ export function ProductBuy({
         <section className="product-extra">
           <h2 className="text-lg">Shipping & returns</h2>
           <dl className="mt-3 space-y-3 text-base">
-            {shopperMayNameUsSupplier(listing) ? (
+            {namePlace ? (
               <div>
                 <dd className="mt-1">{SHOPPER_PLACE}</dd>
               </div>
@@ -288,10 +296,12 @@ export function ProductBuy({
               <dt className="text-sm font-medium text-muted-foreground">Returns</dt>
               <dd className="mt-1">You can start a return within {RETURN_WINDOW_DAYS} days of delivery.</dd>
             </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Return address</dt>
-              <dd className="mt-1">{returnNote}</dd>
-            </div>
+            {showReturnAddress ? (
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">Return address</dt>
+                <dd className="mt-1">{returnNote}</dd>
+              </div>
+            ) : null}
           </dl>
         </section>
         <div className="product-links link-row">

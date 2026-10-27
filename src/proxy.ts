@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { ACCOUNT_CACHE_CONTROL } from "@/lib/account-cache";
 import { REFERRAL_COOKIE, referralId } from "@/lib/referral";
 import { accountFromToken } from "@/lib/server/accounts";
 import { entryRedirect } from "@/lib/server/entry-gate";
@@ -48,7 +49,9 @@ export function proxy(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = dest;
       url.search = "";
-      return withSecurity(withReferral(NextResponse.redirect(url), request), request);
+      const response = withSecurity(withReferral(NextResponse.redirect(url), request), request);
+      if (path === "/account") response.headers.set("Cache-Control", ACCOUNT_CACHE_CONTROL);
+      return response;
     }
   }
   if (path === "/desk") {
@@ -56,7 +59,9 @@ export function proxy(request: NextRequest) {
     const account = accountFromToken(token);
     if (account && (account.role !== "admin" || !account.emailVerified)) return homeRedirect(request);
   }
-  return withSecurity(withReferral(NextResponse.next(), request), request);
+  const response = withSecurity(withReferral(NextResponse.next(), request), request);
+  if (path === "/account") response.headers.set("Cache-Control", ACCOUNT_CACHE_CONTROL);
+  return response;
 }
 
 export const config = {

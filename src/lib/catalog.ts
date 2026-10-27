@@ -242,7 +242,7 @@ const catalogProducts: Product[] = [
       title: "Label the fridge like a walk-in",
       signal: "Home cooks who work service are posting labeled quarts, not aesthetic pantry shelves.",
       evidence:
-        "photos of a home fridge labeled the way a walk-in is labeled. Print-on-demand in Ohio. No reason to boat a sticker.",
+        "No reason to boat a sticker.",
     },
     mockups: [
       {
@@ -530,7 +530,7 @@ const catalogProducts: Product[] = [
       title: "Clothes that survive a pan",
       signal: "Apparel that is moving with cooks is a plain waist apron, not a graphic tee about cooking.",
       evidence:
-        "cooks posting what they wear at home after service. Plain canvas, two pockets. Print-on-demand in Ohio so a post on Tuesday can ship this week.",
+        "Plain canvas, two pockets.",
     },
     mockups: [
       {
@@ -1298,7 +1298,7 @@ const catalogProducts: Product[] = [
       title: "Heavy blanks, not slogan shirts",
       signal: "The apparel posts that keep moving are a heavy blank in a serious color, photographed flat.",
       evidence:
-        "Apparel posts this month: heavyweight navy, no chest hit. Print-on-demand in Ohio so a post does not wait on a container.",
+        "Apparel posts this month: heavyweight navy, no chest hit.",
     },
     mockups: [
       {

@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyArticle } from "@/components/policy-article";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
+import { viewerIsOperator } from "@/lib/server/require-operator";
 
 export const metadata: Metadata = { title: "Terms · XV-AIsle" };
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const operator = await viewerIsOperator();
   return (
-    <PolicyArticle kicker="Store" title="Terms of sale">
+    <PolicyArticle kicker="Store" title="Terms of sale" operator={operator}>
       <p>
         These terms cover a purchase on xvaisle.com. The price is the price on the product page. You pay that price on
         this site. Stripe processes the card. We do not see your card number.
@@ -24,11 +26,13 @@ export default function TermsPage() {
         </Link>
         .
       </p>
-      <p>
-        <Link href="/shop/reseller" className="underline underline-offset-4">
-          Reseller program coming soon.
-        </Link>
-      </p>
+      {operator ? (
+        <p>
+          <Link href="/shop/reseller" className="underline underline-offset-4">
+            Reseller program coming soon.
+          </Link>
+        </p>
+      ) : null}
       <p>
         How we use your name, email, and shipping address is on the{" "}
         <Link href="/shop/privacy" className="underline underline-offset-4">

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { FindShare } from "@/components/find-share";
+import { useOptionalAccount } from "@/lib/account-store";
 import { SHOPPER_PLACE, TRACKING_SHIP } from "@/lib/order-facts";
 import { RETURNS_EMAILED } from "@/lib/return-address";
 
@@ -21,6 +22,9 @@ function money(cents: number) {
 }
 
 export function OrderCard({ facts, children }: { facts: OrderCardFacts; children?: ReactNode }) {
+  const session = useOptionalAccount();
+  const account = session?.account;
+  const operator = account?.role === "admin" && account.emailVerified === true;
   const shipsFrom = facts.shipsFrom?.trim() || null;
   const eta = facts.eta?.trim() || null;
   const returns = facts.returnAddress?.trim() || RETURNS_EMAILED;
@@ -51,8 +55,12 @@ export function OrderCard({ facts, children }: { facts: OrderCardFacts; children
           <dd className="mt-1">{eta ?? TRACKING_SHIP}</dd>
         </div>
       </dl>
-      <p className="mt-5 text-xs tracking-wide text-muted-foreground">Returns</p>
-      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{returns}</p>
+      {operator ? (
+        <>
+          <p className="mt-5 text-xs tracking-wide text-muted-foreground">Returns</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{returns}</p>
+        </>
+      ) : null}
       {facts.productId ? (
         <div className="mt-5">
           <FindShare title={facts.title} productId={facts.productId} />

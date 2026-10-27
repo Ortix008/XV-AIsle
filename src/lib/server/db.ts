@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { withoutAssembledInUsa } from "../order-facts";
 
 let db: DatabaseSync | null = null;
 
@@ -266,8 +267,25 @@ export function getDb() {
   migrateSupplierReturns(next);
   migrateMoneyFlow(next);
   addColumn(next, "listings", "import_images", "TEXT");
+  scrubAssembledInUsa(next);
   db = next;
   return next;
+}
+
+/** Stored catalog descriptions lose made-in sentences, in any case or punctuation. */
+function scrubAssembledInUsa(database: DatabaseSync) {
+  const rows = database
+    .prepare(
+      `SELECT product_id, description FROM listings
+       WHERE instr(replace(replace(lower(description), '-', ' '), '.', ' '), 'made in') > 0
+          OR instr(lower(description), 'assembled in') > 0`,
+    )
+    .all() as { product_id: string; description: string }[];
+  const update = database.prepare("UPDATE listings SET description = ? WHERE product_id = ?");
+  for (const row of rows) {
+    const next = withoutAssembledInUsa(row.description);
+    if (next !== row.description) update.run(next, row.product_id);
+  }
 }
 
 /** Per-supplier return addresses, plus a product override and the copy stored on an order. */

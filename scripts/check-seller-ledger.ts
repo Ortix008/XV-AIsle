@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-ledger-")), "market.sqlite");
+process.env.REQUIRE_SUPPLIER_CONFIRMED = "0";
 delete process.env.SELLER_LEDGER_ENABLED;
 delete process.env.PLATFORM_FEE_BPS;
 delete process.env.STRIPE_FEE_BPS;
@@ -35,7 +36,7 @@ async function main() {
   const { POST } = await import("../src/app/api/store/listings/quote/route");
   const { setStripeFetch } = await import("../src/lib/server/stripe");
   const { createPendingOrder, getOrder, publishListing } = await import("../src/lib/server/store");
-  const ResellerPage = (await import("../src/app/shop/reseller/page")).default;
+  const { ResellerArticle } = await import("../src/app/shop/reseller/page");
 
   assert(!fees.sellerLedgerEnabled(), "the seller ledger is off by default");
   for (const value of ["", "0", "false", "off", "yes"]) {
@@ -154,7 +155,7 @@ async function main() {
   assert(!adminBody.includes("platformFee"), "an operator quote omits the platform fee while the flag is off");
   assert(!adminBody.includes("8–12") && !adminBody.includes("120"), "an operator quote has no fee or reserve copy");
 
-  const page = renderToStaticMarkup(createElement(ResellerPage));
+  const page = renderToStaticMarkup(createElement(ResellerArticle));
   assert(!page.includes("8–12") && !page.includes("120 days"), "the reseller page does not describe the seller ledger");
 
   db.prepare(
