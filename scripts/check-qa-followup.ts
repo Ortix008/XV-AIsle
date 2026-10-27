@@ -383,9 +383,9 @@ async function main() {
     "To start a return, email us at support@example.test with your order number. We'll email you the address to send it to.",
     "You pay return shipping, unless your item arrived damaged, defective or wrong. Then we cover it.",
     "For a damaged or defective item, email us a photo within 3 days of delivery.",
-    "Some suppliers have stricter rules. When they do, a note on that product's page says so.",
   ].join("\n");
   const servedReturns = settingsBody.returns ?? "";
+  assert(!approvedReturns.includes("Some suppliers have stricter rules."), "the stricter-rules line is not part of the policy");
   assert(servedReturns === approvedReturns, "the returns policy matches the approved text");
   assert(returnsPolicyText() === approvedReturns, "the copy module matches the approved text");
   assert(servedReturns === returnsPolicyText(), "settings serves the copy module");
