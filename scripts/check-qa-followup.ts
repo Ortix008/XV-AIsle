@@ -197,8 +197,12 @@ async function main() {
   assert(!publicTerms.includes(returnAddressLine), "the public reseller terms contact block has no return address");
   assert(operatorReseller.includes(returnAddressLine), "an operator still sees the return-address line");
   assert(RESELLER_DAMAGE_NOTE === "Need a return? Email us your order number within 14 days of delivery.", "the contact line is the approved sentence");
-  assert(publicReseller.includes(RESELLER_DAMAGE_NOTE), "the public reseller contact uses the approved damage line");
-  assert(publicTerms.includes(RESELLER_DAMAGE_NOTE), "the public reseller terms contact uses the approved damage line");
+  const { DAMAGE_PHOTO_LINE } = await import("../src/lib/returns-policy");
+  assert(publicReseller.includes(RESELLER_DAMAGE_NOTE), "the public reseller contact uses the approved contact line");
+  assert(publicTerms.includes(RESELLER_DAMAGE_NOTE), "the public reseller terms contact uses the approved contact line");
+  assert(publicReseller.includes(DAMAGE_PHOTO_LINE), "the public reseller contact includes the damage-photo line");
+  assert(publicTerms.includes(DAMAGE_PHOTO_LINE), "the public reseller terms contact includes the damage-photo line");
+  assert(operatorReseller.includes(DAMAGE_PHOTO_LINE), "an operator reseller contact includes the damage-photo line");
   assert(!publicReseller.includes("Contact support to start a return."), "the public reseller contact drops the old return line");
   assert(!publicTerms.includes("Contact support to start a return."), "the public reseller terms contact drops the old return line");
   assert(publicReseller.includes("mailto:"), "the public reseller contact already shows the support email");
@@ -383,6 +387,7 @@ async function main() {
     "To start a return, email us at support@example.test with your order number. We'll email you the address to send it to.",
     "You pay return shipping, unless your item arrived damaged, defective or wrong. Then we cover it.",
     "For a damaged or defective item, email us a photo within 3 days of delivery.",
+    "Refunds are issued once the supplier receives the item.",
   ].join("\n");
   const servedReturns = settingsBody.returns ?? "";
   assert(!approvedReturns.includes("Some suppliers have stricter rules."), "the stricter-rules line is not part of the policy");
@@ -412,6 +417,15 @@ async function main() {
   }
   assert(!returnsHtml.includes("{SUPPORT_EMAIL}"), "the returns page has no unfilled placeholder");
   assert(returnsHtml.includes("mailto:support@example.test"), "the returns contact block uses SUPPORT_EMAIL");
+  assert(returnsHtml.includes(RESELLER_DAMAGE_NOTE), "the returns contact uses the approved contact line");
+  assert(!returnsHtml.includes("Contact support to start a return."), "the returns page drops the old contact line");
+  const ContactPage = (await import("../src/app/shop/contact/page")).default;
+  const contactHtml = renderToStaticMarkup(createElement(ContactPage)).replaceAll("&#x27;", "'").replaceAll("&apos;", "'");
+  assert(contactHtml.includes(RESELLER_DAMAGE_NOTE), "the contact page uses the approved contact line");
+  assert(!contactHtml.includes("Contact support to start a return."), "the contact page drops the old contact line");
+  const policyArticle = readFileSync(join(process.cwd(), "src/components/policy-article.tsx"), "utf8");
+  assert(policyArticle.includes("RESELLER_DAMAGE_NOTE") && policyArticle.includes("DAMAGE_PHOTO_LINE"), "the contact block reuses the copy constants");
+  assert(!policyArticle.includes("Need a return?") && !policyArticle.includes("For a damaged or defective item"), "the contact block does not duplicate the approved sentences");
   assert(!returnsHtml.includes(bannedSupport), "the returns page does not fall back to a fixed address");
   if (previousSupport == null) delete process.env.SUPPORT_EMAIL;
   else process.env.SUPPORT_EMAIL = previousSupport;

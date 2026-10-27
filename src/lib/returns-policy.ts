@@ -2,13 +2,20 @@ import { supportAddress } from "./signup-copy";
 
 export const RETURNS_POLICY_HEADING = "Returns";
 
+/** Approved damage-photo line. Reseller contact renders this beside the contact line. */
+export const DAMAGE_PHOTO_LINE = "For a damaged or defective item, email us a photo within 3 days of delivery.";
+
+/** Last line of the approved returns policy. */
+export const REFUND_LINE = "Refunds are issued once the supplier receives the item.";
+
 /** Approved returns policy. {SUPPORT_EMAIL} is filled from SUPPORT_EMAIL at read time. */
 export const RETURNS_POLICY_LINES = [
   "You can return an item within 14 days of delivery.",
   "Every item ships from a US supplier or maker, and returns go straight back to them.",
   "To start a return, email us at {SUPPORT_EMAIL} with your order number. We'll email you the address to send it to.",
   "You pay return shipping, unless your item arrived damaged, defective or wrong. Then we cover it.",
-  "For a damaged or defective item, email us a photo within 3 days of delivery.",
+  DAMAGE_PHOTO_LINE,
+  REFUND_LINE,
 ] as const;
 
 export function returnsPolicyLines() {
