@@ -208,17 +208,17 @@ The targets live in `scripts/stock-caps.json`. That file is the only place to ch
 
 Hidden:
 
-- `XV-CORGI-LUAU-KITCHEN-TOWEL`
-- `XV-10-PIECE-MAGNETIC-BAG-CLIP-SET`
-- `XV-6-INCH-YOGA-WHEEL`
-- `XV-CELL-PHONE-LANYARD`
+- `XV-CLEAR-CRYSTAL-ARROWHEAD-SUNCATCHER`
 - `XV-PET-SEAT-BELT-TETHER`
-- `XV-YOGA-PILATES-RING`
 
-Capped:
+Capped, with on-hand set to the same number:
 
+- `XV-10-PIECE-MAGNETIC-BAG-CLIP-SET` at 8
+- `XV-6-INCH-YOGA-WHEEL` at 148
 - `XV-BEAGLE-LUAU-KITCHEN-TOWEL` at 99
-- `XV-CLEAR-CRYSTAL-ARROWHEAD-SUNCATCHER` at 1
+- `XV-CORGI-LUAU-KITCHEN-TOWEL` at 999
+- `XV-CELL-PHONE-LANYARD` at 50
+- `XV-YOGA-PILATES-RING` at 100
 
 These rows are not targets and stay as they are, including the unpublished candle: `LN-SCR-1`, `LN-PAN-Q`, `XV-SCENTED-CANDLE-16-OZ`, `XV-WOOD-TRAY`.
 
@@ -230,14 +230,14 @@ On a first run, when each of the eight SKUs matches one visible listing and stoc
 
 ```text
 dry-run
-XV-CORGI-LUAU-KITCHEN-TOWEL hidden
-XV-10-PIECE-MAGNETIC-BAG-CLIP-SET hidden
-XV-6-INCH-YOGA-WHEEL hidden
-XV-CELL-PHONE-LANYARD hidden
+XV-CLEAR-CRYSTAL-ARROWHEAD-SUNCATCHER hidden
 XV-PET-SEAT-BELT-TETHER hidden
-XV-YOGA-PILATES-RING hidden
+XV-10-PIECE-MAGNETIC-BAG-CLIP-SET cap 8 on_hand 8
+XV-6-INCH-YOGA-WHEEL cap 148 on_hand 148
 XV-BEAGLE-LUAU-KITCHEN-TOWEL cap 99 on_hand 99
-XV-CLEAR-CRYSTAL-ARROWHEAD-SUNCATCHER cap 1 on_hand 1
+XV-CORGI-LUAU-KITCHEN-TOWEL cap 999 on_hand 999
+XV-CELL-PHONE-LANYARD cap 50 on_hand 50
+XV-YOGA-PILATES-RING cap 100 on_hand 100
 ```
 
 The store container keeps SQLite on the `xvaisle_xvaisle-data` volume at `/data/xvaisle.sqlite`. Stop the store before copying that file so the backup is a complete snapshot. Restore that copy to undo the run, including any sales that happened after it. The reverse script puts back the hidden flag and the stock numbers from its audit. If a paid order already lowered a count, that SKU is left as it is and the log says `restore_skipped`. Use the backup in that case.

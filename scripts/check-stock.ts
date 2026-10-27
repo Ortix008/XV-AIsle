@@ -58,32 +58,31 @@ async function main() {
   const beagle = "XV-BEAGLE-LUAU-KITCHEN-TOWEL";
   const suncatcher = "XV-CLEAR-CRYSTAL-ARROWHEAD-SUNCATCHER";
   const corgi = "XV-CORGI-LUAU-KITCHEN-TOWEL";
+  const tether = "XV-PET-SEAT-BELT-TETHER";
+  const clips = "XV-10-PIECE-MAGNETIC-BAG-CLIP-SET";
+  const wheel = "XV-6-INCH-YOGA-WHEEL";
+  const lanyard = "XV-CELL-PHONE-LANYARD";
   const ring = "XV-YOGA-PILATES-RING";
-  const hiddenSkus = [
-    corgi,
-    "XV-10-PIECE-MAGNETIC-BAG-CLIP-SET",
-    "XV-6-INCH-YOGA-WHEEL",
-    "XV-CELL-PHONE-LANYARD",
-    "XV-PET-SEAT-BELT-TETHER",
-    ring,
+  const hiddenSkus = [suncatcher, tether];
+  const capTargets = [
+    { sku: clips, cap: 8 },
+    { sku: wheel, cap: 148 },
+    { sku: beagle, cap: 99 },
+    { sku: corgi, cap: 999 },
+    { sku: lanyard, cap: 50 },
+    { sku: ring, cap: 100 },
   ];
   const unpublished = ["LN-SCR-1", "LN-PAN-Q", "XV-SCENTED-CANDLE-16-OZ", "XV-WOOD-TRAY"];
-  assert(JSON.stringify(plan.hide) === JSON.stringify(hiddenSkus), "the hide list is the six live skus");
-  assert(
-    JSON.stringify(plan.caps) === JSON.stringify([
-      { sku: beagle, cap: 99 },
-      { sku: suncatcher, cap: 1 },
-    ]),
-    "the caps are the beagle towel and the suncatcher",
-  );
+  assert(JSON.stringify(plan.hide) === JSON.stringify(hiddenSkus), "the hide list is the suncatcher and the tether");
+  assert(JSON.stringify(plan.caps) === JSON.stringify(capTargets), "the caps match the six live skus");
   for (const sku of ["20-PEARL-GS", "20-GARNET-GS", "DAC7237CHF", "Dark Blue", "Green 2XS", "Green XS", ...unpublished]) {
     assert(!planRaw.includes(sku), `${sku} is not a stock target`);
     assert(!source.includes(sku), `${sku} is not hardcoded in the stock module`);
   }
-  assert(stockCapPlanFromJson(planRaw).hide.length === 6, "the plan parses again");
+  assert(stockCapPlanFromJson(planRaw).hide.length === 2, "the plan parses again");
   let rejected = false;
   try {
-    stockCapPlanFromJson(JSON.stringify({ hide: [corgi, corgi.toLowerCase()], caps: [] }));
+    stockCapPlanFromJson(JSON.stringify({ hide: [suncatcher, suncatcher.toLowerCase()], caps: [] }));
   } catch {
     rejected = true;
   }
@@ -94,8 +93,8 @@ async function main() {
   assert(checkoutExpiresAt(1_000) === 1_801, "checkout expires 30 minutes from the given time");
   assert(shopperStockError({ ok: false, reason: "sold_out" }) === SOLD_OUT_LABEL, "an empty shelf says Sold out");
   assert(SOLD_OUT_LABEL === "Sold out", "the shopper label is exactly Sold out");
-  assert(hideMatches(corgi.toLowerCase(), plan.hide) && hideMatches(ring, plan.hide), "hide matching ignores case");
-  assert(!hideMatches(beagle, plan.hide), "a capped sku is not hidden");
+  assert(hideMatches(suncatcher.toLowerCase(), plan.hide) && hideMatches(tether, plan.hide), "hide matching ignores case");
+  assert(!hideMatches(beagle, plan.hide) && !hideMatches(corgi, plan.hide), "a capped sku is not hidden");
   assert(capMatches({ sku: beagle, cap: 99 }, { sku: beagle.toLowerCase() }), "a cap matches the sku");
   assert(!capMatches({ sku: beagle, cap: 99 }, { sku: corgi }), "the beagle cap does not match the corgi sku");
   assert(
@@ -216,7 +215,7 @@ async function main() {
   };
   assert(untouched.cap == null, "an ambiguous sku is not capped");
   getDb().prepare("DELETE FROM listing_variants WHERE id = 'var-dup'").run();
-  getDb().prepare("UPDATE listings SET hidden_from_shop = 1 WHERE product_id = 'ring'").run();
+  getDb().prepare("UPDATE listings SET hidden_from_shop = 1 WHERE product_id = 'suncatcher'").run();
   getDb()
     .prepare(
       `INSERT INTO orders (
@@ -248,30 +247,30 @@ async function main() {
   assert(shelf("XV-SCENTED-CANDLE-16-OZ").published === 0, "the candle starts unpublished");
   const planned = runStockCaps(db, false, plan);
   assert(planned.ok && planned.lines[0] === "dry-run", "the default run prints a plan");
-  assert(planned.lines.includes(`${corgi} hidden`) && planned.lines.includes(`${beagle} cap 99 on_hand 99`), "the plan names each sku");
-  assert(planned.lines.includes(`${suncatcher} cap 1 on_hand 1`), "the suncatcher cap is in the plan");
-  assert(planned.lines.includes(`${ring} unchanged`), "a row that is already hidden stays out of the hide write");
+  assert(planned.lines.includes(`${tether} hidden`) && planned.lines.includes(`${beagle} cap 99 on_hand 99`), "the plan names each sku");
+  assert(planned.lines.includes(`${corgi} cap 999 on_hand 999`) && planned.lines.includes(`${wheel} cap 148 on_hand 148`), "the larger caps are in the plan");
+  assert(planned.lines.includes(`${clips} cap 8 on_hand 8`) && planned.lines.includes(`${lanyard} cap 50 on_hand 50`), "the smaller caps are in the plan");
+  assert(planned.lines.includes(`${ring} cap 100 on_hand 100`), "the ring cap is in the plan");
+  assert(planned.lines.includes(`${suncatcher} unchanged`), "a row that is already hidden stays out of the hide write");
   assert(!unpublished.some((sku) => planned.lines.some((line) => line.startsWith(sku))), "unpublished skus are not in the plan");
-  const plannedCorgi = shelf(corgi);
+  const plannedTether = shelf(tether);
   const plannedBeagle = shelf(beagle);
-  assert(plannedCorgi.hidden === 0 && plannedBeagle.on_hand == null, "a dry-run does not write stock");
+  assert(plannedTether.hidden === 0 && plannedBeagle.on_hand == null, "a dry-run does not write stock");
   assert(JSON.stringify(unpublished.map((sku) => shelf(sku))) === unpublishedBefore, "a dry-run leaves unpublished rows alone");
   const appliedRun = runStockCaps(db, true, plan);
   assert(appliedRun.ok && !appliedRun.lines.includes("dry-run"), "apply writes after a clean plan");
   const applied = appliedRun.lines;
-  for (const sku of hiddenSkus) {
-    if (sku === ring) continue;
-    assert(applied.filter((line) => line === `${sku} hidden`).length === 1, `${sku} is hidden once`);
+  assert(applied.filter((line) => line === `${tether} hidden`).length === 1, "the tether is hidden once");
+  assert(applied.includes(`${suncatcher} unchanged`) && !applied.includes(`${suncatcher} hidden`), "an already hidden row is not hidden again");
+  for (const target of capTargets) {
+    assert(applied.includes(`${target.sku} cap ${target.cap} on_hand ${target.cap}`), `${target.sku} is capped by sku`);
   }
-  assert(applied.includes(`${ring} unchanged`) && !applied.includes(`${ring} hidden`), "an already hidden row is not hidden again");
-  assert(applied.includes(`${beagle} cap 99 on_hand 99`), "the beagle cap is logged by sku");
-  assert(applied.includes(`${suncatcher} cap 1 on_hand 1`), "the suncatcher cap is logged by sku");
-  const corgiAudit = getDb()
+  const tetherAudit = getDb()
     .prepare("SELECT previous_hidden, previous_cap, previous_on_hand FROM stock_cap_audit WHERE sku = ?")
-    .get(corgi) as { previous_hidden: number; previous_cap: number | null; previous_on_hand: number | null };
-  assert(corgiAudit.previous_hidden === 0 && corgiAudit.previous_cap == null && corgiAudit.previous_on_hand == null, "a hide records the prior state");
-  const ringAudit = getDb().prepare("SELECT target_key FROM stock_cap_audit WHERE sku = ?").get(ring);
-  assert(ringAudit == null, "an already hidden row does not get a new prior state");
+    .get(tether) as { previous_hidden: number; previous_cap: number | null; previous_on_hand: number | null };
+  assert(tetherAudit.previous_hidden === 0 && tetherAudit.previous_cap == null && tetherAudit.previous_on_hand == null, "a hide records the prior state");
+  const suncatcherAudit = getDb().prepare("SELECT target_key FROM stock_cap_audit WHERE sku = ?").get(suncatcher);
+  assert(suncatcherAudit == null, "an already hidden row does not get a new prior state");
   const decoyListing = getDb().prepare("SELECT hidden_from_shop AS hidden, stock_cap AS cap FROM listings WHERE product_id = 'decoy'").get() as {
     hidden: number;
     cap: number | null;
@@ -285,24 +284,27 @@ async function main() {
   assert(shelf("XV-SCENTED-CANDLE-16-OZ").published === 0, "the candle stays unpublished");
   const againRun = runStockCaps(db, true, plan);
   const again = againRun.lines;
-  assert(again.includes(`${corgi} unchanged`) && again.includes(`${ring} unchanged`), "hiding twice stays hidden");
+  assert(again.includes(`${tether} unchanged`) && again.includes(`${suncatcher} unchanged`), "hiding twice stays hidden");
   assert(again.includes(`${beagle} unchanged cap 99 on_hand 99`), "the beagle cap does not change on a second run");
-  assert(again.includes(`${suncatcher} unchanged cap 1 on_hand 1`), "the suncatcher cap does not change on a second run");
+  assert(again.includes(`${corgi} unchanged cap 999 on_hand 999`), "the corgi cap does not change on a second run");
   assert(!again.some((line) => line.endsWith(" hidden")), "the second run does not hide again");
   assert(JSON.stringify(getDb().prepare("SELECT * FROM orders").all()) === ordersBefore, "the script leaves orders alone");
   assert(JSON.stringify(getDb().prepare("SELECT * FROM reseller_waitlist").all()) === waitBefore, "the script leaves the waitlist alone");
   assert(JSON.stringify(getDb().prepare("SELECT * FROM stock_holds").all()) === holdsBefore, "the script leaves stock holds alone");
   const publishedIds = listPublished().map((item) => item.productId);
-  assert(!publishedIds.includes("corgi") && !publishedIds.includes("ring"), "hidden skus leave the shop");
-  assert(publishedIds.includes("beagle") && publishedIds.includes("suncatcher"), "capped skus stay on the shop");
+  assert(!publishedIds.includes("suncatcher") && !publishedIds.includes("tether"), "hidden skus leave the shop");
+  assert(
+    ["beagle", "corgi", "clips", "wheel", "lanyard", "ring"].every((id) => publishedIds.includes(id)),
+    "capped skus stay on the shop",
+  );
   assert(!publishedIds.some((id) => id.startsWith("unpub-")), "unpublished rows stay off the shop");
-  const hiddenOrder = createPendingOrder({ productId: "corgi", qty: 1, ship });
+  const hiddenOrder = createPendingOrder({ productId: "tether", qty: 1, ship });
   assert("error" in hiddenOrder && hiddenOrder.error === "That page is not on the store.", "a hidden sku cannot be bought");
   const hiddenCart = await POST(
     new Request("http://127.0.0.1/api/store/cart", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId: "corgi", qty: 1 }),
+      body: JSON.stringify({ productId: "tether", qty: 1 }),
     }),
   );
   const hiddenCartBody = (await hiddenCart.json()) as { error?: string };
@@ -381,21 +383,21 @@ async function main() {
 
   const rolled = rollbackStockCaps(db, plan);
   assert(rolled.includes(`${beagle} restore_skipped`), "a sold cap is not rewound by the reverse script");
-  assert(rolled.includes(`${corgi} restored`) && rolled.includes(`${suncatcher} restored`), "unsold hides and caps are restored");
-  assert(!rolled.includes(`${ring} restored`), "a row that was already hidden is not unhidden");
+  assert(rolled.includes(`${tether} restored`) && rolled.includes(`${corgi} restored`), "unsold hides and caps are restored");
+  assert(!rolled.includes(`${suncatcher} restored`), "a row that was already hidden is not unhidden");
   assert(getListing("corgi")?.hiddenFromShop === false, "corgi is visible again");
-  assert(getListing("ring")?.hiddenFromShop === true, "the ring stays at its prior hidden state");
+  assert(getListing("suncatcher")?.hiddenFromShop === true, "the suncatcher stays at its prior hidden state");
   assert(beagleRow.cap === 99, "the skipped beagle cap is still the launch cap");
   const beagleStill = shelf(beagle);
   assert(beagleStill.on_hand === 98, "the reverse script does not put sold units back");
-  const suncatcherBack = shelf(suncatcher);
-  assert(suncatcherBack.cap == null && suncatcherBack.on_hand == null && suncatcherBack.hidden === 0, "the unsold suncatcher cap is cleared");
+  const corgiBack = shelf(corgi);
+  assert(corgiBack.cap == null && corgiBack.on_hand == null && corgiBack.hidden === 0, "the unsold corgi cap is cleared");
   assert(JSON.stringify(unpublished.map((sku) => shelf(sku))) === unpublishedBefore, "rollback leaves unpublished rows alone");
   assert(shelf("XV-SCENTED-CANDLE-16-OZ").published === 0, "the candle is still unpublished after rollback");
   const rolledAgain = rollbackStockCaps(db, plan);
   assert(rolledAgain.includes(`${beagle} restore_skipped`), "a second reverse leaves the sold sku skipped");
-  assert(!rolledAgain.includes(`${corgi} restored`), "a restored sku is not restored twice");
-  assert(getListing("corgi")?.hiddenFromShop === false, "corgi stays visible after the second reverse");
+  assert(!rolledAgain.includes(`${tether} restored`), "a restored sku is not restored twice");
+  assert(getListing("tether")?.hiddenFromShop === false, "the tether stays visible after the second reverse");
   assert(JSON.stringify(getDb().prepare("SELECT * FROM orders WHERE id = 'ord-keep'").all()) === JSON.stringify(JSON.parse(ordersBefore)), "rollback does not rewrite the old order");
   assert(JSON.stringify(getDb().prepare("SELECT * FROM reseller_waitlist").all()) === waitBefore, "rollback does not rewrite the waitlist");
 
