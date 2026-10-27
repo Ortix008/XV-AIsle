@@ -4,6 +4,7 @@ import { accountFromToken } from "@/lib/server/accounts";
 import { publicListing, resellerListing } from "@/lib/server/order-view";
 import { publishForAccount } from "@/lib/server/publish";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
+import { soldOutByProduct } from "@/lib/server/inventory";
 import { ensureStarterShelf, isSampleListing, listedOnGrid } from "@/lib/server/starter-shelf";
 import { listPublished } from "@/lib/server/store";
 
@@ -18,7 +19,13 @@ export async function GET(request: Request) {
     shelf: shelf === "small" || shelf === "national" ? shelf : undefined,
     aisle,
   }).filter(listedOnGrid);
-  return Response.json({ listings: listings.map((listing) => publicListing(listing, isSampleListing(listing))) });
+  const soldOut = soldOutByProduct(listings.map((listing) => listing.productId));
+  return Response.json({
+    listings: listings.map((listing) => ({
+      ...publicListing(listing, isSampleListing(listing)),
+      ...(soldOut.get(listing.productId) ? { soldOut: true } : {}),
+    })),
+  });
 }
 
 export async function POST(request: Request) {

@@ -7,6 +7,7 @@ import { NightMotif } from "@/components/night-motif";
 import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
 import { money } from "@/lib/money";
+import { SOLD_OUT_LABEL } from "@/lib/sold-out-label";
 import { SHOPPER_PLACE, TRACKING_SHIP, shopperMayNameUsSupplier } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
 
@@ -27,6 +28,7 @@ export type ShopCard = {
   brand?: string;
   kind?: "bundle";
   aisle?: string | null;
+  soldOut?: boolean;
 };
 
 function eyebrow(listing: ShopCard) {
@@ -54,6 +56,7 @@ export function ShopCardCopy({ listing }: { listing: ShopCard }) {
         {money(listing.priceCents / 100)}
         {phrase ? <> · {phrase}</> : null}
       </p>
+      {listing.soldOut ? <p className="shop-card-price">{SOLD_OUT_LABEL}</p> : null}
     </div>
   );
 }

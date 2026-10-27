@@ -14,6 +14,7 @@ import { etaFromListing, shopperDescription, withoutAssembledInUsa } from "../or
 import { comingSoonListing } from "../supplier-confirm";
 import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
 import { formatOrderReturn, resolveReturnAddress } from "./supplier-returns";
+import { evaluateStock, writeHold } from "./inventory";
 import { requestShipment } from "./supplier";
 
 export type StoreListing = {
@@ -58,6 +59,9 @@ export type StoreListing = {
   returnCountry: string | null;
   /** Private. Cents. Shoppers and resellers never receive this. */
   wholesaleCost: number | null;
+  /** Null when this listing is not capped. Shoppers do not receive the number. */
+  stockCap: number | null;
+  stockOnHand: number | null;
 };
 
 export type StoreOrder = {
@@ -167,6 +171,8 @@ type ListingRow = {
   wholesale_cost?: number | null;
   hidden_from_shop?: number | null;
   supplier_us_confirmed?: number | null;
+  stock_cap?: number | null;
+  stock_on_hand?: number | null;
 };
 
 type OrderRow = {
@@ -278,7 +284,15 @@ function listingFrom(row: ListingRow): StoreListing {
     wholesaleCost: row.wholesale_cost ?? null,
     hiddenFromShop: row.hidden_from_shop === 1,
     supplierUsConfirmed: row.supplier_us_confirmed === 1,
+    stockCap: integerOrNull(row.stock_cap),
+    stockOnHand: integerOrNull(row.stock_on_hand),
   };
+}
+
+function integerOrNull(value: unknown) {
+  if (typeof value === "number" && Number.isInteger(value)) return value;
+  if (typeof value === "bigint") return Number(value);
+  return null;
 }
 
 export function bundlePieces(bundleId: string) {
@@ -414,9 +428,9 @@ function receiptHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-function allocateOrderNumber() {
+function allocateOrderNumber(joinExisting = false) {
   const db = getDb();
-  db.exec("BEGIN IMMEDIATE");
+  if (!joinExisting) db.exec("BEGIN IMMEDIATE");
   try {
     const seedRow = db
       .prepare(
@@ -434,10 +448,10 @@ function allocateOrderNumber() {
     // XV-1001 is a test purchase and is never issued again.
     if (next <= 1001) next = 1002;
     db.prepare("UPDATE order_seq SET next_number = ? WHERE id = 1").run(next + 1);
-    db.exec("COMMIT");
+    if (!joinExisting) db.exec("COMMIT");
     return next;
   } catch (error) {
-    db.exec("ROLLBACK");
+    if (!joinExisting) db.exec("ROLLBACK");
     throw error;
   }
 }
@@ -476,6 +490,8 @@ export function publishListing(
     | "wholesaleCost"
     | "hiddenFromShop"
     | "supplierUsConfirmed"
+    | "stockCap"
+    | "stockOnHand"
   > & {
     published?: boolean;
     madeInUsa?: boolean;
@@ -811,7 +827,7 @@ export type ShipTo = {
   country: string;
 };
 
-export function createPendingOrder(input: { productId: string; qty: number; ship: ShipTo }) {
+export function createPendingOrder(input: { productId: string; qty: number; ship: ShipTo; variantId?: string | null }) {
   const listing = getDb()
     .prepare("SELECT * FROM listings WHERE product_id = ? AND published = 1 AND COALESCE(hidden_from_shop, 0) = 0")
     .get(input.productId) as
@@ -836,7 +852,6 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   if (ship.postal.trim().length < 4 || ship.postal.length > 12) return { error: "Add the postal code." as const };
   if ((ship.country.trim() || "US").toUpperCase() !== "US") return { error: "This store ships in the US." as const };
   const id = randomUUID();
-  const number = `XV-${allocateOrderNumber()}`;
   const receiptToken = randomBytes(32).toString("hex");
   const page = listingFrom(listing);
   if (
@@ -872,48 +887,71 @@ export function createPendingOrder(input: { productId: string; qty: number; ship
   const split = priced.split;
   const created = Date.now();
   const returnTo = resolveReturnAddress(page);
-  getDb()
-    .prepare(
-      `INSERT INTO orders (
-         id, number, product_id, account_id, customer_name, email, qty, amount_cents,
-         ship_line1, ship_city, ship_region, ship_postal, ship_country,
-         stripe_session_id, status, supplier_ref, supplier_detail, created_at,
-         transfer_group, fee_bps, platform_fee_cents, supplier_amount_cents, reseller_amount_cents, supplier_account_id,
-         receipt_token_hash, stripe_fee_est_cents, stripe_fee_cents,
-         return_line1, return_city, return_region, return_postal, return_country
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
-      id,
-      number,
-      listing.product_id,
-      listing.account_id,
-      ship.name.trim(),
-      ship.email.trim().toLowerCase(),
-      qty,
-      split.grossCents,
-      ship.line1.trim(),
-      ship.city.trim(),
-      ship.region.trim(),
-      ship.postal.trim(),
-      (ship.country.trim() || "US").toUpperCase(),
-      created,
-      `order_${id}`,
-      split.feeBps,
-      split.platformFeeCents,
-      split.supplierAmountCents,
-      split.resellerAmountCents,
-      page.supplierAccountId,
-      receiptHash(receiptToken),
-      split.stripeFeeCents,
-      split.stripeFeeCents,
-      returnTo?.line1 ?? null,
-      returnTo?.city ?? null,
-      returnTo?.region ?? null,
-      returnTo?.postal ?? null,
-      returnTo?.country ?? null,
-    );
-  snapshotOrderCost(id, page.productId, qty, page.priceCents);
+  const variantId = input.variantId?.trim() || null;
+  const db = getDb();
+  db.exec("BEGIN IMMEDIATE");
+  let stockError: string | null = null;
+  try {
+    const gate = evaluateStock({ productId: page.productId, variantId, qty, now: created });
+    if (!gate.ok) {
+      stockError = gate.error;
+      db.exec("ROLLBACK");
+    } else {
+      const number = `XV-${allocateOrderNumber(true)}`;
+      db.prepare(
+        `INSERT INTO orders (
+           id, number, product_id, account_id, customer_name, email, qty, amount_cents,
+           ship_line1, ship_city, ship_region, ship_postal, ship_country,
+           stripe_session_id, status, supplier_ref, supplier_detail, created_at,
+           transfer_group, fee_bps, platform_fee_cents, supplier_amount_cents, reseller_amount_cents, supplier_account_id,
+           receipt_token_hash, stripe_fee_est_cents, stripe_fee_cents,
+           return_line1, return_city, return_region, return_postal, return_country
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        id,
+        number,
+        listing.product_id,
+        listing.account_id,
+        ship.name.trim(),
+        ship.email.trim().toLowerCase(),
+        qty,
+        split.grossCents,
+        ship.line1.trim(),
+        ship.city.trim(),
+        ship.region.trim(),
+        ship.postal.trim(),
+        (ship.country.trim() || "US").toUpperCase(),
+        created,
+        `order_${id}`,
+        split.feeBps,
+        split.platformFeeCents,
+        split.supplierAmountCents,
+        split.resellerAmountCents,
+        page.supplierAccountId,
+        receiptHash(receiptToken),
+        split.stripeFeeCents,
+        split.stripeFeeCents,
+        returnTo?.line1 ?? null,
+        returnTo?.city ?? null,
+        returnTo?.region ?? null,
+        returnTo?.postal ?? null,
+        returnTo?.country ?? null,
+      );
+      if (gate.tracked) {
+        writeHold({ orderId: id, productId: page.productId, variantId: gate.variantId, qty, now: created });
+      }
+      snapshotOrderCost(id, page.productId, qty, page.priceCents);
+      db.exec("COMMIT");
+    }
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // The transaction was already closed.
+    }
+    throw error;
+  }
+  if (stockError) return { error: stockError as "Sold out" | "Order between 1 and 5." | "That page is not on the store." | "Choose a product." };
   return { order: getOrder(id)!, listing: listingFrom(listing), receiptToken };
 }
 

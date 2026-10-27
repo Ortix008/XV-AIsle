@@ -200,6 +200,33 @@ See whether that account exists, its role, how many failed sign-ins it has, and 
 docker compose exec -e ADMIN_EMAIL=owner@example.com store npm run admin:status
 ```
 
+## Stock caps
+
+The launch script hides Pearl (`20-PEARL-GS`) and Garnet (`20-GARNET-GS`), and sets the remaining stock for Flag `DAC7237CHF` (999), Dark Blue 2XS (30), Dark Blue XS (42), Green 2XS (25), and Green XS (161). It matches a listing SKU or a variant label. Running it again does not restock units that already sold. It writes listings, variants, and its own audit table. It does not change orders or the reseller waitlist, and it does not print keys.
+
+The store container keeps SQLite on the `xvaisle_xvaisle-data` volume at `/data/xvaisle.sqlite`. Stop the store before copying that file so the backup is a complete snapshot. Restore that copy to undo the run, including any sales that happened after it. The reverse script puts back the hidden flag and the stock numbers from its audit. If a paid order already lowered a count, that SKU is left as it is and the log says `restore_skipped`. Use the backup in that case.
+
+```bash
+docker compose -p xvaisle stop store
+docker compose -p xvaisle run --rm --entrypoint sh store -c 'cp /data/xvaisle.sqlite /data/xvaisle.sqlite.bak'
+docker compose -p xvaisle start store
+docker compose -p xvaisle exec store node --experimental-strip-types scripts/apply-stock-caps.ts
+```
+
+Restore the backup:
+
+```bash
+docker compose -p xvaisle stop store
+docker compose -p xvaisle run --rm --entrypoint sh store -c 'cp /data/xvaisle.sqlite.bak /data/xvaisle.sqlite'
+docker compose -p xvaisle start store
+```
+
+Or reverse the audit when no capped SKU has sold since the script ran:
+
+```bash
+docker compose -p xvaisle exec store node --experimental-strip-types scripts/rollback-stock-caps.ts
+```
+
 ## Import a catalog (test mode)
 
 Copy both JSON files onto the droplet. Keep them out of git. `STORE_OPERATOR_EMAIL` is the existing account that will own the listings. `IMPORT_SUPPLIER_EMAIL` is a different existing account. A buyer is marked as a supplier. An admin or a reseller is refused. The command prints each slug and does not print cost, shipping, or source URLs.
