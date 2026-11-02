@@ -41,6 +41,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* @ts-expect-error Impact site verification reads value, which the Metadata API rewrites to content. */}
+        <meta name="impact-site-verification" value="c47e4b0e-da1e-4c09-9425-6f14cfd7fc4e" />
+      </head>
       <body className="min-h-full bg-background text-foreground">
         <noscript>
           <style>{".page-enter,[data-reveal]{animation:none !important;opacity:1 !important;transform:none !important;}"}</style>
