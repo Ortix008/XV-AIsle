@@ -1,4 +1,9 @@
-const WEBHOOK_PATHS = new Set(["/api/billing/webhook", "/api/connect/webhook"]);
+const WEBHOOK_PATHS = new Set([
+  "/api/billing/webhook",
+  "/api/connect/webhook",
+  "/api/supplier/delivered",
+  "/api/supplier/catalog",
+]);
 
 function configuredAppUrl() {
   const raw = process.env.APP_URL?.trim() ?? "";
@@ -40,9 +45,21 @@ function headerOrigin(value: string | null) {
 }
 
 /**
+ * True when Origin, or Referer if Origin is absent, is the configured app origin.
+ * A missing or invalid APP_URL does not match.
+ */
+export function requestFromAppOrigin(request: Request) {
+  const expected = configuredOrigin();
+  if (!expected) return false;
+  const presented = headerOrigin(request.headers.get("origin")) ?? headerOrigin(request.headers.get("referer"));
+  return presented === expected;
+}
+
+/**
  * State-changing POST must come from APP_URL.
  * Origin is checked first. Referer is the fallback when Origin is absent.
- * Stripe webhooks are signed server-to-server posts and are exempt.
+ * Stripe webhooks and the two supplier callbacks are signed server-to-server
+ * posts and are exempt. Supplier routes check their own HMAC.
  */
 export function postOriginAllowed(request: Request) {
   if (request.method !== "POST") return true;
@@ -53,8 +70,5 @@ export function postOriginAllowed(request: Request) {
     return false;
   }
   if (WEBHOOK_PATHS.has(pathname)) return true;
-  const expected = configuredOrigin();
-  if (!expected) return false;
-  const presented = headerOrigin(request.headers.get("origin")) ?? headerOrigin(request.headers.get("referer"));
-  return presented === expected;
+  return requestFromAppOrigin(request);
 }

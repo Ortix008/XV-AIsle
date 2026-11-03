@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import { accountFromToken, type PublicAccount } from "@/lib/server/accounts";
 import { createCatalogItem, listApprovedCatalog } from "@/lib/server/catalog";
+import { requestFromAppOrigin } from "@/lib/server/same-origin";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
+import { authorizeSupplierWebhook, SUPPLIER_SIGNATURE_HEADER } from "@/lib/server/supplier-webhook";
 
 async function signedInAccount(request?: Request) {
   try {
@@ -17,6 +19,20 @@ async function signedInAccount(request?: Request) {
     if (name === SESSION_COOKIE) return accountFromToken(decodeURIComponent(rest.join("=")));
   }
   return null;
+}
+
+function parseCatalogBody(raw: string) {
+  try {
+    return JSON.parse(raw) as {
+      sku?: string;
+      title?: string;
+      costCents?: number;
+      shippingCents?: number;
+      origin?: string;
+    } | null;
+  } catch {
+    return null;
+  }
 }
 
 function canSeeCost(account: PublicAccount, ownerId: string) {
@@ -54,16 +70,15 @@ export async function GET(request?: Request) {
 }
 
 export async function POST(request: Request) {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  const account = accountFromToken(token);
+  const raw = await request.text();
+  // The supplier form posts from APP_URL with the session cookie. A callback has neither Origin nor Referer.
+  if (!requestFromAppOrigin(request)) {
+    const auth = authorizeSupplierWebhook(raw, request.headers.get(SUPPLIER_SIGNATURE_HEADER));
+    if (!auth.ok) return Response.json({ error: auth.error }, { status: auth.status });
+  }
+  const account = await signedInAccount(request);
   if (!account) return Response.json({ error: "Sign in first." }, { status: 401 });
-  const body = (await request.json().catch(() => null)) as {
-    sku?: string;
-    title?: string;
-    costCents?: number;
-    shippingCents?: number;
-    origin?: string;
-  } | null;
+  const body = parseCatalogBody(raw);
   if (!body) return Response.json({ error: "Name the item." }, { status: 400 });
   const result = createCatalogItem(account, {
     sku: body.sku ?? "",
