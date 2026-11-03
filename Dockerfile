@@ -27,6 +27,7 @@ COPY --from=build --chown=node:node /app/scripts/admin-reset-password.ts ./scrip
 COPY --from=build --chown=node:node /app/scripts/admin-status.ts ./scripts/admin-status.ts
 COPY --from=build --chown=node:node /app/scripts/apply-stock-caps.ts ./scripts/apply-stock-caps.ts
 COPY --from=build --chown=node:node /app/scripts/rollback-stock-caps.ts ./scripts/rollback-stock-caps.ts
+COPY --from=build --chown=node:node /app/scripts/stock-caps.json ./scripts/stock-caps.json
 COPY --from=build --chown=node:node /app/src/lib/stock-caps.ts ./src/lib/stock-caps.ts
 COPY --from=build --chown=node:node /app/src/lib/server/password.ts ./src/lib/server/password.ts
 COPY --from=build /app/package.json /tmp/xvaisle-package.json

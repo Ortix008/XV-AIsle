@@ -1,27 +1,24 @@
 /**
  * Launch stock rules. Listings are the product (one sku column).
  * Size and color rows live in listing_variants when a product has them.
+ * The SKUs to hide or cap live in scripts/stock-caps.json. This module does not
+ * choose them.
  * This module never reads or writes orders, the reseller waitlist, or stock holds.
  * No local imports: the prod container runs this file with Node's type stripper.
  */
 
 const SOLD_OUT_LABEL = "Sold out" as const;
 
-export const HIDDEN_SKUS = ["20-PEARL-GS", "20-GARNET-GS"] as const;
-
 export type CapTarget = {
   sku: string;
   cap: number;
 };
 
-/** Every target is one SKU. A size name on another product is not a match. */
-export const STOCK_CAP_TARGETS: CapTarget[] = [
-  { sku: "DAC7237CHF", cap: 999 },
-  { sku: "Dark Blue 2XS", cap: 30 },
-  { sku: "Dark Blue XS", cap: 42 },
-  { sku: "Green 2XS", cap: 25 },
-  { sku: "Green XS", cap: 161 },
-];
+/** Hide list and cap list from scripts/stock-caps.json. */
+export type StockCapPlan = {
+  hide: readonly string[];
+  caps: readonly CapTarget[];
+};
 
 export const ORDER_QTY_MAX = 5;
 /** Same window as a Stripe Checkout session. */
@@ -75,9 +72,50 @@ export function sqlChanges(result: unknown) {
   return sqlInt((result as { changes: unknown }).changes) ?? 0;
 }
 
-export function hideMatches(sku: string) {
+export function hideMatches(sku: string, hide: readonly string[]) {
   const key = normalizeKey(sku);
-  return HIDDEN_SKUS.some((item) => normalizeKey(item) === key);
+  return hide.some((item) => normalizeKey(item) === key);
+}
+
+/** Reject a plan that is empty, duplicated, or not whole-number caps. */
+export function stockCapPlanFromJson(raw: string): StockCapPlan {
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new Error("Stock cap plan is not JSON.");
+  }
+  if (typeof value !== "object" || value === null) throw new Error("Stock cap plan is not an object.");
+  const record = value as { hide?: unknown; caps?: unknown };
+  if (!Array.isArray(record.hide) || !Array.isArray(record.caps)) {
+    throw new Error("Stock cap plan is missing hide or caps.");
+  }
+  const hide: string[] = [];
+  const caps: CapTarget[] = [];
+  const seen = new Set<string>();
+  function claimSku(sku: string) {
+    const key = normalizeKey(sku);
+    if (!key) throw new Error("A stock cap SKU is empty.");
+    if (seen.has(key)) throw new Error("A stock cap SKU is listed twice.");
+    seen.add(key);
+    return key;
+  }
+  for (const sku of record.hide) {
+    if (typeof sku !== "string") throw new Error("A hide target is not a SKU.");
+    claimSku(sku);
+    hide.push(sku.trim());
+  }
+  for (const item of record.caps) {
+    if (typeof item !== "object" || item === null) throw new Error("A cap target is not an object.");
+    const sku = (item as { sku?: unknown }).sku;
+    const cap = (item as { cap?: unknown }).cap;
+    if (typeof sku !== "string") throw new Error("A cap target is missing a SKU.");
+    claimSku(sku);
+    if (typeof cap !== "number" || !Number.isInteger(cap) || cap < 0) throw new Error("A cap is not a whole number.");
+    caps.push({ sku: sku.trim(), cap });
+  }
+  if (hide.length === 0 && caps.length === 0) throw new Error("Stock cap plan is empty.");
+  return { hide, caps };
 }
 
 export function capMatches(target: CapTarget, row: { sku: string }) {
@@ -344,7 +382,7 @@ export type StockCapRun = { ok: boolean; lines: string[] };
  * Dry-run unless apply is true. A missing SKU or two rows with the same SKU
  * aborts the whole run and writes nothing.
  */
-export function runStockCaps(db: StockSql, apply: boolean): StockCapRun {
+export function runStockCaps(db: StockSql, apply: boolean, plan: StockCapPlan): StockCapRun {
   db.exec("BEGIN IMMEDIATE");
   try {
     ensureStockSchema(db);
@@ -365,7 +403,7 @@ export function runStockCaps(db: StockSql, apply: boolean): StockCapRun {
       }
       return matches[0];
     }
-    for (const sku of HIDDEN_SKUS) {
+    for (const sku of plan.hide) {
       const row = claim(sku);
       if (!row) continue;
       const logged = reportSku(row, sku);
@@ -377,7 +415,7 @@ export function runStockCaps(db: StockSql, apply: boolean): StockCapRun {
       row.changed = true;
       lines.push(formatStockLog({ sku: logged, action: "hidden" }));
     }
-    for (const target of STOCK_CAP_TARGETS) {
+    for (const target of plan.caps) {
       const row = claim(target.sku);
       if (!row) continue;
       const logged = reportSku(row, target.sku);
@@ -425,12 +463,15 @@ type AuditRow = {
   previous_on_hand: number | null;
 };
 
-function appliedState(row: { sku: string; label: string; hidden: number; cap: number | null; onHand: number | null }) {
+function appliedState(
+  row: { sku: string; label: string; hidden: number; cap: number | null; onHand: number | null },
+  plan: StockCapPlan,
+) {
   let hidden = row.hidden;
   let cap = row.cap;
   let onHand = row.onHand;
-  if (hideMatches(row.sku)) hidden = 1;
-  const target = STOCK_CAP_TARGETS.find((item) => capMatches(item, row));
+  if (hideMatches(row.sku, plan.hide)) hidden = 1;
+  const target = plan.caps.find((item) => capMatches(item, row));
   if (target) {
     const next = nextStock({ cap, onHand }, target.cap);
     cap = next.cap;
@@ -446,7 +487,7 @@ function sameState(
   return current.hidden === applied.hidden && current.cap === applied.cap && current.onHand === applied.onHand;
 }
 
-export function rollbackStockCaps(db: StockSql) {
+export function rollbackStockCaps(db: StockSql, plan: StockCapPlan) {
   ensureStockSchema(db);
   const audits = db
     .prepare(
@@ -494,13 +535,16 @@ export function rollbackStockCaps(db: StockSql) {
       cap: sqlInt(current.stock_cap),
       onHand: sqlInt(current.stock_on_hand),
     };
-    const applied = appliedState({
-      sku: row.sku,
-      label: row.label,
-      hidden: row.previous_hidden,
-      cap: row.previous_cap,
-      onHand: row.previous_on_hand,
-    });
+    const applied = appliedState(
+      {
+        sku: row.sku,
+        label: row.label,
+        hidden: row.previous_hidden,
+        cap: row.previous_cap,
+        onHand: row.previous_on_hand,
+      },
+      plan,
+    );
     if (!sameState(now, applied)) {
       lines.push(formatStockLog({ sku: logged, action: "restore_skipped" }));
       continue;
