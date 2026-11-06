@@ -1,5 +1,6 @@
 import { allowClient } from "@/lib/server/rate-limit";
 import { savePersonalizedJob } from "@/lib/server/personalized-jobs";
+import { personalizedProducts } from "@/data/personalized-products";
 import { PERSONALIZED_CLOSED, approvedDesigns, personalizedPlaceholders } from "@/lib/personalized";
 
 export function GET() {
@@ -8,6 +9,17 @@ export function GET() {
       open: false,
       designs: approvedDesigns,
       options: personalizedPlaceholders,
+      products: personalizedProducts.map((item) => ({
+        id: item.id,
+        title: item.title,
+        kind: item.kind,
+        priceCents: item.priceCents,
+        packSize: item.packSize,
+        summary: item.summary,
+        productionBusinessDays: item.productionBusinessDays,
+        lettering: item.lettering,
+        purchasable: false as const,
+      })),
     },
     { headers: { "Cache-Control": "no-store" } },
   );

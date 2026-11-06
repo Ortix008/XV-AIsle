@@ -4,6 +4,8 @@ export const PERSONALIZED_CLOSED = "Personalized orders are not open.";
 
 export const PERSONALIZED_TEXT_MAX = 40;
 
+export { personalizedCheckoutBlock, personalizedPriceSnapshot, personalizedProducts } from "@/data/personalized-products";
+
 export type PersonalizedProductionStatus = "new" | "in_production" | "ready" | "shipped";
 
 export type PersonalizedJob = {
@@ -19,6 +21,8 @@ export type PersonalizedJob = {
   productionStatus: PersonalizedProductionStatus;
   carrier: string | null;
   trackingNumber: string | null;
+  productId: string | null;
+  priceCents: number | null;
 };
 
 export const personalizedPlaceholders = [
@@ -53,6 +57,7 @@ export function formatJobSheet(job: PersonalizedJob) {
     `Color ${job.color ?? "not supplied"}`,
     `Size ${job.sizeLabel ?? "not supplied"}`,
     `Quantity ${job.qty}`,
+    job.priceCents == null ? "Price not on the ticket" : `Price ${(job.priceCents / 100).toFixed(2)}`,
     `Production ${job.productionStatus}`,
     `Carrier ${job.carrier ?? "not supplied"}`,
     `Tracking ${job.trackingNumber ?? "not supplied"}`,

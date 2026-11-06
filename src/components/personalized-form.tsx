@@ -26,7 +26,7 @@ export function PersonalizedForm() {
 
   return (
     <form onSubmit={onSubmit} className="mt-8 max-w-xl space-y-4">
-      <p className="text-sm text-muted-foreground">Approved designs: none yet.</p>
+      <p className="text-sm text-muted-foreground">Original artwork is not on this site yet.</p>
       <ul className="space-y-1 text-sm text-muted-foreground">
         {personalizedPlaceholders.map((item) => (
           <li key={item.kind}>

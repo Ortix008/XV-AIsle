@@ -46,6 +46,8 @@ export function listPersonalizedJobs(): PersonalizedJob[] {
     orderId: row.order_id,
     designId: row.design_id ?? "",
     designVersion: row.design_version ?? "",
+    productId: null,
+    priceCents: null,
     customText: row.custom_text,
     material: row.material,
     color: row.color,

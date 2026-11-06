@@ -1,3 +1,4 @@
+import { personalizedCheckoutBlock } from "@/data/personalized-products";
 import { isStoreSupplier } from "@/lib/order-facts";
 
 /** Pet-category rows stay in the database. They are not a public offer. */
@@ -16,5 +17,5 @@ export function blockedPublicListing(listing: {
   title?: string | null;
   supplierName?: string | null;
 }) {
-  return isPetListing(listing) || isStoreSupplier(listing.supplierName);
+  return isPetListing(listing) || isStoreSupplier(listing.supplierName) || personalizedCheckoutBlock(listing.productId ?? "") != null;
 }

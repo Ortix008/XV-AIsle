@@ -1,3 +1,4 @@
+import { personalizedCheckoutBlock } from "@/data/personalized-products";
 import { stripeCheckoutBlock } from "@/lib/offer-sale";
 import { blockedPublicListing } from "@/lib/public-sale";
 import { evaluateStock } from "@/lib/server/inventory";
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
     qty?: number;
   } | null;
   if (!body?.productId) return Response.json({ error: "Choose a product." }, { status: 400 });
-  const offerBlock = stripeCheckoutBlock(body.productId);
+  const offerBlock = stripeCheckoutBlock(body.productId) ?? personalizedCheckoutBlock(body.productId);
   if (offerBlock) return Response.json({ error: offerBlock }, { status: 400 });
   const listing = getListing(body.productId);
   if (blockedPublicListing({ productId: body.productId, ...(listing ?? {}) })) {

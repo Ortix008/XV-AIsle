@@ -1,4 +1,5 @@
 import { compareAtRejection } from "@/lib/honest-price";
+import { personalizedCheckoutBlock } from "@/data/personalized-products";
 import { stripeCheckoutBlock } from "@/lib/offer-sale";
 import { blockedPublicListing } from "@/lib/public-sale";
 import { referralFromCookieHeader } from "@/lib/referral";
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
   const listing = getListing(body.productId);
   const heldBack =
     stripeCheckoutBlock(body.productId) ??
+    personalizedCheckoutBlock(body.productId) ??
     (blockedPublicListing({
       productId: body.productId,
       title: listing?.title,

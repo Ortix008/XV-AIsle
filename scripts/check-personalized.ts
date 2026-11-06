@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { PersonalizedCards } from "../src/components/personalized-cards";
 import { PersonalizedForm } from "../src/components/personalized-form";
 import {
   PERSONALIZED_CLOSED,
@@ -50,17 +51,57 @@ async function main() {
     qty: 1,
     productionStatus: "new",
     carrier: null,
-    trackingNumber: null,
-  };
+  trackingNumber: null,
+  productId: null,
+  priceCents: null,
+};
   const sheet = formatJobSheet(job);
   assert(sheet.includes("Text Ada") && sheet.includes("Order not paid"), "the sheet keeps the letters and the unpaid state");
   assert(!/email|street|@|line1/i.test(sheet), "the sheet has no buyer contact");
 
   const form = renderToStaticMarkup(createElement(PersonalizedForm, null));
-  assert(form.includes("Approved designs: none yet"), "the form says no design is approved");
+  assert(form.includes("Original artwork is not on this site yet."), "the form says original artwork is not on the site");
   assert(form.includes("Not available to purchase"), "the form does not offer a buy button");
   assert(!form.toLowerCase().includes(machine.toLowerCase()), "the form does not name the machine");
   assert(!form.includes('type="file"'), "the form does not accept a file");
+
+  const { personalizedPriceSnapshot, personalizedProducts } = await import("../src/data/personalized-products");
+  assert(personalizedProducts.filter((item) => item.kind === "physical").length === 7, "seven items are physical");
+  assert(personalizedProducts.filter((item) => item.kind === "digital").length === 1, "one item is digital");
+  const expected: Record<string, { priceCents: number; packSize: number | null; kind: string }> = {
+    "happy-camper-gable-boxes": { priceCents: 3000, packSize: 6, kind: "physical" },
+    "happy-camper-cake-topper": { priceCents: 2500, packSize: null, kind: "physical" },
+    "happy-camper-cupcake-toppers": { priceCents: 1800, packSize: 14, kind: "physical" },
+    "happy-camper-party-bundle": { priceCents: 6500, packSize: null, kind: "physical" },
+    "little-pumpkin-cake-topper": { priceCents: 1700, packSize: null, kind: "physical" },
+    "lucky-duck-cake-topper-girl": { priceCents: 2500, packSize: null, kind: "physical" },
+    "lucky-duck-cake-topper-boy": { priceCents: 2500, packSize: null, kind: "physical" },
+    "little-pumpkin-website-invitation": { priceCents: 1800, packSize: null, kind: "digital" },
+  };
+  for (const [id, want] of Object.entries(expected)) {
+    const item = personalizedProducts.find((product) => product.id === id);
+    assert(item?.priceCents === want.priceCents && item.packSize === want.packSize && item.kind === want.kind, `${id} keeps the verified price and pack`);
+    assert(personalizedPriceSnapshot(id)?.priceCents === want.priceCents, `${id} snapshots the catalog price`);
+  }
+  assert(personalizedProducts.find((item) => item.id === "happy-camper-gable-boxes")?.lettering?.maxChars === 30, "the box lettering cap is 30");
+  assert(personalizedProducts.find((item) => item.id === "happy-camper-cake-topper")?.lettering?.maxChars === 30, "the topper lettering cap is 30");
+  assert(personalizedProducts.find((item) => item.id === "happy-camper-party-bundle")?.summary === "What is inside this bundle is not on file.", "the bundle contents stay unlisted");
+  assert(!personalizedProducts.some((item) => item.summary.includes("5.80") || item.summary.includes("7.68")), "example postage is not copied");
+
+  const cards = renderToStaticMarkup(createElement(PersonalizedCards));
+  assert(cards.includes("One Happy Camper Gable Boxes") && cards.includes("$30.00") && cards.includes("Set of 6"), "the boxes show the set price");
+  assert(cards.includes("$65.00") && cards.includes("What is inside this bundle is not on file."), "the bundle shows its price without invented contents");
+  assert(cards.includes("Digital. Not shipped.") && cards.includes("Our Little Pumpkin Interactive Website Invitation"), "the invitation is digital and not shipped");
+  assert(cards.includes("Not available to purchase"), "every card stays closed");
+  assert(!/etsy|elaverix|cricut|listing\/\d+/i.test(cards), "the cards do not name the source shop or a machine");
+
+  const forbidden = ["etsy", "elaverix", "cricut", "4571738617", "4539694612", "4571705376", "4572199639", "4592749760", "4502737670", "4498605000", "4607208908"];
+  for (const path of walk(join(process.cwd(), "src"))) {
+    const source = readFileSync(path, "utf8").toLowerCase();
+    for (const word of forbidden) {
+      assert(!source.includes(word), `${path} includes ${word}`);
+    }
+  }
 
   for (const path of walk(join(process.cwd(), "src"))) {
     if (!path.includes("personalized") && !path.endsWith("store-header.tsx") && !path.endsWith("shop-footer.tsx")) continue;
@@ -101,8 +142,64 @@ async function main() {
   const jobsAfter = (getDb().prepare("SELECT COUNT(*) AS n FROM personalized_jobs").get() as { n: number }).n;
   assert(after === before && jobsAfter === jobsBefore, "a closed personalized request writes nothing");
 
-  const catalog = (await (await GET()).json()) as { open?: boolean; designs?: unknown[] };
+  const catalog = (await (await GET()).json()) as {
+    open?: boolean;
+    designs?: unknown[];
+    products?: { id: string; purchasable: boolean; priceCents: number; kind: string }[];
+  };
+  const catalogJson = JSON.stringify(catalog);
   assert(catalog.open === false && catalog.designs?.length === 0, "the public catalog has no approved design");
+  assert(catalog.products?.length === 8 && catalog.products.every((item) => item.purchasable === false), "the eight items are listed and not purchasable");
+  assert(catalog.products?.find((item) => item.id === "happy-camper-gable-boxes")?.priceCents === 3000, "the public price for the boxes is 3000 cents");
+  assert(catalog.products?.find((item) => item.id === "little-pumpkin-website-invitation")?.kind === "digital", "the invitation stays digital");
+  assert(!/etsy|elaverix|cricut|https?:/i.test(catalogJson), "the public personalized payload has no source link");
+
+  const { POST: checkoutPost } = await import("../src/app/api/store/checkout/route");
+  const { POST: cartPost } = await import("../src/app/api/store/cart/route");
+  const { createPendingOrder } = await import("../src/lib/server/store");
+  process.env.STRIPE_SECRET_KEY = "sk_test_personalized";
+  process.env.REQUIRE_SUPPLIER_CONFIRMED = "0";
+  let stripeCalled = false;
+  const { setStripeFetch } = await import("../src/lib/server/stripe");
+  setStripeFetch(async () => {
+    stripeCalled = true;
+    return new Response("nope", { status: 500 });
+  });
+  const ship = {
+    name: "Example Buyer",
+    email: "buyer@example.com",
+    line1: "100 Example Street",
+    city: "Sample City",
+    region: "ST",
+    postal: "00000",
+    country: "US",
+  };
+  for (const item of personalizedProducts) {
+    const checkout = await checkoutPost(
+      new Request("http://127.0.0.1/api/store/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ productId: item.id, qty: 1, priceCents: 1, ...ship }),
+      }),
+    );
+    const checkoutBody = (await checkout.json()) as { error?: string; url?: string };
+    assert(checkout.status === 400 && checkoutBody.error === PERSONALIZED_CLOSED && !checkoutBody.url, `${item.id} checkout stays closed`);
+    const cart = await cartPost(
+      new Request("http://127.0.0.1/api/store/cart", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ productId: item.id, qty: 1 }),
+      }),
+    );
+    const cartBody = (await cart.json()) as { error?: string };
+    assert(cart.status === 400 && cartBody.error === PERSONALIZED_CLOSED, `${item.id} cannot be added to the cart`);
+  }
+  const direct = createPendingOrder({ productId: "happy-camper-gable-boxes", qty: 1, ship });
+  assert("error" in direct && direct.error === PERSONALIZED_CLOSED, "a direct order for a personalized id is refused");
+  assert(stripeCalled === false, "a personalized id does not call Stripe");
+  setStripeFetch(null);
+  delete process.env.STRIPE_SECRET_KEY;
+  delete process.env.REQUIRE_SUPPLIER_CONFIRMED;
 
   const stranger = await jobsGet(new Request("http://127.0.0.1/api/personalized/jobs"));
   assert(stranger.status === 403, "job tickets are not public");

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PersonalizedCards } from "@/components/personalized-cards";
 import { PersonalizedForm } from "@/components/personalized-form";
 import { ShopFrame } from "@/components/shop-frame";
 import { PERSONALIZED_CLOSED } from "@/lib/personalized";
@@ -7,7 +8,7 @@ import { viewerIsOperator } from "@/lib/server/require-operator";
 
 export const metadata: Metadata = {
   title: "Personalized · XV-AIsle",
-  description: "Approved designs and custom lettering. Purchase is closed until materials, price, postage, and turnaround are on file.",
+  description: "Physical and digital personalized items. Purchase is closed.",
 };
 
 export default async function PersonalizedPage() {
@@ -18,10 +19,14 @@ export default async function PersonalizedPage() {
         <p className="eyebrow">Store</p>
         <h1 className="mt-3 text-4xl sm:text-5xl">Personalized</h1>
         <p className="mt-4 max-w-xl text-base text-muted-foreground">
-          Choose an approved design and the letters to cut. Nothing here is for sale yet.
+          Prices below are the prices for these items. Original artwork is not on this site yet.
         </p>
         <p className="mt-3 max-w-xl text-sm font-medium" role="status">
-          {PERSONALIZED_CLOSED} Price, postage, and turnaround are not on file.
+          {PERSONALIZED_CLOSED} A return policy for these items is not set.
+        </p>
+        <PersonalizedCards />
+        <p className="mt-10 max-w-xl text-sm text-muted-foreground">
+          Stickers, labels, and apparel are not products here yet.
         </p>
         <PersonalizedForm />
         {operator ? (
