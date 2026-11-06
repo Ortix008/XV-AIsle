@@ -270,8 +270,30 @@ export function getDb() {
   addColumn(next, "listings", "import_images", "TEXT");
   scrubAssembledInUsa(next);
   ensureStockSchema(next);
+  ensurePersonalizedSchema(next);
   db = next;
   return next;
+}
+
+/** Job tickets for Personalized. No street, email, or payment column. Purchases stay closed. */
+function ensurePersonalizedSchema(database: DatabaseSync) {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS personalized_jobs (
+      id TEXT PRIMARY KEY,
+      order_id TEXT,
+      design_id TEXT,
+      design_version TEXT,
+      custom_text TEXT NOT NULL,
+      material TEXT,
+      color TEXT,
+      size_label TEXT,
+      qty INTEGER NOT NULL,
+      production_status TEXT NOT NULL,
+      carrier TEXT,
+      tracking_number TEXT,
+      created_at INTEGER NOT NULL
+    );
+  `);
 }
 
 /** Stored catalog descriptions lose made-in sentences, in any case or punctuation. */

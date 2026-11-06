@@ -48,7 +48,9 @@ const listing = {
 };
 
 async function main() {
-  assert(sourcedOfferInputs.length === 0, "no sourced offer is committed yet");
+  assert(sourcedOfferInputs.length === 1 && sourcedOfferInputs[0]?.id === "mltools-ot10", "the only sourced record is the pending MLTOOLS tray");
+  assert(sourcedOfferInputs[0]?.sourceRetailCents === 1899, "the tray keeps the source retail reference");
+  assert(!JSON.stringify(sourcedOfferInputs).includes("cdn/shop"), "the tray does not name a source image");
   assert(
     UNVERIFIED_OFFER_LABEL === "Supplier terms unverified — not available to purchase",
     "the unverified label is the required sentence",
@@ -156,6 +158,14 @@ async function main() {
   );
   assert(shelf.includes(UNVERIFIED_OFFER_LABEL) && shelf.includes("Open the approved offer"), "the sourcing shelf shows both kinds");
   assert(renderToStaticMarkup(createElement(SourcedOfferList, { offers: [] })) === "", "an empty shelf renders nothing");
+  const pending = acceptSourcedOffers(sourcedOfferInputs)[0];
+  const pendingCard = presentSourcedOffer(pending!, false);
+  const pendingMarkup = renderToStaticMarkup(createElement(SourcedOfferList, { offers: [pendingCard] }));
+  assert(pendingMarkup.includes(UNVERIFIED_OFFER_LABEL), "the tray card says it is not for sale");
+  assert(pendingMarkup.includes("Source retail reference"), "the tray card names the source retail reference");
+  assert(pendingMarkup.includes("OT10R") && pendingMarkup.includes("OT10B"), "the tray card names both source codes");
+  assert(pendingMarkup.includes("https://mltools.com/pages/drop-shipping"), "the tray card cites the drop-shipping page");
+  assert(!pendingMarkup.includes("cdn/shop") && !pendingMarkup.includes("Continue to checkout"), "the tray card has no image and no checkout");
 
   const { closeDb, getDb } = await import("../src/lib/server/db");
   const { signUp } = await import("../src/lib/server/accounts");
@@ -165,8 +175,14 @@ async function main() {
   const { POST: cartPost } = await import("../src/app/api/store/cart/route");
   const { POST: checkoutPost } = await import("../src/app/api/store/checkout/route");
 
-  const emptyOffers = (await (await offersGet()).json()) as { offers: unknown[] };
-  assert(emptyOffers.offers.length === 0, "the public offer route is empty until records exist");
+  const emptyOffers = (await (await offersGet()).json()) as {
+    offers: { id: string; label: string | null; sourceRetailCents: number | null; image: string | null; href: string | null }[];
+  };
+  const tray = emptyOffers.offers.find((item) => item.id === "mltools-ot10");
+  assert(emptyOffers.offers.length === 1 && tray?.label === UNVERIFIED_OFFER_LABEL, "the public route shows the pending tray as not for sale");
+  assert(tray?.sourceRetailCents === 1899 && tray.image === null && tray.href === null, "the tray has a source reference and no picture or checkout link");
+  const trayOrder = createPendingOrder({ productId: "mltools-ot10", qty: 1, ship });
+  assert("error" in trayOrder && trayOrder.error === UNVERIFIED_OFFER_LABEL, "the pending tray cannot be checked out");
 
   const joined = signUp({ name: "Offer Seller", email: "offer-seller@example.com", password: "offer-test" });
   if ("error" in joined) throw new Error(joined.error);
@@ -276,6 +292,48 @@ async function main() {
 
   const restored = createPendingOrder({ productId: "ready-pan", qty: 1, ship });
   if ("error" in restored) throw new Error(restored.error);
+
+  process.env.REQUIRE_SUPPLIER_CONFIRMED = "0";
+  const pet = publishListing(joined.account.id, {
+    ...pageInput,
+    productId: "pet-seat-belt-tether",
+    sku: "XV-PET-SEAT-BELT-TETHER",
+    title: "Pet Seat Belt Tether",
+    supplierUsConfirmed: true,
+    shipsFrom: "Austin, TX",
+  });
+  if ("error" in pet) throw new Error(pet.error);
+  const towel = publishListing(joined.account.id, {
+    ...pageInput,
+    productId: "beagle-luau-kitchen-towel",
+    sku: "XV-BEAGLE-LUAU-KITCHEN-TOWEL",
+    title: "Beagle Luau Kitchen Towel",
+    supplierUsConfirmed: true,
+    shipsFrom: "Austin, TX",
+  });
+  if ("error" in towel) throw new Error(towel.error);
+  const storeBrand = publishListing(joined.account.id, {
+    ...pageInput,
+    productId: "legacy-clip",
+    title: "Legacy clip",
+    supplierName: "XV-AIsle",
+    supplierUsConfirmed: true,
+    shipsFrom: "Austin, TX",
+  });
+  if ("error" in storeBrand) throw new Error(storeBrand.error);
+  const ordersBeforeHide = (getDb().prepare("SELECT COUNT(*) AS n FROM orders").get() as { n: number }).n;
+  for (const productId of ["pet-seat-belt-tether", "beagle-luau-kitchen-towel", "legacy-clip"]) {
+    const refusedSale = createPendingOrder({ productId, qty: 1, ship });
+    assert("error" in refusedSale && refusedSale.error === "That page is not on the store.", `${productId} stays off checkout`);
+  }
+  const ordersAfterHide = (getDb().prepare("SELECT COUNT(*) AS n FROM orders").get() as { n: number }).n;
+  assert(ordersAfterHide === ordersBeforeHide, "a refused legacy offer does not remove or add an order");
+  const { visibleOnShop } = await import("../src/lib/server/starter-shelf");
+  assert(visibleOnShop({ productId: "pet-seat-belt-tether", supplierName: "Example Seller", published: true, title: "Pet Seat Belt Tether" }) === false, "a pet listing stays off the public shop");
+  assert(visibleOnShop({ productId: "legacy-clip", supplierName: "XV-AIsle", published: true, title: "Legacy clip" }) === false, "a store-named supplier stays off the public shop");
+  assert(visibleOnShop({ productId: "ready-pan", supplierName: "Example Seller", published: true, title: "Offer pan" }) === true, "a named supplier can still be listed");
+  delete process.env.REQUIRE_SUPPLIER_CONFIRMED;
+
   closeDb();
   console.log("offer checks ok");
 }

@@ -1,10 +1,12 @@
 import { presentSourcedOffer, shopperOfferState, sourcedOffers, stripeCheckoutBlock } from "@/lib/offer-sale";
+import { blockedPublicListing } from "@/lib/public-sale";
 import { isHeldSample } from "@/lib/shelf-holds";
 import { comingSoonListing } from "@/lib/supplier-confirm";
 import { getListing, listingLoss, type StoreListing } from "@/lib/server/store";
 
 /** A listing may be sold here only when the existing supplier, payout, and ship-from gates already pass. */
 export function listingMaySell(listing: StoreListing) {
+  if (blockedPublicListing(listing)) return false;
   if (!listing.published || listing.hiddenFromShop) return false;
   if (comingSoonListing(listing) || isHeldSample(listing)) return false;
   if (!listing.supplierAccountId) return false;

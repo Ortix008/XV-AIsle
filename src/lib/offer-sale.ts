@@ -1,4 +1,10 @@
-import { sourcedOfferInputs, type SourcedOfferInput, type SourcedOfferStatus } from "@/data/sourced-offers";
+import {
+  sourcedOfferInputs,
+  type SourceCitation,
+  type SourceVariant,
+  type SourcedOfferInput,
+  type SourcedOfferStatus,
+} from "@/data/sourced-offers";
 import { cleanSupplierOrderUrl } from "@/lib/order-flags";
 import { UNVERIFIED_OFFER_LABEL } from "@/lib/shelf-copy";
 
@@ -17,6 +23,9 @@ export type AcceptedOffer = {
   image: string | null;
   listingId: string | null;
   affiliateHref: string | null;
+  sourceRetailCents: number | null;
+  variants: SourceVariant[];
+  citations: SourceCitation[];
 };
 
 export type PublicSourcedOffer = {
@@ -27,6 +36,9 @@ export type PublicSourcedOffer = {
   label: typeof UNVERIFIED_OFFER_LABEL | null;
   href: string | null;
   kind: "unverified" | "affiliate" | "fulfillment";
+  sourceRetailCents: number | null;
+  variants: SourceVariant[];
+  citations: SourceCitation[];
 };
 
 export type ShopperOfferState =
@@ -54,7 +66,14 @@ function acceptOne(input: SourcedOfferInput): AcceptedOffer | null {
   if (!title || title.length > 180 || blockedText(title)) return null;
   const category = typeof input.category === "string" ? input.category.trim() : "";
   if (category && (category.length > 40 || blockedText(category))) return null;
-  if (input.status !== "unverified" && input.status !== "fulfillment" && input.status !== "affiliate") return null;
+  if (
+    input.status !== "unverified" &&
+    input.status !== "supplier_pending" &&
+    input.status !== "fulfillment" &&
+    input.status !== "affiliate"
+  ) {
+    return null;
+  }
   const rawNote = typeof input.note === "string" ? input.note.trim() : "";
   if (rawNote.length > 400) return null;
   const note = rawNote && !blockedText(rawNote) && !PROMISE.test(rawNote) ? rawNote : null;
@@ -62,6 +81,15 @@ function acceptOne(input: SourcedOfferInput): AcceptedOffer | null {
     typeof input.image === "string" && LOCAL_IMAGE.test(input.image) && !input.image.includes("..") ? input.image : null;
   const listingId = typeof input.listingId === "string" && ID.test(input.listingId) ? input.listingId : null;
   const affiliateHref = input.affiliateApproved === true ? cleanSupplierOrderUrl(input.affiliateHref) : null;
+  const sourceRetailCents =
+    input.status === "supplier_pending" &&
+    Number.isInteger(input.sourceRetailCents) &&
+    (input.sourceRetailCents ?? 0) > 0 &&
+    (input.sourceRetailCents ?? 0) <= 100000
+      ? (input.sourceRetailCents as number)
+      : null;
+  const variants = acceptVariants(input.variants);
+  const citations = acceptCitations(input.citations);
   return {
     id: input.id,
     title,
@@ -70,7 +98,34 @@ function acceptOne(input: SourcedOfferInput): AcceptedOffer | null {
     image,
     listingId,
     affiliateHref,
+    sourceRetailCents,
+    variants,
+    citations,
   };
+}
+
+function acceptVariants(value: SourceVariant[] | undefined) {
+  if (!value) return [];
+  const variants: SourceVariant[] = [];
+  for (const item of value.slice(0, 8)) {
+    const code = item.code?.trim() ?? "";
+    const label = item.label?.trim() ?? "";
+    if (!/^[A-Za-z0-9-]{1,20}$/.test(code) || !label || label.length > 40) continue;
+    variants.push({ code, label });
+  }
+  return variants;
+}
+
+function acceptCitations(value: SourceCitation[] | undefined) {
+  if (!value) return [];
+  const citations: SourceCitation[] = [];
+  for (const item of value.slice(0, 8)) {
+    const href = cleanSupplierOrderUrl(item.href);
+    const text = item.text?.trim().replace(/\s+/g, " ") ?? "";
+    if (!href || !text || text.length > 320 || blockedText(text)) continue;
+    citations.push({ href, text });
+  }
+  return citations;
 }
 
 export function acceptSourcedOffers(inputs: readonly SourcedOfferInput[]) {
@@ -110,20 +165,24 @@ export function presentSourcedOffer(offer: AcceptedOffer, listingPurchasable: bo
     title: offer.title,
     note: offer.note,
     image: offer.image,
+    sourceRetailCents: offer.status === "supplier_pending" ? offer.sourceRetailCents : null,
+    variants: offer.variants,
+    citations: offer.citations,
   };
   switch (offer.status) {
     case "affiliate":
       if (offer.affiliateHref) {
-        return { ...base, label: null, href: offer.affiliateHref, kind: "affiliate" };
+        return { ...base, label: null, href: offer.affiliateHref, kind: "affiliate" as const };
       }
-      return { ...base, label: UNVERIFIED_OFFER_LABEL, href: null, kind: "unverified" };
+      return { ...base, label: UNVERIFIED_OFFER_LABEL, href: null, kind: "unverified" as const };
     case "fulfillment":
       if (offer.listingId && listingPurchasable) {
-        return { ...base, label: null, href: `/shop/${offer.listingId}`, kind: "fulfillment" };
+        return { ...base, label: null, href: `/shop/${offer.listingId}`, kind: "fulfillment" as const };
       }
-      return { ...base, label: UNVERIFIED_OFFER_LABEL, href: null, kind: "unverified" };
+      return { ...base, label: UNVERIFIED_OFFER_LABEL, href: null, kind: "unverified" as const };
+    case "supplier_pending":
     case "unverified":
-      return { ...base, label: UNVERIFIED_OFFER_LABEL, href: null, kind: "unverified" };
+      return { ...base, label: UNVERIFIED_OFFER_LABEL, href: null, kind: "unverified" as const };
     default: {
       const neverStatus: never = offer.status;
       return neverStatus;
@@ -136,6 +195,7 @@ export function stripeCheckoutBlock(productId: string, records = sourcedOffers()
   if (!offer) return null;
   switch (offer.status) {
     case "unverified":
+    case "supplier_pending":
       return UNVERIFIED_OFFER_LABEL;
     case "affiliate":
       return offer.affiliateHref ? AFFILIATE_CHECKOUT_BLOCK : UNVERIFIED_OFFER_LABEL;
@@ -156,6 +216,7 @@ export function shopperOfferState(productId: string, sellable: boolean, records 
     case "affiliate":
       return offer.affiliateHref ? { mode: "affiliate", href: offer.affiliateHref } : { mode: "unverified" };
     case "unverified":
+    case "supplier_pending":
       return { mode: "unverified" };
     case "fulfillment":
       return sellable && offer.listingId ? { mode: "store" } : { mode: "unverified" };

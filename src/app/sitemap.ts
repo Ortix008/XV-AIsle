@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 export const SITEMAP_PATHS = [
   "/",
   "/shop",
+  "/personalized",
   "/shop/small",
   "/shop/how-we-check",
   "/shop/shipping",

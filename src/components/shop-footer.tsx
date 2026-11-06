@@ -14,6 +14,7 @@ const columns = [
     title: "Shop",
     links: [
       { href: "/shop", label: "Shop" },
+      { href: "/personalized", label: "Personalized" },
       { href: "/shop/small", label: "Small business" },
     ],
   },

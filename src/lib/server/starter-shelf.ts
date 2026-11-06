@@ -1,4 +1,5 @@
 import { usSupplierConfirmed } from "../order-facts";
+import { blockedPublicListing } from "../public-sale";
 import { QA_CHECKOUT_PRODUCT_ID, QA_SUPPLIER_EMAIL, isQaCheckoutListing, qaCheckoutSeedAllowed } from "../qa-checkout";
 import {
   SCENTED_CANDLE_PRODUCT_ID,
@@ -58,7 +59,9 @@ export function visibleOnShop(listing: {
   published: boolean;
   hiddenFromShop?: boolean;
   title?: string | null;
+  sku?: string | null;
 }) {
+  if (blockedPublicListing(listing)) return false;
   if (isWoodTrayListing(listing) || isScentedCandleListing(listing)) return false;
   if (!listing.published || listing.hiddenFromShop) return false;
   if (isSampleListing(listing) && !demoSeedEnabled()) return false;
