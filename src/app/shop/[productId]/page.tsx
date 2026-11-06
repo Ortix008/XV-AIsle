@@ -9,6 +9,7 @@ import { productShipLine, usSupplierConfirmed } from "@/lib/order-facts";
 import { accountFromToken } from "@/lib/server/accounts";
 import { readShopStock, releaseHeldStock, soldOutByProduct } from "@/lib/server/inventory";
 import { publicListing } from "@/lib/server/order-view";
+import { shopperOfferForListing } from "@/lib/server/offer-guard";
 import { isOperatorAccount } from "@/lib/server/require-operator";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { ensureStarterShelf, isSampleListing, listedOnGrid, sampleProductReturnNote, visibleOnShop } from "@/lib/server/starter-shelf";
@@ -93,6 +94,7 @@ export default async function ProductPage({
       : buyerShareHref({ title: listing.title, productUrl });
   const operator = isOperatorAccount(account);
   const held = isHeldSample(listing);
+  const offer = shopperOfferForListing(listing);
   return (
     <ShopFrame>
       <ProductBuy
@@ -100,7 +102,9 @@ export default async function ProductPage({
         returnNote={sampleProductReturnNote(listing, returnCopyForListing(listing))}
         shareHref={shareHref}
         held={held}
-        unconfirmed={!held && comingSoonListing(listing)}
+        unconfirmed={!held && offer.mode === "store" && comingSoonListing(listing)}
+        termsUnverified={offer.mode === "unverified"}
+        externalOfferHref={offer.mode === "affiliate" ? offer.href : null}
         showReturnAddress={operator}
         nameUsSupplier={usSupplierConfirmed(listing)}
         shipWindow={productShipLine(listing)}

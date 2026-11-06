@@ -18,6 +18,7 @@ function OperatorDeskLink({ className }: { className: string }) {
 
 const nav = [
   { href: "/shop", label: "Shop" },
+  { href: "/personalized", label: "Personalized" },
   { href: "/shop/small", label: "Small business" },
   { href: "/#aisles", label: "Aisles" },
   { href: HOW_WE_CHECK_HREF, label: "How we check" },

@@ -18,6 +18,9 @@ import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quo
 import { marginGuard, snapshotOrderCost } from "./money-flow";
 import { changed, getDb } from "./db";
 import { etaFromListing, shopperDescription, withoutAssembledInUsa } from "../order-facts";
+import { personalizedCheckoutBlock } from "@/data/personalized-products";
+import { stripeCheckoutBlock } from "../offer-sale";
+import { blockedPublicListing } from "../public-sale";
 import { comingSoonListing } from "../supplier-confirm";
 import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
 import { formatOrderReturn, resolveReturnAddress } from "./supplier-returns";
@@ -835,12 +838,15 @@ export type ShipTo = {
 };
 
 export function createPendingOrder(input: { productId: string; qty: number; ship: ShipTo; variantId?: string | null }) {
+  const offerBlock = stripeCheckoutBlock(input.productId) ?? personalizedCheckoutBlock(input.productId);
+  if (offerBlock) return { error: offerBlock };
   const listing = getDb()
     .prepare("SELECT * FROM listings WHERE product_id = ? AND published = 1 AND COALESCE(hidden_from_shop, 0) = 0")
     .get(input.productId) as
     | ListingRow
     | undefined;
   if (!listing) return { error: "That page is not on the store." as const };
+  if (blockedPublicListing(listingFrom(listing))) return { error: "That page is not on the store." as const };
   const qty = input.qty;
   if (!Number.isInteger(qty) || qty < 1 || qty > 5) return { error: "Order between 1 and 5." as const };
   const ship = input.ship;

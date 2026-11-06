@@ -12,7 +12,7 @@ import { isStripeCheckoutUrl } from "@/lib/checkout-url";
 import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { money } from "@/lib/money";
 import { QA_CHECKOUT_PRODUCT_ID } from "@/lib/qa-checkout";
-import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE, UNCONFIRMED_BUTTON, UNCONFIRMED_LABEL } from "@/lib/shelf-copy";
+import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE, UNCONFIRMED_BUTTON, UNCONFIRMED_LABEL, UNVERIFIED_OFFER_LABEL } from "@/lib/shelf-copy";
 import { productShipLine, SHOPPER_PLACE, shopperDescription, shopperMayNameUsSupplier } from "@/lib/order-facts";
 import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
@@ -70,6 +70,8 @@ export function ProductBuy({
   shareHref,
   held = false,
   unconfirmed = false,
+  termsUnverified = false,
+  externalOfferHref = null,
   shipWindow,
   showReturnAddress = false,
   nameUsSupplier,
@@ -80,6 +82,8 @@ export function ProductBuy({
   shareHref: string;
   held?: boolean;
   unconfirmed?: boolean;
+  termsUnverified?: boolean;
+  externalOfferHref?: string | null;
   shipWindow?: string;
   showReturnAddress?: boolean;
   nameUsSupplier?: boolean;
@@ -113,7 +117,8 @@ export function ProductBuy({
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
   const aisleCrumb = productAisleCrumb(listing);
   const shipping = shipWindow ?? productShipLine(listing);
-  const blocked = held || unconfirmed || soldOut;
+  const approvedLink = externalOfferHref && /^https:\/\//.test(externalOfferHref) ? externalOfferHref : null;
+  const blocked = held || unconfirmed || soldOut || termsUnverified || Boolean(approvedLink);
   const namePlace = nameUsSupplier ?? shopperMayNameUsSupplier(listing);
 
   useEffect(() => {
@@ -122,7 +127,7 @@ export function ProductBuy({
 
   async function checkout(event: FormEvent) {
     event.preventDefault();
-    if (held || unconfirmed || soldOut) return;
+    if (held || unconfirmed || soldOut || termsUnverified || approvedLink) return;
     if (!details) {
       setPending(true);
       setError(null);
@@ -211,14 +216,16 @@ export function ProductBuy({
         <p className="product-sku">{listing.sku}</p>
         {listing.brand ? <p className="product-brand">{listing.brand}</p> : null}
         <h1 className="product-title">{listing.title}</h1>
-        <div className="product-price-row">
-          <p className="product-price">{money(listing.priceCents / 100)}</p>
-          {listing.sample ? <span className="product-sample">Sample</span> : null}
-        </div>
+        {termsUnverified || approvedLink ? null : (
+          <div className="product-price-row">
+            <p className="product-price">{money(listing.priceCents / 100)}</p>
+            {listing.sample ? <span className="product-sample">Sample</span> : null}
+          </div>
+        )}
         <p className="product-desc">{shopperDescription(listing.description)}</p>
         <form {...formReveal} onSubmit={checkout} className="product-checkout">
           <div className="product-buy">
-            {variants.length > 0 ? (
+            {variants.length > 0 && !termsUnverified && !approvedLink ? (
               <label className="product-qty-field">
                 <span className="sr-only">{listing.title}</span>
                 <select
@@ -235,7 +242,7 @@ export function ProductBuy({
                 </select>
               </label>
             ) : null}
-            {soldOut ? null : (
+            {soldOut || termsUnverified || approvedLink ? null : (
               <label className="product-qty-field">
                 Quantity
                 <Input
@@ -252,6 +259,14 @@ export function ProductBuy({
               <button type="button" className="sample-hold" disabled aria-disabled="true">
                 {SAMPLE_UNAVAILABLE}
               </button>
+            ) : termsUnverified ? (
+              <p className="text-sm font-medium" role="status">
+                {UNVERIFIED_OFFER_LABEL}
+              </p>
+            ) : approvedLink ? (
+              <a className="tap-link inline-block" href={approvedLink} rel="noopener noreferrer" target="_blank">
+                Open the approved offer
+              </a>
             ) : unconfirmed ? (
               <>
                 <p className="text-sm font-medium text-muted-foreground">{UNCONFIRMED_LABEL}</p>
@@ -353,6 +368,7 @@ export function ProductBuy({
             ) : null}
           </dl>
         ) : null}
+        {termsUnverified || approvedLink ? null : (
         <section className="product-extra">
           <h2 className="text-lg">Shipping & returns</h2>
           <dl className="mt-3 space-y-3 text-base">
@@ -377,6 +393,7 @@ export function ProductBuy({
             ) : null}
           </dl>
         </section>
+        )}
         <div className="product-links link-row">
           <Link href={HOW_WE_CHECK_HREF} className="tap-link">
             How we check

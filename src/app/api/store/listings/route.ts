@@ -4,6 +4,7 @@ import { accountFromToken } from "@/lib/server/accounts";
 import { publicListing, resellerListing } from "@/lib/server/order-view";
 import { publishForAccount } from "@/lib/server/publish";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
+import { blockedPublicListing } from "@/lib/public-sale";
 import { soldOutByProduct } from "@/lib/server/inventory";
 import { ensureStarterShelf, isSampleListing, listedOnGrid } from "@/lib/server/starter-shelf";
 import { listPublished } from "@/lib/server/store";
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
     madeInUsa: madeInUsa || undefined,
     shelf: shelf === "small" || shelf === "national" ? shelf : undefined,
     aisle,
-  }).filter(listedOnGrid);
+  }).filter((listing) => listedOnGrid(listing) && !blockedPublicListing(listing));
   const soldOut = soldOutByProduct(listings.map((listing) => listing.productId));
   return Response.json({
     listings: listings.map((listing) => ({
