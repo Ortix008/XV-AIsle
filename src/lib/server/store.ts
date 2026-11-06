@@ -18,6 +18,7 @@ import { FULFILL_TIMEOUT_MS, US_TRANSFER_HOLD_MS, holdState, platformFeeBps, quo
 import { marginGuard, snapshotOrderCost } from "./money-flow";
 import { changed, getDb } from "./db";
 import { etaFromListing, shopperDescription, withoutAssembledInUsa } from "../order-facts";
+import { stripeCheckoutBlock } from "../offer-sale";
 import { comingSoonListing } from "../supplier-confirm";
 import { sendBrandOrder, sendCustomerReceipt, sendOpsAlert, sendShippedMail } from "./order-mail";
 import { formatOrderReturn, resolveReturnAddress } from "./supplier-returns";
@@ -835,6 +836,8 @@ export type ShipTo = {
 };
 
 export function createPendingOrder(input: { productId: string; qty: number; ship: ShipTo; variantId?: string | null }) {
+  const offerBlock = stripeCheckoutBlock(input.productId);
+  if (offerBlock) return { error: offerBlock };
   const listing = getDb()
     .prepare("SELECT * FROM listings WHERE product_id = ? AND published = 1 AND COALESCE(hidden_from_shop, 0) = 0")
     .get(input.productId) as

@@ -56,7 +56,8 @@ With the keys in `.env.example` left blank, you can install, sign up, and browse
 Still manual or sample data:
 
 - Posts and retailer notes are copied by hand. Nothing is sent to a social network or to a retailer.
-- The product book is a fixed catalog with fictional warehouses. It is not a live feed.
+- The product book is a fixed catalog with fictional warehouses. It is not a live feed, and it is not a public offer.
+- Sourced offers live in `src/data/sourced-offers.ts`. That list stays empty until a record arrives with its evidence. An unverified record can be shown, and it says it is not available to purchase. Checkout refuses it on the server. A record can be bought only when it points at a listing that already has a confirmed supplier and a working payout, or when it is an approved https affiliate link. The store does not fetch that link.
 - Sample products (the sheet pan and bench scraper) publish only when `DEMO_SEED=1`. Leave that unset in production.
 - `DEMO_SEED=1 npx tsx scripts/seed-preview-order.ts` inserts one paid sample order and prints `/shop/return?token=…&session_id=cs_preview_sample_sheet_pan`. It refuses to run unless `DEMO_SEED=1`, refuses a live Stripe key, and does not call Stripe. With SMTP unset, mail is logged and not sent.
 - Small shops are names you type in.

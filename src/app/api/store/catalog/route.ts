@@ -1,5 +1,6 @@
 import { STORE_HOST } from "@/lib/domain";
 import { soldOutByProduct } from "@/lib/server/inventory";
+import { listingMaySell } from "@/lib/server/offer-guard";
 import { publicListing } from "@/lib/server/order-view";
 import { ensureStarterShelf, isSampleListing, listedOnGrid } from "@/lib/server/starter-shelf";
 import { listPublished } from "@/lib/server/store";
@@ -12,6 +13,8 @@ export function GET() {
   const soldOut = soldOutByProduct(listings.map((listing) => listing.productId));
   const products = listings.map((listing) => {
     const page = publicListing(listing, isSampleListing(listing));
+    const sellable = listingMaySell(listing);
+    const gone = soldOut.get(page.productId) === true;
     return {
       id: page.productId,
       title: page.title,
@@ -20,7 +23,8 @@ export function GET() {
       currency: "USD",
       link: `${origin}/shop/${page.productId}`,
       image: page.image ? `${origin}${page.image}` : "",
-      availability: soldOut.get(page.productId) ? "out of stock" : "in stock",
+      availability: !sellable ? "unavailable" : gone ? "out of stock" : "in stock",
+      purchasable: sellable && !gone,
       brand: page.supplierName,
       shelf: page.shelf,
     };
