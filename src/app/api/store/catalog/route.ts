@@ -1,4 +1,5 @@
 import { STORE_HOST } from "@/lib/domain";
+import { blockedPublicListing } from "@/lib/public-sale";
 import { soldOutByProduct } from "@/lib/server/inventory";
 import { listingMaySell } from "@/lib/server/offer-guard";
 import { publicListing } from "@/lib/server/order-view";
@@ -9,7 +10,7 @@ import { appOrigin } from "@/lib/server/stripe";
 export function GET() {
   ensureStarterShelf();
   const origin = appOrigin();
-  const listings = listPublished().filter(listedOnGrid);
+  const listings = listPublished().filter((listing) => listedOnGrid(listing) && !blockedPublicListing(listing));
   const soldOut = soldOutByProduct(listings.map((listing) => listing.productId));
   const products = listings.map((listing) => {
     const page = publicListing(listing, isSampleListing(listing));

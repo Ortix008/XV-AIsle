@@ -326,8 +326,51 @@ async function main() {
     const refusedSale = createPendingOrder({ productId, qty: 1, ship });
     assert("error" in refusedSale && refusedSale.error === "That page is not on the store.", `${productId} stays off checkout`);
   }
+  const corgi = publishListing(joined.account.id, {
+    ...pageInput,
+    productId: "corgi-luau-kitchen-towel",
+    sku: "XV-CORGI-LUAU-KITCHEN-TOWEL",
+    title: "Corgi Luau Kitchen Towel",
+    supplierUsConfirmed: true,
+    shipsFrom: "Austin, TX",
+  });
+  if ("error" in corgi) throw new Error(corgi.error);
+  const corgiOrder = createPendingOrder({ productId: "corgi-luau-kitchen-towel", qty: 1, ship });
+  assert("error" in corgiOrder && corgiOrder.error === "That page is not on the store.", "corgi-luau-kitchen-towel stays off checkout");
   const ordersAfterHide = (getDb().prepare("SELECT COUNT(*) AS n FROM orders").get() as { n: number }).n;
   assert(ordersAfterHide === ordersBeforeHide, "a refused legacy offer does not remove or add an order");
+  const hiddenIds = ["pet-seat-belt-tether", "beagle-luau-kitchen-towel", "corgi-luau-kitchen-towel", "legacy-clip"];
+  const { GET: listingsGet } = await import("../src/app/api/store/listings/route");
+  const catalogHidden = (await (await catalogGet()).json()) as { products: { id: string }[] };
+  const gridHidden = (await (await listingsGet(new Request("http://127.0.0.1/api/store/listings"))).json()) as {
+    listings: { productId: string }[];
+  };
+  for (const productId of hiddenIds) {
+    assert(!catalogHidden.products.some((item) => item.id === productId), `${productId} is absent from the public catalog`);
+    assert(!gridHidden.listings.some((item) => item.productId === productId), `${productId} is absent from the shop cards`);
+  }
+  assert(catalogHidden.products.some((item) => item.id === "ready-pan"), "a confirmed supplier listing stays in the catalog");
+  process.env.STRIPE_SECRET_KEY = "sk_test_offers";
+  let stripeCalled = false;
+  const { setStripeFetch } = await import("../src/lib/server/stripe");
+  setStripeFetch(async () => {
+    stripeCalled = true;
+    return new Response("nope", { status: 500 });
+  });
+  for (const productId of hiddenIds) {
+    const checkout = await checkoutPost(
+      new Request("http://127.0.0.1/api/store/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ productId, qty: 1, ...ship }),
+      }),
+    );
+    const checkoutBody = (await checkout.json()) as { error?: string; url?: string };
+    assert(checkout.status === 400 && checkoutBody.error === "That page is not on the store." && !checkoutBody.url, `${productId} checkout API stays closed`);
+  }
+  assert(stripeCalled === false, "a blocked listing does not call Stripe");
+  setStripeFetch(null);
+  delete process.env.STRIPE_SECRET_KEY;
   const { visibleOnShop } = await import("../src/lib/server/starter-shelf");
   assert(visibleOnShop({ productId: "pet-seat-belt-tether", supplierName: "Example Seller", published: true, title: "Pet Seat Belt Tether" }) === false, "a pet listing stays off the public shop");
   assert(visibleOnShop({ productId: "legacy-clip", supplierName: "XV-AIsle", published: true, title: "Legacy clip" }) === false, "a store-named supplier stays off the public shop");

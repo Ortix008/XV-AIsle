@@ -116,6 +116,60 @@ async function main() {
   assert(operator.status === 200 && operatorBody.jobs?.length === 0, "a verified operator sees an empty queue");
   assert(!JSON.stringify(operatorBody).includes("line1") && !JSON.stringify(operatorBody).includes("@"), "the queue has no buyer contact");
 
+  const buyer = signUp({ name: "Personalized Buyer", email: "personalized-buyer@example.com", password: "personalized-test" });
+  if ("error" in buyer) throw new Error(buyer.error);
+  const buyerJobs = await jobsGet(
+    new Request("http://127.0.0.1/api/personalized/jobs", { headers: { cookie: `${SESSION_COOKIE}=${buyer.token}` } }),
+  );
+  assert(buyerJobs.status === 403, "a buyer cannot read job tickets");
+  const escalated = await POST(
+    new Request("http://127.0.0.1/api/personalized", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: `${SESSION_COOKIE}=${buyer.token}` },
+      body: JSON.stringify({ customText: "Ada", role: "admin", priceCents: 1899, designId: "preset" }),
+    }),
+  );
+  assert(escalated.status === 403, "extra fields do not open a personalized order");
+  const buyerRole = getDb().prepare("SELECT role FROM accounts WHERE id = ?").get(buyer.account.id) as { role: string };
+  assert(buyerRole.role === "buyer", "a personalized post does not grant admin");
+  getDb().prepare("UPDATE accounts SET role = 'reseller', email_verified = 1 WHERE id = ?").run(buyer.account.id);
+  const resellerJobs = await jobsGet(
+    new Request("http://127.0.0.1/api/personalized/jobs", { headers: { cookie: `${SESSION_COOKIE}=${buyer.token}` } }),
+  );
+  assert(resellerJobs.status === 403, "a reseller cannot read job tickets");
+  getDb().prepare("UPDATE accounts SET role = 'admin', email_verified = 0 WHERE id = ?").run(buyer.account.id);
+  const unverifiedJobs = await jobsGet(
+    new Request("http://127.0.0.1/api/personalized/jobs", { headers: { cookie: `${SESSION_COOKIE}=${buyer.token}` } }),
+  );
+  assert(unverifiedJobs.status === 403, "an unverified admin cannot read job tickets");
+  const jobsStill = (getDb().prepare("SELECT COUNT(*) AS n FROM personalized_jobs").get() as { n: number }).n;
+  const ordersStill = (getDb().prepare("SELECT COUNT(*) AS n FROM orders").get() as { n: number }).n;
+  assert(jobsStill === jobsAfter && ordersStill === after, "a crafted personalized post still writes nothing");
+
+  const events = readFileSync(join(process.cwd(), "src/lib/server/stripe-events.ts"), "utf8");
+  const jobsSource = readFileSync(join(process.cwd(), "src/lib/server/personalized-jobs.ts"), "utf8");
+  assert(!events.includes("personalized"), "the Stripe webhook does not write a personalized job");
+  assert(!jobsSource.includes("UPDATE personalized_jobs"), "a job row is not rewritten");
+
+  process.env.APP_URL = "https://xvaisle.com";
+  const { postOriginAllowed } = await import("../src/lib/server/same-origin");
+  assert(
+    postOriginAllowed(new Request("https://xvaisle.com/api/supplier/delivered", { method: "POST" })) === false,
+    "a supplier delivery with no origin is still refused",
+  );
+  assert(
+    postOriginAllowed(new Request("https://xvaisle.com/api/billing/webhook", { method: "POST" })) === true,
+    "the Stripe billing webhook stays exempt",
+  );
+  assert(
+    postOriginAllowed(new Request("https://xvaisle.com/api/connect/webhook", { method: "POST" })) === true,
+    "the Stripe connect webhook stays exempt",
+  );
+  assert(
+    postOriginAllowed(new Request("https://xvaisle.com/api/personalized", { method: "POST" })) === false,
+    "a personalized post with no origin is refused",
+  );
+
   console.log("personalized checks ok");
 }
 

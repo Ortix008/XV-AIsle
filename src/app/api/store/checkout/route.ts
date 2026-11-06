@@ -1,4 +1,6 @@
 import { compareAtRejection } from "@/lib/honest-price";
+import { stripeCheckoutBlock } from "@/lib/offer-sale";
+import { blockedPublicListing } from "@/lib/public-sale";
 import { referralFromCookieHeader } from "@/lib/referral";
 import { attachReferrer } from "@/lib/server/money-flow";
 import { allowClient } from "@/lib/server/rate-limit";
@@ -6,7 +8,7 @@ import { settleCheckoutSession } from "@/lib/server/ledger";
 import { orderSummary } from "@/lib/server/order-summary";
 import { buyerOrder } from "@/lib/server/order-view";
 import { demoSeedEnabled } from "@/lib/server/starter-shelf";
-import { attachStripeSession, createPendingOrder, orderByStripeSession } from "@/lib/server/store";
+import { attachStripeSession, createPendingOrder, getListing, orderByStripeSession } from "@/lib/server/store";
 import { createCheckoutSession, retrieveCheckoutSession, stripeConfigured } from "@/lib/server/stripe";
 
 const PREVIEW_SESSION = /^cs_preview_[a-z0-9_]{1,80}$/;
@@ -75,10 +77,6 @@ export async function POST(request: Request) {
   if (!allowClient(request, "checkout", 8, 10 * 60 * 1000)) {
     return Response.json({ error: "Too many checkout tries. Wait a few minutes." }, { status: 429 });
   }
-  if (!stripeConfigured()) {
-    console.error("Card checkout refused because STRIPE_SECRET_KEY is unset.");
-    return Response.json({ error: "Card checkout isn't open yet." }, { status: 503 });
-  }
   const body = (await request.json().catch(() => null)) as {
     productId?: string;
     qty?: number;
@@ -92,6 +90,22 @@ export async function POST(request: Request) {
     country?: string;
   } | null;
   if (!body?.productId) return Response.json({ error: "Choose a product." }, { status: 400 });
+  const listing = getListing(body.productId);
+  const heldBack =
+    stripeCheckoutBlock(body.productId) ??
+    (blockedPublicListing({
+      productId: body.productId,
+      title: listing?.title,
+      sku: listing?.sku,
+      supplierName: listing?.supplierName,
+    })
+      ? "That page is not on the store."
+      : null);
+  if (heldBack) return Response.json({ error: heldBack }, { status: 400 });
+  if (!stripeConfigured()) {
+    console.error("Card checkout refused because STRIPE_SECRET_KEY is unset.");
+    return Response.json({ error: "Card checkout isn't open yet." }, { status: 503 });
+  }
   const compareAt = compareAtRejection(body);
   if (compareAt) return Response.json({ error: compareAt }, { status: 400 });
   const created = createPendingOrder({
