@@ -33,6 +33,17 @@ export type AmazonPick = {
   name: string;
   blurb: string;
   note?: string;
+  /**
+   * Optional card image. Leave this unset until art is approved.
+   * A live Amazon PA-API URL or a CJ/Rakuten feed URL may be hotlinked here later, only after approval.
+   * Never download, copy, or commit a product image into this repo.
+   */
+  imageUrl?: string;
+};
+
+export type AisleArt = {
+  src: string;
+  alt: string;
 };
 
 export type AmazonAisle = {
@@ -41,6 +52,8 @@ export type AmazonAisle = {
   heading: string;
   intro: string;
   items: readonly AmazonPick[];
+  /** Optional aisle art used when a pick has no imageUrl. Leave unset until the designer delivers it. */
+  art?: AisleArt;
 };
 
 const ASIN_PATTERN = /^[A-Z0-9]{10}$/;
@@ -391,6 +404,15 @@ export const AMAZON_AISLES: readonly AmazonAisle[] = [
     items: [],
   },
 ];
+
+/** Pick image, then aisle art, then nothing. An empty string counts as unset. */
+export function resolvePickImage(item: AmazonPick, aisle: AmazonAisle) {
+  const pickSrc = item.imageUrl?.trim();
+  if (pickSrc) return { src: pickSrc, alt: item.name };
+  const aisleSrc = aisle.art?.src.trim();
+  if (aisleSrc) return { src: aisleSrc, alt: aisle.art?.alt ?? "" };
+  return null;
+}
 
 export function amazonPickUrl(asin: string) {
   if (!ASIN_PATTERN.test(asin)) {

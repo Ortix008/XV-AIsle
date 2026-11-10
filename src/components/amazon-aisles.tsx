@@ -11,6 +11,7 @@ import {
   amazonPickUrl,
   liveAisles,
   pickLinkLabel,
+  resolvePickImage,
   type AmazonAisle,
 } from "@/lib/amazon-aisles";
 
@@ -20,6 +21,18 @@ function JsonLd({ data }: { data: unknown }) {
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
     />
+  );
+}
+
+function PickArt({ item, aisle }: { item: AmazonAisle["items"][number]; aisle: AmazonAisle }) {
+  const image = resolvePickImage(item, aisle);
+  if (!image) return null;
+  return (
+    <div className="affiliate-art">
+      {/* Hotlink only. next/image would proxy and cache a remote file on this server. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={image.src} alt={image.alt} loading="lazy" decoding="async" />
+    </div>
   );
 }
 
@@ -65,6 +78,7 @@ export function AisleDetail({ aisle }: { aisle: AmazonAisle }) {
         {aisle.items.map((item) => (
           <li key={item.asin}>
             <article className="affiliate-card">
+              <PickArt item={item} aisle={aisle} />
               <h2 className="affiliate-card-name">{item.name}</h2>
               {item.blurb ? <p className="affiliate-blurb">{item.blurb}</p> : null}
               {item.note ? <p className="affiliate-fine">{item.note}</p> : null}

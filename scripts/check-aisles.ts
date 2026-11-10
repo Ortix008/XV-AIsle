@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { createElement } from "react";
@@ -22,7 +23,9 @@ import {
   liveAisles,
   llmsTxt,
   qaPickRows,
+  resolvePickImage,
   type AmazonAisle,
+  type AmazonPick,
 } from "../src/lib/amazon-aisles";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -205,6 +208,73 @@ for (const name of hiddenNames) {
   assert(aisle && aisle.items.length === 0, `${name} is in the data with no picks`);
   assert(!live.some((entry) => entry.name === name), `${name} is not live`);
 }
+
+const AMAZON_MEDIA_HOSTS = ["m.media-amazon.com", "images-na.ssl-images-amazon.com", "images-amazon.com"];
+for (const aisle of AMAZON_AISLES) {
+  assert(aisle.art === undefined, `${aisle.slug} has no aisle art yet`);
+  for (const item of aisle.items) {
+    assert(item.imageUrl === undefined, `${item.asin} imageUrl stays unset`);
+    assert(resolvePickImage(item, aisle) === null, `${item.asin} renders no image`);
+  }
+}
+const imageExt = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg", ".ico"]);
+const committed = execFileSync("git", ["ls-files", "-z"], { encoding: "buffer" }).toString("utf8").split("\0");
+for (const file of committed) {
+  if (!file || !imageExt.has(extname(file).toLowerCase())) continue;
+  const bytes = readFileSync(join(process.cwd(), file));
+  const text = bytes.toString("utf8");
+  for (const host of AMAZON_MEDIA_HOSTS) {
+    assert(!text.includes(host), `${file} points at ${host}`);
+  }
+}
+for (const host of AMAZON_MEDIA_HOSTS) {
+  for (const aisle of AMAZON_AISLES) {
+    assert(!aisle.art?.src.includes(host), `${aisle.slug} art points at ${host}`);
+    for (const item of aisle.items) {
+      assert(!(item.imageUrl ?? "").includes(host), `${item.asin} imageUrl points at ${host}`);
+    }
+  }
+}
+
+const plainPick: AmazonPick = { asin: "B00FIXTURE", name: "Fixture Pan", blurb: "A fixture blurb for the test lane." };
+const plainAisle: AmazonAisle = {
+  slug: "fixture-lane",
+  name: "Fixture Lane",
+  heading: "Fixture heading.",
+  intro: "Fixture intro.",
+  items: [plainPick],
+};
+assert(resolvePickImage(plainPick, plainAisle) === null, "no imageUrl and no aisle art resolves to nothing");
+const aisleArt = { src: "/xv-aisle-mark.svg", alt: "XV-AIsle mark" };
+assert(
+  resolvePickImage(plainPick, { ...plainAisle, art: aisleArt })?.src === aisleArt.src &&
+    resolvePickImage(plainPick, { ...plainAisle, art: aisleArt })?.alt === aisleArt.alt,
+  "aisle art is used when the pick has no image",
+);
+const pickImage = { ...plainPick, imageUrl: "/brand/logo-official-xo.png" };
+assert(
+  resolvePickImage(pickImage, { ...plainAisle, art: aisleArt })?.src === pickImage.imageUrl &&
+    resolvePickImage(pickImage, { ...plainAisle, art: aisleArt })?.alt === plainPick.name,
+  "a pick imageUrl wins over aisle art",
+);
+const bareCard = renderToStaticMarkup(createElement(AisleDetail, { aisle: plainAisle }));
+assert(bareCard.includes('<article class="affiliate-card"><h2'), "a card with no image keeps today's markup");
+assert(!bareCard.includes("affiliate-art") && !bareCard.includes("<img"), "a card with no image has no image box");
+const artCard = renderToStaticMarkup(createElement(AisleDetail, { aisle: { ...plainAisle, art: aisleArt } }));
+const artTag = artCard.match(/<img\b[^>]*>/)?.[0] ?? "";
+assert(attr(artTag, "src") === aisleArt.src, "aisle art src renders");
+assert(attr(artTag, "alt") === aisleArt.alt, "aisle art alt renders");
+assert(attr(artTag, "loading") === "lazy" && attr(artTag, "decoding") === "async", "card images lazy-load");
+const pickCard = renderToStaticMarkup(
+  createElement(AisleDetail, { aisle: { ...plainAisle, art: aisleArt, items: [pickImage] } }),
+);
+const pickTag = pickCard.match(/<img\b[^>]*>/)?.[0] ?? "";
+assert(attr(pickTag, "src") === pickImage.imageUrl, "pick image src renders");
+assert(attr(pickTag, "alt") === plainPick.name, "a pick image uses the product name as alt");
+const pickLd = jsonLdBlocks(pickCard)[0];
+walk(pickLd, (key) => {
+  assert(key.toLowerCase() !== "image", "card art stays out of the product json-ld");
+});
 
 assertClean(JSON.stringify(AMAZON_AISLES), "aisle data");
 walk(AMAZON_AISLES, (key) => {
