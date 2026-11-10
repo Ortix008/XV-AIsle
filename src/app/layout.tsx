@@ -15,8 +15,7 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
-  display: "optional",
-  preload: true,
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({

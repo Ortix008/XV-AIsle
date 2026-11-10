@@ -129,6 +129,8 @@
   --shop-plate-line: rgba(7, 8, 10, 0.1);
   --shop-plate-inset: 12px;
   --shop-frame-ratio: 1 / 1;
+  --shop-title-fallback-scale: 108.5%;
+  --shop-title-font: "Space Grotesk", "Shop Title Fallback", sans-serif;
   --stall-art-ratio: 16 / 10;
   --shop-plate-blend: multiply;
   --aisle-bloom: 0.75;
@@ -218,8 +220,20 @@
   }
 }
 
+/* size-adjust matches --shop-title-fallback-scale. Font-face descriptors cannot read a custom property. */
+@font-face {
+  font-family: "Shop Title Fallback";
+  src: local("Arial"), local("Arimo"), local("Liberation Sans");
+  font-weight: 600;
+  font-style: normal;
+  size-adjust: 108.5%;
+  ascent-override: 89.71%;
+  descent-override: 26.62%;
+  line-gap-override: 0%;
+}
+
 .shop-catalog .page-title {
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--shop-title-font);
 }
 
 .eyebrow {
