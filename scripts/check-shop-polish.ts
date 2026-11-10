@@ -133,8 +133,17 @@ async function main() {
   assert(!hiddenJson.includes("priceCents") && !hiddenJson.includes("\"price\""), "hidden prices stay out of the listings API");
   assert(!hiddenJson.includes("$"), "the listings API does not format a price while hidden");
   const { publicGridListings } = await import("../src/lib/server/shop-catalog");
-  const hiddenGrid = JSON.stringify(publicGridListings());
+  const hiddenGridList = publicGridListings();
+  const hiddenGrid = JSON.stringify(hiddenGridList);
   assert(!hiddenGrid.includes("priceCents"), "hidden prices stay out of the shop payload");
+  const gridIds = hiddenGridList.map((item) => item.productId);
+  assert(gridIds.includes("photo-pan"), "the home payload keeps a real photo");
+  assert(!gridIds.includes("blank-pan") && !gridIds.includes("mark-pan") && !gridIds.includes("glow-pan"), "the home payload hides a missing photo, the mark, and the aisle plate");
+  const { GET: catalogGet } = await import("../src/app/api/store/catalog/route");
+  const catalog = (await (await catalogGet()).json()) as { products: { id: string }[] };
+  const catalogIds = catalog.products.map((item) => item.id);
+  assert(catalogIds.includes("photo-pan"), "the catalog keeps a real photo");
+  assert(!catalogIds.includes("blank-pan") && !catalogIds.includes("mark-pan") && !catalogIds.includes("glow-pan"), "the catalog hides a missing photo, the mark, and the aisle plate");
   process.env.SHOW_PRICES = "1";
   const pricedResponse = await GET(new Request("http://127.0.0.1/api/store/listings"));
   const pricedBody = (await pricedResponse.json()) as { listings: { productId: string; priceCents?: number }[] };
