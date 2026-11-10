@@ -1,21 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type CSSProperties } from "react";
-import { MarkTile } from "@/components/mark-tile";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { NightMotif } from "@/components/night-motif";
 import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
+import { aisleCardArt } from "@/lib/art";
 import { money } from "@/lib/money";
 import { SOLD_OUT_LABEL } from "@/lib/sold-out-label";
-import { SHOPPER_PLACE, TRACKING_SHIP, shopperMayNameUsSupplier } from "@/lib/order-facts";
-import { nightWorldForListing, nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
+import { nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
+import { SHOP_CARD_STATUS, showShopPrices } from "@/lib/shop-prices";
 import { hasRealProductPhoto } from "@/lib/shop-photo";
+import { productIsPackshot } from "@/lib/shop-packshot";
 
 export type ShopCard = {
   productId: string;
   title: string;
-  priceCents: number;
+  priceCents?: number;
   image: string;
   supplierName?: string;
   supplierOrigin?: string;
@@ -30,6 +31,7 @@ export type ShopCard = {
   kind?: "bundle";
   aisle?: string | null;
   soldOut?: boolean;
+  packshot?: boolean | null;
 };
 
 function eyebrow(listing: ShopCard) {
@@ -40,22 +42,22 @@ function eyebrow(listing: ShopCard) {
   return "";
 }
 
-/** Confirmed cards name a US supplier. The day window stays off the grid. */
-export function shopCardShipPhrase(listing: ShopCard) {
-  if (shopperMayNameUsSupplier(listing)) return SHOPPER_PLACE;
-  return TRACKING_SHIP;
-}
-
-export function ShopCardCopy({ listing }: { listing: ShopCard }) {
+export function ShopCardCopy({ listing, showPrices = false }: { listing: ShopCard; showPrices?: boolean }) {
   const label = eyebrow(listing);
-  const phrase = shopCardShipPhrase(listing);
   return (
     <div className="shop-card-text">
       {label ? <p className="shop-card-eyebrow">{label}</p> : null}
       <h3 className="shop-card-title">{listing.title}</h3>
       <p className="shop-card-price">
-        {money(listing.priceCents / 100)}
-        {phrase ? <> · {phrase}</> : null}
+        {showPrices && listing.priceCents != null ? (
+          <>
+            {money(listing.priceCents / 100)}
+            {" · "}
+            {SHOP_CARD_STATUS}
+          </>
+        ) : (
+          SHOP_CARD_STATUS
+        )}
       </p>
       {listing.soldOut ? <p className="shop-card-price">{SOLD_OUT_LABEL}</p> : null}
     </div>
@@ -74,9 +76,11 @@ export function ShopGrid({
   world = null,
   catalog = false,
   hideWhenEmpty = false,
-  tiles = false,
   band = false,
   initialListings,
+  stalls,
+  showPrices,
+  photosOnly = false,
 }: {
   kicker: string;
   title: string;
@@ -89,11 +93,17 @@ export function ShopGrid({
   world?: NightWorld | null;
   catalog?: boolean;
   hideWhenEmpty?: boolean;
-  tiles?: boolean;
   band?: boolean;
   /** Server-rendered cards. When set, the grid does not swap out of a loading panel. */
   initialListings?: ShopCard[];
+  stalls?: readonly NightWorld[];
+  showPrices?: boolean;
+  /** Home and other shopper grids use the same photo rule as the shop. */
+  photosOnly?: boolean;
 }) {
+  const pricesOn = showPrices ?? showShopPrices();
+  const hidePlainPhotos = catalog || photosOnly;
+  const bandRef = useRef<HTMLElement>(null);
   const [fetched, setFetched] = useState<ShopCard[] | null>(null);
   const listings = initialListings ?? fetched;
 
@@ -113,7 +123,22 @@ export function ShopGrid({
     };
   }, [query, initialListings]);
 
-  const withPhotos = listings === null ? null : catalog ? listings.filter((item) => hasRealProductPhoto(item.image)) : listings;
+  useEffect(() => {
+    const band = bandRef.current;
+    if (!band) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const watcher = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) band.classList.toggle("is-drifting", entry.isIntersecting);
+      },
+      { threshold: 0 },
+    );
+    watcher.observe(band);
+    return () => watcher.disconnect();
+  }, [catalog]);
+
+  const withPhotos =
+    listings === null ? null : hidePlainPhotos ? listings.filter((item) => hasRealProductPhoto(item.image)) : listings;
   const visible = withPhotos === null ? null : limit === undefined ? withPhotos : withPhotos.slice(0, limit);
   const Heading = level === "page" ? "h1" : "h2";
   if (hideWhenEmpty && (visible === null || visible.length === 0)) return null;
@@ -122,32 +147,45 @@ export function ShopGrid({
     <div className={catalog ? "shop-catalog" : "mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]"}>
       {catalog ? (
         <>
-          <header className="shop-band">
+          <header ref={bandRef} className="shop-band">
             <div className="shop-band-art" aria-hidden />
+            <div className="shop-band-wash" aria-hidden />
             <div className="shop-band-copy">
               <p className="eyebrow">Store</p>
               <Heading className="page-title">{title}</Heading>
               <p className="mt-3 max-w-xl text-pretty text-base text-muted-foreground">
-                {world ? `${world.title}. ${world.story}` : lede}
+                {world ? world.story : lede}
               </p>
             </div>
           </header>
           <ul className="stall-tabs">
-            {nightWorlds.map((stall) => {
+            {(stalls ?? nightWorlds).map((stall, index) => {
               const current = world?.slug === stall.slug;
               return (
-                <li key={stall.slug}>
+                <Reveal key={stall.slug} as="li" index={index} pace="shop">
                   <Link
                     href={`/shop?aisle=${stall.slug}`}
                     aria-current={current ? "page" : undefined}
                     className="stall-tab"
                     style={nightWorldVars(stall) as CSSProperties}
                   >
-                    <NightMotif slug={stall.slug} />
+                    <span className="stall-tab-art">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={aisleCardArt[stall.slug]}
+                        alt=""
+                        width={1280}
+                        height={720}
+                        className={stall.slug === "everyday-finds" ? "object-everyday" : undefined}
+                      />
+                      <span className="stall-tab-chip" aria-hidden="true">
+                        <NightMotif slug={stall.slug} />
+                      </span>
+                    </span>
                     <span className="stall-tab-title">{stall.title}</span>
                     <span className="stall-tab-story">{stall.story}</span>
                   </Link>
-                </li>
+                </Reveal>
               );
             })}
           </ul>
@@ -208,21 +246,19 @@ export function ShopGrid({
       ) : null}
       <ul className={catalog ? "shop-fill" : "grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4"}>
         {visible?.map((listing, index) => {
-          const cardWorld = nightWorldForListing(listing);
           return (
-            <Reveal key={listing.productId} as="li" index={index % 5}>
-              <Link
-                href={`/shop/${listing.productId}`}
-                data-world={cardWorld?.slug}
-                style={cardWorld ? (nightWorldVars(cardWorld) as CSSProperties) : undefined}
-                className="product-card block border border-border bg-card p-2 sm:p-3"
-              >
-                {tiles ? (
-                  <MarkTile src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
-                ) : (
-                  <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
-                )}
-                <ShopCardCopy listing={listing} />
+            <Reveal key={listing.productId} as="li" index={index} pace={catalog ? "shop" : "page"}>
+              <Link href={`/shop/${listing.productId}`} className="product-card block border border-border bg-card p-2 sm:p-3">
+                <ProductFrame
+                  src={listing.image}
+                  alt={listing.title}
+                  sizes="(min-width: 1024px) 280px, 50vw"
+                  zoom
+                  packshot={productIsPackshot(listing.productId, listing)}
+                  loading={catalog && index < 3 ? "eager" : "lazy"}
+                  fetchPriority={catalog && index === 0 ? "high" : undefined}
+                />
+                <ShopCardCopy listing={listing} showPrices={pricesOn} />
               </Link>
             </Reveal>
           );

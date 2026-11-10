@@ -20,8 +20,11 @@ export default async function ShopSafetyPage() {
       <article className="page-read">
         <p className="eyebrow">Store</p>
         <h1 className="page-title">How buying works</h1>
+        <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground" role="status">
+          {"Buying is off for now while we confirm each item's details with its supplier. You can still browse everything."}
+        </p>
         <p className="mt-3 text-base leading-relaxed text-foreground">
-          You pick a product, pay on this site, and the supplier ships it to you.
+          {"Once buying opens, you'll pick a product, pay on this site, and the supplier will ship it to you."}
         </p>
         <div className="mt-8 space-y-8">
           <section>

@@ -9,7 +9,7 @@ import { DepartmentGrid } from "@/components/department-grid";
 import { NightStalls } from "@/components/night-stalls";
 import { AisleParallax, XvAisleFlow } from "@/components/xvaisle-flow";
 import { MarkTile } from "@/components/mark-tile";
-import { ShopGrid } from "@/components/shop-grid";
+import { ShopGrid, type ShopCard } from "@/components/shop-grid";
 import { welcomeReach } from "@/lib/art";
 import { HERO_EYEBROW } from "@/lib/hero-copy";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
@@ -22,9 +22,13 @@ function hasCards(count: number) {
 export function JoinScreen({
   checkoutLine,
   operator = false,
+  showPrices = false,
+  listings,
 }: {
   checkoutLine: string;
   operator?: boolean;
+  showPrices?: boolean;
+  listings?: ShopCard[];
 }) {
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -100,15 +104,17 @@ export function JoinScreen({
         <ShopGrid
           kicker="Featured"
           title="In the store"
-          lede="Pay safely with Stripe, and your order ships straight to your door."
+          lede="Every item is reviewed before it's listed. Shipping details are added to each product once its supplier confirms them."
           query=""
           empty="Nothing's on the shelves yet. We're picking the first pieces now."
           limit={4}
           seeAllHref="/shop"
           level="section"
           hideWhenEmpty
-          tiles
           band
+          photosOnly
+          showPrices={showPrices}
+          initialListings={listings}
         />
 
         <section>

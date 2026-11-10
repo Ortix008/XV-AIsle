@@ -12,7 +12,7 @@ export const botArt: Record<BotId, string> = {
 
 /** Homepage aisle-card art, one per aisle (slugs from night-worlds.ts). */
 export const aisleCardArt: Record<NightWorldSlug, string> = {
-  "build-your-rig": "/art/aisle-card-build-your-rig.webp",
+  "everyday-finds": "/art/aisle-card-everyday-finds.webp",
   "tech-and-desk": "/art/aisle-card-tech-and-desk.webp",
   "home-and-gifts": "/art/aisle-card-home-and-gifts.webp",
   bundles: "/art/aisle-card-bundles.webp",
@@ -51,11 +51,16 @@ export const welcomeDepartments = [
     src: "/art/dept-garden-tools.png",
     line: "Tools for working the garden. Not plants.",
   },
-  { title: "Electronics", src: "/art/dept-electronics.png", line: "Small gear for the desk and the day." },
   {
-    title: "Build Your Rig",
-    src: "/art/aisle-card-build-your-rig.webp",
-    line: "Everything for your setup in one place, or grab it all as a set.",
+    title: "Tech & Desk",
+    src: "/art/home-tile-tech-and-desk.webp",
+    line: "Small gear for the desk and the day.",
+    href: "/shop?aisle=tech-and-desk",
+  },
+  {
+    title: "Everyday Finds",
+    src: "/art/aisle-card-everyday-finds.webp",
+    line: "Small, handy things for home, workouts and the road.",
   },
   {
     title: "Tech & Desk",

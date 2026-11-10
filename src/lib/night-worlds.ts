@@ -1,6 +1,9 @@
 /** Stall lamps. Accents are decorative, not prices or warnings. */
 
-export const nightWorldSlugs = ["build-your-rig", "tech-and-desk", "home-and-gifts", "bundles"] as const;
+export const nightWorldSlugs = ["everyday-finds", "tech-and-desk", "home-and-gifts", "bundles"] as const;
+
+/** Old stall URL. It still opens Everyday Finds. */
+export const LEGACY_RIG_SLUG = "build-your-rig";
 
 export type NightWorldSlug = (typeof nightWorldSlugs)[number];
 
@@ -15,9 +18,9 @@ export type NightWorld = {
 
 export const nightWorlds: readonly NightWorld[] = [
   {
-    slug: "build-your-rig",
-    title: "Build Your Rig",
-    story: "Everything that makes your setup feel like yours: the sound, the glow, and the little things within reach.",
+    slug: "everyday-finds",
+    title: "Everyday Finds",
+    story: "Small, handy things for home, workouts and the road.",
     accent: "#3ddc84",
     glow: "rgba(61, 220, 132, 0.22)",
     wash: "rgba(61, 220, 132, 0.09)",
@@ -51,8 +54,14 @@ export const nightWorlds: readonly NightWorld[] = [
 const bySlug = new Map(nightWorlds.map((world) => [world.slug, world]));
 const byTitle = new Map(nightWorlds.map((world) => [world.title, world]));
 
+export function canonicalStallSlug(slug: string | null | undefined) {
+  if (!slug) return "";
+  if (slug === LEGACY_RIG_SLUG) return "everyday-finds";
+  return slug;
+}
+
 export function nightWorldBySlug(slug: string) {
-  return bySlug.get(slug as NightWorldSlug) ?? null;
+  return bySlug.get(canonicalStallSlug(slug) as NightWorldSlug) ?? null;
 }
 
 export function nightWorldByTitle(title: string) {
@@ -63,7 +72,7 @@ export function nightWorldByTitle(title: string) {
 export function nightWorldForListing(listing: { kind?: string | null; aisle?: string | null }) {
   if (listing.kind === "bundle") return bySlug.get("bundles") ?? null;
   if (!listing.aisle) return null;
-  return nightWorldBySlug(listing.aisle);
+  return nightWorldBySlug(canonicalStallSlug(listing.aisle));
 }
 
 export function nightWorldVars(world: NightWorld) {

@@ -30,10 +30,11 @@ async function main() {
     await import("../src/lib/server/store");
   const { getDb } = await import("../src/lib/server/db");
 
-  assert(aisleBySlug("build-your-rig")?.title === "Build Your Rig", "Build Your Rig is an aisle");
+  assert(aisleBySlug("everyday-finds")?.title === "Everyday Finds", "Everyday Finds is an aisle");
+  assert(aisleBySlug("build-your-rig")?.slug === "everyday-finds", "the old rig slug still opens Everyday Finds");
   assert(aisleBySlug("tech-and-desk")?.title === "Tech & Desk", "Tech & Desk is an aisle");
   assert(aisleBySlug("home-and-gifts")?.title === "Home & Gifts", "Home & Gifts is an aisle");
-  assert(placeProduct(getProduct("headphones"))?.aisle === "Build Your Rig", "headphones sit in Build Your Rig");
+  assert(placeProduct(getProduct("headphones"))?.aisle === "Everyday Finds", "headphones sit in Everyday Finds");
   assert(placeProduct(getProduct("desk-lamp"))?.aisle === "Tech & Desk", "the desk lamp sits in Tech & Desk");
   assert(placeProduct(getProduct("gift-bags"))?.aisle === "Home & Gifts", "gift bags sit in Home & Gifts");
 
@@ -64,7 +65,7 @@ async function main() {
   piece("pan-b", "Wire rack", "North Mill");
   piece("other-pan", "Other pan", "South Mill");
   const rig = piece("headphones", "Over-ear headphones", "North Mill");
-  assert(rig.aisle === "build-your-rig", "a known product lands in its aisle");
+  assert(rig.aisle === "everyday-finds", "a known product lands in its aisle");
 
   const reseller = publishBundle(
     { id: "acct-bundle", role: "reseller" },

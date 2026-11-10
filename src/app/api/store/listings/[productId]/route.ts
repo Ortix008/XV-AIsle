@@ -1,6 +1,7 @@
 import { publicListing } from "@/lib/server/order-view";
 import { ensureStarterShelf, isSampleListing, visibleOnShop } from "@/lib/server/starter-shelf";
 import { getListing, listingLoss } from "@/lib/server/store";
+import { shopperPriceView } from "@/lib/shop-prices";
 
 export async function GET(_request: Request, context: { params: Promise<{ productId: string }> }) {
   const { productId } = await context.params;
@@ -9,5 +10,5 @@ export async function GET(_request: Request, context: { params: Promise<{ produc
   if (!listing || !visibleOnShop(listing) || listingLoss(listing)) {
     return Response.json({ error: "That page is not on the store." }, { status: 404 });
   }
-  return Response.json({ listing: publicListing(listing, isSampleListing(listing)) });
+  return Response.json({ listing: shopperPriceView(publicListing(listing, isSampleListing(listing))) });
 }

@@ -118,6 +118,7 @@ async function main() {
       returnNote: "We'll email the return address when you start a return.",
       shareHref: "http://127.0.0.1/shop/soon-pan",
       showReturnAddress: true,
+      showPrices: true,
     }),
   );
   assert(open.includes("Continue to checkout"), "a confirmed product can still be bought");

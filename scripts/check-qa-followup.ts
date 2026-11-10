@@ -146,6 +146,7 @@ async function main() {
       returnNote: "Contact support to start a return.",
       shareHref: "http://127.0.0.1/shop/us-pan",
       unconfirmed: comingSoonListing(getListing("us-pan")!),
+      showPrices: true,
     }),
   );
   assert(open.includes("Continue to checkout"), "a confirmed US ship-from keeps the buy button");
@@ -227,6 +228,7 @@ async function main() {
     supplierName: "Example Seller",
     published: true,
     title: "Pan",
+    image: "/art/mock-sheet-pan-1.png",
   };
   assert(sitemapListsProduct({ ...card, productId: QA_CHECKOUT_PRODUCT_ID, supplierUsConfirmed: true, shipsFrom: "Austin, TX" }) === false, "the QA fixture stays out of the sitemap");
   assert(sitemapListsProduct({ ...card, productId: "soon-pan", supplierUsConfirmed: false, shipsFrom: "Austin, TX" }) === false, "a Coming soon product stays out of the sitemap");

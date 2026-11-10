@@ -775,8 +775,14 @@ export function listPublished(filter?: { madeInUsa?: boolean; shelf?: "national"
   if (filter?.aisle === "bundles") {
     clauses.push("kind = 'bundle'");
   } else if (filter?.aisle) {
-    clauses.push("aisle = ?");
-    params.push(filter.aisle);
+    const stall = filter.aisle === "build-your-rig" ? "everyday-finds" : filter.aisle;
+    if (stall === "everyday-finds") {
+      clauses.push("(aisle = ? OR aisle = ?)");
+      params.push("everyday-finds", "build-your-rig");
+    } else {
+      clauses.push("aisle = ?");
+      params.push(stall);
+    }
   }
   const rows = getDb()
     .prepare(`SELECT * FROM listings WHERE ${clauses.join(" AND ")} ORDER BY title`)

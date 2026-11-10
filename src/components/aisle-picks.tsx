@@ -1,21 +1,28 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
 import { ProductFrame } from "@/components/product-frame";
 import { money } from "@/lib/money";
 import { SOLD_OUT_LABEL } from "@/lib/sold-out-label";
-import { nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
+import { productIsPackshot } from "@/lib/shop-packshot";
 
 export type AislePick = {
   productId: string;
   title: string;
-  priceCents: number;
+  priceCents?: number;
   image: string;
   aisle?: string | null;
   kind?: "bundle";
   soldOut?: boolean;
 };
 
-export function AislePicks({ aisle, picks }: { aisle: string | null; picks: AislePick[] }) {
+export function AislePicks({
+  aisle,
+  picks,
+  showPrices = false,
+}: {
+  aisle: string | null;
+  picks: AislePick[];
+  showPrices?: boolean;
+}) {
   if (!aisle) return null;
   if (picks.length === 0) {
     return (
@@ -31,20 +38,22 @@ export function AislePicks({ aisle, picks }: { aisle: string | null; picks: Aisl
       <h2 className="text-2xl">More from this aisle</h2>
       <ul className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {picks.map((pick) => {
-          const world = nightWorldForListing(pick);
           return (
             <li key={pick.productId}>
               <Link
                 href={`/shop/${pick.productId}`}
-                data-world={world?.slug}
-                style={world ? (nightWorldVars(world) as CSSProperties) : undefined}
                 className="product-card block h-full rounded-2xl border border-border bg-card p-2"
               >
-                <ProductFrame src={pick.image} alt="" sizes="(min-width: 1024px) 240px, 50vw" />
+                <ProductFrame
+                  src={pick.image}
+                  alt={pick.title}
+                  sizes="(min-width: 1024px) 240px, 50vw"
+                  packshot={productIsPackshot(pick.productId)}
+                />
                 <div className="shop-card-text">
                   <p className="shop-card-eyebrow" aria-hidden />
                   <h3 className="shop-card-title">{pick.title}</h3>
-                  <p className="shop-card-price">{money(pick.priceCents / 100)}</p>
+                  {showPrices && pick.priceCents != null ? <p className="shop-card-price">{money(pick.priceCents / 100)}</p> : null}
                   {pick.soldOut ? <p className="shop-card-price">{SOLD_OUT_LABEL}</p> : null}
                 </div>
               </Link>
