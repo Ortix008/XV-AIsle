@@ -22,7 +22,7 @@ export function ShopFrame({
         Skip to content
       </a>
       <StoreHeader />
-      <main id="store-main" className="page-enter flex-1">
+      <main id="store-main" className="flex-1">
         {children}
       </main>
       <ShopFooter showStorePayLine={showStorePayLine} showBrandBlock={showBrandBlock} />

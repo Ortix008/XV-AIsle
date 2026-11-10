@@ -10,6 +10,9 @@ export function MarkUnderlay({
   sizes,
   zoom = false,
   className,
+  imageClassName,
+  width,
+  height,
   children,
 }: {
   src?: string | null;
@@ -17,19 +20,27 @@ export function MarkUnderlay({
   sizes: string;
   zoom?: boolean;
   className?: string;
+  imageClassName?: string;
+  width?: number;
+  height?: number;
   children?: ReactNode;
 }) {
   const [failed, setFailed] = useState(false);
   const photo = src?.trim() ?? "";
+  const sized = width != null && height != null;
   return (
     <div className={cn("mark-underlay relative overflow-hidden", className)}>
       {photo && !failed ? (
         <Image
           src={photo}
           alt={alt}
-          fill
+          {...(sized ? { width, height } : { fill: true as const })}
           sizes={sizes}
-          className={zoom ? "media-zoom object-cover object-center" : "object-cover object-center"}
+          className={cn(
+            zoom ? "media-zoom object-cover object-center" : "object-cover object-center",
+            sized && "absolute inset-0 h-full w-full max-w-none",
+            imageClassName,
+          )}
           onError={() => setFailed(true)}
         />
       ) : null}

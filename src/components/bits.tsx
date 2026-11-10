@@ -110,7 +110,7 @@ export function MockupFrame({
 }) {
   return (
     <figure className="min-w-0">
-      <div className="product-frame">
+      <div className="mockup-frame">
         {idea.src ? (
           <Image src={idea.src} alt="" fill sizes="(min-width: 640px) 30vw, 100vw" className="object-cover" />
         ) : null}

@@ -111,7 +111,6 @@ export function JoinScreen({
           seeAllHref="/shop"
           level="section"
           hideWhenEmpty
-          tiles
           band
           photosOnly
           showPrices={showPrices}

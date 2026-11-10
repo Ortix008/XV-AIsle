@@ -106,6 +106,31 @@
   --aisle-focus-offset: 3px;
   --aisle-lift: calc(var(--spacing) * -0.5);
   --aisle-press-scale: 0.99;
+  --motion-ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-ease-hero: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+  --motion-dur-enter: 240ms;
+  --motion-dur-ui: 220ms;
+  --motion-dur-exit: 180ms;
+  --motion-dur-press: 120ms;
+  --motion-dur-hero: 14s;
+  --motion-rise: 10px;
+  --motion-lift: -3px;
+  --motion-lift-sm: -2px;
+  --motion-press-y: -1px;
+  --motion-press-scale: 0.98;
+  --motion-zoom: 1.02;
+  --motion-stagger: 50ms;
+  --motion-stagger-max: 5;
+  --motion-hero-drift-x: 16px;
+  --motion-hero-drift-y: 8px;
+  --motion-hero-pad: 24px;
+  --shop-plate: #e8e0d4;
+  --shop-plate-line: rgba(7, 8, 10, 0.1);
+  --shop-plate-inset: 12px;
+  --shop-frame-ratio: 1 / 1;
+  --stall-art-ratio: 16 / 10;
+  --shop-plate-blend: multiply;
   --aisle-bloom: 0.75;
   --aisle-rim: 1px;
   --glow: 0 0 0 2px #07080a, 0 0 0 4px #3ddc84, 0 0 24px rgba(61, 220, 132, 0.28);
@@ -430,32 +455,78 @@
 }
 
 @media (min-width: 900px) {
-  .stall-tabs {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .shop-catalog .stall-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 .stall-tab {
+  position: relative;
   display: flex;
   height: 100%;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.55rem;
   border: 1px solid color-mix(in srgb, var(--world) 38%, var(--border));
   border-radius: 16px;
   background:
-    radial-gradient(90% 90% at 0% 0%, var(--world-wash), transparent 62%),
+    linear-gradient(180deg, var(--world-wash), transparent 46%),
     var(--card);
-  padding: 0.9rem 0.95rem 1rem;
+  padding: 0.55rem 0.55rem 0.85rem;
   box-shadow: 0 0 18px color-mix(in srgb, var(--world-glow) 70%, transparent);
-  transition:
-    transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1),
-    box-shadow 0.35s ease;
+  transition: transform var(--motion-dur-exit) var(--motion-ease-in);
 }
 
-.stall-tab svg {
-  width: 22px;
-  height: 22px;
+.stall-tab-art {
+  position: relative;
+  display: block;
+  aspect-ratio: var(--stall-art-ratio);
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.stall-tab-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.stall-tab-chip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--world) 55%, transparent);
+  border-radius: 8px;
+  background: rgba(7, 8, 10, 0.78);
   color: var(--world);
+  pointer-events: none;
+}
+
+.stall-tab-chip svg,
+.stall-tab svg {
+  width: 16px;
+  height: 16px;
+  color: var(--world);
+}
+
+.stall-tab::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: 0 0 28px var(--world-glow);
+  transition: opacity var(--motion-dur-ui) var(--motion-ease-out);
+}
+
+.stall-tab:hover::after {
+  opacity: 1;
 }
 
 .stall-tab-title {
@@ -470,23 +541,45 @@
   line-height: 1.45;
 }
 
+.stall-tab:hover {
+  transform: translate3d(0, var(--motion-lift), 0);
+  transition-duration: var(--motion-dur-ui);
+  transition-timing-function: var(--motion-ease-out);
+}
+
+.stall-tab:active {
+  transform: translate3d(0, var(--motion-press-y), 0) scale(var(--motion-press-scale));
+  transition-duration: var(--motion-dur-press);
+  transition-timing-function: var(--motion-ease-in);
+}
+
 .stall-tab[aria-current="page"] {
   border-color: var(--world);
   box-shadow:
     0 0 0 1px var(--world),
-    0 0 28px var(--world-glow);
+    0 0 32px var(--world-glow);
 }
 
-.stall-tab:hover {
-  transform: translate3d(0, -3px, 0);
+.product-card:focus-visible,
+.stall-tab:focus-visible,
+.aisle-tile:focus-visible {
+  outline: 2px solid var(--em);
+  outline-offset: 3px;
 }
 
-@media (max-width: 390px) {
-  .aisle-tile:focus-visible,
-  .stall-tab:focus-visible {
-    outline: none;
-    box-shadow: var(--glow);
-  }
+.product-card:focus-visible,
+.aisle-tile:focus-visible {
+  box-shadow: none;
+}
+
+.stall-tab:focus-visible {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--world-glow) 70%, transparent);
+}
+
+.stall-tab[aria-current="page"]:focus-visible {
+  box-shadow:
+    0 0 0 1px var(--world),
+    0 0 32px var(--world-glow);
 }
 
 .shop-fill {
@@ -497,6 +590,10 @@
 }
 
 @media (min-width: 640px) {
+  :root {
+    --shop-plate-inset: 16px;
+  }
+
   .shop-fill {
     --shop-grid-gap: 1.15rem;
   }
@@ -582,13 +679,20 @@
 
 .product-stage {
   border-radius: 18px;
-  padding: 7px;
+  background: transparent;
+}
+
+.mockup-frame {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
   background:
-    radial-gradient(80% 70% at 50% 40%, rgba(61, 220, 132, 0.22), transparent 68%),
-    #0c0e11;
-  box-shadow:
-    0 0 0 1px rgba(61, 220, 132, 0.38),
-    0 0 32px rgba(61, 220, 132, 0.22);
+    radial-gradient(70% 60% at 50% 38%, rgba(255, 255, 255, 0.14), transparent 62%),
+    radial-gradient(120% 80% at 50% 120%, rgba(61, 220, 132, 0.16), transparent 60%),
+    linear-gradient(160deg, #1a1d22, #0a0b0d);
 }
 
 .stall-mast > svg {
@@ -607,28 +711,28 @@
   padding: 1.2rem 1.3rem;
 }
 
-[data-world] .product-frame {
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 18px 40px rgba(0, 0, 0, 0.35),
-    0 0 28px var(--world-glow);
-}
-
 .product-frame {
   position: relative;
-  aspect-ratio: 4 / 5;
+  display: flex;
+  aspect-ratio: var(--shop-frame-ratio);
   width: 100%;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background:
-    radial-gradient(70% 60% at 50% 38%, rgba(255, 255, 255, 0.14), transparent 62%),
-    radial-gradient(120% 80% at 50% 120%, rgba(61, 220, 132, 0.16), transparent 60%),
-    linear-gradient(160deg, #1a1d22, #0a0b0d);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 18px 40px rgba(0, 0, 0, 0.35),
-    0 0 36px rgba(61, 220, 132, 0.1);
+  isolation: isolate;
+  border: 1px solid var(--shop-plate-line);
+  border-radius: 12px;
+  background: var(--shop-plate);
+  padding: var(--shop-plate-inset);
+}
+
+.product-plate {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.product-frame.is-packshot img {
+  mix-blend-mode: var(--shop-plate-blend);
 }
 
 .product-placeholder,
@@ -672,20 +776,13 @@
 }
 
 .media-zoom {
-  transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition: transform var(--motion-dur-ui) var(--motion-ease-out);
 }
 
 .product-card,
 .aisle-tile {
   position: relative;
-  transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-.product-card[data-world] {
-  border-color: color-mix(in srgb, var(--world) 32%, var(--border));
-  background:
-    linear-gradient(180deg, var(--world-wash), transparent 48%),
-    var(--card);
+  transition: transform var(--motion-dur-exit) var(--motion-ease-in);
 }
 
 .product-card::after {
@@ -696,15 +793,13 @@
   pointer-events: none;
   opacity: 0;
   box-shadow: 0 0 32px rgba(61, 220, 132, 0.28);
-  transition: opacity 0.35s ease;
-}
-
-.product-card[data-world]::after {
-  box-shadow: 0 0 32px var(--world-glow);
+  transition: opacity var(--motion-dur-ui) var(--motion-ease-out);
 }
 
 .product-card:hover {
-  transform: translate3d(0, -4px, 0);
+  transform: translate3d(0, var(--motion-lift), 0);
+  transition-duration: var(--motion-dur-ui);
+  transition-timing-function: var(--motion-ease-out);
 }
 
 .product-card:hover::after {
@@ -712,11 +807,13 @@
 }
 
 .product-card:hover .media-zoom {
-  transform: scale(1.045);
+  transform: scale(var(--motion-zoom));
 }
 
 .product-card:active {
-  transform: translate3d(0, -1px, 0) scale(0.99);
+  transform: translate3d(0, var(--motion-press-y), 0) scale(var(--motion-press-scale));
+  transition-duration: var(--motion-dur-press);
+  transition-timing-function: var(--motion-ease-in);
 }
 
 .aisle-tile:hover {
@@ -850,6 +947,71 @@ html.motion [data-reveal].is-in {
   transition-delay: calc(var(--reveal, 0) * 70ms);
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  html.motion .shop-catalog [data-reveal]:not(.is-in) {
+    opacity: 0;
+    transform: translate3d(0, var(--motion-rise), 0);
+    will-change: opacity, transform;
+  }
+
+  .shop-catalog .shop-band.is-drifting .shop-band-art {
+    will-change: transform;
+    animation: shop-hero-drift var(--motion-dur-hero) var(--motion-ease-hero) infinite alternate;
+  }
+}
+
+html.motion .shop-catalog [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--motion-dur-enter) var(--motion-ease-out),
+    transform var(--motion-dur-enter) var(--motion-ease-out);
+  transition-delay: calc(min(var(--reveal, 0), var(--motion-stagger-max)) * var(--motion-stagger));
+}
+
+html.motion .shop-catalog [data-reveal].is-in:not(.is-settled) {
+  will-change: opacity, transform;
+}
+
+html.motion .shop-catalog [data-reveal].is-settled {
+  will-change: auto;
+}
+
+.shop-catalog .shop-band {
+  overflow: hidden;
+}
+
+.shop-catalog .shop-band-art {
+  inset: calc(var(--motion-hero-pad) * -1);
+  background: url("/brand/hero-aisle-pedestals.webp") 72% 42% / cover no-repeat;
+}
+
+.shop-catalog .shop-band-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--page) 90%, transparent) 0%,
+    color-mix(in srgb, var(--page) 60%, transparent) 60%,
+    transparent
+  );
+}
+
+.object-everyday {
+  object-position: 60% 50%;
+}
+
+@keyframes shop-hero-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(var(--motion-hero-drift-x), var(--motion-hero-drift-y), 0);
+  }
+}
+
 .bot-live[data-state="checked"] {
   background-color: var(--live);
 }
@@ -883,8 +1045,9 @@ html.motion [data-reveal].is-in {
     animation-duration: 0.32s;
   }
 
-  .product-card:hover {
-    transform: translate3d(0, -2px, 0);
+  .product-card:hover,
+  .stall-tab:hover {
+    transform: translate3d(0, var(--motion-lift-sm), 0);
   }
 
   .aisle-tile:hover {
@@ -922,7 +1085,9 @@ html.motion [data-reveal].is-in {
   .hero-glow,
   .page-enter,
   .hero-band .hero-aisle-photo,
-  .stall-lamp {
+  .stall-lamp,
+  .shop-catalog .shop-band-art,
+  .shop-catalog .shop-band.is-drifting .shop-band-art {
     animation: none !important;
   }
   .page-enter,
@@ -948,6 +1113,7 @@ html.motion [data-reveal].is-in {
   .aisle-tile:hover,
   .aisle-tile:active,
   .stall-tab:hover,
+  .stall-tab:active,
   .store-header.is-compact .store-header-bar,
   .nav-fold,
   .media-zoom,
@@ -2237,18 +2403,6 @@ button.auth-x:disabled {
   overflow: hidden;
 }
 
-.stall-tab {
-  border: 1px solid var(--tile-line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: none;
-}
-
-.stall-tab:hover,
-.stall-tab[aria-current="page"] {
-  border-color: var(--em);
-}
-
 .policy-shell {
   max-width: 1216px;
   margin-inline: auto;
@@ -2370,8 +2524,8 @@ button.contact-submit {
 }
 
 .product-page .product-frame {
-  aspect-ratio: 4 / 3;
-  border-radius: var(--r-lg);
+  aspect-ratio: var(--shop-frame-ratio);
+  border-radius: 12px;
 }
 
 .product-copy {
@@ -2637,21 +2791,32 @@ button.contact-submit {
       url("/brand/hero-aisle-pedestals.webp") center 42% / cover no-repeat;
   }
 
+  .shop-catalog .shop-band .shop-band-art {
+    background: url("/brand/hero-aisle-pedestals.webp") center 42% / cover no-repeat;
+  }
+
+  .shop-catalog .shop-band-wash {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--page) 94%, transparent) 0%,
+      color-mix(in srgb, var(--page) 88%, transparent) 100%
+    );
+  }
+
+  .shop-catalog .shop-band-copy > p:not(.eyebrow) {
+    min-height: 4lh;
+  }
+
   .product-page .product-photo,
   .product-page .product-stage,
   .product-page .product-frame {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: var(--shop-frame-ratio);
   }
 
   .product-page .product-stage {
     padding: 0;
   }
 
-  .aisle-tile:focus-visible,
-  .stall-tab:focus-visible {
-    outline: none;
-    box-shadow: var(--glow);
-  }
 }
 
 @media (min-width: 640px) {
@@ -2673,7 +2838,7 @@ button.contact-submit {
   }
 
   .product-page .product-frame {
-    aspect-ratio: 1 / 1.05;
+    aspect-ratio: var(--shop-frame-ratio);
   }
 }
 
@@ -2796,7 +2961,7 @@ button.contact-submit {
   }
 
   .product-page .product-frame {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: var(--shop-frame-ratio);
   }
 }
 

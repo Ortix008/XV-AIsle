@@ -24,7 +24,7 @@ export default async function ShopSafetyPage() {
           {"Buying is off for now while we confirm each item's details with its supplier. You can still browse everything."}
         </p>
         <p className="mt-3 text-base leading-relaxed text-foreground">
-          You pick a product, pay on this site, and the supplier ships it to you.
+          {"Once buying opens, you'll pick a product, pay on this site, and the supplier will ship it to you."}
         </p>
         <div className="mt-8 space-y-8">
           <section>

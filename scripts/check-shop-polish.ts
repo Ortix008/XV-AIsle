@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -137,6 +137,33 @@ async function main() {
   assert(plan.find((item) => item.productId === "6-inch-yoga-wheel")?.action === "update", "a missing aisle is tagged");
   assert(plan.find((item) => item.productId === "cell-phone-lanyard")?.action === "unchanged", "the same aisle is left alone");
   assert(plan.find((item) => item.productId === "pet-seat-belt-tether")?.action === "missing", "a row that is not in the database is reported");
+
+  const { productIsPackshot, SHOP_PACKSHOTS } = await import("../src/lib/shop-packshot");
+  for (const [slug, packshot] of Object.entries(SHOP_PACKSHOTS)) {
+    assert(productIsPackshot(slug) === packshot, `${slug} keeps its packshot flag`);
+  }
+  assert(productIsPackshot("unknown-pan") === false, "an unknown product is not a packshot");
+  assert(productIsPackshot("6-inch-yoga-wheel", { packshot: true }) === true, "a listing field can turn a packshot on");
+  assert(productIsPackshot("cell-phone-lanyard", { packshot: false }) === false, "a listing field can turn a packshot off");
+
+  const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+  assert(!/\.stall-tab:focus-visible[\s\S]{0,220}outline:\s*none/.test(css), "stall tabs do not remove the focus outline");
+  assert(!/transition:[^;{}]*box-shadow/.test(css), "cards and tabs do not transition box-shadow");
+  const shopFrame = readFileSync(join(process.cwd(), "src/components/shop-frame.tsx"), "utf8");
+  const shopPage = readFileSync(join(process.cwd(), "src/app/shop/page.tsx"), "utf8");
+  assert(!shopFrame.includes("page-enter") && !shopPage.includes("page-enter"), ".page-enter is absent on /shop");
+
+  const safety = readFileSync(join(process.cwd(), "src/app/shop/safety/page.tsx"), "utf8");
+  assert(
+    safety.includes("Once buying opens, you'll pick a product, pay on this site, and the supplier will ship it to you."),
+    "How buying works uses the approved next line",
+  );
+  assert(!safety.includes("You pick a product, pay on this site, and the supplier ships it to you."), "the old buying line is gone");
+  const art = readFileSync(join(process.cwd(), "src/lib/art.ts"), "utf8");
+  assert(art.includes('line: "Small, handy things for home, workouts and the road."'), "Everyday Finds uses the approved tile line");
+  assert(!art.includes("Everything for your setup in one place, or grab it all as a set."), "the old Everyday Finds tile line is gone");
+  assert(!art.includes("aisle-card-build-your-rig.webp"), "Everyday Finds art no longer points at the rig still");
+  assert(art.includes("/art/aisle-card-everyday-finds.webp"), "Everyday Finds art uses the new still");
 
   console.log("shop polish checks ok");
 }

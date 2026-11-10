@@ -18,6 +18,7 @@ import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 import { SOLD_OUT_LABEL } from "@/lib/sold-out-label";
+import { productIsPackshot } from "@/lib/shop-packshot";
 
 export type ProductListing = {
   productId: string;
@@ -45,6 +46,7 @@ export type ProductListing = {
   kind?: "bundle";
   includes?: { productId: string; title: string }[];
   aisle?: string | null;
+  packshot?: boolean | null;
 };
 
 export type ProductVariantChoice = {
@@ -189,7 +191,13 @@ export function ProductBuy({
       ) : null}
       <div className="product-photo">
         <div className="product-stage" data-world={world?.slug} style={worldStyle}>
-          <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 560px, 100vw" priority />
+          <ProductFrame
+            src={listing.image}
+            alt={listing.title}
+            sizes="(min-width: 1024px) 560px, 100vw"
+            priority
+            packshot={productIsPackshot(listing.productId, listing)}
+          />
         </div>
       </div>
       <div className="product-copy">

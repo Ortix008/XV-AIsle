@@ -20,7 +20,10 @@ function StallFace({ world }: { world: NightWorld }) {
       <MarkUnderlay
         src={art}
         sizes="(min-width: 640px) 40vw, 100vw"
+        width={1280}
+        height={720}
         zoom
+        imageClassName={world.slug === "everyday-finds" ? "object-everyday" : undefined}
         className="night-well rounded-[14px] border border-border"
       >
         {art ? (
