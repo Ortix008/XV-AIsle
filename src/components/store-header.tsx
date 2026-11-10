@@ -1,28 +1,35 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { useOptionalAccount } from "@/lib/account-store";
 import { cn } from "cn";
 
-function OperatorDeskLink({ className }: { className: string }) {
+function OperatorDeskLink({ className, pathname }: { className: string; pathname: string }) {
   const session = useOptionalAccount();
   if (session?.account?.role !== "admin") return null;
   return (
-    <Link href="/desk" className={className}>
+    <Link href="/desk" className={className} aria-current={pathname === "/desk" ? "page" : undefined}>
       Desk
     </Link>
   );
 }
 
-const nav = [
+export const storeNav = [
   { href: "/shop", label: "Shop" },
+  { href: "/aisles", label: "Aisles" },
   { href: "/shop/small", label: "Small business" },
-  { href: "/#aisles", label: "Aisles" },
   { href: HOW_WE_CHECK_HREF, label: "How we check" },
   { href: "/account", label: "Account" },
-];
+] as const;
+
+export function storeNavCurrent(pathname: string, href: string) {
+  if (href.includes("#")) return false;
+  if (href === "/aisles") return pathname === "/aisles" || pathname.startsWith("/aisles/");
+  return pathname === href;
+}
 
 function focusable(button: HTMLButtonElement | null, panel: HTMLElement | null) {
   const links = panel ? [...panel.querySelectorAll<HTMLElement>("a[href]")] : [];
@@ -30,6 +37,7 @@ function focusable(button: HTMLButtonElement | null, panel: HTMLElement | null) 
 }
 
 export function StoreHeader() {
+  const pathname = usePathname() ?? "";
   const sentinel = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
@@ -117,13 +125,14 @@ export function StoreHeader() {
             <img src="/xv-aisle-logo.svg" height={32} width={115} alt="XV-AIsle" className="brand-logo" />
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground min-[900px]:flex" aria-label="Shop">
-            {nav
+            {storeNav
               .filter((item) => item.href !== "/account")
               .map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   className="link-slide inline-flex min-h-[var(--tap)] min-w-[var(--tap)] items-center justify-center hover:text-foreground"
+                  aria-current={storeNavCurrent(pathname, item.href) ? "page" : undefined}
                 >
                   {item.label}
                 </Link>
@@ -133,10 +142,14 @@ export function StoreHeader() {
             <Link
               href="/account"
               className="link-slide hidden min-h-[var(--tap)] min-w-[var(--tap)] items-center hover:text-foreground min-[900px]:inline-flex"
+              aria-current={pathname === "/account" ? "page" : undefined}
             >
               Account
             </Link>
-            <OperatorDeskLink className="link-slide hidden min-h-[var(--tap)] min-w-[var(--tap)] items-center hover:text-foreground min-[900px]:inline-flex" />
+            <OperatorDeskLink
+              pathname={pathname}
+              className="link-slide hidden min-h-[var(--tap)] min-w-[var(--tap)] items-center hover:text-foreground min-[900px]:inline-flex"
+            />
             <button
               ref={buttonRef}
               type="button"
@@ -158,9 +171,14 @@ export function StoreHeader() {
         >
           <div className="nav-fold-clip">
             <ul className="mx-auto flex max-w-[1280px] flex-col px-4 pb-3 sm:px-5">
-              {nav.map((item) => (
+              {storeNav.map((item) => (
                 <li key={item.href}>
-                  <Link href={item.href} className="nav-fold-link" onClick={() => setOpen(false)}>
+                  <Link
+                    href={item.href}
+                    className="nav-fold-link"
+                    aria-current={storeNavCurrent(pathname, item.href) ? "page" : undefined}
+                    onClick={() => setOpen(false)}
+                  >
                     {item.label}
                   </Link>
                 </li>

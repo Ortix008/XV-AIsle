@@ -4,6 +4,7 @@ import { isQaCheckoutListing } from "@/lib/qa-checkout";
 import { visibleOnShop } from "@/lib/server/starter-shelf";
 import { appOrigin } from "@/lib/server/stripe";
 import { listPublished } from "@/lib/server/store";
+import { liveAislePaths } from "@/lib/amazon-aisles";
 import { comingSoonListing } from "@/lib/supplier-confirm";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = appOrigin();
   const pages = [
     ...SITEMAP_PATHS.map((path) => `${origin}${path}`),
+    ...liveAislePaths().map((path) => `${origin}${path}`),
     `${origin}/shop?aisle=bundles`,
   ];
   const products = listPublished()

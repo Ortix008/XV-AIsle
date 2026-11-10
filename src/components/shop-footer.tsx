@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
 import { MissionValues } from "@/components/mission-values";
 import { useOptionalAccount } from "@/lib/account-store";
+import { AMAZON_ASSOCIATE_DISCLOSURE } from "@/lib/amazon-aisles";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
@@ -38,7 +39,15 @@ const columns = [
   },
 ];
 
-export function ShopFooter({ showReseller }: { showReseller?: boolean }) {
+export function ShopFooter({
+  showReseller,
+  showStorePayLine = true,
+  showBrandBlock = true,
+}: {
+  showReseller?: boolean;
+  showStorePayLine?: boolean;
+  showBrandBlock?: boolean;
+}) {
   const session = useOptionalAccount();
   const account = session?.account;
   const signedInOperator = account?.role === "admin" && account.emailVerified === true;
@@ -49,8 +58,8 @@ export function ShopFooter({ showReseller }: { showReseller?: boolean }) {
   }));
   return (
     <footer className="shop-footer mt-auto bg-[var(--footer)] pb-9">
-      <MissionValues />
-      <div className="mx-auto max-w-[1280px] px-5 pt-16 sm:px-10">
+      {showBrandBlock ? <MissionValues /> : null}
+      <div className={`mx-auto max-w-[1280px] px-5 sm:px-10 ${showBrandBlock ? "pt-16" : "pt-8"}`}>
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
           <div>
             <Link href="/" className="inline-flex">
@@ -81,9 +90,12 @@ export function ShopFooter({ showReseller }: { showReseller?: boolean }) {
             </div>
           ))}
         </div>
-        <div className="mt-14 flex flex-col gap-2 border-t border-border pt-6 text-[13px] text-muted-foreground sm:flex-row sm:justify-between">
-          <span>© {new Date().getFullYear()} XV-AIsle</span>
-          <span>Buyers pay on xvaisle.com</span>
+        <div className="mt-14 flex flex-col gap-3 border-t border-border pt-6 text-[13px] text-muted-foreground">
+          <p>{AMAZON_ASSOCIATE_DISCLOSURE}</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+            <span>© {new Date().getFullYear()} XV-AIsle</span>
+            {showStorePayLine ? <span>Buyers pay on xvaisle.com</span> : null}
+          </div>
         </div>
       </div>
     </footer>

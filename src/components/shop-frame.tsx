@@ -3,7 +3,15 @@ import { ShopFooter } from "@/components/shop-footer";
 import { StoreHeader } from "@/components/store-header";
 import { AccountProvider } from "@/lib/account-store";
 
-export function ShopFrame({ children }: { children: ReactNode }) {
+export function ShopFrame({
+  children,
+  showStorePayLine = true,
+  showBrandBlock = true,
+}: {
+  children: ReactNode;
+  showStorePayLine?: boolean;
+  showBrandBlock?: boolean;
+}) {
   return (
     <AccountProvider>
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -17,7 +25,7 @@ export function ShopFrame({ children }: { children: ReactNode }) {
       <main id="store-main" className="page-enter flex-1">
         {children}
       </main>
-      <ShopFooter />
+      <ShopFooter showStorePayLine={showStorePayLine} showBrandBlock={showBrandBlock} />
     </div>
     </AccountProvider>
   );
