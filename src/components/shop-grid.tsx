@@ -10,6 +10,7 @@ import { money } from "@/lib/money";
 import { SOLD_OUT_LABEL } from "@/lib/sold-out-label";
 import { SHOPPER_PLACE, TRACKING_SHIP, shopperMayNameUsSupplier } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
+import { hasRealProductPhoto } from "@/lib/shop-photo";
 
 export type ShopCard = {
   productId: string;
@@ -99,7 +100,8 @@ export function ShopGrid({
       .catch(() => setListings([]));
   }, [query]);
 
-  const visible = listings === null ? null : limit === undefined ? listings : listings.slice(0, limit);
+  const withPhotos = listings === null ? null : catalog ? listings.filter((item) => hasRealProductPhoto(item.image)) : listings;
+  const visible = withPhotos === null ? null : limit === undefined ? withPhotos : withPhotos.slice(0, limit);
   const Heading = level === "page" ? "h1" : "h2";
   if (hideWhenEmpty && (visible === null || visible.length === 0)) return null;
 
