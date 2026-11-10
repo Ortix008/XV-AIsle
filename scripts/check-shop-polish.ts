@@ -181,7 +181,8 @@ async function main() {
   assert(art.includes('title: "Tech & Desk"'), "the home strip names Tech & Desk");
   assert(art.includes('line: "Small gear for the desk and the day."'), "the Tech & Desk tile keeps its line");
   assert(art.includes('href: "/shop?aisle=tech-and-desk"'), "the Tech & Desk tile opens that aisle");
-  assert(art.includes('src: "/art/aisle-card-tech-and-desk.webp"'), "the Tech & Desk tile uses that still");
+  assert(art.includes('src: "/art/home-tile-tech-and-desk.webp"'), "the home Tech & Desk tile uses its own still");
+  assert(art.includes('"tech-and-desk": "/art/aisle-card-tech-and-desk.webp"'), "shop tabs keep the night Tech & Desk still");
   assert(!art.includes('title: "Electronics"'), "the Electronics tile is renamed");
   const departments = readFileSync(join(process.cwd(), "src/components/department-grid.tsx"), "utf8");
   assert(!departments.includes("1.4fr"), "department cards share one column width");

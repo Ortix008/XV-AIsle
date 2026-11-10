@@ -53,7 +53,7 @@ export const welcomeDepartments = [
   },
   {
     title: "Tech & Desk",
-    src: "/art/aisle-card-tech-and-desk.webp",
+    src: "/art/home-tile-tech-and-desk.webp",
     line: "Small gear for the desk and the day.",
     href: "/shop?aisle=tech-and-desk",
   },
