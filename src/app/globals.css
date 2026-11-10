@@ -461,6 +461,11 @@
   color: var(--body);
 }
 
+.shop-catalog .shop-band-copy {
+  container-type: inline-size;
+  container-name: shop-band-copy;
+}
+
 .shop-band-copy {
   position: relative;
   z-index: 1;
@@ -2833,6 +2838,13 @@ button.contact-submit {
     padding: 0;
   }
 
+}
+
+/* Two lines while the loaded title still wraps. 389px is the last viewport; the column there is 303.81px. */
+@container shop-band-copy (max-width: 304px) {
+  .page-title {
+    min-height: 2.1em;
+  }
 }
 
 @media (min-width: 640px) {
