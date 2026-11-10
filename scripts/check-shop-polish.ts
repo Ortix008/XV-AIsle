@@ -54,7 +54,7 @@ async function main() {
   assert(quiet.includes(SHOP_CARD_STATUS), "a card says Coming soon");
   assert(!quiet.includes("$") && !quiet.includes("·"), "a hidden price does not leave a dollar or a middle dot");
   const priced = renderToStaticMarkup(createElement(ShopCardCopy, { listing: card, showPrices: true }));
-  assert(priced.includes("$25.99") && priced.includes(SHOP_CARD_STATUS), "prices on restores the price beside Coming soon");
+  assert(priced.includes("$25.99") && !priced.includes(SHOP_CARD_STATUS) && !priced.includes("·"), "prices on show the price alone");
 
   const listing = {
     productId: "wheel",
@@ -205,6 +205,98 @@ async function main() {
   assert(!departments.includes("1.4fr"), "department cards share one column width");
   assert(!departments.includes("h-full"), "a short department card does not stretch into an empty shell");
   assert(departments.includes("items-start"), "department cards stay as tall as their own art");
+
+  const { signUp } = await import("../src/lib/server/accounts");
+  const { publishListing } = await import("../src/lib/server/store");
+  const { setStripeFetch } = await import("../src/lib/server/stripe");
+  const { POST } = await import("../src/app/api/store/checkout/route");
+  const joined = signUp({ name: "Checkout Seller", email: "gate-seller@example.com", password: "nitpick-test" });
+  if ("error" in joined) throw new Error(joined.error);
+  const pageInput = {
+    sku: "GATE",
+    title: "Gate pan",
+    description: "One pan.",
+    priceCents: 2695,
+    image: "/art/mock-sheet-pan-1.png",
+    supplierName: "Example Seller",
+    supplierOrigin: "Elizabeth, NJ",
+    shipDaysMin: 2,
+    shipDaysMax: 4,
+    supplierAccountId: joined.account.id,
+    supplierCostCents: 500,
+  };
+  const soonListing = publishListing(joined.account.id, { ...pageInput, productId: "soon-pan" });
+  if ("error" in soonListing) throw new Error(soonListing.error);
+  const readyListing = publishListing(joined.account.id, {
+    ...pageInput,
+    productId: "ready-pan",
+    sku: "GATE-2",
+    supplierUsConfirmed: true,
+    shipsFrom: "Austin, TX",
+  });
+  if ("error" in readyListing) throw new Error(readyListing.error);
+  const ship = {
+    qty: 1,
+    name: "Example Buyer",
+    email: "buyer@example.com",
+    line1: "100 Example Street",
+    city: "Sample City",
+    region: "ST",
+    postal: "00000",
+    country: "US",
+  };
+  let stripeCalls = 0;
+  setStripeFetch(async () => {
+    stripeCalls += 1;
+    return Response.json({
+      id: "cs_test_gate",
+      url: "https://checkout.stripe.com/c/pay/cs_test_gate",
+    });
+  });
+  const previousStripe = process.env.STRIPE_SECRET_KEY;
+  process.env.STRIPE_SECRET_KEY = `${["sk", "test"].join("_")}_checkout_gate`;
+  delete process.env.SHOW_PRICES;
+  const closed = await POST(
+    new Request("http://127.0.0.1/api/store/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...ship, productId: "ready-pan" }),
+    }),
+  );
+  const closedBody = (await closed.json()) as { error?: string; url?: string };
+  assert(closed.status === 400 && closedBody.error === "That page is not on the store.", "a Coming soon card refuses checkout");
+  assert(!closedBody.url && Number(stripeCalls) === 0, "a Coming soon card does not call Stripe");
+  process.env.SHOW_PRICES = "1";
+  const unconfirmed = await POST(
+    new Request("http://127.0.0.1/api/store/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...ship, productId: "soon-pan" }),
+    }),
+  );
+  const unconfirmedBody = (await unconfirmed.json()) as { error?: string; url?: string };
+  assert(
+    unconfirmed.status === 400 && unconfirmedBody.error === "That page is not on the store.",
+    "a Coming soon listing refuses checkout",
+  );
+  assert(!unconfirmedBody.url && Number(stripeCalls) === 0, "a Coming soon listing does not call Stripe");
+  const opened = await POST(
+    new Request("http://127.0.0.1/api/store/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...ship, productId: "ready-pan" }),
+    }),
+  );
+  const openedBody = (await opened.json()) as { error?: string; url?: string };
+  assert(
+    opened.ok && openedBody.url === "https://checkout.stripe.com/c/pay/cs_test_gate",
+    openedBody.error ?? "a buyable listing still opens checkout",
+  );
+  assert(Number(stripeCalls) === 1, "a buyable listing calls Stripe once");
+  setStripeFetch(null);
+  delete process.env.SHOW_PRICES;
+  if (previousStripe === undefined) delete process.env.STRIPE_SECRET_KEY;
+  else process.env.STRIPE_SECRET_KEY = previousStripe;
 
   console.log("shop polish checks ok");
 }

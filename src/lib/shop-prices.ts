@@ -8,6 +8,11 @@ export function showShopPrices(value = process.env.SHOW_PRICES) {
   return PRICE_ON.has(value?.trim().toLowerCase() ?? "");
 }
 
+/** A card prints a price only while the flag is on and the listing has cents. */
+export function shopCardShowsPrice(priceCents: number | null | undefined, pricesOn = showShopPrices()) {
+  return pricesOn && priceCents != null;
+}
+
 /** Shopper payloads drop every price field while prices are hidden. */
 export function shopperPriceView<T extends object>(value: T, pricesOn = showShopPrices()) {
   if (pricesOn) return value;
