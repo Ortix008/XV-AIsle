@@ -154,7 +154,7 @@ export function ShopGrid({
               <p className="eyebrow">Store</p>
               <Heading className="page-title">{title}</Heading>
               <p className="mt-3 max-w-xl text-pretty text-base text-muted-foreground">
-                {world ? `${world.title}. ${world.story}` : lede}
+                {world ? world.story : lede}
               </p>
             </div>
           </header>
@@ -255,6 +255,8 @@ export function ShopGrid({
                   sizes="(min-width: 1024px) 280px, 50vw"
                   zoom
                   packshot={productIsPackshot(listing.productId, listing)}
+                  loading={catalog && index < 3 ? "eager" : "lazy"}
+                  fetchPriority={catalog && index === 0 ? "high" : undefined}
                 />
                 <ShopCardCopy listing={listing} showPrices={pricesOn} />
               </Link>

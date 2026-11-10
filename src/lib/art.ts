@@ -51,7 +51,12 @@ export const welcomeDepartments = [
     src: "/art/dept-garden-tools.png",
     line: "Tools for working the garden. Not plants.",
   },
-  { title: "Electronics", src: "/art/dept-electronics.png", line: "Small gear for the desk and the day." },
+  {
+    title: "Tech & Desk",
+    src: "/art/aisle-card-tech-and-desk.webp",
+    line: "Small gear for the desk and the day.",
+    href: "/shop?aisle=tech-and-desk",
+  },
   {
     title: "Everyday Finds",
     src: "/art/aisle-card-everyday-finds.webp",

@@ -104,7 +104,7 @@ export function JoinScreen({
         <ShopGrid
           kicker="Featured"
           title="In the store"
-          lede="Pay safely with Stripe, and your order ships straight to your door."
+          lede="Every item is reviewed before it's listed. Shipping details are added to each product once its supplier confirms them."
           query=""
           empty="Nothing's on the shelves yet. We're picking the first pieces now."
           limit={4}

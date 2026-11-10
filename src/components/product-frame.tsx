@@ -10,6 +10,8 @@ export function ProductFrame({
   priority = false,
   zoom = false,
   packshot = false,
+  loading,
+  fetchPriority,
 }: {
   src?: string | null;
   alt: string;
@@ -17,6 +19,9 @@ export function ProductFrame({
   priority?: boolean;
   zoom?: boolean;
   packshot?: boolean;
+  /** Eager for the first visible row. The first image also asks for high fetch priority. */
+  loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
 }) {
   const [failed, setFailed] = useState(false);
   const photo = src?.trim() ?? "";
@@ -29,6 +34,8 @@ export function ProductFrame({
             alt={alt}
             fill
             priority={priority}
+            {...(priority || !loading ? {} : { loading })}
+            {...(fetchPriority ? { fetchPriority } : {})}
             sizes={sizes}
             className={zoom ? "media-zoom object-contain object-center" : "object-contain object-center"}
             onError={() => setFailed(true)}

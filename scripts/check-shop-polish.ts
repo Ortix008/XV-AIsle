@@ -159,11 +159,27 @@ async function main() {
     "How buying works uses the approved next line",
   );
   assert(!safety.includes("You pick a product, pay on this site, and the supplier ships it to you."), "the old buying line is gone");
+  const shopGrid = readFileSync(join(process.cwd(), "src/components/shop-grid.tsx"), "utf8");
+  assert(shopGrid.includes("world ? world.story : lede"), "an aisle hero shows only its approved line");
+  assert(!shopGrid.includes("${world.title}."), "an aisle hero does not repeat the aisle name");
+  const home = readFileSync(join(process.cwd(), "src/components/home-screen.tsx"), "utf8");
+  assert(
+    home.includes(
+      "lede=\"Every item is reviewed before it's listed. Shipping details are added to each product once its supplier confirms them.\"",
+    ),
+    "In the store uses the approved subhead",
+  );
+  assert(!home.includes("Pay safely with Stripe, and your order ships straight to your door."), "the old In the store subhead is gone");
   const art = readFileSync(join(process.cwd(), "src/lib/art.ts"), "utf8");
   assert(art.includes('line: "Small, handy things for home, workouts and the road."'), "Everyday Finds uses the approved tile line");
   assert(!art.includes("Everything for your setup in one place, or grab it all as a set."), "the old Everyday Finds tile line is gone");
   assert(!art.includes("aisle-card-build-your-rig.webp"), "Everyday Finds art no longer points at the rig still");
   assert(art.includes("/art/aisle-card-everyday-finds.webp"), "Everyday Finds art uses the new still");
+  assert(art.includes('title: "Tech & Desk"'), "the home strip names Tech & Desk");
+  assert(art.includes('line: "Small gear for the desk and the day."'), "the Tech & Desk tile keeps its line");
+  assert(art.includes('href: "/shop?aisle=tech-and-desk"'), "the Tech & Desk tile opens that aisle");
+  assert(art.includes('src: "/art/aisle-card-tech-and-desk.webp"'), "the Tech & Desk tile uses that still");
+  assert(!art.includes('title: "Electronics"'), "the Electronics tile is renamed");
 
   console.log("shop polish checks ok");
 }

@@ -932,9 +932,10 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  html.motion [data-reveal]:not(.is-in) {
+  html.motion .shop-catalog [data-reveal]:not(.is-in) {
     opacity: 0;
-    transform: translate3d(0, 16px, 0);
+    transform: translate3d(0, var(--motion-rise), 0);
+    will-change: opacity, transform;
   }
 }
 
@@ -948,12 +949,6 @@ html.motion [data-reveal].is-in {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  html.motion .shop-catalog [data-reveal]:not(.is-in) {
-    opacity: 0;
-    transform: translate3d(0, var(--motion-rise), 0);
-    will-change: opacity, transform;
-  }
-
   .shop-catalog .shop-band.is-drifting .shop-band-art {
     will-change: transform;
     animation: shop-hero-drift var(--motion-dur-hero) var(--motion-ease-hero) infinite alternate;
@@ -1031,14 +1026,14 @@ html.motion .shop-catalog [data-reveal].is-settled {
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    html.motion [data-reveal]:not(.is-in) {
-      transform: translate3d(0, 10px, 0);
+    html.motion .shop-catalog [data-reveal]:not(.is-in) {
+      transform: translate3d(0, var(--motion-rise), 0);
     }
   }
 
-  html.motion [data-reveal].is-in {
-    transition-duration: 0.48s, 0.52s;
-    transition-delay: calc(var(--reveal, 0) * 40ms);
+  html.motion .shop-catalog [data-reveal].is-in {
+    transition-duration: var(--motion-dur-enter), var(--motion-dur-enter);
+    transition-delay: calc(min(var(--reveal, 0), var(--motion-stagger-max)) * var(--motion-stagger));
   }
 
   .page-enter {
