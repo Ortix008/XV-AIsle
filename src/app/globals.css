@@ -107,7 +107,6 @@
   --aisle-lift: calc(var(--spacing) * -0.5);
   --aisle-press-scale: 0.99;
   --aisle-bloom: 0.75;
-  --aisle-intro-lines: 4;
   --aisle-rim: 1px;
   --glow: 0 0 0 2px #07080a, 0 0 0 4px #3ddc84, 0 0 24px rgba(61, 220, 132, 0.28);
   --chart-1: #3ddc84;
@@ -2909,14 +2908,6 @@ button.contact-submit {
   padding: calc(var(--spacing) * 4);
 }
 
-.affiliate-tile-intro {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: var(--aisle-intro-lines);
-  line-clamp: var(--aisle-intro-lines);
-}
-
 .affiliate-card,
 .affiliate-tile {
   transition-property: transform, opacity;
@@ -3072,6 +3063,16 @@ button.contact-submit {
   .affiliate-index {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+@media (min-width: 1024px) {
+  .affiliate-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .affiliate-index {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 
   .affiliate-hero {
     grid-template-columns: minmax(0, 1fr) var(--aisle-hero-size-lg);
@@ -3083,16 +3084,6 @@ button.contact-submit {
     width: var(--aisle-hero-size-lg);
     height: var(--aisle-hero-size-lg);
     max-height: none;
-  }
-}
-
-@media (min-width: 1024px) {
-  .affiliate-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .affiliate-index {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
