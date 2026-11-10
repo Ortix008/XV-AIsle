@@ -64,7 +64,7 @@ const EXPECTED_BLURBS: Record<string, string> = {
   B0CBS8WNY5: "A wavy spoon holder with a sense of humor, for the spot right next to your stove.",
   B00004OCIU: "A Y-peeler from OXO Good Grips, a little everyday tool for every cook.",
   B008H2JLTE: "A small wooden spoon for stirring and tasting. A little tool that earns its place.",
-  B088GX8V21: "A 15-piece stainless-steel cooking utensil set, a full kit for a new kitchen.",
+  B088GX8V21: "A 15-piece khaki utensil set with silicone heads and stainless-steel handles, a full kit for a new kitchen.",
   B0157G34AY: "A 9-pack of glass food storage, ready for the leftovers after a big family dinner.",
   B08BC2MSKW: "A cream fleece throw, 50 by 60 inches, for movie nights on the couch with family.",
   B0BPLFGJ3B: "A sage green checkered fleece throw, 50 by 60 inches, a fresh color for the season.",
@@ -191,7 +191,7 @@ for (const aisle of live) {
     assert(item.blurb === EXPECTED_BLURBS[item.asin], `${item.asin} blurb matches the approved copy`);
     assert(amazonPickUrl(item.asin) === `https://www.amazon.com/dp/${item.asin}?tag=xvaisle-20`, `${item.asin} url`);
     if (item.asin === "B088GX8V21") {
-      assert(item.name === "Umite Chef 15-piece stainless steel utensil set", "the Umite name is the approved line");
+      assert(item.name === "Umite Chef 15-piece utensil set, Khaki", "the Umite name is the approved line");
     }
     if (item.asin === "B0875RKTQF") {
       assert(item.name === "iOttie Easy One Touch Signature mount", "the iOttie name is the approved line");
