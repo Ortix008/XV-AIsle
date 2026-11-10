@@ -75,6 +75,7 @@ export function ShopGrid({
   hideWhenEmpty = false,
   tiles = false,
   band = false,
+  initialListings,
 }: {
   kicker: string;
   title: string;
@@ -89,15 +90,27 @@ export function ShopGrid({
   hideWhenEmpty?: boolean;
   tiles?: boolean;
   band?: boolean;
+  /** Server-rendered cards. When set, the grid does not swap out of a loading panel. */
+  initialListings?: ShopCard[];
 }) {
-  const [listings, setListings] = useState<ShopCard[] | null>(null);
+  const [fetched, setFetched] = useState<ShopCard[] | null>(null);
+  const listings = initialListings ?? fetched;
 
   useEffect(() => {
+    if (initialListings) return;
+    let ignore = false;
     fetch(`/api/store/listings${query}`)
       .then((response) => response.json())
-      .then((data: { listings: ShopCard[] }) => setListings(data.listings ?? []))
-      .catch(() => setListings([]));
-  }, [query]);
+      .then((data: { listings: ShopCard[] }) => {
+        if (!ignore) setFetched(data.listings ?? []);
+      })
+      .catch(() => {
+        if (!ignore) setFetched([]);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [query, initialListings]);
 
   const visible = listings === null ? null : limit === undefined ? listings : listings.slice(0, limit);
   const Heading = level === "page" ? "h1" : "h2";
