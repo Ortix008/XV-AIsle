@@ -280,6 +280,52 @@ async function main() {
     "a Coming soon listing refuses checkout",
   );
   assert(!unconfirmedBody.url && Number(stripeCalls) === 0, "a Coming soon listing does not call Stripe");
+  const { GET: detailGet } = await import("../src/app/api/store/listings/[productId]/route");
+  const { default: ProductPage } = await import("../src/app/shop/[productId]/page");
+  const hiddenPhotos = [
+    ["empty-photo", ""],
+    ["mark-photo", "/xv-aisle-mark.svg"],
+    ["plate-photo", "/brand/hero-aisle-pedestals.webp"],
+  ] as const;
+  for (const [productId, image] of hiddenPhotos) {
+    const saved = publishListing(joined.account.id, {
+      ...pageInput,
+      productId,
+      sku: productId,
+      supplierUsConfirmed: true,
+      shipsFrom: "Austin, TX",
+    });
+    if ("error" in saved) throw new Error(saved.error);
+    db.prepare("UPDATE listings SET image = ? WHERE product_id = ?").run(image, productId);
+    const hiddenCheckout = await POST(
+      new Request("http://127.0.0.1/api/store/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...ship, productId }),
+      }),
+    );
+    const hiddenBody = (await hiddenCheckout.json()) as { error?: string; url?: string };
+    assert(
+      hiddenCheckout.status === 400 && hiddenBody.error === "That page is not on the store.",
+      `${image || "(empty)"} checkout is refused`,
+    );
+    assert(!hiddenBody.url && Number(stripeCalls) === 0, `${image || "(empty)"} checkout does not call Stripe`);
+    const detail = await detailGet(new Request(`http://127.0.0.1/api/store/listings/${productId}`), {
+      params: Promise.resolve({ productId }),
+    });
+    const detailBody = (await detail.json()) as { error?: string; listing?: { priceCents?: number } };
+    assert(detail.status === 404 && detailBody.error === "That page is not on the store.", `${image || "(empty)"} detail is not on the store`);
+    assert(!detailBody.listing, `${image || "(empty)"} detail does not include a price`);
+    let missing = false;
+    try {
+      await ProductPage({ params: Promise.resolve({ productId }) });
+    } catch (error) {
+      missing = true;
+      const digest = error instanceof Error ? String((error as { digest?: string }).digest ?? error.message) : "";
+      assert(digest.includes("404"), `${image || "(empty)"} product page is the existing not-found page`);
+    }
+    assert(missing, `${image || "(empty)"} product page does not render`);
+  }
   const opened = await POST(
     new Request("http://127.0.0.1/api/store/checkout", {
       method: "POST",

@@ -1,4 +1,5 @@
 import { qaCheckoutBlockedOnShelf } from "./qa-checkout";
+import { hasRealProductPhoto } from "./shop-photo";
 import { shopCardShowsPrice, showShopPrices } from "./shop-prices";
 import { isHeldSample, isScentedCandleListing, isWoodTrayListing } from "./shelf-holds";
 import { comingSoonListing } from "./supplier-confirm";
@@ -6,6 +7,7 @@ import { comingSoonListing } from "./supplier-confirm";
 type CheckoutListing = {
   productId: string;
   title?: string | null;
+  image?: string | null;
   priceCents?: number | null;
   supplierName?: string | null;
   shipsFrom?: string | null;
@@ -20,6 +22,7 @@ type CheckoutListing = {
  */
 export function shopperCheckoutClosed(listing: CheckoutListing | null | undefined, pricesOn = showShopPrices()) {
   if (!listing) return true;
+  if (!hasRealProductPhoto(listing.image)) return true;
   if (!shopCardShowsPrice(listing.priceCents, pricesOn)) return true;
   if (isWoodTrayListing(listing) || isScentedCandleListing(listing) || isHeldSample(listing)) return true;
   if (qaCheckoutBlockedOnShelf(listing)) return true;
