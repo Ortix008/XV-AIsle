@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function AislesPage() {
   return (
-    <ShopFrame showStorePayLine={false}>
+    <ShopFrame showStorePayLine={false} showBrandBlock={false}>
       <AisleIndex aisles={AMAZON_AISLES} />
     </ShopFrame>
   );

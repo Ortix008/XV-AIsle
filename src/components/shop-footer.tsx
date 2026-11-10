@@ -39,7 +39,15 @@ const columns = [
   },
 ];
 
-export function ShopFooter({ showReseller, showStorePayLine = true }: { showReseller?: boolean; showStorePayLine?: boolean }) {
+export function ShopFooter({
+  showReseller,
+  showStorePayLine = true,
+  showBrandBlock = true,
+}: {
+  showReseller?: boolean;
+  showStorePayLine?: boolean;
+  showBrandBlock?: boolean;
+}) {
   const session = useOptionalAccount();
   const account = session?.account;
   const signedInOperator = account?.role === "admin" && account.emailVerified === true;
@@ -50,8 +58,8 @@ export function ShopFooter({ showReseller, showStorePayLine = true }: { showRese
   }));
   return (
     <footer className="shop-footer mt-auto bg-[var(--footer)] pb-9">
-      <MissionValues />
-      <div className="mx-auto max-w-[1280px] px-5 pt-16 sm:px-10">
+      {showBrandBlock ? <MissionValues /> : null}
+      <div className={`mx-auto max-w-[1280px] px-5 sm:px-10 ${showBrandBlock ? "pt-16" : "pt-8"}`}>
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
           <div>
             <Link href="/" className="inline-flex">

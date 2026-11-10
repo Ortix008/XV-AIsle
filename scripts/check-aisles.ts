@@ -298,10 +298,19 @@ assert(renderToStaticMarkup(createElement(ShopFooter, { showReseller: true })).i
 const aisleIndexPage = renderToStaticMarkup(createElement(AislesPage));
 assert(!aisleIndexPage.includes(PAY_LINE), "the aisle index footer omits the store pay line");
 assert(aisleIndexPage.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the aisle index footer keeps the disclosure");
+for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
+  assert(!aisleIndexPage.includes(phrase), `the aisle index omits ${phrase}`);
+}
 const shopPage = renderToStaticMarkup(createElement(ShopPage));
 assert(shopPage.includes(PAY_LINE), "the shop page footer still names where buyers pay");
+for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
+  assert(shopPage.includes(phrase), `the shop page still shows ${phrase}`);
+}
 const homePage = renderToStaticMarkup(createElement(JoinScreen, { checkoutLine: "Cards are checked on this site." }));
 assert(homePage.includes(PAY_LINE), "the home footer still names where buyers pay");
+for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
+  assert(homePage.includes(phrase), `the home page still shows ${phrase}`);
+}
 assert(footerHtml.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the footer shows the disclosure");
 assert(!footerHtml.includes(HERO_SUBHEAD), "the footer is not the hero subhead");
 assert(!footerHtml.toLowerCase().includes(WE_EARN), "the footer does not use the banned associate phrase");
@@ -414,6 +423,9 @@ async function main() {
     const html = renderToStaticMarkup(page);
     assert(!html.includes(PAY_LINE), `${slug} footer omits the store pay line`);
     assert(html.includes(AMAZON_ASSOCIATE_DISCLOSURE), `${slug} footer keeps the disclosure`);
+    for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
+      assert(!html.includes(phrase), `${slug} omits ${phrase}`);
+    }
   }
   for (const slug of ["tickets-and-events", "no-such-aisle", "gifts"]) {
     try {
