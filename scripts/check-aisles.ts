@@ -12,6 +12,7 @@ import { storeNav, storeNavCurrent } from "../src/components/store-header";
 import {
   AI_SHOPPERS_NOTE,
   AISLE_INDEX_COPY,
+  AISLE_CARD_ALT,
   AMAZON_AISLES,
   AMAZON_ASSOCIATE_DISCLOSURE,
   AMAZON_PAID_LINK_LABEL,
@@ -220,11 +221,66 @@ for (const name of hiddenNames) {
 }
 
 const AMAZON_MEDIA_HOSTS = ["m.media-amazon.com", "images-na.ssl-images-amazon.com", "images-amazon.com"];
+const ART_BYTE_LIMIT = 80 * 1024;
+
+function webpSize(bytes: Buffer) {
+  assert(bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP", "webp header");
+  let offset = 12;
+  while (offset + 8 <= bytes.length) {
+    const tag = bytes.toString("ascii", offset, offset + 4);
+    const size = bytes.readUInt32LE(offset + 4);
+    const start = offset + 8;
+    if (tag === "VP8X") {
+      return {
+        width: 1 + bytes.readUIntLE(start + 4, 3),
+        height: 1 + bytes.readUIntLE(start + 7, 3),
+      };
+    }
+    if (tag === "VP8 ") {
+      const key = bytes.indexOf(Buffer.from([0x9d, 0x01, 0x2a]), start);
+      assert(key >= 0 && key + 7 <= start + size, "vp8 frame");
+      return {
+        width: bytes.readUInt16LE(key + 3) & 0x3fff,
+        height: bytes.readUInt16LE(key + 5) & 0x3fff,
+      };
+    }
+    if (tag === "VP8L") {
+      const b0 = bytes[start + 1] ?? 0;
+      const b1 = bytes[start + 2] ?? 0;
+      const b2 = bytes[start + 3] ?? 0;
+      const b3 = bytes[start + 4] ?? 0;
+      return {
+        width: 1 + (((b1 & 0x3f) << 8) | b0),
+        height: 1 + (((b3 & 0x0f) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6)),
+      };
+    }
+    offset = start + size + (size % 2);
+  }
+  throw new Error("webp has no size");
+}
+
 for (const aisle of AMAZON_AISLES) {
-  assert(aisle.art === undefined, `${aisle.slug} has no aisle art yet`);
+  if (aisle.items.length === 0) {
+    assert(aisle.art === undefined, `${aisle.slug} stays without art`);
+  } else {
+    const expectedAlt = AISLE_CARD_ALT[aisle.slug as keyof typeof AISLE_CARD_ALT];
+    assert(aisle.art, `${aisle.slug} has art`);
+    assert(aisle.art.src === `/art/aisle-card-${aisle.slug}.webp`, `${aisle.slug} art path`);
+    assert(aisle.art.alt === expectedAlt && aisle.art.alt.trim().length > 0, `${aisle.slug} alt`);
+    const file = join(process.cwd(), "public", aisle.art.src);
+    const bytes = readFileSync(file);
+    assert(bytes.length > 0 && bytes.length < ART_BYTE_LIMIT, `${aisle.slug} art is under 80KB`);
+    const size = webpSize(bytes);
+    assert(size.width === 800 && size.height === 800, `${aisle.slug} art is 800x800`);
+    const text = bytes.toString("utf8");
+    for (const host of AMAZON_MEDIA_HOSTS) {
+      assert(!text.includes(host), `${aisle.slug} art file points at ${host}`);
+      assert(!aisle.art.src.includes(host), `${aisle.slug} art points at ${host}`);
+    }
+  }
   for (const item of aisle.items) {
     assert(item.imageUrl === undefined, `${item.asin} imageUrl stays unset`);
-    assert(resolvePickImage(item, aisle) === null, `${item.asin} renders no image`);
+    assert(resolvePickImage(item, aisle) === null, `${item.asin} renders no product image`);
   }
 }
 const imageExt = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg", ".ico"]);
@@ -254,31 +310,32 @@ const plainAisle: AmazonAisle = {
   intro: "Fixture intro.",
   items: [plainPick],
 };
-assert(resolvePickImage(plainPick, plainAisle) === null, "no imageUrl and no aisle art resolves to nothing");
-const aisleArt = { src: "/xv-aisle-mark.svg", alt: "XV-AIsle mark" };
-assert(
-  resolvePickImage(plainPick, { ...plainAisle, art: aisleArt })?.src === aisleArt.src &&
-    resolvePickImage(plainPick, { ...plainAisle, art: aisleArt })?.alt === aisleArt.alt,
-  "aisle art is used when the pick has no image",
-);
+assert(resolvePickImage(plainPick, plainAisle) === null, "no imageUrl resolves to nothing");
+const aisleArt = { src: "/art/aisle-card-fixture.webp", alt: "Fixture still life" };
+assert(resolvePickImage(plainPick, { ...plainAisle, art: aisleArt }) === null, "aisle art never fills a product card");
 const pickImage = { ...plainPick, imageUrl: "/brand/logo-official-xo.png" };
 assert(
   resolvePickImage(pickImage, { ...plainAisle, art: aisleArt })?.src === pickImage.imageUrl &&
     resolvePickImage(pickImage, { ...plainAisle, art: aisleArt })?.alt === plainPick.name,
-  "a pick imageUrl wins over aisle art",
+  "a set imageUrl still resolves for the inert hook",
 );
 const bareCard = renderToStaticMarkup(createElement(AisleDetail, { aisle: plainAisle }));
 assert(bareCard.includes('<article class="affiliate-card"><h2'), "a card with no image keeps today's markup");
 assert(!bareCard.includes("affiliate-art") && !bareCard.includes("<img"), "a card with no image has no image box");
 const artCard = renderToStaticMarkup(createElement(AisleDetail, { aisle: { ...plainAisle, art: aisleArt } }));
+const artGrid = artCard.slice(artCard.indexOf("affiliate-grid"));
+assert(!artGrid.includes("<img") && !artGrid.includes(aisleArt.src), "product cards do not render aisle art");
 const artTag = artCard.match(/<img\b[^>]*>/)?.[0] ?? "";
-assert(attr(artTag, "src") === aisleArt.src, "aisle art src renders");
-assert(attr(artTag, "alt") === aisleArt.alt, "aisle art alt renders");
-assert(attr(artTag, "loading") === "lazy" && attr(artTag, "decoding") === "async", "card images lazy-load");
+assert(attr(artTag, "src") === aisleArt.src, "hero art src renders");
+assert(attr(artTag, "alt") === aisleArt.alt, "hero art alt renders");
+assert(attr(artTag, "width") === "800" && attr(artTag, "height") === "800", "hero art reserves 800x800");
+assert(attr(artTag, "loading") === "eager" && attr(artTag, "decoding") === "async", "the hero image can load immediately");
 const pickCard = renderToStaticMarkup(
   createElement(AisleDetail, { aisle: { ...plainAisle, art: aisleArt, items: [pickImage] } }),
 );
-const pickTag = pickCard.match(/<img\b[^>]*>/)?.[0] ?? "";
+const pickGrid = pickCard.slice(pickCard.indexOf("affiliate-grid"));
+const pickTag = pickGrid.match(/<img\b[^>]*>/)?.[0] ?? "";
+assert(!pickGrid.includes(aisleArt.src), "a pick image does not fall back to aisle art");
 assert(attr(pickTag, "src") === pickImage.imageUrl, "pick image src renders");
 assert(attr(pickTag, "alt") === plainPick.name, "a pick image uses the product name as alt");
 const pickLd = jsonLdBlocks(pickCard)[0];
@@ -298,7 +355,7 @@ assert(indexText.includes(AISLE_INDEX_COPY.intro), "the index shows the intro");
 assert(indexText.includes(AI_SHOPPERS_NOTE), "the index shows the AI shoppers note");
 assert(!indexText.includes("Grok Bot logo") && indexText.split(AI_SHOPPERS_NOTE).length === 2, "the AI note is plain text once");
 assert(amazonAnchors(indexHtml).length === 0, "the index has no Amazon links");
-assert(!indexHtml.includes("<img"), "the index has no images");
+assert((indexHtml.match(/<img\b/g) ?? []).length === live.length, "each live aisle tile has one image");
 assert(!indexText.toLowerCase().includes(WE_EARN), "the index does not use the banned associate phrase");
 assert(!indexText.includes(OLD_DISCLOSURE), "the index drops the old disclosure");
 assert(!indexHtml.includes(AMAZON_PAID_LINK_LABEL), "aisle cards are not Amazon cards");
@@ -306,6 +363,14 @@ assertClean(indexText, "aisle index");
 for (const aisle of live) {
   assert(indexHtml.includes(`href="/aisles/${aisle.slug}"`), `${aisle.slug} is on the index`);
   assert(indexText.includes(aisle.name), `${aisle.name} is on the index`);
+  const tile = indexHtml.slice(indexHtml.indexOf(`href="/aisles/${aisle.slug}"`), indexHtml.indexOf("</a>", indexHtml.indexOf(`href="/aisles/${aisle.slug}"`)));
+  const tileImg = tile.match(/<img\b[^>]*>/)?.[0] ?? "";
+  assert(aisle.art, `${aisle.slug} tile art`);
+  assert(attr(tileImg, "src") === aisle.art.src, `${aisle.slug} tile src`);
+  assert(attr(tileImg, "alt") === aisle.art.alt && attr(tileImg, "alt").trim().length > 0, `${aisle.slug} tile alt`);
+  assert(attr(tileImg, "width") === "800" && attr(tileImg, "height") === "800", `${aisle.slug} tile size`);
+  assert(attr(tileImg, "loading") === "lazy" && attr(tileImg, "decoding") === "async", `${aisle.slug} tile loading`);
+  assert(!tile.includes("srcset"), `${aisle.slug} tile has no srcset`);
 }
 for (const name of hiddenNames) {
   assert(!indexText.includes(name), `${name} stays off the index`);
@@ -326,7 +391,16 @@ for (const aisle of live) {
   const disclosureAt = html.indexOf(AMAZON_ASSOCIATE_DISCLOSURE);
   const gridAt = html.indexOf("affiliate-grid");
   assert(disclosureAt >= 0 && gridAt > disclosureAt, `${aisle.slug} disclosure sits above the cards`);
-  assert(!html.includes("<img"), `${aisle.slug} has no images`);
+  const hero = html.slice(0, gridAt);
+  const cards = html.slice(gridAt);
+  const heroImg = hero.match(/<img\b[^>]*>/)?.[0] ?? "";
+  assert(aisle.art, `${aisle.slug} hero art`);
+  assert((hero.match(/<img\b/g) ?? []).length === 1, `${aisle.slug} has one hero image`);
+  assert(attr(heroImg, "src") === aisle.art.src, `${aisle.slug} hero src`);
+  assert(attr(heroImg, "alt") === aisle.art.alt && attr(heroImg, "alt").trim().length > 0, `${aisle.slug} hero alt`);
+  assert(attr(heroImg, "width") === "800" && attr(heroImg, "height") === "800", `${aisle.slug} hero size`);
+  assert(attr(heroImg, "loading") === "eager" && attr(heroImg, "decoding") === "async", `${aisle.slug} hero loading`);
+  assert(!cards.includes("<img") && !cards.includes("aisle-card-"), `${aisle.slug} product cards stay text-only`);
   assertClean(text, aisle.slug);
   const anchors = amazonAnchors(html);
   assert(anchors.length === aisle.items.length, `${aisle.slug} link count`);

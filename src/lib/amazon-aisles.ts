@@ -52,7 +52,7 @@ export type AmazonAisle = {
   heading: string;
   intro: string;
   items: readonly AmazonPick[];
-  /** Optional aisle art used when a pick has no imageUrl. Leave unset until the designer delivers it. */
+  /** Still life for the index tile and the aisle hero. Product cards never use this. */
   art?: AisleArt;
 };
 
@@ -63,7 +63,7 @@ function pick(asin: string, name: string, blurb: string, note?: string): AmazonP
   return note ? { asin, name, blurb, note } : { asin, name, blurb };
 }
 
-export const AMAZON_AISLES: readonly AmazonAisle[] = [
+const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
   {
     slug: "kitchen",
     name: "Kitchen",
@@ -405,12 +405,48 @@ export const AMAZON_AISLES: readonly AmazonAisle[] = [
   },
 ];
 
-/** Pick image, then aisle art, then nothing. An empty string counts as unset. */
+/** Alt text from the aisle art spec, used on the index tile and the hero only. */
+export const AISLE_CARD_ALT = {
+  kitchen:
+    "Cast-iron skillet on a wooden board with two ceramic canisters and a sprig of rosemary, in a dark studio with a soft emerald glow",
+  "home-and-cozy":
+    "Knit throw, lit candle, ceramic mug and a small potted plant on a dark wood table under an emerald studio glow",
+  "on-the-go":
+    "Canvas tote, silver insulated bottle and a small black travel pouch on a dark wood surface with an emerald back glow",
+  holiday:
+    "A single cream-wrapped gift with loosened emerald ribbon, a bowl of glass ornaments, pine sprigs and one lit candle on a dark wood table, seen from a high angle",
+  electronics:
+    "Black headphones on a stand, a round charging pad, a coiled cable and a compact keyboard with blank keycaps, lit by a warm brass desk lamp against an emerald studio glow",
+  "beauty-and-self-care":
+    "Two unlabeled amber dropper bottles, a cream jar, a folded towel and a small round brass-framed mirror on dark wood",
+  "fitness-and-outdoors":
+    "Rolled green yoga mat, a pair of dumbbells, a sport bottle and a resistance band on a wooden bench in a dark studio",
+  pets: "Ceramic pet bowl, knotted rope toy, folded knit pet bed and a leather leash on a dark wood table",
+  "tools-and-diy": "Wooden-handled hammer, gunmetal tape measure, screwdrivers and work gloves on a wooden workbench",
+  car: "Passenger-side view of a dark dashboard with a vent-mounted phone, a folded microfiber cloth, a compact tire-pressure gauge and a generic ice scraper, with a blurred steering-wheel rim under an emerald windshield glow",
+  "office-and-desk": "Brass desk lamp lighting an open blank notebook, a ceramic pen cup and a small leather tray on a dark desk",
+  "games-and-hobbies":
+    "Wooden chessboard with pieces, dice, a cup of paintbrushes, small unlabeled paint pots, and a partly built wooden model kit with loose parts on a dark wood table",
+} as const;
+
+export function aisleCardArt(slug: string): AisleArt | undefined {
+  const alt = AISLE_CARD_ALT[slug as keyof typeof AISLE_CARD_ALT];
+  if (!alt) return undefined;
+  return { src: `/art/aisle-card-${slug}.webp`, alt };
+}
+
+export const AMAZON_AISLES: readonly AmazonAisle[] = AMAZON_AISLE_ROWS.map((aisle) => {
+  if (aisle.items.length === 0) return aisle;
+  const art = aisleCardArt(aisle.slug);
+  if (!art) throw new Error(`Live aisle ${aisle.slug} has no card art.`);
+  return { ...aisle, art };
+});
+
+/** Product-card image only. Aisle stills stay on the index and the hero. An empty string counts as unset. */
 export function resolvePickImage(item: AmazonPick, aisle: AmazonAisle) {
+  void aisle;
   const pickSrc = item.imageUrl?.trim();
   if (pickSrc) return { src: pickSrc, alt: item.name };
-  const aisleSrc = aisle.art?.src.trim();
-  if (aisleSrc) return { src: aisleSrc, alt: aisle.art?.alt ?? "" };
   return null;
 }
 

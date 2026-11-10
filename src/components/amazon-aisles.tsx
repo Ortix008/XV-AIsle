@@ -12,6 +12,7 @@ import {
   liveAisles,
   pickLinkLabel,
   resolvePickImage,
+  type AisleArt,
   type AmazonAisle,
 } from "@/lib/amazon-aisles";
 
@@ -20,6 +21,22 @@ function JsonLd({ data }: { data: unknown }) {
     <script
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
+    />
+  );
+}
+
+function Still({ art, loading }: { art: AisleArt; loading: "eager" | "lazy" }) {
+  if (!art.src.trim() || !art.alt.trim()) return null;
+  return (
+    // Local stills only. next/image is not used, so a later hotlink is not proxied.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={art.src}
+      alt={art.alt}
+      width={800}
+      height={800}
+      loading={loading}
+      decoding="async"
     />
   );
 }
@@ -48,17 +65,20 @@ export function AisleIndex({ aisles }: { aisles: readonly AmazonAisle[] }) {
       <h1 className="page-title">{AISLE_INDEX_COPY.heading}</h1>
       {AISLE_INDEX_COPY.intro ? <p className="affiliate-intro">{AISLE_INDEX_COPY.intro}</p> : null}
       <AiShoppersNote />
-      <ul className="affiliate-grid">
+      <ul className="affiliate-index">
         {live.map((aisle) => (
           <li key={aisle.slug}>
-            <article className="affiliate-card">
-              <h2 className="affiliate-card-name">
-                <Link href={`/aisles/${aisle.slug}`} className="affiliate-aisle-link">
-                  {aisle.name}
-                </Link>
-              </h2>
-              {aisle.intro ? <p className="affiliate-blurb">{aisle.intro}</p> : null}
-            </article>
+            <Link href={`/aisles/${aisle.slug}`} className="affiliate-tile">
+              {aisle.art ? (
+                <span className="affiliate-tile-art">
+                  <Still art={aisle.art} loading="lazy" />
+                </span>
+              ) : null}
+              <span className="affiliate-tile-copy">
+                <h2 className="affiliate-card-name">{aisle.name}</h2>
+                {aisle.intro ? <p className="affiliate-blurb affiliate-tile-intro">{aisle.intro}</p> : null}
+              </span>
+            </Link>
           </li>
         ))}
       </ul>
@@ -70,9 +90,18 @@ export function AisleIndex({ aisles }: { aisles: readonly AmazonAisle[] }) {
 export function AisleDetail({ aisle }: { aisle: AmazonAisle }) {
   return (
     <article className="affiliate-shell">
-      <h1 className="page-title">{aisle.heading}</h1>
-      {aisle.intro ? <p className="affiliate-intro">{aisle.intro}</p> : null}
-      <AiShoppersNote />
+      <header className="affiliate-hero">
+        <div className="affiliate-hero-copy">
+          <h1 className="page-title">{aisle.heading}</h1>
+          {aisle.intro ? <p className="affiliate-intro">{aisle.intro}</p> : null}
+          <AiShoppersNote />
+        </div>
+        {aisle.art ? (
+          <div className="affiliate-hero-frame">
+            <Still art={aisle.art} loading="eager" />
+          </div>
+        ) : null}
+      </header>
       <p className="affiliate-disclosure">{AMAZON_ASSOCIATE_DISCLOSURE}</p>
       <ul className="affiliate-grid">
         {aisle.items.map((item) => (
