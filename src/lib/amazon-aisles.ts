@@ -112,8 +112,8 @@ export const AMAZON_AISLES: readonly AmazonAisle[] = [
       ),
       pick(
         "B088GX8V21",
-        "Umite Chef 15-Piece Silicone Kitchen Utensil Set (Khaki)",
-        "A 15-piece silicone utensil set in khaki, a full kit for a new home or a holiday host.",
+        "Umite Chef 15-piece utensil set, Khaki",
+        "A 15-piece khaki utensil set with silicone heads and stainless-steel handles, a full kit for a new kitchen.",
       ),
       pick(
         "B0157G34AY",
@@ -325,7 +325,7 @@ export const AMAZON_AISLES: readonly AmazonAisle[] = [
     items: [
       pick(
         "B0875RKTQF",
-        "iOttie Easy One Touch 5 Dashboard & Windshield Mount",
+        "iOttie Easy One Touch Signature mount",
         "A dashboard and windshield phone mount with one-touch locking and a telescoping arm.",
       ),
       pick(
