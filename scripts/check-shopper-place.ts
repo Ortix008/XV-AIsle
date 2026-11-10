@@ -10,6 +10,7 @@ import { OrderCard } from "../src/components/order-card";
 import { ProductBuy } from "../src/components/product-buy";
 import { ShareToX } from "../src/components/share-to-x";
 import { ShopCardCopy } from "../src/components/shop-grid";
+import { SHOP_CARD_STATUS } from "../src/lib/shop-prices";
 import SmallBusinessPage from "../src/app/shop/small/page";
 import {
   SHOPPER_PLACE,
@@ -181,13 +182,14 @@ async function main() {
   assert(unconfirmedProduct.includes(TRACKING_SHIP), "an unconfirmed product page shows only the tracking line");
 
   const grid = renderToStaticMarkup(createElement(ShopCardCopy, { listing: cityListing }));
-  assert(grid.includes(SHOPPER_PLACE), "a confirmed grid card shows the place sentence");
+  assert(grid.includes(SHOP_CARD_STATUS), "a grid card says Coming soon");
+  assert(!grid.includes(SHOPPER_PLACE) && !grid.includes(TRACKING_SHIP), "a grid card does not repeat the shipping line");
   assert(!grid.includes(CITY) && !grid.includes("2–4") && !grid.includes("days"), "a confirmed grid card has no city and no day window");
   const unconfirmedGrid = renderToStaticMarkup(
     createElement(ShopCardCopy, { listing: { ...cityListing, supplierUsConfirmed: false } }),
   );
-  assert(unconfirmedGrid.includes(TRACKING_SHIP), "an unconfirmed grid card shows the tracking line");
-  assert(!unconfirmedGrid.includes(SHOPPER_PLACE) && !unconfirmedGrid.includes("Ships from") && !unconfirmedGrid.includes(CITY), "an unconfirmed grid card has no ships-from line and no city");
+  assert(unconfirmedGrid.includes(SHOP_CARD_STATUS), "an unconfirmed grid card says Coming soon");
+  assert(!unconfirmedGrid.includes(SHOPPER_PLACE) && !unconfirmedGrid.includes(TRACKING_SHIP) && !unconfirmedGrid.includes("Ships from") && !unconfirmedGrid.includes(CITY), "an unconfirmed grid card has no ships-from line and no city");
   assert(!unconfirmedGrid.includes("2–4") && !unconfirmedGrid.includes("days"), "an unconfirmed grid card has no day window");
 
   const card = renderToStaticMarkup(
@@ -274,7 +276,7 @@ async function main() {
   assert(!abroadProduct.includes(SHOPPER_PLACE) && !abroadProduct.includes("Sample City"), "a non-US confirmed product has no US place line and no city");
   assert(abroadProduct.includes(TRACKING_SHIP), "a non-US confirmed product shows the tracking line");
   const abroadGrid = renderToStaticMarkup(createElement(ShopCardCopy, { listing: abroadCard }));
-  assert(!abroadGrid.includes(SHOPPER_PLACE) && abroadGrid.includes(TRACKING_SHIP), "a non-US confirmed grid card stays on the tracking line");
+  assert(abroadGrid.includes(SHOP_CARD_STATUS) && !abroadGrid.includes(SHOPPER_PLACE) && !abroadGrid.includes(TRACKING_SHIP), "a non-US confirmed grid card stays on Coming soon");
   const abroadSummary = orderSummary({ ...order, productId: "abroad-pan", number: "XV-ABROAD", title: "Abroad pan" });
   assert(abroadSummary.shipsFrom === null, "a non-US confirmed order summary has no US place line");
   const abroadReceipt = receiptText({
@@ -342,8 +344,10 @@ async function main() {
 
   const quietGrid = renderToStaticMarkup(createElement(ShopCardCopy, { listing: quietShown }));
   const gridSource = `${quietGrid}\n${JSON.stringify({ listings: [quietShown] })}`;
-  assertOnlyTracking(quietGrid, "an unconfirmed shop grid");
-  assertOnlyTracking(gridSource, "an unconfirmed shop grid source");
+  assert(quietGrid.includes(SHOP_CARD_STATUS), "an unconfirmed shop grid says Coming soon");
+  assertNoShipsFrom(quietGrid, "an unconfirmed shop grid");
+  assert(!quietGrid.includes(TRACKING_SHIP), "an unconfirmed shop grid leaves the tracking line off the card");
+  assertNoShipsFrom(gridSource, "an unconfirmed shop grid source");
 
   const quietSummary = orderSummary({ ...order, productId: "quiet-pan", number: "XV-QUIET", title: "Quiet pan" });
   assert(quietSummary.shipsFrom === null, "an unconfirmed order summary has no ships-from line");

@@ -329,6 +329,7 @@ async function main() {
       returnNote: "We'll email the return address when you start a return.",
       shareHref: "http://127.0.0.1/shop/limited",
       stock: { unitsLeft: 2, variants: [] },
+      showPrices: true,
     }),
   );
   assert(openMarkup.includes("Continue to checkout") && openMarkup.includes('max="2"'), "remaining stock caps the quantity field");
@@ -357,6 +358,7 @@ async function main() {
           { id: "night", label: "Night", unitsLeft: 1, soldOut: false },
         ],
       },
+      showPrices: true,
     }),
   );
   assert(sizeMarkup.includes("Clay (Sold out)") && sizeMarkup.includes("disabled"), "a sold-out size is disabled and uses Sold out");

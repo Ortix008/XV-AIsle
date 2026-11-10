@@ -17,6 +17,8 @@ import { comingSoonListing } from "@/lib/supplier-confirm";
 import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
 import { publicSiteUrl } from "@/lib/config/env";
+import { hasRealProductPhoto } from "@/lib/shop-photo";
+import { productShopperJsonLd, showShopPrices } from "@/lib/shop-prices";
 import { productOgImage } from "@/lib/product-og";
 import { buyerShareHref, resellerShareHref } from "@/lib/x-share";
 
@@ -35,7 +37,8 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
   const shown = publicListing(listing, isSampleListing(listing));
   const origin = publicSiteUrl();
   const canonical = `${origin}/shop/${listing.productId}`;
-  const description = `${money(listing.priceCents / 100)}. ${shown.description}`.slice(0, 200);
+  const pricesOn = showShopPrices();
+  const description = `${pricesOn ? `${money(listing.priceCents / 100)}. ` : ""}${shown.description}`.slice(0, 200);
   const image = productOgImage(origin, listing.image, shown.title);
   return {
     title: `${shown.title} · XV-AIsle`,
@@ -67,9 +70,10 @@ export default async function ProductPage({
   const listing = getListing(productId);
   if (!listing || !visibleOnShop(listing) || listingLoss(listing)) notFound();
   const aisle = aisleKey(listing);
+  const pricesOn = showShopPrices();
   const picks: AislePick[] = aisle
     ? listPublished({ aisle })
-        .filter((item) => item.productId !== listing.productId && listedOnGrid(item))
+        .filter((item) => item.productId !== listing.productId && listedOnGrid(item) && hasRealProductPhoto(item.image))
         .slice(0, 4)
         .map((item) => ({
           productId: item.productId,
@@ -95,7 +99,19 @@ export default async function ProductPage({
   const held = isHeldSample(listing);
   return (
     <ShopFrame>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            productShopperJsonLd(
+              { name: listing.title, url: productUrl, priceCents: listing.priceCents },
+              pricesOn,
+            ),
+          ).replace(/</g, "\\u003c"),
+        }}
+      />
       <ProductBuy
+        showPrices={pricesOn}
         listing={publicListing(listing, isSampleListing(listing))}
         returnNote={sampleProductReturnNote(listing, returnCopyForListing(listing))}
         shareHref={shareHref}
@@ -106,7 +122,7 @@ export default async function ProductPage({
         shipWindow={productShipLine(listing)}
         stock={{ unitsLeft: stock.unitsLeft, variants: stock.variants }}
       />
-      <AislePicks aisle={aisle} picks={picksWithStock} />
+      <AislePicks aisle={aisle} picks={picksWithStock} showPrices={pricesOn} />
     </ShopFrame>
   );
 }

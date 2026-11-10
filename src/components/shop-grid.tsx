@@ -8,8 +8,8 @@ import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
 import { money } from "@/lib/money";
 import { SOLD_OUT_LABEL } from "@/lib/sold-out-label";
-import { SHOPPER_PLACE, TRACKING_SHIP, shopperMayNameUsSupplier } from "@/lib/order-facts";
 import { nightWorldForListing, nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
+import { SHOP_CARD_STATUS, showShopPrices } from "@/lib/shop-prices";
 import { hasRealProductPhoto } from "@/lib/shop-photo";
 
 export type ShopCard = {
@@ -40,22 +40,22 @@ function eyebrow(listing: ShopCard) {
   return "";
 }
 
-/** Confirmed cards name a US supplier. The day window stays off the grid. */
-export function shopCardShipPhrase(listing: ShopCard) {
-  if (shopperMayNameUsSupplier(listing)) return SHOPPER_PLACE;
-  return TRACKING_SHIP;
-}
-
-export function ShopCardCopy({ listing }: { listing: ShopCard }) {
+export function ShopCardCopy({ listing, showPrices = false }: { listing: ShopCard; showPrices?: boolean }) {
   const label = eyebrow(listing);
-  const phrase = shopCardShipPhrase(listing);
   return (
     <div className="shop-card-text">
       {label ? <p className="shop-card-eyebrow">{label}</p> : null}
       <h3 className="shop-card-title">{listing.title}</h3>
       <p className="shop-card-price">
-        {money(listing.priceCents / 100)}
-        {phrase ? <> · {phrase}</> : null}
+        {showPrices ? (
+          <>
+            {money(listing.priceCents / 100)}
+            {" · "}
+            {SHOP_CARD_STATUS}
+          </>
+        ) : (
+          SHOP_CARD_STATUS
+        )}
       </p>
       {listing.soldOut ? <p className="shop-card-price">{SOLD_OUT_LABEL}</p> : null}
     </div>
@@ -77,6 +77,9 @@ export function ShopGrid({
   tiles = false,
   band = false,
   initialListings,
+  stalls,
+  showPrices,
+  photosOnly = false,
 }: {
   kicker: string;
   title: string;
@@ -93,7 +96,13 @@ export function ShopGrid({
   band?: boolean;
   /** Server-rendered cards. When set, the grid does not swap out of a loading panel. */
   initialListings?: ShopCard[];
+  stalls?: readonly NightWorld[];
+  showPrices?: boolean;
+  /** Home and other shopper grids use the same photo rule as the shop. */
+  photosOnly?: boolean;
 }) {
+  const pricesOn = showPrices ?? showShopPrices();
+  const hidePlainPhotos = catalog || photosOnly;
   const [fetched, setFetched] = useState<ShopCard[] | null>(null);
   const listings = initialListings ?? fetched;
 
@@ -113,7 +122,8 @@ export function ShopGrid({
     };
   }, [query, initialListings]);
 
-  const withPhotos = listings === null ? null : catalog ? listings.filter((item) => hasRealProductPhoto(item.image)) : listings;
+  const withPhotos =
+    listings === null ? null : hidePlainPhotos ? listings.filter((item) => hasRealProductPhoto(item.image)) : listings;
   const visible = withPhotos === null ? null : limit === undefined ? withPhotos : withPhotos.slice(0, limit);
   const Heading = level === "page" ? "h1" : "h2";
   if (hideWhenEmpty && (visible === null || visible.length === 0)) return null;
@@ -133,7 +143,7 @@ export function ShopGrid({
             </div>
           </header>
           <ul className="stall-tabs">
-            {nightWorlds.map((stall) => {
+            {(stalls ?? nightWorlds).map((stall) => {
               const current = world?.slug === stall.slug;
               return (
                 <li key={stall.slug}>
@@ -218,11 +228,11 @@ export function ShopGrid({
                 className="product-card block border border-border bg-card p-2 sm:p-3"
               >
                 {tiles ? (
-                  <MarkTile src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
+                  <MarkTile src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 280px, 50vw" zoom />
                 ) : (
-                  <ProductFrame src={listing.image} alt="" sizes="(min-width: 1024px) 280px, 50vw" zoom />
+                  <ProductFrame src={listing.image} alt={listing.title} sizes="(min-width: 1024px) 280px, 50vw" zoom />
                 )}
-                <ShopCardCopy listing={listing} />
+                <ShopCardCopy listing={listing} showPrices={pricesOn} />
               </Link>
             </Reveal>
           );

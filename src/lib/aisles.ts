@@ -51,8 +51,8 @@ export const aisles: Aisle[] = [
     sections: [{ name: "Audio" }, { name: "Cases" }, { name: "Cables" }],
   },
   {
-    title: "Build Your Rig",
-    slug: "build-your-rig",
+    title: "Everyday Finds",
+    slug: "everyday-finds",
     sections: [{ name: "Components" }, { name: "Power" }],
   },
   {
@@ -76,14 +76,15 @@ export function aisleByTitle(title: string) {
 }
 
 export function aisleBySlug(slug: string) {
-  return aisles.find((aisle) => aisle.slug === slug) ?? null;
+  const canonical = slug === "build-your-rig" ? "everyday-finds" : slug;
+  return aisles.find((aisle) => aisle.slug === canonical) ?? null;
 }
 
 export function placeProduct(product: Product): { aisle: string; section: string } | null {
   if (product.id === "headphones" || product.id === "phone-case") {
-    return { aisle: "Build Your Rig", section: "Components" };
+    return { aisle: "Everyday Finds", section: "Components" };
   }
-  if (product.id === "charger-brick") return { aisle: "Build Your Rig", section: "Power" };
+  if (product.id === "charger-brick") return { aisle: "Everyday Finds", section: "Power" };
   if (product.id === "desk-lamp") return { aisle: "Tech & Desk", section: "Desk" };
   if (product.id === "cable-sleeve") return { aisle: "Tech & Desk", section: "Desk cables" };
   if (product.id === "gift-bags") return { aisle: "Home & Gifts", section: "Gifts" };

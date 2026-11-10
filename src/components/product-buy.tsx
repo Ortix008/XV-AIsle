@@ -74,6 +74,7 @@ export function ProductBuy({
   showReturnAddress = false,
   nameUsSupplier,
   stock,
+  showPrices = false,
 }: {
   listing: ProductListing;
   returnNote: string;
@@ -84,7 +85,9 @@ export function ProductBuy({
   showReturnAddress?: boolean;
   nameUsSupplier?: boolean;
   stock?: { unitsLeft: number | null; variants: ProductVariantChoice[] };
+  showPrices?: boolean;
 }) {
+  const pricesOn = showPrices;
   const formReveal = useReveal<HTMLFormElement>(1);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -113,7 +116,8 @@ export function ProductBuy({
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
   const aisleCrumb = productAisleCrumb(listing);
   const shipping = shipWindow ?? productShipLine(listing);
-  const blocked = held || unconfirmed || soldOut;
+  const coming = !held && !soldOut && (unconfirmed || !pricesOn);
+  const blocked = held || unconfirmed || soldOut || !pricesOn;
   const namePlace = nameUsSupplier ?? shopperMayNameUsSupplier(listing);
 
   useEffect(() => {
@@ -122,7 +126,7 @@ export function ProductBuy({
 
   async function checkout(event: FormEvent) {
     event.preventDefault();
-    if (held || unconfirmed || soldOut) return;
+    if (held || unconfirmed || soldOut || !pricesOn) return;
     if (!details) {
       setPending(true);
       setError(null);
@@ -211,10 +215,12 @@ export function ProductBuy({
         <p className="product-sku">{listing.sku}</p>
         {listing.brand ? <p className="product-brand">{listing.brand}</p> : null}
         <h1 className="product-title">{listing.title}</h1>
-        <div className="product-price-row">
-          <p className="product-price">{money(listing.priceCents / 100)}</p>
-          {listing.sample ? <span className="product-sample">Sample</span> : null}
-        </div>
+        {pricesOn || listing.sample ? (
+          <div className="product-price-row">
+            {pricesOn ? <p className="product-price">{money(listing.priceCents / 100)}</p> : null}
+            {listing.sample ? <span className="product-sample">Sample</span> : null}
+          </div>
+        ) : null}
         <p className="product-desc">{shopperDescription(listing.description)}</p>
         <form {...formReveal} onSubmit={checkout} className="product-checkout">
           <div className="product-buy">
@@ -252,7 +258,7 @@ export function ProductBuy({
               <button type="button" className="sample-hold" disabled aria-disabled="true">
                 {SAMPLE_UNAVAILABLE}
               </button>
-            ) : unconfirmed ? (
+            ) : coming ? (
               <>
                 <p className="text-sm font-medium text-muted-foreground">{UNCONFIRMED_LABEL}</p>
                 <button type="button" className="sample-hold" disabled aria-disabled="true">

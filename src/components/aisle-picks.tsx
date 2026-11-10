@@ -15,7 +15,15 @@ export type AislePick = {
   soldOut?: boolean;
 };
 
-export function AislePicks({ aisle, picks }: { aisle: string | null; picks: AislePick[] }) {
+export function AislePicks({
+  aisle,
+  picks,
+  showPrices = false,
+}: {
+  aisle: string | null;
+  picks: AislePick[];
+  showPrices?: boolean;
+}) {
   if (!aisle) return null;
   if (picks.length === 0) {
     return (
@@ -44,7 +52,7 @@ export function AislePicks({ aisle, picks }: { aisle: string | null; picks: Aisl
                 <div className="shop-card-text">
                   <p className="shop-card-eyebrow" aria-hidden />
                   <h3 className="shop-card-title">{pick.title}</h3>
-                  <p className="shop-card-price">{money(pick.priceCents / 100)}</p>
+                  {showPrices ? <p className="shop-card-price">{money(pick.priceCents / 100)}</p> : null}
                   {pick.soldOut ? <p className="shop-card-price">{SOLD_OUT_LABEL}</p> : null}
                 </div>
               </Link>

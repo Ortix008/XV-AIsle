@@ -12,7 +12,7 @@ const stroke = {
 
 export function NightMotif({ slug, className }: { slug: NightWorldSlug; className?: string }) {
   switch (slug) {
-    case "build-your-rig":
+    case "everyday-finds":
       return (
         <svg {...stroke} className={className}>
           <path d="M5 19V7" />

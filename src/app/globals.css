@@ -490,14 +490,15 @@
 }
 
 .shop-fill {
+  --shop-grid-gap: 0.85rem;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
-  gap: 0.85rem;
+  gap: var(--shop-grid-gap);
 }
 
 @media (min-width: 640px) {
   .shop-fill {
-    gap: 1.15rem;
+    --shop-grid-gap: 1.15rem;
   }
 }
 
@@ -2771,7 +2772,13 @@ button.contact-submit {
   }
 
   .shop-fill {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .shop-fill > li {
+    width: calc((100% - 2 * var(--shop-grid-gap)) / 3);
   }
 }
 

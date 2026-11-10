@@ -6,6 +6,7 @@ import { publishForAccount } from "@/lib/server/publish";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { soldOutByProduct } from "@/lib/server/inventory";
 import { ensureStarterShelf, isSampleListing, listedOnGrid } from "@/lib/server/starter-shelf";
+import { hasRealProductPhoto } from "@/lib/shop-photo";
 import { listPublished } from "@/lib/server/store";
 
 export async function GET(request: Request) {
@@ -18,7 +19,9 @@ export async function GET(request: Request) {
     madeInUsa: madeInUsa || undefined,
     shelf: shelf === "small" || shelf === "national" ? shelf : undefined,
     aisle,
-  }).filter(listedOnGrid);
+  })
+    .filter(listedOnGrid)
+    .filter((listing) => hasRealProductPhoto(listing.image));
   const soldOut = soldOutByProduct(listings.map((listing) => listing.productId));
   return Response.json({
     listings: listings.map((listing) => ({
