@@ -112,8 +112,8 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
       ),
       pick(
         "B088GX8V21",
-        "Umite Chef 15-piece utensil set, Khaki",
-        "A 15-piece khaki utensil set with silicone heads and stainless-steel handles, a full kit for a new kitchen.",
+        "Umite Chef 15-piece utensil set",
+        "A 15-piece utensil set with silicone heads and stainless-steel handles, a full kit for a new kitchen.",
       ),
       pick(
         "B0157G34AY",
