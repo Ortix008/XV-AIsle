@@ -18,7 +18,7 @@ import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
 import { publicSiteUrl } from "@/lib/config/env";
 import { hasRealProductPhoto } from "@/lib/shop-photo";
-import { productShopperJsonLd, showShopPrices } from "@/lib/shop-prices";
+import { productShopperJsonLd, shopperPriceView, showShopPrices } from "@/lib/shop-prices";
 import { productOgImage } from "@/lib/product-og";
 import { buyerShareHref, resellerShareHref } from "@/lib/x-share";
 
@@ -75,14 +75,16 @@ export default async function ProductPage({
     ? listPublished({ aisle })
         .filter((item) => item.productId !== listing.productId && listedOnGrid(item) && hasRealProductPhoto(item.image))
         .slice(0, 4)
-        .map((item) => ({
-          productId: item.productId,
-          title: publicListing(item, isSampleListing(item)).title,
-          priceCents: item.priceCents,
-          image: item.image,
-          aisle: item.aisle,
-          kind: item.kind === "bundle" ? ("bundle" as const) : undefined,
-        }))
+        .map((item) =>
+          shopperPriceView({
+            productId: item.productId,
+            title: publicListing(item, isSampleListing(item)).title,
+            ...(pricesOn ? { priceCents: item.priceCents } : {}),
+            image: item.image,
+            aisle: item.aisle,
+            kind: item.kind === "bundle" ? ("bundle" as const) : undefined,
+          }),
+        )
     : [];
   const stock = readShopStock(listing.productId);
   const pickStock = soldOutByProduct(picks.map((pick) => pick.productId));
@@ -112,7 +114,7 @@ export default async function ProductPage({
       />
       <ProductBuy
         showPrices={pricesOn}
-        listing={publicListing(listing, isSampleListing(listing))}
+        listing={shopperPriceView(publicListing(listing, isSampleListing(listing)), pricesOn)}
         returnNote={sampleProductReturnNote(listing, returnCopyForListing(listing))}
         shareHref={shareHref}
         held={held}

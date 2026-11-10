@@ -13,7 +13,7 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 async function main() {
-  const { showShopPrices, productShopperJsonLd, SHOP_CARD_STATUS } = await import("../src/lib/shop-prices");
+  const { showShopPrices, productShopperJsonLd, shopperPriceView, SHOP_CARD_STATUS } = await import("../src/lib/shop-prices");
   const { stallsWithProducts, stallProductCount } = await import("../src/lib/shop-stalls");
   const { planAisleUpdates } = await import("../src/lib/shop-aisle-plan");
   const { ShopCardCopy } = await import("../src/components/shop-grid");
@@ -129,6 +129,23 @@ async function main() {
   assert(!ids.includes("blank-pan"), "the listings API hides a missing photo");
   assert(!ids.includes("mark-pan"), "the listings API hides the mark");
   assert(!ids.includes("glow-pan"), "the listings API hides the aisle plate");
+  const hiddenJson = JSON.stringify(body);
+  assert(!hiddenJson.includes("priceCents") && !hiddenJson.includes("\"price\""), "hidden prices stay out of the listings API");
+  assert(!hiddenJson.includes("$"), "the listings API does not format a price while hidden");
+  const { publicGridListings } = await import("../src/lib/server/shop-catalog");
+  const hiddenGrid = JSON.stringify(publicGridListings());
+  assert(!hiddenGrid.includes("priceCents"), "hidden prices stay out of the shop payload");
+  process.env.SHOW_PRICES = "1";
+  const pricedResponse = await GET(new Request("http://127.0.0.1/api/store/listings"));
+  const pricedBody = (await pricedResponse.json()) as { listings: { productId: string; priceCents?: number }[] };
+  assert(pricedBody.listings.some((item) => item.productId === "photo-pan" && item.priceCents === 2000), "the listings API returns cents when prices are on");
+  const pricedGrid = JSON.stringify(publicGridListings());
+  assert(pricedGrid.includes("priceCents"), "the shop payload returns cents when prices are on");
+  const restored = shopperPriceView({ productId: "photo-pan", priceCents: 2000 }, true);
+  assert("priceCents" in restored, "the shopper view keeps cents when asked");
+  delete process.env.SHOW_PRICES;
+  const hiddenAgain = shopperPriceView({ productId: "photo-pan", priceCents: 2000, price: "20.00" }, false);
+  assert(!("priceCents" in hiddenAgain) && !("price" in hiddenAgain), "the shopper view drops both price fields");
 
   const plan = planAisleUpdates([
     { product_id: "6-inch-yoga-wheel", aisle: null },

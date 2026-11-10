@@ -25,7 +25,7 @@ export type ProductListing = {
   sku: string;
   title: string;
   description: string;
-  priceCents: number;
+  priceCents?: number;
   image: string;
   supplierName: string;
   supplierOrigin?: string;
@@ -225,7 +225,7 @@ export function ProductBuy({
         <h1 className="product-title">{listing.title}</h1>
         {pricesOn || listing.sample ? (
           <div className="product-price-row">
-            {pricesOn ? <p className="product-price">{money(listing.priceCents / 100)}</p> : null}
+            {pricesOn && listing.priceCents != null ? <p className="product-price">{money(listing.priceCents / 100)}</p> : null}
             {listing.sample ? <span className="product-sample">Sample</span> : null}
           </div>
         ) : null}
@@ -322,7 +322,7 @@ export function ProductBuy({
                 </p>
               ) : null}
               <Button type="submit" disabled={pending} className="product-pay">
-                {pending ? "Opening checkout…" : `Pay ${money((listing.priceCents * qtyShown) / 100)}`}
+                {pending ? "Opening checkout…" : `Pay ${money(((listing.priceCents ?? 0) * qtyShown) / 100)}`}
               </Button>
             </div>
           ) : null}

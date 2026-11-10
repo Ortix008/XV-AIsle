@@ -7,7 +7,7 @@ import { productIsPackshot } from "@/lib/shop-packshot";
 export type AislePick = {
   productId: string;
   title: string;
-  priceCents: number;
+  priceCents?: number;
   image: string;
   aisle?: string | null;
   kind?: "bundle";
@@ -53,7 +53,7 @@ export function AislePicks({
                 <div className="shop-card-text">
                   <p className="shop-card-eyebrow" aria-hidden />
                   <h3 className="shop-card-title">{pick.title}</h3>
-                  {showPrices ? <p className="shop-card-price">{money(pick.priceCents / 100)}</p> : null}
+                  {showPrices && pick.priceCents != null ? <p className="shop-card-price">{money(pick.priceCents / 100)}</p> : null}
                   {pick.soldOut ? <p className="shop-card-price">{SOLD_OUT_LABEL}</p> : null}
                 </div>
               </Link>

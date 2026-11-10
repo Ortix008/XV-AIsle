@@ -7,6 +7,7 @@ import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { soldOutByProduct } from "@/lib/server/inventory";
 import { ensureStarterShelf, isSampleListing, listedOnGrid } from "@/lib/server/starter-shelf";
 import { hasRealProductPhoto } from "@/lib/shop-photo";
+import { shopperPriceView } from "@/lib/shop-prices";
 import { listPublished } from "@/lib/server/store";
 
 export async function GET(request: Request) {
@@ -24,10 +25,12 @@ export async function GET(request: Request) {
     .filter((listing) => hasRealProductPhoto(listing.image));
   const soldOut = soldOutByProduct(listings.map((listing) => listing.productId));
   return Response.json({
-    listings: listings.map((listing) => ({
-      ...publicListing(listing, isSampleListing(listing)),
-      ...(soldOut.get(listing.productId) ? { soldOut: true } : {}),
-    })),
+    listings: listings.map((listing) =>
+      shopperPriceView({
+        ...publicListing(listing, isSampleListing(listing)),
+        ...(soldOut.get(listing.productId) ? { soldOut: true } : {}),
+      }),
+    ),
   });
 }
 

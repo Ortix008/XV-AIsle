@@ -8,6 +8,15 @@ export function showShopPrices(value = process.env.SHOW_PRICES) {
   return PRICE_ON.has(value?.trim().toLowerCase() ?? "");
 }
 
+/** Shopper payloads drop every price field while prices are hidden. */
+export function shopperPriceView<T extends object>(value: T, pricesOn = showShopPrices()) {
+  if (pricesOn) return value;
+  const hidden = { ...value } as Record<string, unknown>;
+  delete hidden.priceCents;
+  delete hidden.price;
+  return hidden as Omit<T, "priceCents" | "price">;
+}
+
 /** Product structured data. Offers are omitted while prices are hidden. */
 export function productShopperJsonLd(
   input: { name: string; url: string; priceCents: number },

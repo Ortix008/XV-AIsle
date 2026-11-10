@@ -16,7 +16,7 @@ import { productIsPackshot } from "@/lib/shop-packshot";
 export type ShopCard = {
   productId: string;
   title: string;
-  priceCents: number;
+  priceCents?: number;
   image: string;
   supplierName?: string;
   supplierOrigin?: string;
@@ -49,7 +49,7 @@ export function ShopCardCopy({ listing, showPrices = false }: { listing: ShopCar
       {label ? <p className="shop-card-eyebrow">{label}</p> : null}
       <h3 className="shop-card-title">{listing.title}</h3>
       <p className="shop-card-price">
-        {showPrices ? (
+        {showPrices && listing.priceCents != null ? (
           <>
             {money(listing.priceCents / 100)}
             {" · "}
