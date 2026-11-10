@@ -2835,6 +2835,12 @@ button.contact-submit {
 
 }
 
+@media (min-width: 360px) and (max-width: 414px) {
+  .shop-catalog .page-title {
+    min-height: 2.1em;
+  }
+}
+
 @media (min-width: 640px) {
   .shop-catalog {
     padding: 2.5rem 2.5rem 4rem;
