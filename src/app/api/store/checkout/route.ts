@@ -6,8 +6,9 @@ import { settleCheckoutSession } from "@/lib/server/ledger";
 import { orderSummary } from "@/lib/server/order-summary";
 import { buyerOrder } from "@/lib/server/order-view";
 import { demoSeedEnabled } from "@/lib/server/starter-shelf";
-import { attachStripeSession, createPendingOrder, orderByStripeSession } from "@/lib/server/store";
+import { attachStripeSession, createPendingOrder, getListing, orderByStripeSession } from "@/lib/server/store";
 import { createCheckoutSession, retrieveCheckoutSession, stripeConfigured } from "@/lib/server/stripe";
+import { shopperCheckoutClosed } from "@/lib/shop-checkout";
 
 const PREVIEW_SESSION = /^cs_preview_[a-z0-9_]{1,80}$/;
 const STRIPE_WAIT_MS = 4000;
@@ -94,6 +95,9 @@ export async function POST(request: Request) {
   if (!body?.productId) return Response.json({ error: "Choose a product." }, { status: 400 });
   const compareAt = compareAtRejection(body);
   if (compareAt) return Response.json({ error: compareAt }, { status: 400 });
+  if (shopperCheckoutClosed(getListing(body.productId))) {
+    return Response.json({ error: "That page is not on the store." }, { status: 400 });
+  }
   const created = createPendingOrder({
     productId: body.productId,
     qty: body.qty ?? 1,

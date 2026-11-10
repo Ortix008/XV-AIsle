@@ -4,12 +4,13 @@ import { publicListing } from "@/lib/server/order-view";
 import { ensureStarterShelf, isSampleListing, listedOnGrid } from "@/lib/server/starter-shelf";
 import { listPublished } from "@/lib/server/store";
 import { appOrigin } from "@/lib/server/stripe";
+import { hasRealProductPhoto } from "@/lib/shop-photo";
 import { shopperPriceView, showShopPrices } from "@/lib/shop-prices";
 
 export function GET() {
   ensureStarterShelf();
   const origin = appOrigin();
-  const listings = listPublished().filter(listedOnGrid);
+  const listings = listPublished().filter(listedOnGrid).filter((listing) => hasRealProductPhoto(listing.image));
   const soldOut = soldOutByProduct(listings.map((listing) => listing.productId));
   const pricesOn = showShopPrices();
   const products = listings.map((listing) => {

@@ -436,8 +436,11 @@ async function main() {
   const rule = Array.isArray(robots.rules) ? robots.rules[0] : robots.rules;
   const disallow = Array.isArray(rule?.disallow) ? rule.disallow : rule?.disallow ? [rule.disallow] : [];
   assert(!disallow.includes("/shop/reseller"), "robots allows the public reseller page");
-  for (const path of ["/account", "/desk", "/api", "/scout", "/listings", "/marketing", "/floors", "/catalog", "/membership", "/orders"]) {
+  for (const path of ["/api", "/membership", "/orders"]) {
     assert(disallow.includes(path), `robots still disallows ${path}`);
+  }
+  for (const path of ["/account", "/desk", "/scout", "/listings", "/marketing", "/floors", "/catalog"]) {
+    assert(!disallow.includes(path), `robots does not advertise ${path}`);
   }
 
   console.log("qa followup checks ok");

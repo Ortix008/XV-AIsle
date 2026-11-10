@@ -9,7 +9,7 @@ import { aisleCardArt } from "@/lib/art";
 import { money } from "@/lib/money";
 import { SOLD_OUT_LABEL } from "@/lib/sold-out-label";
 import { nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
-import { SHOP_CARD_STATUS, showShopPrices } from "@/lib/shop-prices";
+import { SHOP_CARD_STATUS, shopCardShowsPrice, showShopPrices } from "@/lib/shop-prices";
 import { hasRealProductPhoto } from "@/lib/shop-photo";
 import { productIsPackshot } from "@/lib/shop-packshot";
 
@@ -49,15 +49,7 @@ export function ShopCardCopy({ listing, showPrices = false }: { listing: ShopCar
       {label ? <p className="shop-card-eyebrow">{label}</p> : null}
       <h3 className="shop-card-title">{listing.title}</h3>
       <p className="shop-card-price">
-        {showPrices && listing.priceCents != null ? (
-          <>
-            {money(listing.priceCents / 100)}
-            {" · "}
-            {SHOP_CARD_STATUS}
-          </>
-        ) : (
-          SHOP_CARD_STATUS
-        )}
+        {shopCardShowsPrice(listing.priceCents, showPrices) ? money((listing.priceCents ?? 0) / 100) : SHOP_CARD_STATUS}
       </p>
       {listing.soldOut ? <p className="shop-card-price">{SOLD_OUT_LABEL}</p> : null}
     </div>

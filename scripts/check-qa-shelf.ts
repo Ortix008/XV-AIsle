@@ -252,6 +252,7 @@ async function main() {
   assert("error" in candleOrder, "checkout refuses Scented Candle 16 oz");
   assert(getListing("scented-candle-16-oz"), "the Scented Candle row is still in the database");
 
+  env.SHOW_PRICES = "1";
   env.STRIPE_SECRET_KEY = "sk_test_qa_shelf";
   setStripeFetch(async () =>
     Response.json({
@@ -270,6 +271,7 @@ async function main() {
   assert(response.ok && body.url === "https://checkout.stripe.com/c/pay/cs_test_qa_checkout", body.error ?? "test checkout did not open");
   assert(Object.keys(body).join(",") === "url", "checkout returns only the session url");
   setStripeFetch(null);
+  delete env.SHOW_PRICES;
 
   delete env.DEMO_SEED;
   ensureStarterShelf();
