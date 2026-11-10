@@ -162,6 +162,9 @@ async function main() {
   const shopGrid = readFileSync(join(process.cwd(), "src/components/shop-grid.tsx"), "utf8");
   assert(shopGrid.includes("world ? world.story : lede"), "an aisle hero shows only its approved line");
   assert(!shopGrid.includes("${world.title}."), "an aisle hero does not repeat the aisle name");
+  const motif = readFileSync(join(process.cwd(), "src/components/night-motif.tsx"), "utf8");
+  assert(motif.includes('d="M9 8.5V7a3 3 0 0 1 6 0v1.5"'), "Everyday Finds uses a basket");
+  assert(!motif.includes('d="M5 19V7"'), "the old rig bars are gone");
   const home = readFileSync(join(process.cwd(), "src/components/home-screen.tsx"), "utf8");
   assert(
     home.includes(

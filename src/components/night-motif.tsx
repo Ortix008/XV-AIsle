@@ -15,10 +15,8 @@ export function NightMotif({ slug, className }: { slug: NightWorldSlug; classNam
     case "everyday-finds":
       return (
         <svg {...stroke} className={className}>
-          <path d="M5 19V7" />
-          <path d="M12 19V4" />
-          <path d="M19 19V9" />
-          <path d="M3 19h18" />
+          <path d="M9 8.5V7a3 3 0 0 1 6 0v1.5" />
+          <path d="M5.5 8.5h13l-1.35 9.2a1.3 1.3 0 0 1-1.3 1.1H8.15a1.3 1.3 0 0 1-1.3-1.1L5.5 8.5z" />
         </svg>
       );
     case "tech-and-desk":
