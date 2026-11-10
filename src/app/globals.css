@@ -2785,4 +2785,127 @@ button.contact-submit {
   line-height: 1;
 }
 
+.affiliate-shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--container-7xl);
+  margin-inline: auto;
+  padding: calc(var(--spacing) * 8) calc(var(--spacing) * 5) calc(var(--spacing) * 12);
+}
+
+.affiliate-intro,
+.affiliate-note,
+.affiliate-disclosure {
+  max-width: 42rem;
+  margin-top: calc(var(--spacing) * 4);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.affiliate-intro,
+.affiliate-note {
+  color: var(--muted-foreground);
+}
+
+.affiliate-disclosure {
+  color: var(--foreground);
+}
+
+.affiliate-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: calc(var(--spacing) * 4);
+  margin-top: calc(var(--spacing) * 6);
+  padding: 0;
+  list-style: none;
+}
+
+.affiliate-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 3);
+  height: 100%;
+  margin: 0;
+  padding: calc(var(--spacing) * 5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+.affiliate-card-name {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.affiliate-blurb {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.affiliate-aisle-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.affiliate-aisle-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.affiliate-buy-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  margin-top: auto;
+}
+
+.affiliate-card a[data-slot="button"] {
+  width: auto;
+  min-height: var(--tap);
+}
+
+.affiliate-paid,
+.affiliate-fine {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.link-slide[aria-current="page"] {
+  color: var(--foreground);
+}
+
+.link-slide[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+.nav-fold-link[aria-current="page"] {
+  color: var(--primary);
+}
+
+@media (min-width: 640px) {
+  .affiliate-shell {
+    padding: calc(var(--spacing) * 12) calc(var(--spacing) * 10) calc(var(--spacing) * 16);
+  }
+
+  .affiliate-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .affiliate-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 

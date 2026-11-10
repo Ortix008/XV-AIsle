@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
 import { MissionValues } from "@/components/mission-values";
 import { useOptionalAccount } from "@/lib/account-store";
+import { AMAZON_ASSOCIATE_DISCLOSURE } from "@/lib/amazon-aisles";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
@@ -81,9 +82,12 @@ export function ShopFooter({ showReseller }: { showReseller?: boolean }) {
             </div>
           ))}
         </div>
-        <div className="mt-14 flex flex-col gap-2 border-t border-border pt-6 text-[13px] text-muted-foreground sm:flex-row sm:justify-between">
-          <span>© {new Date().getFullYear()} XV-AIsle</span>
-          <span>Buyers pay on xvaisle.com</span>
+        <div className="mt-14 flex flex-col gap-3 border-t border-border pt-6 text-[13px] text-muted-foreground">
+          <p>{AMAZON_ASSOCIATE_DISCLOSURE}</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+            <span>© {new Date().getFullYear()} XV-AIsle</span>
+            <span>Buyers pay on xvaisle.com</span>
+          </div>
         </div>
       </div>
     </footer>
