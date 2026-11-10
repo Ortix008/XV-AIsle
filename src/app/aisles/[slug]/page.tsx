@@ -27,7 +27,7 @@ export default async function AislePage({ params }: { params: Promise<{ slug: st
   const aisle = liveAisleBySlug(slug);
   if (!aisle) notFound();
   return (
-    <ShopFrame>
+    <ShopFrame showStorePayLine={false}>
       <AisleDetail aisle={aisle} />
     </ShopFrame>
   );

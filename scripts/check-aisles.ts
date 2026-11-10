@@ -3,7 +3,10 @@ import { extname, join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AisleDetail, AisleIndex } from "../src/components/amazon-aisles";
+import { JoinScreen } from "../src/components/home-screen";
 import { ShopFooter } from "../src/components/shop-footer";
+import AislesPage from "../src/app/aisles/page";
+import ShopPage from "../src/app/shop/page";
 import { storeNav, storeNavCurrent } from "../src/components/store-header";
 import {
   AI_SHOPPERS_NOTE,
@@ -288,7 +291,17 @@ for (const aisle of live) {
   });
 }
 
+const PAY_LINE = "Buyers pay on xvaisle.com";
 const footerHtml = renderToStaticMarkup(createElement(ShopFooter));
+assert(footerHtml.includes(PAY_LINE), "the shop footer still names where buyers pay");
+assert(renderToStaticMarkup(createElement(ShopFooter, { showReseller: true })).includes(PAY_LINE), "the home footer still names where buyers pay");
+const aisleIndexPage = renderToStaticMarkup(createElement(AislesPage));
+assert(!aisleIndexPage.includes(PAY_LINE), "the aisle index footer omits the store pay line");
+assert(aisleIndexPage.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the aisle index footer keeps the disclosure");
+const shopPage = renderToStaticMarkup(createElement(ShopPage));
+assert(shopPage.includes(PAY_LINE), "the shop page footer still names where buyers pay");
+const homePage = renderToStaticMarkup(createElement(JoinScreen, { checkoutLine: "Cards are checked on this site." }));
+assert(homePage.includes(PAY_LINE), "the home footer still names where buyers pay");
 assert(footerHtml.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the footer shows the disclosure");
 assert(!footerHtml.includes(HERO_SUBHEAD), "the footer is not the hero subhead");
 assert(!footerHtml.toLowerCase().includes(WE_EARN), "the footer does not use the banned associate phrase");
@@ -396,6 +409,12 @@ async function main() {
   const aislePage = await import("../src/app/aisles/[slug]/page");
   const params = aislePage.generateStaticParams().map((entry) => entry.slug);
   assert(params.join() === LIVE_SLUGS.join(), "static params are the live aisles");
+  for (const slug of LIVE_SLUGS) {
+    const page = await aislePage.default({ params: Promise.resolve({ slug }) });
+    const html = renderToStaticMarkup(page);
+    assert(!html.includes(PAY_LINE), `${slug} footer omits the store pay line`);
+    assert(html.includes(AMAZON_ASSOCIATE_DISCLOSURE), `${slug} footer keeps the disclosure`);
+  }
   for (const slug of ["tickets-and-events", "no-such-aisle", "gifts"]) {
     try {
       await aislePage.default({ params: Promise.resolve({ slug }) });

@@ -39,7 +39,7 @@ const columns = [
   },
 ];
 
-export function ShopFooter({ showReseller }: { showReseller?: boolean }) {
+export function ShopFooter({ showReseller, showStorePayLine = true }: { showReseller?: boolean; showStorePayLine?: boolean }) {
   const session = useOptionalAccount();
   const account = session?.account;
   const signedInOperator = account?.role === "admin" && account.emailVerified === true;
@@ -86,7 +86,7 @@ export function ShopFooter({ showReseller }: { showReseller?: boolean }) {
           <p>{AMAZON_ASSOCIATE_DISCLOSURE}</p>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
             <span>© {new Date().getFullYear()} XV-AIsle</span>
-            <span>Buyers pay on xvaisle.com</span>
+            {showStorePayLine ? <span>Buyers pay on xvaisle.com</span> : null}
           </div>
         </div>
       </div>
