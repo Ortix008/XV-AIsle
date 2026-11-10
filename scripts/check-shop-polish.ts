@@ -183,6 +183,10 @@ async function main() {
   assert(art.includes('href: "/shop?aisle=tech-and-desk"'), "the Tech & Desk tile opens that aisle");
   assert(art.includes('src: "/art/aisle-card-tech-and-desk.webp"'), "the Tech & Desk tile uses that still");
   assert(!art.includes('title: "Electronics"'), "the Electronics tile is renamed");
+  const departments = readFileSync(join(process.cwd(), "src/components/department-grid.tsx"), "utf8");
+  assert(!departments.includes("1.4fr"), "department cards share one column width");
+  assert(!departments.includes("h-full"), "a short department card does not stretch into an empty shell");
+  assert(departments.includes("items-start"), "department cards stay as tall as their own art");
 
   console.log("shop polish checks ok");
 }

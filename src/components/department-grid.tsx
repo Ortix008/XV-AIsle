@@ -34,10 +34,10 @@ export function DepartmentGrid() {
 
   return (
     <>
-      <ul className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+      <ul className="dept-grid grid items-start gap-5 lg:grid-cols-2">
         {floorDepartments.map((dept, index) => {
           const href = "href" in dept ? dept.href : "";
-          const className = "aisle-tile flex h-full w-full flex-col rounded-[18px] border border-border bg-secondary p-3.5 text-left";
+          const className = "aisle-tile flex w-full flex-col rounded-[18px] border border-border bg-secondary p-3.5 text-left";
           const art = (
             <>
               <DepartmentArt src={dept.src} large={index === 0} />
