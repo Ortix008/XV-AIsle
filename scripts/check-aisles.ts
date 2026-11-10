@@ -7,7 +7,7 @@ import { AisleDetail, AisleIndex } from "../src/components/amazon-aisles";
 import { JoinScreen } from "../src/components/home-screen";
 import { ShopFooter } from "../src/components/shop-footer";
 import AislesPage from "../src/app/aisles/page";
-import ShopPage from "../src/app/shop/page";
+import { ShopScreen } from "../src/app/shop/page";
 import { storeNav, storeNavCurrent } from "../src/components/store-header";
 import {
   AI_SHOPPERS_NOTE,
@@ -455,7 +455,7 @@ assert(aisleIndexPage.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the aisle index fo
 for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
   assert(!aisleIndexPage.includes(phrase), `the aisle index omits ${phrase}`);
 }
-const shopPage = renderToStaticMarkup(createElement(ShopPage));
+const shopPage = renderToStaticMarkup(createElement(ShopScreen, { slug: "", listings: [] }));
 assert(shopPage.includes(PAY_LINE), "the shop page footer still names where buyers pay");
 for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
   assert(shopPage.includes(phrase), `the shop page still shows ${phrase}`);
