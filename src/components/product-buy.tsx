@@ -18,6 +18,7 @@ import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 import { SOLD_OUT_LABEL } from "@/lib/sold-out-label";
+import { shopperCheckoutRefused } from "@/lib/shop-buying";
 import { productIsPackshot } from "@/lib/shop-packshot";
 
 export type ProductListing = {
@@ -118,8 +119,9 @@ export function ProductBuy({
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
   const aisleCrumb = productAisleCrumb(listing);
   const shipping = shipWindow ?? productShipLine(listing);
+  const buyClosed = shopperCheckoutRefused();
   const coming = !held && !soldOut && (unconfirmed || !pricesOn);
-  const blocked = held || unconfirmed || soldOut || !pricesOn;
+  const blocked = held || unconfirmed || soldOut || !pricesOn || buyClosed;
   const namePlace = nameUsSupplier ?? shopperMayNameUsSupplier(listing);
 
   useEffect(() => {
@@ -128,7 +130,7 @@ export function ProductBuy({
 
   async function checkout(event: FormEvent) {
     event.preventDefault();
-    if (held || unconfirmed || soldOut || !pricesOn) return;
+    if (held || unconfirmed || soldOut || !pricesOn || buyClosed) return;
     if (!details) {
       setPending(true);
       setError(null);
@@ -277,7 +279,7 @@ export function ProductBuy({
               <button type="button" className="sample-hold" disabled aria-disabled="true">
                 {SOLD_OUT_LABEL}
               </button>
-            ) : details ? null : (
+            ) : buyClosed || details ? null : (
               <Button type="submit" className="product-pay" disabled={pending}>
                 Continue to checkout
               </Button>

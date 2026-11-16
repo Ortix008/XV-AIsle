@@ -149,7 +149,7 @@ async function main() {
       showPrices: true,
     }),
   );
-  assert(open.includes("Continue to checkout"), "a confirmed US ship-from keeps the buy button");
+  assert(!open.includes("Continue to checkout") && !open.includes("Pay "), "a confirmed US ship-from has no checkout button");
   const productPage = readFileSync(join(process.cwd(), "src/app/shop/[productId]/page.tsx"), "utf8");
   assert(productPage.includes("comingSoonListing(listing)"), "the product page uses the US ship-from gate");
 

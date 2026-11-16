@@ -269,3 +269,12 @@ export function useDesk(): DeskApi {
   if (!state || !actions) throw new Error("useDesk must be used inside DeskProvider");
   return { ready, state, ...actions };
 }
+
+/** Shopper pages have no DeskProvider. Missing context is empty, not a crash. */
+export function useDeskOptional(): DeskApi | null {
+  const ready = useContext(DeskReadyContext);
+  const state = useContext(DeskStateContext);
+  const actions = useContext(DeskActionsContext);
+  if (!state || !actions) return null;
+  return { ready, state, ...actions };
+}

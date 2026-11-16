@@ -71,3 +71,15 @@ Exact text: Review this order before it ships. Payment came in after the stock h
 Defined at `src/lib/order-flags.ts:4`. Shown to an admin on a store order at `src/components/orders-view.tsx:237` when the paid order could not take stock. Shoppers do not see this line.
 
 Approved by Genie, Oct 27 2026.
+
+## Affiliate disclosure
+
+Default text: We may earn a commission when you buy through these links, at no extra cost to you.
+
+Shorter line a program may use instead: We may earn a commission when you buy through these links.
+
+Defined at `src/config/affiliates.ts`. Each program has its own `disclosure`, and the default is the longer sentence. Rendered beside each affiliate link in `src/components/affiliate-link.tsx`. It is body text, with no glow. Spots render nothing while their hrefs are empty, so the sentence stays off the page until a link is shown.
+
+The Amazon aisle line stays "As an Amazon Associate I earn from qualifying purchases." and the aisle label stays "(paid link)".
+
+Approved by Genie, Nov 16 2026.

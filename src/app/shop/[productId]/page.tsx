@@ -17,6 +17,7 @@ import { comingSoonListing } from "@/lib/supplier-confirm";
 import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
 import { publicSiteUrl } from "@/lib/config/env";
+import { shopperListingOmitted } from "@/lib/shop-public";
 import { hasRealProductPhoto } from "@/lib/shop-photo";
 import { productShopperJsonLd, shopperPriceView, showShopPrices } from "@/lib/shop-prices";
 import { productOgImage } from "@/lib/product-og";
@@ -75,7 +76,13 @@ export default async function ProductPage({
   const pricesOn = showShopPrices();
   const picks: AislePick[] = aisle
     ? listPublished({ aisle })
-        .filter((item) => item.productId !== listing.productId && listedOnGrid(item) && hasRealProductPhoto(item.image))
+        .filter(
+          (item) =>
+            item.productId !== listing.productId &&
+            listedOnGrid(item) &&
+            hasRealProductPhoto(item.image) &&
+            !shopperListingOmitted(item),
+        )
         .slice(0, 4)
         .map((item) =>
           shopperPriceView({

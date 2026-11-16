@@ -6,6 +6,7 @@ import { publishForAccount } from "@/lib/server/publish";
 import { SESSION_COOKIE } from "@/lib/server/session-cookie";
 import { soldOutByProduct } from "@/lib/server/inventory";
 import { ensureStarterShelf, isSampleListing, listedOnGrid } from "@/lib/server/starter-shelf";
+import { shopperListingOmitted } from "@/lib/shop-public";
 import { hasRealProductPhoto } from "@/lib/shop-photo";
 import { shopperPriceView } from "@/lib/shop-prices";
 import { listPublished } from "@/lib/server/store";
@@ -22,7 +23,8 @@ export async function GET(request: Request) {
     aisle,
   })
     .filter(listedOnGrid)
-    .filter((listing) => hasRealProductPhoto(listing.image));
+    .filter((listing) => hasRealProductPhoto(listing.image))
+    .filter((listing) => !shopperListingOmitted(listing));
   const soldOut = soldOutByProduct(listings.map((listing) => listing.productId));
   return Response.json({
     listings: listings.map((listing) =>

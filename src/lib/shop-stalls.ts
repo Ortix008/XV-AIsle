@@ -17,7 +17,7 @@ export function stallProductCount(listings: readonly StallListing[], slug: strin
 
 /** Tabs follow the cards. An aisle with nothing in it is not shown. */
 export function stallsWithProducts<T extends StallListing>(listings: readonly T[]) {
-  return nightWorlds.filter((world) => stallProductCount(listings, world.slug) > 0);
+  return nightWorlds.filter((world) => world.slug !== "bundles" && stallProductCount(listings, world.slug) > 0);
 }
 
 export function isStallSlug(slug: string): slug is NightWorldSlug {

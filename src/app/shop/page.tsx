@@ -67,6 +67,7 @@ export default async function ShopPage({
   const params = searchParams ? await searchParams : {};
   const slug = firstParam(params.aisle);
   if (slug === LEGACY_RIG_SLUG) redirect("/shop?aisle=everyday-finds");
+  if (slug === "bundles") redirect("/shop");
   const listings = publicGridListings() as ShopCard[];
   return <ShopScreen slug={slug} listings={listings} showPrices={showShopPrices()} />;
 }

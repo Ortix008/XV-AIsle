@@ -4,13 +4,19 @@ import { publicListing } from "@/lib/server/order-view";
 import { ensureStarterShelf, isSampleListing, listedOnGrid } from "@/lib/server/starter-shelf";
 import { listPublished } from "@/lib/server/store";
 import { appOrigin } from "@/lib/server/stripe";
+import { shopperCheckoutRefused } from "@/lib/shop-buying";
+import { shopperCheckoutClosed } from "@/lib/shop-checkout";
+import { shopperListingOmitted } from "@/lib/shop-public";
 import { hasRealProductPhoto } from "@/lib/shop-photo";
 import { shopperPriceView, showShopPrices } from "@/lib/shop-prices";
 
 export function GET() {
   ensureStarterShelf();
   const origin = appOrigin();
-  const listings = listPublished().filter(listedOnGrid).filter((listing) => hasRealProductPhoto(listing.image));
+  const listings = listPublished()
+    .filter(listedOnGrid)
+    .filter((listing) => hasRealProductPhoto(listing.image))
+    .filter((listing) => !shopperListingOmitted(listing));
   const soldOut = soldOutByProduct(listings.map((listing) => listing.productId));
   const pricesOn = showShopPrices();
   const products = listings.map((listing) => {
@@ -22,7 +28,10 @@ export function GET() {
       ...(pricesOn ? { price: (page.priceCents / 100).toFixed(2), currency: "USD" } : {}),
       link: `${origin}/shop/${page.productId}`,
       image: page.image ? `${origin}${page.image}` : "",
-      availability: soldOut.get(page.productId) ? "out of stock" : "in stock",
+      availability:
+        soldOut.get(page.productId) || shopperCheckoutClosed(listing) || shopperCheckoutRefused()
+          ? "out of stock"
+          : "in stock",
       brand: page.supplierName,
       shelf: page.shelf,
     });

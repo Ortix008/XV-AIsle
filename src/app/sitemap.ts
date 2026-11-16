@@ -35,9 +35,11 @@ export function sitemapListsProduct(listing: {
   shipsFrom?: string | null;
   supplierUsConfirmed?: boolean | null;
   image?: string | null;
+  kind?: string | null;
 }) {
   if (isQaCheckoutListing(listing)) return false;
   if (!visibleOnShop(listing)) return false;
+  if (listing.kind === "bundle") return false;
   if (comingSoonListing(listing)) return false;
   if (!hasRealProductPhoto(listing.image)) return false;
   return true;
@@ -49,7 +51,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages = [
     ...SITEMAP_PATHS.map((path) => `${origin}${path}`),
     ...liveAislePaths().map((path) => `${origin}${path}`),
-    `${origin}/shop?aisle=bundles`,
   ];
   const products = listPublished()
     .filter(sitemapListsProduct)

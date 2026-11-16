@@ -332,7 +332,7 @@ async function main() {
       showPrices: true,
     }),
   );
-  assert(openMarkup.includes("Continue to checkout") && openMarkup.includes('max="2"'), "remaining stock caps the quantity field");
+  assert(!openMarkup.includes("Continue to checkout") && openMarkup.includes('max="2"'), "remaining stock caps the quantity field and has no checkout button");
   assert(!openMarkup.includes(SOLD_OUT_LABEL), "available stock does not say Sold out");
   const card = renderToStaticMarkup(
     createElement(ShopCardCopy, {
@@ -362,7 +362,7 @@ async function main() {
     }),
   );
   assert(sizeMarkup.includes("Clay (Sold out)") && sizeMarkup.includes("disabled"), "a sold-out size is disabled and uses Sold out");
-  assert(sizeMarkup.includes(">Night<") && sizeMarkup.includes("Continue to checkout"), "an available size stays selectable");
+  assert(sizeMarkup.includes(">Night<") && !sizeMarkup.includes("Continue to checkout"), "an available size stays selectable and has no checkout button");
 
   const flagBeforeLate = getDb().prepare("SELECT stock_on_hand AS on_hand FROM listings WHERE product_id = 'flag'").get() as {
     on_hand: number;

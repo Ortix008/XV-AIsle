@@ -45,6 +45,7 @@ async function main() {
   const photos = listings.filter((item) => item.image.startsWith("/art/"));
   assert(stallProductCount(photos, "everyday-finds") === 2, "Everyday Finds counts the new slug and the old rig slug");
   assert(stallProductCount(photos, "bundles") === 1, "a bundle counts toward Bundles");
+  assert(!stallsWithProducts(photos).some((tab) => tab.slug === "bundles"), "Bundles stays off the aisle tabs even when a bundle card exists");
   const tabs = stallsWithProducts(photos.filter((item) => item.kind !== "bundle" && item.productId !== "set"));
   assert(!tabs.some((tab) => tab.slug === "bundles"), "an empty Bundles aisle stays hidden");
   assert(tabs.map((tab) => tab.slug).join() === "everyday-finds,tech-and-desk,home-and-gifts", "tabs follow the cards that have photos");
@@ -85,7 +86,7 @@ async function main() {
       unconfirmed: false,
     }),
   );
-  assert(open.includes("$25.99"), "turning the flag on restores the product price");
+  assert(open.includes("$25.99") && !open.includes("Continue to checkout") && !open.includes("Pay "), "turning the flag on restores the product price and still hides checkout");
 
   const base = {
     supplierName: "Example Seller",
@@ -100,6 +101,10 @@ async function main() {
   assert(
     sitemapListsProduct({ ...base, productId: "glow", image: "/brand/hero-aisle-pedestals.webp" }) === false,
     "the aisle plate stays out of the sitemap",
+  );
+  assert(
+    sitemapListsProduct({ ...base, productId: "set", kind: "bundle", image: "/art/mock-sheet-pan-1.png" }) === false,
+    "a bundle stays out of the sitemap",
   );
 
   const db = getDb();
@@ -122,6 +127,23 @@ async function main() {
   insert.run("blank-pan", "P-2", "Blank pan", "Blank pan", "");
   insert.run("mark-pan", "P-3", "Mark pan", "Mark pan", "/xv-aisle-mark.svg");
   insert.run("glow-pan", "P-4", "Glow pan", "Glow pan", "/brand/hero-aisle-pedestals.webp");
+  db.prepare("UPDATE listings SET ships_from = 'Austin, TX' WHERE product_id = 'photo-pan'").run();
+  db.prepare(
+    `INSERT INTO listings (
+      product_id, account_id, sku, title, description, price_cents, image,
+      supplier_name, supplier_origin, ship_days_min, ship_days_max, published,
+      made_in_usa, shelf, supplier_cost_cents, supplier_shipping_cents, route, kind,
+      hidden_from_shop, supplier_us_confirmed
+    ) VALUES ('quiet-pan', 'acct', 'P-5', 'Quiet pan', 'Quiet pan', 2000, '/art/mock-sheet-pan-1.png', 'Example', 'US', 2, 4, 1, 0, 'national', 0, 0, 'manual', 'single', 0, 0)`,
+  ).run();
+  db.prepare(
+    `INSERT INTO listings (
+      product_id, account_id, sku, title, description, price_cents, image,
+      supplier_name, supplier_origin, ship_days_min, ship_days_max, published,
+      made_in_usa, shelf, supplier_cost_cents, supplier_shipping_cents, route, kind,
+      hidden_from_shop, supplier_us_confirmed, ships_from
+    ) VALUES ('bundle-set', 'acct', 'P-6', 'Bundle set', 'Bundle set', 2000, '/art/mock-sheet-pan-1.png', 'Example', 'US', 2, 4, 1, 0, 'national', 0, 0, 'manual', 'bundle', 0, 1, 'Austin, TX')`,
+  ).run();
   const response = await GET(new Request("http://127.0.0.1/api/store/listings"));
   const body = (await response.json()) as { listings: { productId: string }[] };
   const ids = body.listings.map((item) => item.productId);
@@ -129,6 +151,8 @@ async function main() {
   assert(!ids.includes("blank-pan"), "the listings API hides a missing photo");
   assert(!ids.includes("mark-pan"), "the listings API hides the mark");
   assert(!ids.includes("glow-pan"), "the listings API hides the aisle plate");
+  assert(!ids.includes("quiet-pan"), "the listings API hides a Coming soon item");
+  assert(!ids.includes("bundle-set"), "the listings API hides a bundle");
   const hiddenJson = JSON.stringify(body);
   assert(!hiddenJson.includes("priceCents") && !hiddenJson.includes("\"price\""), "hidden prices stay out of the listings API");
   assert(!hiddenJson.includes("$"), "the listings API does not format a price while hidden");
@@ -140,10 +164,12 @@ async function main() {
   assert(gridIds.includes("photo-pan"), "the home payload keeps a real photo");
   assert(!gridIds.includes("blank-pan") && !gridIds.includes("mark-pan") && !gridIds.includes("glow-pan"), "the home payload hides a missing photo, the mark, and the aisle plate");
   const { GET: catalogGet } = await import("../src/app/api/store/catalog/route");
-  const catalog = (await (await catalogGet()).json()) as { products: { id: string }[] };
+  const catalog = (await (await catalogGet()).json()) as { products: { id: string; availability?: string }[] };
   const catalogIds = catalog.products.map((item) => item.id);
   assert(catalogIds.includes("photo-pan"), "the catalog keeps a real photo");
   assert(!catalogIds.includes("blank-pan") && !catalogIds.includes("mark-pan") && !catalogIds.includes("glow-pan"), "the catalog hides a missing photo, the mark, and the aisle plate");
+  assert(!catalogIds.includes("quiet-pan") && !catalogIds.includes("bundle-set"), "the catalog hides Coming soon items and bundles");
+  assert(catalog.products.every((item) => item.availability !== "in stock"), "the catalog does not report in stock");
   process.env.SHOW_PRICES = "1";
   const pricedResponse = await GET(new Request("http://127.0.0.1/api/store/listings"));
   const pricedBody = (await pricedResponse.json()) as { listings: { productId: string; priceCents?: number }[] };
@@ -290,6 +316,16 @@ async function main() {
   );
   assert(!unconfirmedBody.url && Number(stripeCalls) === 0, "a Coming soon listing does not call Stripe");
   const { GET: detailGet } = await import("../src/app/api/store/listings/[productId]/route");
+  for (const productId of ["quiet-pan", "bundle-set"]) {
+    const hiddenDetail = await detailGet(new Request(`http://127.0.0.1/api/store/listings/${productId}`), {
+      params: Promise.resolve({ productId }),
+    });
+    const hiddenDetailBody = (await hiddenDetail.json()) as { error?: string };
+    assert(
+      hiddenDetail.status === 404 && hiddenDetailBody.error === "That page is not on the store.",
+      `${productId} stays out of the listings API`,
+    );
+  }
   const { default: ProductPage } = await import("../src/app/shop/[productId]/page");
   const hiddenPhotos = [
     ["empty-photo", ""],
@@ -344,10 +380,10 @@ async function main() {
   );
   const openedBody = (await opened.json()) as { error?: string; url?: string };
   assert(
-    opened.ok && openedBody.url === "https://checkout.stripe.com/c/pay/cs_test_gate",
-    openedBody.error ?? "a buyable listing still opens checkout",
+    opened.status === 400 && openedBody.error === "That page is not on the store." && !openedBody.url,
+    openedBody.error ?? "checkout refuses every item",
   );
-  assert(Number(stripeCalls) === 1, "a buyable listing calls Stripe once");
+  assert(Number(stripeCalls) === 0, "checkout does not call Stripe");
   setStripeFetch(null);
   delete process.env.SHOW_PRICES;
   if (previousStripe === undefined) delete process.env.STRIPE_SECRET_KEY;
