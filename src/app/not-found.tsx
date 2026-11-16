@@ -2,9 +2,13 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { NightMotif } from "@/components/night-motif";
 import { ShopFrame } from "@/components/shop-frame";
+import { homeGiftsListed } from "@/lib/home-aisles";
 import { nightWorlds, nightWorldVars } from "@/lib/night-worlds";
+import { publicGridListings } from "@/lib/server/shop-catalog";
 
 export default function NotFound() {
+  const giftsOpen = homeGiftsListed(publicGridListings());
+  const worlds = nightWorlds.filter((world) => world.slug !== "bundles" && (world.slug !== "home-and-gifts" || giftsOpen));
   return (
     <ShopFrame>
       <section className="lost-aisle">
@@ -20,7 +24,7 @@ export default function NotFound() {
               Shop the aisles
             </Link>
             <ul className="mt-8 grid w-full grid-cols-2 gap-3">
-              {nightWorlds.map((world) => (
+              {worlds.map((world) => (
                 <li key={world.slug}>
                   <Link
                     href={`/shop?aisle=${world.slug}`}

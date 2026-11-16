@@ -10,8 +10,8 @@ Zazzle does not render on a Personalized item or that item's tile.
 
 | Spot | Route | Section | Component | Copy |
 | --- | --- | --- | --- | --- |
-| Books | `/shop?aisle=home-and-gifts`, next to the Gifts spot. No separate Books route. Bookshop partner id is pending. | Gift a book | `AffiliateSpot` `spot="books"` in `src/components/affiliate-spot.tsx` | Heading “Gift a book”. Link “Browse books on Bookshop.org”. |
+| Books | `/shop?aisle=home-and-gifts`, next to the Gifts spot. No separate Books route. The homepage tile, shop tab, and this URL appear only when the aisle has shop items or a Bookshop/Zazzle link. Otherwise the URL redirects to `/shop`. Bookshop partner id is pending. | Gift a book | `AffiliateSpot` `spot="books"` in `src/components/affiliate-spot.tsx` | Heading “Gift a book”. Link “Browse books on Bookshop.org”. |
 | Experiences | `/aisles/tickets-and-events`. The homepage tile and the Aisles index link render only when this aisle has at least one configured experiences link or a real item. Viator partner P00330828. GetYourGuide partner YEH3QKQ. | Tours and things to do | `AffiliateSpot` `spot="experiences"` in `src/components/affiliate-spot.tsx` | Heading “Tours and things to do”. Links “See things to do on Viator” and “See things to do on GetYourGuide”. |
-| Gifts | `/shop?aisle=home-and-gifts`, next to the Books spot. Never on a Personalized item or its tile. Zazzle Ambassador ID 238672294015858667. | Gift ideas | `AffiliateSpot` `spot="gifts"` in `src/components/affiliate-spot.tsx` | Heading “Gift ideas”. Link “Browse gifts on Zazzle”. |
+| Gifts | `/shop?aisle=home-and-gifts`, next to the Books spot. Same visibility rule as Books. Never on a Personalized item or its tile. Zazzle Ambassador ID 238672294015858667. | Gift ideas | `AffiliateSpot` `spot="gifts"` in `src/components/affiliate-spot.tsx` | Heading “Gift ideas”. Link “Browse gifts on Zazzle”. |
 
 Partners: Bookshop is Books. Viator and GetYourGuide are Experiences. Zazzle is Gifts.

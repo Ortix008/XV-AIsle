@@ -24,7 +24,8 @@ async function main() {
   const { AffiliateSpot } = await import("../src/components/affiliate-spot");
   const { DepartmentGrid } = await import("../src/components/department-grid");
   const { NightStalls } = await import("../src/components/night-stalls");
-  const { homepageMoreAisles, homepageNightSlugs, visibleItemCount } = await import("../src/lib/home-aisles");
+  const { homeGiftsListed, homepageMoreAisles, homepageNightSlugs, shopStallTabs, visibleItemCount } = await import("../src/lib/home-aisles");
+  const { ShopScreen, default: ShopPage } = await import("../src/app/shop/page");
 
   for (const root of ["src", "docs"]) {
     for (const file of walk(join(process.cwd(), root))) {
@@ -133,6 +134,25 @@ async function main() {
   assert(more.map((tile) => tile.href).join() === "/aisles/kitchen", "More aisles keeps only Kitchen when the other targets are empty");
   assert(!more.some((tile) => tile.href.includes("tickets")), "Tickets & Events is hidden while its links are empty");
   assert(homepageNightSlugs([]).length === 0, "empty night aisles are not linked from the homepage");
+  assert(!homeGiftsListed([]), "Home & Gifts is closed with no items and no partner links");
+  assert(!shopStallTabs([]).some((tab) => tab.slug === "home-and-gifts"), "the shop tab hides Home & Gifts when it is closed");
+  let redirected = false;
+  try {
+    await ShopPage({ searchParams: Promise.resolve({ aisle: "home-and-gifts" }) });
+  } catch (error) {
+    const digest = error && typeof error === "object" && "digest" in error ? String((error as { digest?: unknown }).digest) : "";
+    redirected = digest.includes("NEXT_REDIRECT") && digest.includes("/shop");
+  }
+  assert(redirected, "an empty Home & Gifts aisle redirects to /shop");
+  const bookshopOnly = filled.filter((offer) => offer.network === "bookshop");
+  assert(homeGiftsListed([], bookshopOnly), "one Bookshop link opens Home & Gifts");
+  assert(homepageNightSlugs([], bookshopOnly).includes("home-and-gifts"), "one Bookshop link shows the Home & Gifts tile");
+  assert(shopStallTabs([], bookshopOnly).some((tab) => tab.slug === "home-and-gifts"), "one Bookshop link shows the shop tab");
+  const openGifts = renderToStaticMarkup(
+    createElement(ShopScreen, { slug: "home-and-gifts", listings: [], giftOffers: bookshopOnly }),
+  );
+  assert(openGifts.includes("partner-card") && openGifts.includes("Bookshop.org"), "Home & Gifts renders the Bookshop card");
+  assert(!openGifts.includes(">Zazzle<"), "a Bookshop-only config does not render a Zazzle card");
   const withLink = homepageMoreAisles([], filled);
   assert(withLink.some((tile) => tile.href === "/aisles/tickets-and-events"), "a configured experiences link shows the Tickets tile");
 

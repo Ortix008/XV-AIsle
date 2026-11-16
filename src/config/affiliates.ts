@@ -119,6 +119,13 @@ export function experiencesSpotHasLinks(offers: readonly AffiliateOffer[] = AFFI
   return visibleAffiliateOffers("experiences", null, offers).length > 0;
 }
 
+/** True when Bookshop or Zazzle has a pasted href. */
+export function giftSpotsHaveLinks(offers: readonly AffiliateOffer[] = AFFILIATE_OFFERS) {
+  return (
+    visibleAffiliateOffers("books", null, offers).length > 0 || visibleAffiliateOffers("gifts", null, offers).length > 0
+  );
+}
+
 /** Tickets & Events is listed only when it has Amazon items or a configured experiences link. */
 export function ticketsAisleListed(itemCount: number, offers: readonly AffiliateOffer[] = AFFILIATE_OFFERS) {
   return itemCount > 0 || experiencesSpotHasLinks(offers);

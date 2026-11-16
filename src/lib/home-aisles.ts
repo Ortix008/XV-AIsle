@@ -1,8 +1,8 @@
-import { ticketsAisleListed, type AffiliateOffer } from "@/config/affiliates";
+import { giftSpotsHaveLinks, ticketsAisleListed, type AffiliateOffer } from "@/config/affiliates";
 import { AMAZON_AISLES, liveAisleBySlug } from "@/lib/amazon-aisles";
 import { departmentHref, floorDepartments, type HomeAisleTile } from "@/lib/department-href";
-import { nightWorldBySlug, nightWorlds, type NightWorldSlug } from "@/lib/night-worlds";
-import { stallProductCount, type StallListing } from "@/lib/shop-stalls";
+import { nightWorldBySlug, nightWorlds, type NightWorld, type NightWorldSlug } from "@/lib/night-worlds";
+import { stallProductCount, stallsWithProducts, type StallListing } from "@/lib/shop-stalls";
 
 export type { HomeAisleTile };
 
@@ -17,10 +17,27 @@ export function visibleItemCount(href: string, listings: readonly StallListing[]
   return listings.length;
 }
 
-export function homepageNightSlugs(listings: readonly StallListing[]): NightWorldSlug[] {
+/** Home & Gifts is open when it has shop items or a Bookshop/Zazzle link. */
+export function homeGiftsListed(listings: readonly StallListing[], offers?: readonly AffiliateOffer[]) {
+  return stallProductCount(listings, "home-and-gifts") > 0 || giftSpotsHaveLinks(offers);
+}
+
+export function homepageNightSlugs(listings: readonly StallListing[], offers?: readonly AffiliateOffer[]): NightWorldSlug[] {
   return nightWorlds
-    .filter((world) => world.slug !== "bundles" && stallProductCount(listings, world.slug) > 0)
+    .filter((world) => {
+      if (world.slug === "bundles") return false;
+      if (world.slug === "home-and-gifts") return homeGiftsListed(listings, offers);
+      return stallProductCount(listings, world.slug) > 0;
+    })
     .map((world) => world.slug);
+}
+
+/** Shop tabs follow the cards, and Home & Gifts stays when a partner link is set. */
+export function shopStallTabs<T extends StallListing>(listings: readonly T[], offers?: readonly AffiliateOffer[]): NightWorld[] {
+  const tabs = stallsWithProducts(listings);
+  if (!homeGiftsListed(listings, offers) || tabs.some((tab) => tab.slug === "home-and-gifts")) return tabs;
+  const gifts = nightWorldBySlug("home-and-gifts");
+  return gifts ? [...tabs, gifts] : tabs;
 }
 
 export function homepageMoreAisles(listings: readonly StallListing[], offers?: readonly AffiliateOffer[]): HomeAisleTile[] {

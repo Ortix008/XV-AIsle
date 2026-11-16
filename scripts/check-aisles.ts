@@ -470,7 +470,7 @@ assert(
   renderToStaticMarkup(createElement(ShopFooter, { showAmazonDisclosure: true })).includes(AMAZON_ASSOCIATE_DISCLOSURE),
   "a page with Amazon picks keeps the disclosure wording",
 );
-assert(!footerHtml.includes("footer-about"), "the About slot stays empty until its line is set");
+assert(footerHtml.includes("xvaisle.com is operated by XV-AIsle."), "the footer names the operator");
 assert(
   renderToStaticMarkup(createElement(ShopFooter, { about: "Operator note for later." })).includes("Operator note for later."),
   "the About slot shows a configured line",

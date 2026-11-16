@@ -1,2 +1,2 @@
-/** GetYourGuide operator line. Empty until the wording is approved, so the footer slot renders nothing. */
-export const OPERATOR_ABOUT = "";
+/** Public operator line. Shown in the footer About slot on every page. */
+export const OPERATOR_ABOUT = "xvaisle.com is operated by XV-AIsle.";
