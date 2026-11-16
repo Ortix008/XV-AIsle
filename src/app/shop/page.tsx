@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { HomeGiftSpots } from "@/components/affiliate-spot";
 import { ShopFrame } from "@/components/shop-frame";
 import { ShopGrid, type ShopCard } from "@/components/shop-grid";
 import { aisleBySlug } from "@/lib/aisles";
@@ -54,6 +55,7 @@ export function ShopScreen({
         stalls={stalls}
         showPrices={showPrices}
         initialListings={shown}
+        afterHero={canonical === "home-and-gifts" ? <HomeGiftSpots /> : null}
       />
     </ShopFrame>
   );

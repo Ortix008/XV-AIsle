@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { NightMotif } from "@/components/night-motif";
 import { ProductFrame } from "@/components/product-frame";
 import { Reveal } from "@/components/reveal";
@@ -73,6 +73,7 @@ export function ShopGrid({
   stalls,
   showPrices,
   photosOnly = false,
+  afterHero = null,
 }: {
   kicker: string;
   title: string;
@@ -92,6 +93,7 @@ export function ShopGrid({
   showPrices?: boolean;
   /** Home and other shopper grids use the same photo rule as the shop. */
   photosOnly?: boolean;
+  afterHero?: ReactNode;
 }) {
   const pricesOn = showPrices ?? showShopPrices();
   const hidePlainPhotos = catalog || photosOnly;
@@ -150,6 +152,7 @@ export function ShopGrid({
               </p>
             </div>
           </header>
+          {afterHero}
           <ul className="stall-tabs">
             {(stalls ?? nightWorlds).map((stall, index) => {
               const current = world?.slug === stall.slug;

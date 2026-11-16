@@ -5,6 +5,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { MissionValues } from "@/components/mission-values";
 import { useOptionalAccount } from "@/lib/account-store";
 import { AMAZON_ASSOCIATE_DISCLOSURE } from "@/lib/amazon-aisles";
+import { OPERATOR_ABOUT } from "@/config/operator-about";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
@@ -43,10 +44,14 @@ export function ShopFooter({
   showReseller,
   showStorePayLine = true,
   showBrandBlock = true,
+  showAmazonDisclosure = false,
+  about = OPERATOR_ABOUT,
 }: {
   showReseller?: boolean;
   showStorePayLine?: boolean;
   showBrandBlock?: boolean;
+  showAmazonDisclosure?: boolean;
+  about?: string;
 }) {
   const session = useOptionalAccount();
   const account = session?.account;
@@ -91,7 +96,8 @@ export function ShopFooter({
           ))}
         </div>
         <div className="mt-14 flex flex-col gap-3 border-t border-border pt-6 text-[13px] text-muted-foreground">
-          <p>{AMAZON_ASSOCIATE_DISCLOSURE}</p>
+          {about.trim() ? <p className="footer-about">{about}</p> : null}
+          {showAmazonDisclosure ? <p>{AMAZON_ASSOCIATE_DISCLOSURE}</p> : null}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
             <span>© {new Date().getFullYear()} XV-AIsle</span>
             {showStorePayLine ? <span>Buyers pay on xvaisle.com</span> : null}

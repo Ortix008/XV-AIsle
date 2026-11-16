@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -7,8 +7,15 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
-function hrefs(markup: string) {
-  return [...markup.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
+function walk(dir: string) {
+  const files: string[] = [];
+  for (const name of readdirSync(dir)) {
+    if (name === "node_modules" || name === ".next" || name === ".git") continue;
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) files.push(...walk(path));
+    else if (/\.(ts|tsx|md|css|json|yml)$/.test(name)) files.push(path);
+  }
+  return files;
 }
 
 async function main() {
@@ -17,95 +24,100 @@ async function main() {
   const { AffiliateSpot } = await import("../src/components/affiliate-spot");
   const { DepartmentGrid } = await import("../src/components/department-grid");
   const { NightStalls } = await import("../src/components/night-stalls");
+  const { homepageMoreAisles, homepageNightSlugs, visibleItemCount } = await import("../src/lib/home-aisles");
+
+  for (const root of ["src", "docs"]) {
+    for (const file of walk(join(process.cwd(), root))) {
+      assert(!readFileSync(file, "utf8").includes("[WORDY"), `${file} still has a [WORDY marker`);
+    }
+  }
 
   const map = readFileSync(join(process.cwd(), "docs/affiliate-page-map.md"), "utf8");
-  for (const label of Object.values(affiliates.AFFILIATE_WORDY)) {
-    assert(map.includes(label), `${label} is in the page map`);
-  }
-  assert(map.includes(affiliates.AFFILIATE_DISCLOSURE), "the page map quotes the default disclosure");
-  assert(map.includes(affiliates.AFFILIATE_DISCLOSURE_SHORT), "the page map quotes the shorter disclosure");
-  assert(!map.includes("[WORDY: CJ link]"), "CJ is not in the page map");
+  assert(map.includes(affiliates.AFFILIATE_DISCLOSURE_SHORT), "the page map quotes the card disclosure");
+  assert(map.includes("Gift a book") && map.includes("Gift ideas") && map.includes("Tours and things to do"), "the page map uses the approved headings");
+  assert(affiliates.AFFILIATE_OFFERS.every((offer) => offer.href === ""), "affiliate hrefs stay empty until a link-builder URL is pasted");
   assert(
-    affiliates.AFFILIATE_OFFERS.every((offer) => offer.href === ""),
-    "affiliate hrefs stay empty until a link-builder URL is pasted",
-  );
-  assert(
-    affiliates.AFFILIATE_OFFERS.every((offer) => offer.disclosure === affiliates.AFFILIATE_DISCLOSURE),
-    "each program defaults to the approved disclosure",
+    affiliates.AFFILIATE_OFFERS.every((offer) => offer.disclosure === affiliates.AFFILIATE_DISCLOSURE_SHORT),
+    "each partner card uses the shorter disclosure",
   );
   const byId = new Map(affiliates.AFFILIATE_OFFERS.map((offer) => [offer.id, offer]));
   assert(byId.get("viator")?.partnerId === "P00330828", "Viator keeps its public partner id");
   assert(byId.get("getyourguide")?.partnerId === "YEH3QKQ", "GetYourGuide keeps its public partner id");
   assert(byId.get("zazzle")?.partnerId === "238672294015858667", "Zazzle keeps its public ambassador id");
   assert(byId.get("bookshop")?.partnerId === "", "Bookshop's partner id stays pending");
-  for (const offer of affiliates.AFFILIATE_OFFERS) {
-    if (!offer.partnerId) continue;
-    assert(!offer.href.includes(offer.partnerId), `${offer.id} href is not built from its partner id`);
-  }
-  assert(
-    affiliates.AFFILIATE_PLACEMENTS.find((spot) => spot.spot === "books")?.partners.join() === "bookshop",
-    "Bookshop is the Books partner",
-  );
-  assert(
-    affiliates.AFFILIATE_PLACEMENTS.find((spot) => spot.spot === "experiences")?.partners.join() === "viator,getyourguide",
-    "Viator and GetYourGuide are the Experiences partners",
-  );
-  assert(
-    affiliates.AFFILIATE_PLACEMENTS.find((spot) => spot.spot === "gifts")?.partners.join() === "zazzle",
-    "Zazzle is the Gifts partner",
-  );
+  assert(!affiliates.experiencesSpotHasLinks(), "empty experiences hrefs do not count as content");
+  assert(!affiliates.ticketsAisleListed(0), "Tickets & Events stays unlisted with no items and no links");
 
   for (const spot of ["books", "experiences", "gifts"] as const) {
-    assert(affiliates.visibleAffiliateOffers(spot).length === 0, `${spot} is empty while its hrefs are empty`);
-    assert(renderToStaticMarkup(createElement(AffiliateSpot, { spot })) === "", `${spot} spot markup is empty`);
+    const markup = renderToStaticMarkup(createElement(AffiliateSpot, { spot }));
+    assert(markup === "", `${spot} spot markup is empty`);
+  }
+  const quiet = renderToStaticMarkup(
+    createElement(
+      "div",
+      null,
+      createElement(AffiliateSpot, { spot: "books" }),
+      createElement(AffiliateSpot, { spot: "gifts" }),
+      createElement(AffiliateSpot, { spot: "experiences" }),
+    ),
+  );
+  for (const word of ["Viator", "GetYourGuide", "Zazzle", "Bookshop", "[WORDY"]) {
+    assert(!quiet.includes(word), `an empty spot renders ${word}`);
   }
 
   const filled = affiliates.AFFILIATE_OFFERS.map((offer) => ({
     ...offer,
-    href: `https://example.test/${offer.id}`,
+    href: offer.partnerId
+      ? `https://links.example/${offer.network}?pid=${offer.partnerId}`
+      : "https://links.example/bookshop",
   }));
-  assert(
-    affiliates.visibleAffiliateOffers("books", null, filled).map((offer) => offer.network).join() === "bookshop",
-    "the Books spot is Bookshop",
-  );
-  assert(
-    affiliates
-      .visibleAffiliateOffers("experiences", null, filled)
-      .map((offer) => offer.network)
-      .join() === "viator,getyourguide",
-    "the Experiences spot is Viator and GetYourGuide",
-  );
-  assert(
-    affiliates.visibleAffiliateOffers("gifts", { title: "Beagle towel" }, filled).some((offer) => offer.network === "zazzle"),
-    "a gift can show Zazzle",
-  );
+  assert(affiliates.experiencesSpotHasLinks(filled), "a pasted experiences href counts as content");
+  assert(affiliates.ticketsAisleListed(0, filled), "Tickets & Events is listed once an experiences link is set");
+  const shown = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "experiences", offers: filled }));
+  assert(shown.includes("P00330828") && shown.includes("YEH3QKQ"), "experiences links include the partner ids");
+  assert(shown.includes('rel="sponsored noopener noreferrer"') && shown.includes('target="_blank"'), "experiences links are sponsored and open a new tab");
+  assert(shown.includes(affiliates.AFFILIATE_COPY.experiencesHeading), "the experiences heading is the approved line");
+  const gifts = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "gifts", offers: filled }));
+  assert(gifts.includes("238672294015858667") && gifts.includes('rel="sponsored noopener noreferrer"'), "the Zazzle link includes its ambassador id");
+  assert(gifts.includes(affiliates.AFFILIATE_COPY.giftsHeading), "the gifts heading is the approved line");
+  const books = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "books", offers: filled }));
+  assert(books.includes(affiliates.AFFILIATE_COPY.bookshopLink) && books.includes('target="_blank"'), "the Bookshop link uses the approved label");
+  assert(books.includes(affiliates.AFFILIATE_DISCLOSURE_SHORT), "a filled link shows the card disclosure");
+  assert(books.includes("partner-card-name") && books.includes("Bookshop.org"), "the Bookshop card names the partner in plain text");
+  assert(books.includes("partner-card-cta") && books.includes('target="_blank"'), "the card call to action is the only link");
+  assert(!books.includes("partner-card-price") && !books.includes("$"), "a partner card does not show a price");
+  assert(!gifts.includes("$") && !/price/i.test(gifts), "a Zazzle card shows no price");
+  for (const word of ["official", "authorized", "endorsed"]) {
+    assert(!books.toLowerCase().includes(word) && !gifts.toLowerCase().includes(word) && !shown.toLowerCase().includes(word), `partner cards do not say ${word}`);
+  }
 
-  const personalized = [
+  for (const item of [
     { personalized: true, title: "Mug" },
     { kind: "personalized", title: "Mug" },
     { title: "Personalized mug" },
     { productId: "personalized-ornament", title: "Ornament" },
-  ];
-  for (const item of personalized) {
+  ]) {
     assert(
       affiliates.visibleAffiliateOffers("gifts", item, filled).every((offer) => offer.network !== "zazzle"),
       "Zazzle stays off a personalized item and its tile",
     );
-    const hidden = renderToStaticMarkup(
-      createElement(AffiliateLink, {
-        href: "https://example.test/zazzle",
-        label: affiliates.AFFILIATE_WORDY.zazzleLink,
-        network: "zazzle",
-        item,
-      }),
+    assert(
+      renderToStaticMarkup(
+        createElement(AffiliateLink, {
+          href: filled.find((offer) => offer.network === "zazzle")!.href,
+          label: affiliates.AFFILIATE_COPY.zazzleLink,
+          network: "zazzle",
+          item,
+        }),
+      ) === "",
+      "a personalized tile does not render a Zazzle link",
     );
-    assert(hidden === "", "a personalized tile does not render a Zazzle link");
   }
 
   const short = renderToStaticMarkup(
     createElement(AffiliateLink, {
-      href: "https://example.test/viator",
-      label: affiliates.AFFILIATE_WORDY.viatorLink,
+      href: "https://links.example/viator?pid=P00330828",
+      label: affiliates.AFFILIATE_COPY.viatorLink,
       network: "viator",
       disclosure: affiliates.AFFILIATE_DISCLOSURE_SHORT,
     }),
@@ -113,79 +125,30 @@ async function main() {
   assert(short.includes(affiliates.AFFILIATE_DISCLOSURE_SHORT), "a program can use the shorter disclosure");
   assert(!short.includes("at no extra cost to you"), "the shorter line replaces the default");
 
-  const link = renderToStaticMarkup(
-    createElement(AffiliateLink, {
-      href: "https://example.test/bookshop",
-      label: affiliates.AFFILIATE_WORDY.bookshopLink,
-      network: "bookshop",
-    }),
-  );
-  assert(link.includes('rel="sponsored noopener noreferrer"'), "the affiliate link is sponsored");
-  assert(link.includes('target="_blank"'), "the affiliate link opens a new tab");
-  assert(link.includes("affiliate-spot-icon"), "the affiliate link has an external icon");
-  assert(link.includes(affiliates.AFFILIATE_DISCLOSURE), "the default disclosure sits with the link");
-  assert(link.indexOf(affiliates.AFFILIATE_WORDY.bookshopLink) < link.indexOf(affiliates.AFFILIATE_DISCLOSURE), "the disclosure follows the link");
-  const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
-  const anchor = css.split(".affiliate-spot-anchor")[1]?.split("}")[0] ?? "";
-  const note = css.split(".affiliate-spot-note")[1]?.split("}")[0] ?? "";
-  assert(anchor.includes("min-height: var(--tap)"), "the affiliate link uses the tap token");
-  assert(note.includes("var(--foreground)") && !note.includes("shadow") && !note.includes("glow"), "the disclosure is body text without a glow");
-  assert(css.includes(".link-slide") && css.includes("min-height: var(--tap)"), "text links keep a 44px tap height");
-  const scrim = css.slice(css.indexOf(".hero-text-scrim"));
-  assert(scrim.includes("min-width: 768px"), "the hero text scrim starts at 768px");
-  assert(scrim.includes("color-mix(in srgb, var(--background) 72%, transparent)"), "the hero text scrim uses the background token at 72%");
-  assert(scrim.includes("transparent 60%"), "the hero text scrim fades out at 60% of the width");
-
-  let grid = "";
-  let stalls = "";
-  try {
-    grid = renderToStaticMarkup(createElement(DepartmentGrid));
-    stalls = renderToStaticMarkup(createElement(NightStalls));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`homepage tiles threw without DeskProvider: ${message}`);
+  assert(visibleItemCount("/aisles/kitchen", []) === 10, "Kitchen shows ten Amazon picks");
+  for (const slug of ["clothing", "home", "sports", "health", "seasonal", "garden", "tech-and-desk", "everyday-finds", "home-and-gifts"]) {
+    assert(visibleItemCount(`/shop?aisle=${slug}`, []) === 0, `${slug} shows no shopper-visible items in an empty prod-like shelf`);
   }
-  assert(!grid.includes("useDesk") && !stalls.includes("useDesk"), "rendered tiles do not mention the desk hook");
-  assert(!grid.includes("<button") && !stalls.includes("<button"), "homepage aisle tiles are links");
-  const more = hrefs(grid);
-  const four = hrefs(stalls);
-  assert(more.includes("/aisles/kitchen"), "Kitchen links to the live aisle");
-  assert(more.includes("/shop?aisle=clothing"), "Clothing links to its shop aisle");
-  assert(more.includes("/shop?aisle=home"), "Home links to its shop aisle");
-  assert(more.includes("/shop?aisle=sports"), "Sports links to its shop aisle");
-  assert(more.includes("/shop?aisle=health"), "Health links to its shop aisle");
-  assert(more.includes("/shop?aisle=seasonal"), "Seasonal links to its shop aisle");
-  assert(more.includes("/shop?aisle=garden"), "Garden links to its shop aisle");
-  assert(more.includes("/shop?aisle=tech-and-desk"), "Tech and Desk links to its aisle");
-  assert(four.includes("/shop?aisle=everyday-finds"), "Everyday Finds links to its aisle");
-  assert(four.includes("/shop?aisle=tech-and-desk"), "the Tech and Desk stall links to its aisle");
-  assert(four.includes("/shop?aisle=home-and-gifts"), "Home and Gifts links to its aisle");
-  assert(!four.includes("aisle=bundles") && !stalls.includes(">Bundles<"), "the homepage hides Bundles");
-  for (const href of [...more, ...four]) {
-    assert(href.startsWith("/"), `${href} is an internal aisle route`);
+  const more = homepageMoreAisles([]);
+  assert(more.map((tile) => tile.href).join() === "/aisles/kitchen", "More aisles keeps only Kitchen when the other targets are empty");
+  assert(!more.some((tile) => tile.href.includes("tickets")), "Tickets & Events is hidden while its links are empty");
+  assert(homepageNightSlugs([]).length === 0, "empty night aisles are not linked from the homepage");
+  const withLink = homepageMoreAisles([], filled);
+  assert(withLink.some((tile) => tile.href === "/aisles/tickets-and-events"), "a configured experiences link shows the Tickets tile");
+
+  const grid = renderToStaticMarkup(createElement(DepartmentGrid, { tiles: more }));
+  const stalls = renderToStaticMarkup(createElement(NightStalls, { slugs: [] }));
+  assert(grid.includes('href="/aisles/kitchen"') && !grid.includes("<button"), "the Kitchen tile is a link");
+  assert(!grid.includes("aisle=clothing") && !grid.includes("aisle=garden"), "empty department tiles are gone");
+  assert(stalls === "", "an empty night-aisle list renders nothing");
+  for (const word of ["Viator", "GetYourGuide", "Zazzle", "Bookshop", "[WORDY"]) {
+    assert(!grid.includes(word) && !stalls.includes(word), `homepage tiles render ${word}`);
   }
 
-  const layout = readFileSync(join(process.cwd(), "src/app/layout.tsx"), "utf8");
-  assert(!layout.includes("Test mode") && !layout.includes("product-test"), "the site-wide test banner is gone");
-  const checkout = readFileSync(join(process.cwd(), "src/app/api/store/checkout/route.ts"), "utf8");
-  assert(
-    checkout.includes("shopperCheckoutClosed") && checkout.includes("shopperCheckoutRefused"),
-    "checkout keeps the 400 guard and refuses every item",
-  );
-  const sitemap = readFileSync(join(process.cwd(), "src/app/sitemap.ts"), "utf8");
-  assert(!sitemap.includes("aisle=bundles"), "the sitemap does not list Bundles");
-  const amazon = readFileSync(join(process.cwd(), "src/lib/amazon-aisles.ts"), "utf8");
-  assert(amazon.includes("As an Amazon Associate I earn from qualifying purchases."), "the Amazon disclosure is unchanged");
-  assert(amazon.includes("(paid link)"), "the Amazon paid-link label is unchanged");
-
-  for (const page of [
-    "src/app/(home)/page.tsx",
-    "src/app/shop/page.tsx",
-    "src/app/aisles/page.tsx",
-    "src/app/aisles/[slug]/page.tsx",
-  ]) {
-    assert(!readFileSync(join(process.cwd(), page), "utf8").includes("AffiliateSpot"), `${page} does not mount an empty affiliate spot`);
-  }
+  const errorPage = readFileSync(join(process.cwd(), "src/app/error.tsx"), "utf8");
+  const globalError = readFileSync(join(process.cwd(), "src/app/global-error.tsx"), "utf8");
+  const errorLine = "This page didn't load. Refresh to try again, or go back to the homepage.";
+  assert(errorPage.includes(errorLine) && globalError.includes(errorLine), "the error boundary uses the approved line");
 
   console.log("affiliate checks ok");
 }

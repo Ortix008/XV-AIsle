@@ -3,31 +3,15 @@
 import Link from "next/link";
 import { MarkUnderlay } from "@/components/mark-tile";
 import { Reveal } from "@/components/reveal";
-import { liveAisleBySlug } from "@/lib/amazon-aisles";
-import { aisleByTitle } from "@/lib/aisles";
-import { welcomeDepartments } from "@/lib/art";
-import { nightWorldByTitle } from "@/lib/night-worlds";
+import { departmentHref, floorDepartments, type HomeAisleTile } from "@/lib/department-href";
 import { cn } from "cn";
 
-const floorDepartments = welcomeDepartments.filter(
-  (dept) => ("href" in dept && dept.href) || !nightWorldByTitle(dept.title),
-);
-
-export function departmentHref(dept: (typeof floorDepartments)[number]) {
-  if ("href" in dept && dept.href) {
-    if (dept.href.includes("aisle=bundles")) return "";
-    return dept.href;
-  }
-  const aisle = aisleByTitle(dept.title);
-  if (!aisle) return "";
-  if (liveAisleBySlug(aisle.slug)) return `/aisles/${aisle.slug}`;
-  return `/shop?aisle=${aisle.slug}`;
+function deskTiles(): HomeAisleTile[] {
+  return floorDepartments.flatMap((dept) => {
+    const href = departmentHref(dept);
+    return href ? [{ title: dept.title, line: dept.line, src: dept.src, href }] : [];
+  });
 }
-
-const linkedDepartments = floorDepartments.flatMap((dept) => {
-  const href = departmentHref(dept);
-  return href ? [{ dept, href }] : [];
-});
 
 function DepartmentArt({ src, large }: { src: string; large: boolean }) {
   return (
@@ -43,13 +27,15 @@ function DepartmentArt({ src, large }: { src: string; large: boolean }) {
   );
 }
 
-export function DepartmentGrid() {
+export function DepartmentGrid({ tiles }: { tiles?: readonly HomeAisleTile[] }) {
+  const shown = tiles ?? deskTiles();
+  if (shown.length === 0) return null;
   return (
     <ul className="dept-grid grid items-start gap-5 lg:grid-cols-2">
-      {linkedDepartments.map(({ dept, href }, index) => (
-        <Reveal key={`${dept.title}-${dept.line}`} as="li" index={index % 5} className={cn(index === 0 && "lg:row-span-2")}>
-          <Link href={href} className="aisle-tile flex w-full flex-col rounded-[18px] border border-border bg-secondary p-3.5 text-left">
-            <DepartmentArt src={dept.src} large={index === 0} />
+      {shown.map((dept, index) => (
+        <Reveal key={`${dept.title}-${dept.href}`} as="li" index={index % 5} className={cn(index === 0 && "lg:row-span-2")}>
+          <Link href={dept.href} className="aisle-tile flex w-full flex-col rounded-[18px] border border-border bg-secondary p-3.5 text-left">
+            {dept.src ? <DepartmentArt src={dept.src} large={index === 0} /> : null}
             <h3 className="mt-4 px-1.5 text-2xl font-semibold tracking-[-0.02em]">{dept.title}</h3>
             <p className="mt-1 px-1.5 pb-1.5 text-sm text-muted-foreground">{dept.line}</p>
           </Link>

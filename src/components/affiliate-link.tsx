@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import {
+  PARTNER_CARD_NAME,
   affiliateDisclosure,
   affiliateLinkVisible,
   type AffiliateItem,
@@ -21,12 +22,13 @@ export function AffiliateLink({
 }) {
   if (!affiliateLinkVisible({ href, network, item })) return null;
   return (
-    <span className="affiliate-spot-link">
-      <a className="affiliate-spot-anchor" href={href} rel="sponsored noopener noreferrer" target="_blank">
+    <article className="partner-card">
+      <p className="partner-card-name">{PARTNER_CARD_NAME[network]}</p>
+      <a className="partner-card-cta" href={href} rel="sponsored noopener noreferrer" target="_blank">
         {label}
-        <ExternalLink className="affiliate-spot-icon" aria-hidden />
+        <ExternalLink className="partner-card-icon" aria-hidden />
       </a>
-      <span className="affiliate-spot-note">{affiliateDisclosure(disclosure)}</span>
-    </span>
+      <p className="partner-card-disclosure">{affiliateDisclosure(disclosure)}</p>
+    </article>
   );
 }

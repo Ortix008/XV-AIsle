@@ -3328,45 +3328,166 @@ button.contact-submit {
   }
 }
 
-.affiliate-spot-link {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--spacing) * 2);
+.partner-spot-row,
+.partner-spot {
+  margin-top: calc(var(--spacing) * 8);
 }
 
-.affiliate-spot-anchor {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--spacing) * 2);
-  min-height: var(--tap);
-  color: var(--foreground);
-  font-size: 1rem;
-  line-height: 1.5;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+.partner-spot-row .partner-spot {
+  margin-top: 0;
 }
 
-.affiliate-spot-icon {
+.partner-spot-row {
+  display: grid;
+  gap: calc(var(--spacing) * 4);
+}
+
+.partner-spot {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 4);
+}
+
+.partner-spot-heading {
+  margin: 0;
+  color: var(--heading);
+  font-family: var(--font-heading);
+  font-size: var(--r-lg);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.partner-spot-list {
+  display: grid;
+  gap: calc(var(--spacing) * 4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.partner-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 4);
+  padding: calc(var(--spacing) * 5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  transition: transform var(--aisle-dur) var(--aisle-ease);
+}
+
+.partner-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--em);
+  opacity: 0.75;
+  pointer-events: none;
+  transition: opacity var(--aisle-dur) var(--aisle-ease);
+}
+
+.partner-card-name {
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1rem;
+}
+
+.partner-card-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--spacing) * 2);
+  width: 12.5rem;
+  min-width: var(--tap);
+  min-height: 48px;
+  padding-inline: calc(var(--spacing) * 4);
+  border-radius: var(--r-lg);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  transition: filter var(--aisle-dur) var(--aisle-ease);
+}
+
+.partner-card-icon {
   width: calc(var(--spacing) * 4);
   height: calc(var(--spacing) * 4);
   flex: none;
 }
 
-.affiliate-spot-note,
-.affiliate-spot-heading {
+.partner-card-disclosure {
   margin: 0;
-  color: var(--foreground);
-  font-size: 1rem;
-  line-height: 1.5;
+  max-width: 36ch;
+  color: var(--body);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.45;
 }
 
-.affiliate-spot-list {
-  display: grid;
-  gap: calc(var(--spacing) * 3);
-  margin: calc(var(--spacing) * 3) 0 0;
-  padding: 0;
-  list-style: none;
+.partner-card-cta:focus-visible {
+  outline: 2px solid var(--em);
+  outline-offset: var(--aisle-focus-offset);
+  box-shadow: var(--glow);
+}
+
+.partner-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--em) 28%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--aisle-dur) var(--aisle-ease);
+}
+
+.partner-card:hover,
+.partner-card:focus-within {
+  transform: translateY(-2px);
+}
+
+.partner-card:hover::before,
+.partner-card:focus-within::before,
+.partner-card:hover::after,
+.partner-card:focus-within::after {
+  opacity: 1;
+}
+
+.partner-card:hover .partner-card-cta,
+.partner-card:focus-within .partner-card-cta {
+  filter: brightness(1.04);
+}
+
+.partner-card:active {
+  transform: scale(var(--aisle-press-scale));
+  transition-duration: var(--aisle-dur-press);
+}
+
+@media (min-width: 640px) {
+  .partner-spot-row,
+  .partner-spot-experiences .partner-spot-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .partner-card,
+  .partner-card::before,
+  .partner-card::after,
+  .partner-card-cta,
+  .partner-card:hover,
+  .partner-card:focus-within,
+  .partner-card:active {
+    transform: none;
+    transition-property: opacity, box-shadow, filter;
+  }
 }
 
 

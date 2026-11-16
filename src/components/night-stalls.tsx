@@ -6,7 +6,7 @@ import { MarkUnderlay } from "@/components/mark-tile";
 import { NightMotif } from "@/components/night-motif";
 import { Reveal } from "@/components/reveal";
 import { aisleCardArt } from "@/lib/art";
-import { nightWorlds, nightWorldVars, type NightWorld } from "@/lib/night-worlds";
+import { nightWorlds, nightWorldVars, type NightWorld, type NightWorldSlug } from "@/lib/night-worlds";
 
 const stallArt: Partial<Record<NightWorld["slug"], string>> = aisleCardArt;
 
@@ -39,8 +39,9 @@ function StallFace({ world }: { world: NightWorld }) {
   );
 }
 
-export function NightStalls() {
-  const stalls = nightWorlds.filter((world) => world.slug !== "bundles");
+export function NightStalls({ slugs }: { slugs: readonly NightWorldSlug[] }) {
+  const stalls = nightWorlds.filter((world) => slugs.includes(world.slug));
+  if (stalls.length === 0) return null;
   return (
     <ul className="grid gap-5 sm:grid-cols-2">
       {stalls.map((world, index) => {

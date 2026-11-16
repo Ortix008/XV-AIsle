@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,8 +59,17 @@ function AiShoppersNote() {
   return <p className="affiliate-note">{AI_SHOPPERS_NOTE}</p>;
 }
 
-export function AisleIndex({ aisles }: { aisles: readonly AmazonAisle[] }) {
-  const live = liveAisles(aisles);
+export function AisleIndex({
+  aisles,
+  includeTickets = false,
+}: {
+  aisles: readonly AmazonAisle[];
+  includeTickets?: boolean;
+}) {
+  const live = [
+    ...liveAisles(aisles),
+    ...(includeTickets ? aisles.filter((aisle) => aisle.slug === "tickets-and-events" && aisle.items.length === 0) : []),
+  ];
   return (
     <article className="affiliate-shell">
       <h1 className="page-title">{AISLE_INDEX_COPY.heading}</h1>
@@ -87,7 +97,13 @@ export function AisleIndex({ aisles }: { aisles: readonly AmazonAisle[] }) {
   );
 }
 
-export function AisleDetail({ aisle }: { aisle: AmazonAisle }) {
+export function AisleDetail({
+  aisle,
+  belowHero = null,
+}: {
+  aisle: AmazonAisle;
+  belowHero?: ReactNode;
+}) {
   return (
     <article className="affiliate-shell">
       <header className="affiliate-hero">
@@ -102,7 +118,8 @@ export function AisleDetail({ aisle }: { aisle: AmazonAisle }) {
           </div>
         ) : null}
       </header>
-      <p className="affiliate-disclosure">{AMAZON_ASSOCIATE_DISCLOSURE}</p>
+      {belowHero}
+      {aisle.items.length > 0 ? <p className="affiliate-disclosure">{AMAZON_ASSOCIATE_DISCLOSURE}</p> : null}
       <ul className="affiliate-grid">
         {aisle.items.map((item) => (
           <li key={item.asin}>

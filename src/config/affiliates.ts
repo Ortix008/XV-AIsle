@@ -1,17 +1,24 @@
 export const AFFILIATE_DISCLOSURE =
   "We may earn a commission when you buy through these links, at no extra cost to you.";
 
-/** Some programs may use this shorter line. The default stays the longer sentence. */
+/** The line on every partner card until a program sets its own. */
 export const AFFILIATE_DISCLOSURE_SHORT = "We may earn a commission when you buy through these links.";
 
-export const AFFILIATE_WORDY = {
-  booksHeading: "[WORDY: Books heading]",
-  bookshopLink: "[WORDY: Bookshop link]",
-  experiencesHeading: "[WORDY: Experiences heading]",
-  viatorLink: "[WORDY: Viator link]",
-  getyourguideLink: "[WORDY: GetYourGuide link]",
-  giftsHeading: "[WORDY: Gifts heading]",
-  zazzleLink: "[WORDY: Zazzle link]",
+export const AFFILIATE_COPY = {
+  booksHeading: "Gift a book",
+  bookshopLink: "Browse books on Bookshop.org",
+  experiencesHeading: "Tours and things to do",
+  viatorLink: "See things to do on Viator",
+  getyourguideLink: "See things to do on GetYourGuide",
+  giftsHeading: "Gift ideas",
+  zazzleLink: "Browse gifts on Zazzle",
+} as const;
+
+export const PARTNER_CARD_NAME = {
+  bookshop: "Bookshop.org",
+  viator: "Viator",
+  getyourguide: "GetYourGuide",
+  zazzle: "Zazzle",
 } as const;
 
 export type AffiliateNetwork = "bookshop" | "viator" | "getyourguide" | "zazzle";
@@ -37,29 +44,26 @@ export type AffiliateItem = {
   productId?: string | null;
 };
 
-/**
- * Where each spot belongs. Spots are not mounted while every href is empty.
- * Tickets & Events has no items, so that path 404s and is not linked.
- */
+/** Where each spot is mounted. Empty hrefs render nothing, and empty spots are not linked. */
 export const AFFILIATE_PLACEMENTS = [
   {
     spot: "books" as const,
-    route: "",
-    section: "Books",
+    route: "/shop?aisle=home-and-gifts",
+    section: "Gift a book",
     component: "AffiliateSpot",
     partners: ["bookshop"] as const,
   },
   {
     spot: "experiences" as const,
-    route: "",
-    section: "Experiences",
+    route: "/aisles/tickets-and-events",
+    section: "Tours and things to do",
     component: "AffiliateSpot",
     partners: ["viator", "getyourguide"] as const,
   },
   {
     spot: "gifts" as const,
     route: "/shop?aisle=home-and-gifts",
-    section: "Gifts",
+    section: "Gift ideas",
     component: "AffiliateSpot",
     partners: ["zazzle"] as const,
   },
@@ -71,44 +75,54 @@ export const AFFILIATE_OFFERS: readonly AffiliateOffer[] = [
     network: "bookshop",
     spot: "books",
     href: "",
-    label: AFFILIATE_WORDY.bookshopLink,
+    label: AFFILIATE_COPY.bookshopLink,
     partnerId: "",
-    disclosure: AFFILIATE_DISCLOSURE,
+    disclosure: AFFILIATE_DISCLOSURE_SHORT,
   },
   {
     id: "viator",
     network: "viator",
     spot: "experiences",
     href: "",
-    label: AFFILIATE_WORDY.viatorLink,
+    label: AFFILIATE_COPY.viatorLink,
     partnerId: "P00330828",
-    disclosure: AFFILIATE_DISCLOSURE,
+    disclosure: AFFILIATE_DISCLOSURE_SHORT,
   },
   {
     id: "getyourguide",
     network: "getyourguide",
     spot: "experiences",
     href: "",
-    label: AFFILIATE_WORDY.getyourguideLink,
+    label: AFFILIATE_COPY.getyourguideLink,
     partnerId: "YEH3QKQ",
-    disclosure: AFFILIATE_DISCLOSURE,
+    disclosure: AFFILIATE_DISCLOSURE_SHORT,
   },
   {
     id: "zazzle",
     network: "zazzle",
     spot: "gifts",
     href: "",
-    label: AFFILIATE_WORDY.zazzleLink,
+    label: AFFILIATE_COPY.zazzleLink,
     partnerId: "238672294015858667",
-    disclosure: AFFILIATE_DISCLOSURE,
+    disclosure: AFFILIATE_DISCLOSURE_SHORT,
   },
 ];
 
 export const AFFILIATE_SPOT_HEADING: Record<AffiliateSpot, string> = {
-  books: AFFILIATE_WORDY.booksHeading,
-  experiences: AFFILIATE_WORDY.experiencesHeading,
-  gifts: AFFILIATE_WORDY.giftsHeading,
+  books: AFFILIATE_COPY.booksHeading,
+  experiences: AFFILIATE_COPY.experiencesHeading,
+  gifts: AFFILIATE_COPY.giftsHeading,
 };
+
+/** True when at least one Experiences href is set. An empty href does not count. */
+export function experiencesSpotHasLinks(offers: readonly AffiliateOffer[] = AFFILIATE_OFFERS) {
+  return visibleAffiliateOffers("experiences", null, offers).length > 0;
+}
+
+/** Tickets & Events is listed only when it has Amazon items or a configured experiences link. */
+export function ticketsAisleListed(itemCount: number, offers: readonly AffiliateOffer[] = AFFILIATE_OFFERS) {
+  return itemCount > 0 || experiencesSpotHasLinks(offers);
+}
 
 /** Personalized goods, including their tiles, never carry a Zazzle link. */
 export function isPersonalizedItem(item: AffiliateItem | null | undefined) {
@@ -126,7 +140,7 @@ export function zazzleAllowedOn(item: AffiliateItem | null | undefined) {
 
 export function affiliateDisclosure(disclosure?: string | null) {
   const line = disclosure?.trim() ?? "";
-  return line || AFFILIATE_DISCLOSURE;
+  return line || AFFILIATE_DISCLOSURE_SHORT;
 }
 
 export function affiliateLinkVisible(input: {

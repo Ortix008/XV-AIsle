@@ -20,9 +20,9 @@ export function AffiliateSpot({
   const shown = visibleAffiliateOffers(spot, item, offers);
   if (shown.length === 0) return null;
   return (
-    <section className="affiliate-spot">
-      <h2 className="affiliate-spot-heading">{AFFILIATE_SPOT_HEADING[spot]}</h2>
-      <ul className="affiliate-spot-list">
+    <section className={`partner-spot partner-spot-${spot}`}>
+      <h2 className="partner-spot-heading">{AFFILIATE_SPOT_HEADING[spot]}</h2>
+      <ul className="partner-spot-list">
         {shown.map((offer) => (
           <li key={offer.id}>
             <AffiliateLink
@@ -36,5 +36,18 @@ export function AffiliateSpot({
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Bookshop and Zazzle sit side by side once either card has a link. */
+export function HomeGiftSpots({ offers = AFFILIATE_OFFERS }: { offers?: readonly AffiliateOffer[] }) {
+  const books = visibleAffiliateOffers("books", null, offers);
+  const gifts = visibleAffiliateOffers("gifts", null, offers);
+  if (books.length === 0 && gifts.length === 0) return null;
+  return (
+    <div className="partner-spot-row">
+      <AffiliateSpot spot="books" offers={offers} />
+      <AffiliateSpot spot="gifts" offers={offers} />
+    </div>
   );
 }

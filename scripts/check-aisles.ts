@@ -451,7 +451,7 @@ assert(footerHtml.includes(PAY_LINE), "the shop footer still names where buyers 
 assert(renderToStaticMarkup(createElement(ShopFooter, { showReseller: true })).includes(PAY_LINE), "the home footer still names where buyers pay");
 const aisleIndexPage = renderToStaticMarkup(createElement(AislesPage));
 assert(!aisleIndexPage.includes(PAY_LINE), "the aisle index footer omits the store pay line");
-assert(aisleIndexPage.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the aisle index footer keeps the disclosure");
+assert(!aisleIndexPage.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the aisle index has no Amazon picks, so the footer omits the disclosure");
 for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
   assert(!aisleIndexPage.includes(phrase), `the aisle index omits ${phrase}`);
 }
@@ -465,7 +465,16 @@ assert(homePage.includes(PAY_LINE), "the home footer still names where buyers pa
 for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
   assert(homePage.includes(phrase), `the home page still shows ${phrase}`);
 }
-assert(footerHtml.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the footer shows the disclosure");
+assert(!footerHtml.includes(AMAZON_ASSOCIATE_DISCLOSURE), "a page with no Amazon picks omits the disclosure");
+assert(
+  renderToStaticMarkup(createElement(ShopFooter, { showAmazonDisclosure: true })).includes(AMAZON_ASSOCIATE_DISCLOSURE),
+  "a page with Amazon picks keeps the disclosure wording",
+);
+assert(!footerHtml.includes("footer-about"), "the About slot stays empty until its line is set");
+assert(
+  renderToStaticMarkup(createElement(ShopFooter, { about: "Operator note for later." })).includes("Operator note for later."),
+  "the About slot shows a configured line",
+);
 assert(!footerHtml.includes(HERO_SUBHEAD), "the footer is not the hero subhead");
 assert(!footerHtml.toLowerCase().includes(WE_EARN), "the footer does not use the banned associate phrase");
 assert(!footerHtml.includes(OLD_DISCLOSURE), "the footer drops the old disclosure");

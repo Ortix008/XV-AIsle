@@ -7,6 +7,8 @@ import { ShopFooter } from "@/components/shop-footer";
 import { StoreHeader } from "@/components/store-header";
 import { DepartmentGrid } from "@/components/department-grid";
 import { NightStalls } from "@/components/night-stalls";
+import type { HomeAisleTile } from "@/lib/department-href";
+import type { NightWorldSlug } from "@/lib/night-worlds";
 import { AisleParallax, XvAisleFlow } from "@/components/xvaisle-flow";
 import { MarkTile } from "@/components/mark-tile";
 import { ShopGrid, type ShopCard } from "@/components/shop-grid";
@@ -24,11 +26,15 @@ export function JoinScreen({
   operator = false,
   showPrices = false,
   listings,
+  nightSlugs = [],
+  moreAisles = [],
 }: {
   checkoutLine: string;
   operator?: boolean;
   showPrices?: boolean;
   listings?: ShopCard[];
+  nightSlugs?: readonly NightWorldSlug[];
+  moreAisles?: readonly HomeAisleTile[];
 }) {
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -96,9 +102,13 @@ export function JoinScreen({
                 View all →
               </Link>
             </Reveal>
-            <NightStalls />
-            <h3 className="mt-16 mb-8 text-3xl sm:text-4xl">More aisles to wander.</h3>
-            <DepartmentGrid />
+            <NightStalls slugs={nightSlugs} />
+            {moreAisles.length > 0 ? (
+              <>
+                <h3 className="mt-16 mb-8 text-3xl sm:text-4xl">More aisles to wander.</h3>
+                <DepartmentGrid tiles={moreAisles} />
+              </>
+            ) : null}
           </div>
         </section>
 
