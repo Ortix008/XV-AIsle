@@ -220,9 +220,9 @@ async function main() {
   const home = readFileSync(join(process.cwd(), "src/components/home-screen.tsx"), "utf8");
   assert(
     home.includes(
-      "lede=\"Every item is reviewed before it's listed. Shipping details are added to each product once its supplier confirms them.\"",
+      "lede=\"Shipping details are added to each product once its supplier confirms them.\"",
     ),
-    "In the store uses the approved subhead",
+    "In the store keeps the shipping line and does not claim a review",
   );
   assert(!home.includes("Pay safely with Stripe, and your order ships straight to your door."), "the old In the store subhead is gone");
   const art = readFileSync(join(process.cwd(), "src/lib/art.ts"), "utf8");

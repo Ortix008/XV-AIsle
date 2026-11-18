@@ -224,11 +224,11 @@ export function ShopGrid({
           <div className="shop-empty">
             <div className="shop-empty-art" aria-hidden />
             <div className="shop-empty-copy">
-              <p className="eyebrow">Aisle</p>
+              <p className="text-base leading-relaxed text-foreground">Our current picks live in the aisles.</p>
               <p className="mt-3 text-2xl sm:text-3xl">New finds landing soon</p>
               <p className="mt-3 max-w-md text-base text-muted-foreground">{empty}</p>
-              <Link href="/shop" className="link-slide mt-5 inline-block text-sm text-primary">
-                All aisles
+              <Link href="/aisles" className="pill pill-primary mt-5">
+                Browse the aisles
               </Link>
             </div>
           </div>

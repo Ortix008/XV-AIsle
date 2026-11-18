@@ -75,5 +75,6 @@ export default async function ShopPage({
   if (slug === "bundles") redirect("/shop");
   const listings = publicGridListings() as ShopCard[];
   if (slug === "home-and-gifts" && !homeGiftsListed(listings)) redirect("/shop");
+  if (!slug && listings.length === 0) redirect("/aisles");
   return <ShopScreen slug={slug} listings={listings} showPrices={showShopPrices()} />;
 }

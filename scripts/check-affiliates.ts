@@ -1,5 +1,6 @@
 import { createElement } from "react";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -19,6 +20,7 @@ function walk(dir: string) {
 }
 
 async function main() {
+  process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-affiliate-")), "shop.sqlite");
   const affiliates = await import("../src/config/affiliates");
   const { AffiliateLink } = await import("../src/components/affiliate-link");
   const { AffiliateSpot } = await import("../src/components/affiliate-spot");
@@ -156,6 +158,42 @@ async function main() {
   const withLink = homepageMoreAisles([], filled);
   assert(withLink.some((tile) => tile.href === "/aisles/tickets-and-events"), "a configured experiences link shows the Tickets tile");
 
+  const { JoinScreen } = await import("../src/components/home-screen");
+  const homeEmpty = renderToStaticMarkup(
+    createElement(JoinScreen, {
+      checkoutLine: "Cards are checked on this site.",
+      listings: [],
+      nightSlugs: [],
+      moreAisles: more,
+    }),
+  );
+  assert(homeEmpty.includes("Browse the aisles") && homeEmpty.includes('href="/aisles"'), "an empty shop points the hero at the aisles");
+  assert(homeEmpty.includes("Each pick links to the store where you buy it."), "the hero subhead is the approved line");
+  assert(homeEmpty.includes("Step into an aisle."), "the single-aisle heading is the approved line");
+  assert(!homeEmpty.includes("Four aisles") && !homeEmpty.includes("Our aisles"), "the night-aisle block stays hidden with no stalls");
+  assert(!homeEmpty.includes("close look") && !homeEmpty.toLowerCase().includes("reviewed"), "the homepage makes no review claim");
+  assert(homeEmpty.includes("dept-grid-single"), "one More aisles tile uses the full-width card");
+  const homeStocked = renderToStaticMarkup(
+    createElement(JoinScreen, {
+      checkoutLine: "Cards are checked on this site.",
+      listings: [{ productId: "pan", title: "Pan", image: "/art/mock-sheet-pan-1.png" }],
+      nightSlugs: ["everyday-finds"],
+      moreAisles: more,
+    }),
+  );
+  assert(homeStocked.includes("Our aisles") && homeStocked.includes('href="/shop"'), "a stocked shop restores Our aisles and the shop links");
+  const emptyShop = renderToStaticMarkup(createElement(ShopScreen, { slug: "", listings: [] }));
+  assert(emptyShop.includes("Our current picks live in the aisles."), "an empty shop names where the picks are");
+  assert(emptyShop.includes("Browse the aisles") && emptyShop.includes('href="/aisles"'), "an empty shop button opens the aisles");
+  assert(!emptyShop.includes("All aisles"), "an empty shop does not link All aisles back to itself");
+  let shopRedirect = false;
+  try {
+    await ShopPage({ searchParams: Promise.resolve({}) });
+  } catch (error) {
+    const digest = error && typeof error === "object" && "digest" in error ? String((error as { digest?: unknown }).digest) : "";
+    shopRedirect = digest.includes("NEXT_REDIRECT") && digest.includes("/aisles");
+  }
+  assert(shopRedirect, "an empty /shop redirects to /aisles");
   const grid = renderToStaticMarkup(createElement(DepartmentGrid, { tiles: more }));
   const stalls = renderToStaticMarkup(createElement(NightStalls, { slugs: [] }));
   assert(grid.includes('href="/aisles/kitchen"') && !grid.includes("<button"), "the Kitchen tile is a link");

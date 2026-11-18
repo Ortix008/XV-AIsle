@@ -282,9 +282,8 @@ const productPage = readFileSync(join(process.cwd(), "src/app/shop/[productId]/p
 assert(productPage.includes("productOgImage"), "product share cards set image width and height");
 const mission = renderToStaticMarkup(createElement(MissionValues));
 assert(
-  mission.includes("Shoppers buy products that are reviewed before they") &&
-    mission.includes("from their shelf to your home."),
-  "the mission sentence renders without a browser",
+  !mission.includes("reviewed") && mission.includes("trust that is earned"),
+  "the mission does not claim products are reviewed",
 );
 setAppUrl(saved.appUrl);
 if (saved.site == null) delete process.env.PUBLIC_SITE_URL;

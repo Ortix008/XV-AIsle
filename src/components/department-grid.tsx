@@ -13,15 +13,15 @@ function deskTiles(): HomeAisleTile[] {
   });
 }
 
-function DepartmentArt({ src, large }: { src: string; large: boolean }) {
+function DepartmentArt({ src, large, solo = false }: { src: string; large: boolean; solo?: boolean }) {
   return (
     <MarkUnderlay
       src={src}
-      sizes={large ? "(min-width: 1024px) 50vw, 100vw" : "(min-width: 1024px) 30vw, 100vw"}
+      sizes={solo ? "100vw" : large ? "(min-width: 1024px) 50vw, 100vw" : "(min-width: 1024px) 30vw, 100vw"}
       zoom
       className={cn(
         "frame-glow rounded-[14px] border border-border",
-        large ? "aspect-[4/5] min-h-72 lg:min-h-[520px] lg:flex-1" : "aspect-[16/10]",
+        solo ? "aspect-[16/10] dept-solo-art" : large ? "aspect-[4/5] min-h-72 lg:min-h-[520px] lg:flex-1" : "aspect-[16/10]",
       )}
     />
   );
@@ -30,14 +30,19 @@ function DepartmentArt({ src, large }: { src: string; large: boolean }) {
 export function DepartmentGrid({ tiles }: { tiles?: readonly HomeAisleTile[] }) {
   const shown = tiles ?? deskTiles();
   if (shown.length === 0) return null;
+  const solo = shown.length === 1;
   return (
-    <ul className="dept-grid grid items-start gap-5 lg:grid-cols-2">
+    <ul className={cn("dept-grid grid items-start gap-5", solo ? "dept-grid-single" : "lg:grid-cols-2")}>
       {shown.map((dept, index) => (
-        <Reveal key={`${dept.title}-${dept.href}`} as="li" index={index % 5} className={cn(index === 0 && "lg:row-span-2")}>
-          <Link href={dept.href} className="aisle-tile flex w-full flex-col rounded-[18px] border border-border bg-secondary p-3.5 text-left">
-            {dept.src ? <DepartmentArt src={dept.src} large={index === 0} /> : null}
-            <h3 className="mt-4 px-1.5 text-2xl font-semibold tracking-[-0.02em]">{dept.title}</h3>
-            <p className="mt-1 px-1.5 pb-1.5 text-sm text-muted-foreground">{dept.line}</p>
+        <Reveal key={`${dept.title}-${dept.href}`} as="li" index={index % 5} className={cn(!solo && index === 0 && "lg:row-span-2")}>
+          <Link href={dept.href} className={cn("aisle-tile flex w-full flex-col rounded-[18px] border border-border bg-secondary p-3.5 text-left", solo && "dept-solo-tile")}>
+            {dept.src ? (
+              <DepartmentArt src={dept.src} large={!solo && index === 0} solo={solo} />
+            ) : null}
+            <div className={solo ? "dept-solo-copy" : undefined}>
+              <h3 className="mt-4 px-1.5 text-2xl font-semibold tracking-[-0.02em]">{dept.title}</h3>
+              <p className="mt-1 px-1.5 pb-1.5 text-sm text-muted-foreground">{dept.line}</p>
+            </div>
           </Link>
         </Reveal>
       ))}

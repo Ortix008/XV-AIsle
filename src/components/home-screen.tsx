@@ -71,12 +71,11 @@ export function JoinScreen({
                 <span className="hero-break">Goods that </span>earn their <span className="text-primary">place.</span>
               </h1>
               <p className="hero-lede mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                A curated market of home, kitchen, and everyday goods.{" "}
-                {"Shipping details are added to each product once its supplier confirms them."}
+                Each pick links to the store where you buy it.
               </p>
               <div className="hero-actions">
-                <Link href="/shop" className="pill pill-primary">
-                  Shop the aisles
+                <Link href={(listings?.length ?? 0) > 0 ? "/shop" : "/aisles"} className="pill pill-primary">
+                  Browse the aisles
                 </Link>
                 {operator ? (
                   <Link href="/shop/reseller" className="status-chip">
@@ -90,22 +89,31 @@ export function JoinScreen({
 
         <section id="aisles" className="scroll-mt-24">
           <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]">
-            <Reveal className="mb-10 flex items-end justify-between gap-5">
-              <div>
-                <p className="eyebrow">Aisles</p>
-                <h2 className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">Four aisles</h2>
-                <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">
-                  {"Each one has its own glow. Here's what you'll find inside."}
-                </p>
-              </div>
-              <Link href="/shop" className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary">
-                View all →
-              </Link>
-            </Reveal>
-            <NightStalls slugs={nightSlugs} />
+            {nightSlugs.length > 0 ? (
+              <>
+                <Reveal className="mb-10 flex items-end justify-between gap-5">
+                  <div>
+                    <p className="eyebrow">Aisles</p>
+                    <h2 className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">Our aisles</h2>
+                    <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">
+                      {"Each one has its own glow. Here's what you'll find inside."}
+                    </p>
+                  </div>
+                  <Link
+                    href={(listings?.length ?? 0) > 0 ? "/shop" : "/aisles"}
+                    className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary"
+                  >
+                    View all →
+                  </Link>
+                </Reveal>
+                <NightStalls slugs={nightSlugs} />
+              </>
+            ) : null}
             {moreAisles.length > 0 ? (
               <>
-                <h3 className="mt-16 mb-8 text-3xl sm:text-4xl">More aisles to wander.</h3>
+                <h3 className={nightSlugs.length > 0 ? "mt-16 mb-8 text-3xl sm:text-4xl" : "mb-8 text-3xl sm:text-4xl"}>
+                  Step into an aisle.
+                </h3>
                 <DepartmentGrid tiles={moreAisles} />
               </>
             ) : null}
@@ -115,7 +123,7 @@ export function JoinScreen({
         <ShopGrid
           kicker="Featured"
           title="In the store"
-          lede="Every item is reviewed before it's listed. Shipping details are added to each product once its supplier confirms them."
+          lede="Shipping details are added to each product once its supplier confirms them."
           query=""
           empty="Nothing's on the shelves yet. We're picking the first pieces now."
           limit={4}
@@ -147,16 +155,6 @@ export function JoinScreen({
             <Reveal as="article" index={2} className="rounded-2xl border border-border bg-secondary p-7">
               <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
               <p className="text-sm leading-relaxed text-muted-foreground">{checkoutLine}</p>
-            </Reveal>
-          </div>
-        </section>
-
-        <section className="border-t border-border">
-          <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10">
-            <Reveal>
-              <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
-                We take a close look at every product before it reaches our aisles.
-              </p>
             </Reveal>
           </div>
         </section>
