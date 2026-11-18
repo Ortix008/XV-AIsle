@@ -3,8 +3,10 @@ import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const forbidden = ["Viator", "GetYourGuide", "Zazzle", "Bookshop", "[WORDY"];
-const routes = ["/", "/shop?aisle=home-and-gifts", "/aisles/tickets-and-events"];
+const viatorUrl = "https://www.viator.com/?pid=P00330828&mcid=42383&medium=link";
+const guideUrl = "https://www.getyourguide.com/?partner_id=YEH3QKQ";
+const zazzleUrl = "https://www.zazzle.com/?rf=238672294015858667";
+const disclosure = "We may earn a commission when you buy through these links.";
 const port = 4331;
 const base = `http://127.0.0.1:${port}`;
 
@@ -61,15 +63,26 @@ async function main() {
   });
   try {
     await waitForServer();
-    for (const route of routes) {
-      const response = await fetch(base + route);
-      const body = await response.text();
-      const expected = route === "/aisles/tickets-and-events" ? 404 : 200;
-      assert(response.status === expected, `${route} returned ${response.status}`);
-      for (const word of forbidden) {
-        assert(!body.includes(word), `${route} HTML/RSC includes ${word}`);
-      }
+    const home = await fetch(base + "/", { redirect: "manual" });
+    const homeBody = await home.text();
+    assert(home.status === 200, `home returned ${home.status}`);
+    for (const word of ["Viator", "GetYourGuide", "Zazzle", "Bookshop", "[WORDY", viatorUrl, zazzleUrl]) {
+      assert(!homeBody.includes(word), `home HTML/RSC includes ${word}`);
     }
+    const gifts = await fetch(base + "/shop?aisle=home-and-gifts", { redirect: "manual" });
+    const giftsBody = await gifts.text();
+    assert(gifts.status === 200, `Home & Gifts returned ${gifts.status}`);
+    assert(giftsBody.includes(zazzleUrl.replaceAll("&", "&amp;")), "Home & Gifts HTML renders the Zazzle URL");
+    assert(giftsBody.includes('rel="sponsored noopener noreferrer"'), "Home & Gifts partner links are sponsored");
+    assert(giftsBody.includes(disclosure), "Home & Gifts shows the short disclosure");
+    assert(!giftsBody.includes("bookshop.org") && !giftsBody.includes("[WORDY"), "Home & Gifts omits the unset Bookshop link");
+    const tickets = await fetch(base + "/aisles/tickets-and-events", { redirect: "manual" });
+    const ticketsBody = await tickets.text();
+    assert(tickets.status === 200, `Tickets & Events returned ${tickets.status}`);
+    assert(ticketsBody.includes(viatorUrl.replaceAll("&", "&amp;")), "Tickets HTML renders the Viator URL");
+    assert(ticketsBody.includes(guideUrl), "Tickets HTML renders the GetYourGuide URL");
+    assert(ticketsBody.includes('rel="sponsored noopener noreferrer"'), "Tickets partner links are sponsored");
+    assert(ticketsBody.includes(disclosure) && !ticketsBody.includes("[WORDY"), "Tickets shows the short disclosure");
   } finally {
     child.kill("SIGTERM");
   }

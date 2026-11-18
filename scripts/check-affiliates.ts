@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, type ReactElement } from "react";
 import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -38,7 +38,16 @@ async function main() {
   const map = readFileSync(join(process.cwd(), "docs/affiliate-page-map.md"), "utf8");
   assert(map.includes(affiliates.AFFILIATE_DISCLOSURE_SHORT), "the page map quotes the card disclosure");
   assert(map.includes("Gift a book") && map.includes("Gift ideas") && map.includes("Tours and things to do"), "the page map uses the approved headings");
-  assert(affiliates.AFFILIATE_OFFERS.every((offer) => offer.href === ""), "affiliate hrefs stay empty until a link-builder URL is pasted");
+  const approvedHrefs: Record<string, string> = {
+    bookshop: "",
+    viator: "https://www.viator.com/?pid=P00330828&mcid=42383&medium=link",
+    getyourguide: "https://www.getyourguide.com/?partner_id=YEH3QKQ",
+    zazzle: "https://www.zazzle.com/?rf=238672294015858667",
+  };
+  assert(
+    affiliates.AFFILIATE_OFFERS.every((offer) => offer.href === approvedHrefs[offer.id]),
+    "affiliate hrefs are the approved URLs, with Bookshop left unset",
+  );
   assert(
     affiliates.AFFILIATE_OFFERS.every((offer) => offer.disclosure === affiliates.AFFILIATE_DISCLOSURE_SHORT),
     "each partner card uses the shorter disclosure",
@@ -48,20 +57,29 @@ async function main() {
   assert(byId.get("getyourguide")?.partnerId === "YEH3QKQ", "GetYourGuide keeps its public partner id");
   assert(byId.get("zazzle")?.partnerId === "238672294015858667", "Zazzle keeps its public ambassador id");
   assert(byId.get("bookshop")?.partnerId === "", "Bookshop's partner id stays pending");
-  assert(!affiliates.experiencesSpotHasLinks(), "empty experiences hrefs do not count as content");
-  assert(!affiliates.ticketsAisleListed(0), "Tickets & Events stays unlisted with no items and no links");
+  const closed = affiliates.AFFILIATE_OFFERS.map((offer) => ({ ...offer, href: "" }));
+  assert(affiliates.experiencesSpotHasLinks(), "the committed experiences hrefs count as content");
+  assert(!affiliates.experiencesSpotHasLinks(closed), "empty experiences hrefs do not count as content");
+  assert(affiliates.ticketsAisleListed(0), "Tickets & Events is listed from the committed experiences links");
+  assert(!affiliates.ticketsAisleListed(0, closed), "Tickets & Events stays unlisted with no items and no links");
+  assert(affiliates.giftSpotsHaveLinks(), "the committed Zazzle href opens the gift spots");
+  assert(!affiliates.giftSpotsHaveLinks(closed), "empty gift hrefs do not count as content");
+
+  function renderedHrefs(markup: string) {
+    return [...markup.matchAll(/href="([^"]*)"/g)].map((match) => match[1].replaceAll("&amp;", "&"));
+  }
 
   for (const spot of ["books", "experiences", "gifts"] as const) {
-    const markup = renderToStaticMarkup(createElement(AffiliateSpot, { spot }));
-    assert(markup === "", `${spot} spot markup is empty`);
+    const markup = renderToStaticMarkup(createElement(AffiliateSpot, { spot, offers: closed }));
+    assert(markup === "", `${spot} spot markup is empty when its hrefs are blank`);
   }
   const quiet = renderToStaticMarkup(
     createElement(
       "div",
       null,
-      createElement(AffiliateSpot, { spot: "books" }),
-      createElement(AffiliateSpot, { spot: "gifts" }),
-      createElement(AffiliateSpot, { spot: "experiences" }),
+      createElement(AffiliateSpot, { spot: "books", offers: closed }),
+      createElement(AffiliateSpot, { spot: "gifts", offers: closed }),
+      createElement(AffiliateSpot, { spot: "experiences", offers: closed }),
     ),
   );
   for (const word of ["Viator", "GetYourGuide", "Zazzle", "Bookshop", "[WORDY"]) {
@@ -83,6 +101,26 @@ async function main() {
   const gifts = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "gifts", offers: filled }));
   assert(gifts.includes("238672294015858667") && gifts.includes('rel="sponsored noopener noreferrer"'), "the Zazzle link includes its ambassador id");
   assert(gifts.includes(affiliates.AFFILIATE_COPY.giftsHeading), "the gifts heading is the approved line");
+  const liveExperiences = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "experiences" }));
+  const liveHrefs = renderedHrefs(liveExperiences);
+  assert(liveHrefs.includes(approvedHrefs.viator) && liveHrefs.includes(approvedHrefs.getyourguide), "experiences renders the approved URLs exactly");
+  assert(liveExperiences.includes('rel="sponsored noopener noreferrer"') && liveExperiences.includes('target="_blank"'), "the committed experiences links are sponsored and open a new tab");
+  assert(
+    liveExperiences.includes(`>${affiliates.AFFILIATE_DISCLOSURE_SHORT}<`) &&
+      liveExperiences.indexOf("partner-card-disclosure") > liveExperiences.indexOf("partner-card-cta"),
+    "the short disclosure sits next to each experiences link",
+  );
+  const liveGifts = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "gifts" }));
+  assert(renderedHrefs(liveGifts).includes(approvedHrefs.zazzle), "Zazzle renders the approved URL exactly");
+  assert(liveGifts.includes('rel="sponsored noopener noreferrer"'), "the Zazzle link is sponsored");
+  assert(
+    liveGifts.includes(`>${affiliates.AFFILIATE_DISCLOSURE_SHORT}<`) &&
+      liveGifts.indexOf("partner-card-disclosure") > liveGifts.indexOf("partner-card-cta"),
+    "the short disclosure sits next to the Zazzle link",
+  );
+  assert(!liveGifts.includes("$") && !/price/i.test(liveGifts), "the committed Zazzle card shows no price");
+  const liveBooks = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "books" }));
+  assert(liveBooks === "", "an unset Bookshop href renders no card");
   const books = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "books", offers: filled }));
   assert(books.includes(affiliates.AFFILIATE_COPY.bookshopLink) && books.includes('target="_blank"'), "the Bookshop link uses the approved label");
   assert(books.includes(affiliates.AFFILIATE_DISCLOSURE_SHORT), "a filled link shows the card disclosure");
@@ -133,19 +171,29 @@ async function main() {
     assert(visibleItemCount(`/shop?aisle=${slug}`, []) === 0, `${slug} shows no shopper-visible items in an empty prod-like shelf`);
   }
   const more = homepageMoreAisles([]);
-  assert(more.map((tile) => tile.href).join() === "/aisles/kitchen", "More aisles keeps only Kitchen when the other targets are empty");
-  assert(!more.some((tile) => tile.href.includes("tickets")), "Tickets & Events is hidden while its links are empty");
-  assert(homepageNightSlugs([]).length === 0, "empty night aisles are not linked from the homepage");
-  assert(!homeGiftsListed([]), "Home & Gifts is closed with no items and no partner links");
-  assert(!shopStallTabs([]).some((tab) => tab.slug === "home-and-gifts"), "the shop tab hides Home & Gifts when it is closed");
+  const closedMore = homepageMoreAisles([], closed);
+  assert(closedMore.map((tile) => tile.href).join() === "/aisles/kitchen", "More aisles keeps only Kitchen when the other targets are empty");
+  assert(!closedMore.some((tile) => tile.href.includes("tickets")), "Tickets & Events is hidden while its links are empty");
+  assert(more.some((tile) => tile.href === "/aisles/kitchen") && more.some((tile) => tile.href === "/aisles/tickets-and-events"), "committed experiences links add the Tickets tile");
+  assert(homepageNightSlugs([], closed).length === 0, "empty night aisles are not linked when partner hrefs are blank");
+  assert(homepageNightSlugs([]).includes("home-and-gifts"), "the Zazzle link shows the Home & Gifts tile");
+  assert(!homeGiftsListed([], closed), "Home & Gifts is closed with no items and no partner links");
+  assert(homeGiftsListed([]), "Home & Gifts stays open from the Zazzle link alone");
+  assert(!shopStallTabs([], closed).some((tab) => tab.slug === "home-and-gifts"), "the shop tab hides Home & Gifts when it is closed");
+  assert(shopStallTabs([]).some((tab) => tab.slug === "home-and-gifts"), "the shop tab shows Home & Gifts when Zazzle is linked");
+  let giftsPage: unknown = null;
   let redirected = false;
   try {
-    await ShopPage({ searchParams: Promise.resolve({ aisle: "home-and-gifts" }) });
+    giftsPage = await ShopPage({ searchParams: Promise.resolve({ aisle: "home-and-gifts" }) });
   } catch (error) {
     const digest = error && typeof error === "object" && "digest" in error ? String((error as { digest?: unknown }).digest) : "";
-    redirected = digest.includes("NEXT_REDIRECT") && digest.includes("/shop");
+    redirected = digest.includes("NEXT_REDIRECT");
   }
-  assert(redirected, "an empty Home & Gifts aisle redirects to /shop");
+  assert(!redirected && giftsPage, "Home & Gifts renders when Zazzle has a link");
+  const giftsPageHtml = renderToStaticMarkup(giftsPage as ReactElement);
+  assert(renderedHrefs(giftsPageHtml).includes(approvedHrefs.zazzle), "the Home & Gifts page renders the Zazzle URL exactly");
+  assert(!giftsPageHtml.includes("bookshop.org") && !giftsPageHtml.includes(">Bookshop.org<"), "an unset Bookshop href stays off the Home & Gifts page");
+  assert(giftsPageHtml.includes("Gift ideas") && !giftsPageHtml.includes("Gift a book"), "only the linked gift heading renders");
   const bookshopOnly = filled.filter((offer) => offer.network === "bookshop");
   assert(homeGiftsListed([], bookshopOnly), "one Bookshop link opens Home & Gifts");
   assert(homepageNightSlugs([], bookshopOnly).includes("home-and-gifts"), "one Bookshop link shows the Home & Gifts tile");
@@ -164,7 +212,7 @@ async function main() {
       checkoutLine: "Cards are checked on this site.",
       listings: [],
       nightSlugs: [],
-      moreAisles: more,
+      moreAisles: closedMore,
     }),
   );
   assert(homeEmpty.includes("Browse the aisles") && homeEmpty.includes('href="/aisles"'), "an empty shop points the hero at the aisles");
@@ -178,10 +226,20 @@ async function main() {
       checkoutLine: "Cards are checked on this site.",
       listings: [{ productId: "pan", title: "Pan", image: "/art/mock-sheet-pan-1.png" }],
       nightSlugs: ["everyday-finds"],
-      moreAisles: more,
+      moreAisles: closedMore,
     }),
   );
   assert(homeStocked.includes("Our aisles") && homeStocked.includes('href="/shop"'), "a stocked shop restores Our aisles and the shop links");
+  const homeLive = renderToStaticMarkup(
+    createElement(JoinScreen, {
+      checkoutLine: "Cards are checked on this site.",
+      listings: [],
+      nightSlugs: homepageNightSlugs([]),
+      moreAisles: more,
+    }),
+  );
+  assert(homeLive.includes("Our aisles") && homeLive.includes('href="/shop?aisle=home-and-gifts"'), "the live homepage shows Home & Gifts");
+  assert(homeLive.includes('href="/aisles/tickets-and-events"') && !homeLive.includes("dept-grid-single"), "the live homepage shows Tickets beside Kitchen");
   const emptyShop = renderToStaticMarkup(createElement(ShopScreen, { slug: "", listings: [] }));
   assert(emptyShop.includes("Our current picks live in the aisles."), "an empty shop names where the picks are");
   assert(emptyShop.includes("Browse the aisles") && emptyShop.includes('href="/aisles"'), "an empty shop button opens the aisles");

@@ -2,6 +2,7 @@ const mission =
   "XV-AIsle exists to remove one of retail's oldest barriers, the cost of holding stock.";
 const missionBody =
   "We connect established brands, independent resellers and everyday shoppers in one trusted US marketplace. Brands reach customers beyond their own channels. Resellers build a business on curation and service, not inventory. Every listing, order and partnership is held to the same standard: trust that is earned, not\u00A0assumed.";
+export { missionBody };
 const vision =
   "Commerce where opportunity isn't limited to those who can afford inventory, and where anyone, from any background, can build a business of their own.";
 
@@ -20,7 +21,6 @@ export function MissionValues() {
           {mission.split("the cost of holding stock.")[0]}
           <em>the cost of holding stock.</em>
         </h2>
-        <p className="vm-body text-pretty">{missionBody}</p>
         <div className="vm-vision">
           <div className="vm-eye">Our vision</div>
           <p>{vision}</p>

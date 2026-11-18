@@ -27,7 +27,7 @@ export function generateMetadata(): Metadata {
   return {
     title: "XV-AIsle",
     description:
-      "XV-AIsle is a curated US market for home, kitchen and everyday goods.",
+      "XV-AIsle gathers home, kitchen and everyday picks, each linking to the store where you buy it.",
     ...shareCardMetadata(),
   };
 }

@@ -281,10 +281,16 @@ assert(siteCard.width === 1200 && siteCard.height === 630, "the site card on a p
 const productPage = readFileSync(join(process.cwd(), "src/app/shop/[productId]/page.tsx"), "utf8");
 assert(productPage.includes("productOgImage"), "product share cards set image width and height");
 const mission = renderToStaticMarkup(createElement(MissionValues));
+const missionSource = readFileSync(join(process.cwd(), "src/components/mission-values.tsx"), "utf8");
 assert(
-  !mission.includes("reviewed") && mission.includes("trust that is earned"),
-  "the mission does not claim products are reviewed",
+  missionSource.includes("trust that is earned, not\\u00A0assumed."),
+  "the locked mission paragraph stays in the source",
 );
+assert(
+  !mission.includes("vm-body") && !mission.includes("trust that is earned") && !mission.includes("reviewed"),
+  "the mission paragraph is hidden for launch",
+);
+assert(mission.includes("Our mission") && mission.includes("Our vision"), "the mission block still renders without that paragraph");
 setAppUrl(saved.appUrl);
 if (saved.site == null) delete process.env.PUBLIC_SITE_URL;
 else process.env.PUBLIC_SITE_URL = saved.site;

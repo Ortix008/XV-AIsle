@@ -593,7 +593,13 @@ async function main() {
       assert(!html.includes(phrase), `${slug} omits ${phrase}`);
     }
   }
-  for (const slug of ["tickets-and-events", "no-such-aisle", "gifts"]) {
+  const ticketsPage = await aislePage.default({ params: Promise.resolve({ slug: "tickets-and-events" }) });
+  const ticketsHtml = renderToStaticMarkup(ticketsPage);
+  assert(ticketsHtml.includes("https://www.viator.com/?pid=P00330828&amp;mcid=42383&amp;medium=link"), "Tickets & Events renders the Viator URL");
+  assert(ticketsHtml.includes("https://www.getyourguide.com/?partner_id=YEH3QKQ"), "Tickets & Events renders the GetYourGuide URL");
+  assert(ticketsHtml.includes('rel="sponsored noopener noreferrer"'), "Tickets & Events partner links are sponsored");
+  assert(ticketsHtml.includes("We may earn a commission when you buy through these links."), "Tickets & Events shows the short disclosure");
+  for (const slug of ["no-such-aisle", "gifts"]) {
     try {
       await aislePage.default({ params: Promise.resolve({ slug }) });
       throw new Error(`${slug} rendered a page`);

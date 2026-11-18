@@ -123,7 +123,7 @@ export function JoinScreen({
         <ShopGrid
           kicker="Featured"
           title="In the store"
-          lede="Shipping details are added to each product once its supplier confirms them."
+          lede="Prices, shipping and returns are set by the store you buy from."
           query=""
           empty="Nothing's on the shelves yet. We're picking the first pieces now."
           limit={4}
