@@ -16,7 +16,6 @@ export const SITEMAP_PATHS = [
   "/",
   "/shop",
   "/shop/small",
-  "/shop/how-we-check",
   "/shop/shipping",
   "/shop/returns",
   "/shop/contact",

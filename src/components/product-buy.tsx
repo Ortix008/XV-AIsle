@@ -9,7 +9,7 @@ import { CheckoutPolicies } from "@/components/shop-footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isStripeCheckoutUrl } from "@/lib/checkout-url";
-import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
+import { formatCheckDate } from "@/lib/honest-price";
 import { money } from "@/lib/money";
 import { QA_CHECKOUT_PRODUCT_ID } from "@/lib/qa-checkout";
 import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE, UNCONFIRMED_BUTTON, UNCONFIRMED_LABEL } from "@/lib/shelf-copy";
@@ -394,9 +394,6 @@ export function ProductBuy({
           </dl>
         </section>
         <div className="product-links link-row">
-          <Link href={HOW_WE_CHECK_HREF} className="tap-link">
-            How we check
-          </Link>
           <ShareToX href={shareHref} />
         </div>
         <CheckoutPolicies />

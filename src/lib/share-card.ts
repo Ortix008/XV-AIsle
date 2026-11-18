@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { publicSiteUrl } from "@/lib/config/env";
 
 export const SHARE_IMAGE_ALT =
-  "XV-AIsle wordmark over a dimly lit aisle of shelves with glowing lanterns. A curated US market for home, kitchen and everyday goods.";
+  "XV-AIsle wordmark over a dimly lit aisle of shelves with glowing lanterns. Home, kitchen and everyday picks, each linking to the store where you buy it.";
 
 export function shareCard() {
   return {

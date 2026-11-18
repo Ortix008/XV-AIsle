@@ -1,5 +1,6 @@
 /** Exact eyebrow on the homepage hero. */
-export const HERO_EYEBROW = "A curated US market";
+export const HERO_EYEBROW =
+  "XV-AIsle gathers home, kitchen and everyday picks, each linking to the store where you buy it.";
 
 /**
  * Previous live headline.

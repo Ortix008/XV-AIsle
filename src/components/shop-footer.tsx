@@ -7,7 +7,6 @@ import { useOptionalAccount } from "@/lib/account-store";
 import { AMAZON_ASSOCIATE_DISCLOSURE } from "@/lib/amazon-aisles";
 import { giftSpotsHaveLinks } from "@/config/affiliates";
 import { OPERATOR_ABOUT } from "@/config/operator-about";
-import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
 const RESELLER_LINKS = new Set(["/shop/reseller", "/shop/reseller/terms"]);
@@ -32,9 +31,7 @@ const columns = [
   {
     title: "Company",
     links: [
-      { href: "/shop/reseller", label: "Reseller program coming soon." },
       { href: "/shop/reseller/terms", label: "Reseller terms" },
-      { href: HOW_WE_CHECK_HREF, label: "How we check" },
       { href: "/shop/privacy", label: "Privacy" },
       { href: "/shop/terms", label: "Terms" },
     ],
@@ -77,11 +74,7 @@ export function ShopFooter({
               <BrandMark />
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-              No fake discounts, countdown timers, spin wheels, or made-up stock counts.{" "}
-              <Link href={HOW_WE_CHECK_HREF} className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
-                How we check
-              </Link>
-              .
+              No fake discounts, countdown timers, spin wheels, or made-up stock counts.
             </p>
           </div>
           {shown.map((column) => (
@@ -132,9 +125,6 @@ export function CheckoutPolicies() {
       </Link>
       <Link href="/shop/contact" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Contact
-      </Link>
-      <Link href={HOW_WE_CHECK_HREF} className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
-        How we check
       </Link>
     </div>
   );

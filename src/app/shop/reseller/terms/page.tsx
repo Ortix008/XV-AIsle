@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { PolicyArticle } from "@/components/policy-article";
 import { viewerIsOperator } from "@/lib/server/require-operator";
 
@@ -14,11 +13,7 @@ export function ResellerTermsArticle({ operator = false }: { operator?: boolean 
       </p>
       <p>XV can remove a listing that breaks these rules.</p>
       <p>
-        The short version is on the{" "}
-        <Link href="/shop/reseller" className="underline underline-offset-4">
-          reseller program
-        </Link>{" "}
-        page.
+        The short version is on the reseller program page.
       </p>
     </PolicyArticle>
   );
