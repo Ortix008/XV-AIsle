@@ -23,7 +23,7 @@ async function main() {
   process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "xvaisle-affiliate-")), "shop.sqlite");
   const affiliates = await import("../src/config/affiliates");
   const { AffiliateLink } = await import("../src/components/affiliate-link");
-  const { AffiliateSpot } = await import("../src/components/affiliate-spot");
+  const { AffiliateSpot, HomeGiftSpots } = await import("../src/components/affiliate-spot");
   const { DepartmentGrid } = await import("../src/components/department-grid");
   const { NightStalls } = await import("../src/components/night-stalls");
   const { homeGiftsListed, homepageMoreAisles, homepageNightSlugs, shopStallTabs, visibleItemCount } = await import("../src/lib/home-aisles");
@@ -247,7 +247,15 @@ async function main() {
   for (const phrase of ["Our current picks live in the aisles.", "New finds landing soon", "This aisle is quiet for now", "Browse the aisles"]) {
     assert(!emptyShop.includes(phrase) && !giftsPageHtml.includes(phrase), `the empty-aisle panel is hidden (${phrase})`);
   }
-  assert(!giftsPageHtml.includes('href="/shop?aisle=home-and-gifts"'), "Home & Gifts does not link back to itself");
+  assert(
+    !/href="\/shop\?aisle=home-and-gifts"[^>]*stall-tab|stall-tab[^>]*href="\/shop\?aisle=home-and-gifts"/.test(giftsPageHtml),
+    "Home & Gifts does not show a tile linking to itself",
+  );
+  assert(giftsPageHtml.includes('href="/shop?aisle=home-and-gifts"'), "the footer nav still opens Home & Gifts");
+  const soloGifts = renderToStaticMarkup(createElement(HomeGiftSpots));
+  assert(soloGifts.includes("partner-spot-solo") && !soloGifts.includes("Gift a book"), "an unset Bookshop link hides the books column");
+  const bothGifts = renderToStaticMarkup(createElement(HomeGiftSpots, { offers: filled }));
+  assert(!bothGifts.includes("partner-spot-solo") && bothGifts.includes("Gift a book"), "a Bookshop link brings the books column back");
   assert(!giftsPageHtml.includes("Our mission") && !giftsPageHtml.includes("Buyers pay on xvaisle.com"), "Home & Gifts hides the mission block and the buyers-pay line");
   const neighbor = renderToStaticMarkup(
     createElement(ShopScreen, {
@@ -255,7 +263,11 @@ async function main() {
       listings: [{ productId: "wheel", title: "Wheel", image: "/art/products/6-inch-yoga-wheel.jpg", aisle: "everyday-finds" }],
     }),
   );
-  assert(neighbor.includes('href="/shop?aisle=everyday-finds"') && !neighbor.includes('href="/shop?aisle=home-and-gifts"'), "an aisle keeps other tiles and drops its own");
+  assert(
+    neighbor.includes('href="/shop?aisle=everyday-finds"') &&
+      !/href="\/shop\?aisle=home-and-gifts"[^>]*stall-tab|stall-tab[^>]*href="\/shop\?aisle=home-and-gifts"/.test(neighbor),
+    "an aisle keeps other tiles and drops its own",
+  );
   assert(!emptyShop.includes("All aisles"), "an empty shop does not link All aisles back to itself");
   let shopRedirect = false;
   try {

@@ -5,6 +5,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { MissionValues } from "@/components/mission-values";
 import { useOptionalAccount } from "@/lib/account-store";
 import { AMAZON_ASSOCIATE_DISCLOSURE } from "@/lib/amazon-aisles";
+import { giftSpotsHaveLinks } from "@/config/affiliates";
 import { OPERATOR_ABOUT } from "@/config/operator-about";
 import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
@@ -59,7 +60,12 @@ export function ShopFooter({
   const operator = showReseller ?? signedInOperator;
   const shown = columns.map((column) => ({
     ...column,
-    links: operator ? column.links : column.links.filter((link) => !RESELLER_LINKS.has(link.href)),
+    links: [
+      ...(operator ? column.links : column.links.filter((link) => !RESELLER_LINKS.has(link.href))),
+      ...(column.title === "Shop" && giftSpotsHaveLinks()
+        ? [{ href: "/shop?aisle=home-and-gifts", label: "Home & Gifts" }]
+        : []),
+    ],
   }));
   return (
     <footer className="shop-footer mt-auto bg-[var(--footer)] pb-9">
@@ -67,7 +73,7 @@ export function ShopFooter({
       <div className={`mx-auto max-w-[1280px] px-5 sm:px-10 ${showBrandBlock ? "pt-16" : "pt-8"}`}>
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
           <div>
-            <Link href="/" className="inline-flex">
+            <Link href="/" className="footer-mark">
               <BrandMark />
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">

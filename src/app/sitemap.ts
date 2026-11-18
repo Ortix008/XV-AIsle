@@ -5,6 +5,8 @@ import { visibleOnShop } from "@/lib/server/starter-shelf";
 import { appOrigin } from "@/lib/server/stripe";
 import { listPublished } from "@/lib/server/store";
 import { liveAislePaths } from "@/lib/amazon-aisles";
+import { homeGiftsListed } from "@/lib/home-aisles";
+import { publicGridListings } from "@/lib/server/shop-catalog";
 import { hasRealProductPhoto } from "@/lib/shop-photo";
 import { comingSoonListing } from "@/lib/supplier-confirm";
 
@@ -51,6 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages = [
     ...SITEMAP_PATHS.map((path) => `${origin}${path}`),
     ...liveAislePaths().map((path) => `${origin}${path}`),
+    ...(homeGiftsListed(publicGridListings()) ? [`${origin}/shop?aisle=home-and-gifts`] : []),
   ];
   const products = listPublished()
     .filter(sitemapListsProduct)

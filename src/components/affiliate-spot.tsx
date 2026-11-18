@@ -41,13 +41,13 @@ export function AffiliateSpot({
 
 /** Bookshop and Zazzle sit side by side once either card has a link. */
 export function HomeGiftSpots({ offers = AFFILIATE_OFFERS }: { offers?: readonly AffiliateOffer[] }) {
-  const books = visibleAffiliateOffers("books", null, offers);
-  const gifts = visibleAffiliateOffers("gifts", null, offers);
-  if (books.length === 0 && gifts.length === 0) return null;
+  const spots = (["books", "gifts"] as const).filter((spot) => visibleAffiliateOffers(spot, null, offers).length > 0);
+  if (spots.length === 0) return null;
   return (
-    <div className="partner-spot-row">
-      <AffiliateSpot spot="books" offers={offers} />
-      <AffiliateSpot spot="gifts" offers={offers} />
+    <div className={spots.length === 1 ? "partner-spot-row partner-spot-solo" : "partner-spot-row"}>
+      {spots.map((spot) => (
+        <AffiliateSpot key={spot} spot={spot} offers={offers} />
+      ))}
     </div>
   );
 }

@@ -62,9 +62,11 @@ function AiShoppersNote() {
 export function AisleIndex({
   aisles,
   includeTickets = false,
+  extras = [],
 }: {
   aisles: readonly AmazonAisle[];
   includeTickets?: boolean;
+  extras?: readonly { href: string; name: string; intro: string }[];
 }) {
   const live = [
     ...liveAisles(aisles),
@@ -76,6 +78,16 @@ export function AisleIndex({
       {AISLE_INDEX_COPY.intro ? <p className="affiliate-intro">{AISLE_INDEX_COPY.intro}</p> : null}
       <AiShoppersNote />
       <ul className="affiliate-index">
+        {extras.map((extra) => (
+          <li key={extra.href}>
+            <Link href={extra.href} className="affiliate-tile">
+              <span className="affiliate-tile-copy">
+                <h2 className="affiliate-card-name">{extra.name}</h2>
+                {extra.intro ? <p className="affiliate-blurb affiliate-tile-intro">{extra.intro}</p> : null}
+              </span>
+            </Link>
+          </li>
+        ))}
         {live.map((aisle) => (
           <li key={aisle.slug}>
             <Link href={`/aisles/${aisle.slug}`} className="affiliate-tile">
