@@ -5,8 +5,8 @@ import { AccountProvider } from "@/lib/account-store";
 
 export function ShopFrame({
   children,
-  showStorePayLine = true,
-  showBrandBlock = true,
+  showStorePayLine = false,
+  showBrandBlock = false,
   showAmazonDisclosure = false,
 }: {
   children: ReactNode;

@@ -135,6 +135,7 @@ export function ShopGrid({
     listings === null ? null : hidePlainPhotos ? listings.filter((item) => hasRealProductPhoto(item.image)) : listings;
   const visible = withPhotos === null ? null : limit === undefined ? withPhotos : withPhotos.slice(0, limit);
   const Heading = level === "page" ? "h1" : "h2";
+  const otherStalls = (stalls ?? nightWorlds).filter((stall) => stall.slug !== world?.slug);
   if (hideWhenEmpty && (visible === null || visible.length === 0)) return null;
 
   const grid = (
@@ -153,14 +154,13 @@ export function ShopGrid({
             </div>
           </header>
           {afterHero}
+          {otherStalls.length > 0 ? (
           <ul className="stall-tabs">
-            {(stalls ?? nightWorlds).map((stall, index) => {
-              const current = world?.slug === stall.slug;
+            {otherStalls.map((stall, index) => {
               return (
                 <Reveal key={stall.slug} as="li" index={index} pace="shop">
                   <Link
                     href={`/shop?aisle=${stall.slug}`}
-                    aria-current={current ? "page" : undefined}
                     className="stall-tab"
                     style={nightWorldVars(stall) as CSSProperties}
                   >
@@ -184,6 +184,7 @@ export function ShopGrid({
               );
             })}
           </ul>
+          ) : null}
         </>
       ) : null}
       {catalog ? null : world ? (
@@ -219,8 +220,13 @@ export function ShopGrid({
           <p className="mt-3 text-2xl">Opening the store…</p>
         </div>
       ) : null}
-      {visible?.length === 0 ? (
-        catalog ? (
+      {visible?.length === 0 && !catalog ? (
+        <div className="empty-panel">
+          <p className="eyebrow">Empty</p>
+          <p className="mt-3 text-2xl">{empty}</p>
+        </div>
+      ) : null}
+      {false ? (
           <div className="shop-empty">
             <div className="shop-empty-art" aria-hidden />
             <div className="shop-empty-copy">
@@ -232,15 +238,10 @@ export function ShopGrid({
               </Link>
             </div>
           </div>
-        ) : (
-          <div className="empty-panel">
-            <p className="eyebrow">Empty</p>
-            <p className="mt-3 text-2xl">{empty}</p>
-          </div>
-        )
       ) : null}
+      {visible && visible.length > 0 ? (
       <ul className={catalog ? "shop-fill" : "grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4"}>
-        {visible?.map((listing, index) => {
+        {visible.map((listing, index) => {
           return (
             <Reveal key={listing.productId} as="li" index={index} pace={catalog ? "shop" : "page"}>
               <Link href={`/shop/${listing.productId}`} className="product-card block border border-border bg-card p-2 sm:p-3">
@@ -259,6 +260,7 @@ export function ShopGrid({
           );
         })}
       </ul>
+      ) : null}
     </div>
   );
   if (!band) return grid;

@@ -241,8 +241,21 @@ async function main() {
   assert(homeLive.includes("Our aisles") && homeLive.includes('href="/shop?aisle=home-and-gifts"'), "the live homepage shows Home & Gifts");
   assert(homeLive.includes('href="/aisles/tickets-and-events"') && !homeLive.includes("dept-grid-single"), "the live homepage shows Tickets beside Kitchen");
   const emptyShop = renderToStaticMarkup(createElement(ShopScreen, { slug: "", listings: [] }));
-  assert(emptyShop.includes("Our current picks live in the aisles."), "an empty shop names where the picks are");
-  assert(emptyShop.includes("Browse the aisles") && emptyShop.includes('href="/aisles"'), "an empty shop button opens the aisles");
+  const shopGridSource = readFileSync(join(process.cwd(), "src/components/shop-grid.tsx"), "utf8");
+  assert(shopGridSource.includes("Our current picks live in the aisles."), "the empty-aisle panel copy stays in the source");
+  assert(shopGridSource.includes("New finds landing soon"), "the empty-aisle heading stays in the source");
+  for (const phrase of ["Our current picks live in the aisles.", "New finds landing soon", "This aisle is quiet for now", "Browse the aisles"]) {
+    assert(!emptyShop.includes(phrase) && !giftsPageHtml.includes(phrase), `the empty-aisle panel is hidden (${phrase})`);
+  }
+  assert(!giftsPageHtml.includes('href="/shop?aisle=home-and-gifts"'), "Home & Gifts does not link back to itself");
+  assert(!giftsPageHtml.includes("Our mission") && !giftsPageHtml.includes("Buyers pay on xvaisle.com"), "Home & Gifts hides the mission block and the buyers-pay line");
+  const neighbor = renderToStaticMarkup(
+    createElement(ShopScreen, {
+      slug: "home-and-gifts",
+      listings: [{ productId: "wheel", title: "Wheel", image: "/art/products/6-inch-yoga-wheel.jpg", aisle: "everyday-finds" }],
+    }),
+  );
+  assert(neighbor.includes('href="/shop?aisle=everyday-finds"') && !neighbor.includes('href="/shop?aisle=home-and-gifts"'), "an aisle keeps other tiles and drops its own");
   assert(!emptyShop.includes("All aisles"), "an empty shop does not link All aisles back to itself");
   let shopRedirect = false;
   try {

@@ -23,12 +23,16 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+const SITE_DESCRIPTION = "XV-AIsle gathers home, kitchen and everyday picks, each linking to the store where you buy it.";
+
 export function generateMetadata(): Metadata {
+  const share = shareCardMetadata();
   return {
     title: "XV-AIsle",
-    description:
-      "XV-AIsle gathers home, kitchen and everyday picks, each linking to the store where you buy it.",
-    ...shareCardMetadata(),
+    description: SITE_DESCRIPTION,
+    ...share,
+    openGraph: { ...share.openGraph, description: SITE_DESCRIPTION },
+    twitter: { ...share.twitter, description: SITE_DESCRIPTION },
   };
 }
 

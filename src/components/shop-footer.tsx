@@ -42,8 +42,8 @@ const columns = [
 
 export function ShopFooter({
   showReseller,
-  showStorePayLine = true,
-  showBrandBlock = true,
+  showStorePayLine = false,
+  showBrandBlock = false,
   showAmazonDisclosure = false,
   about = OPERATOR_ABOUT,
 }: {

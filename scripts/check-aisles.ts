@@ -447,8 +447,10 @@ for (const aisle of live) {
 
 const PAY_LINE = "Buyers pay on xvaisle.com";
 const footerHtml = renderToStaticMarkup(createElement(ShopFooter));
-assert(footerHtml.includes(PAY_LINE), "the shop footer still names where buyers pay");
-assert(renderToStaticMarkup(createElement(ShopFooter, { showReseller: true })).includes(PAY_LINE), "the home footer still names where buyers pay");
+const footerSource = readFileSync(join(process.cwd(), "src/components/shop-footer.tsx"), "utf8");
+assert(footerSource.includes(PAY_LINE), "the buyers-pay line stays in the footer source");
+assert(!footerHtml.includes(PAY_LINE), "the shop footer hides the buyers-pay line");
+assert(!renderToStaticMarkup(createElement(ShopFooter, { showReseller: true })).includes(PAY_LINE), "the home footer hides the buyers-pay line");
 const aisleIndexPage = renderToStaticMarkup(createElement(AislesPage));
 assert(!aisleIndexPage.includes(PAY_LINE), "the aisle index footer omits the store pay line");
 assert(!aisleIndexPage.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the aisle index has no Amazon picks, so the footer omits the disclosure");
@@ -456,15 +458,20 @@ for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
   assert(!aisleIndexPage.includes(phrase), `the aisle index omits ${phrase}`);
 }
 const shopPage = renderToStaticMarkup(createElement(ShopScreen, { slug: "", listings: [] }));
-assert(shopPage.includes(PAY_LINE), "the shop page footer still names where buyers pay");
+assert(!shopPage.includes(PAY_LINE), "the shop page footer hides the buyers-pay line");
 for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
-  assert(shopPage.includes(phrase), `the shop page still shows ${phrase}`);
+  assert(!shopPage.includes(phrase), `the shop page hides ${phrase}`);
 }
 const homePage = renderToStaticMarkup(createElement(JoinScreen, { checkoutLine: "Cards are checked on this site." }));
-assert(homePage.includes(PAY_LINE), "the home footer still names where buyers pay");
+assert(!homePage.includes(PAY_LINE), "the home footer hides the buyers-pay line");
 for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
-  assert(homePage.includes(phrase), `the home page still shows ${phrase}`);
+  assert(!homePage.includes(phrase), `the home page hides ${phrase}`);
 }
+const missionSource = readFileSync(join(process.cwd(), "src/components/mission-values.tsx"), "utf8");
+assert(
+  missionSource.includes("Our mission") && missionSource.includes("Our vision") && missionSource.includes("What we stand for"),
+  "the mission section text stays in the source",
+);
 assert(!footerHtml.includes(AMAZON_ASSOCIATE_DISCLOSURE), "a page with no Amazon picks omits the disclosure");
 assert(
   renderToStaticMarkup(createElement(ShopFooter, { showAmazonDisclosure: true })).includes(AMAZON_ASSOCIATE_DISCLOSURE),
@@ -599,6 +606,8 @@ async function main() {
   assert(ticketsHtml.includes("https://www.getyourguide.com/?partner_id=YEH3QKQ"), "Tickets & Events renders the GetYourGuide URL");
   assert(ticketsHtml.includes('rel="sponsored noopener noreferrer"'), "Tickets & Events partner links are sponsored");
   assert(ticketsHtml.includes("We may earn a commission when you buy through these links."), "Tickets & Events shows the short disclosure");
+  assert(!ticketsHtml.includes("New finds landing soon") && !ticketsHtml.includes("Our current picks live in the aisles."), "Tickets hides the empty-aisle panel");
+  assert(!ticketsHtml.includes("Our mission") && !ticketsHtml.includes(PAY_LINE), "Tickets hides the mission block and the buyers-pay line");
   for (const slug of ["no-such-aisle", "gifts"]) {
     try {
       await aislePage.default({ params: Promise.resolve({ slug }) });
