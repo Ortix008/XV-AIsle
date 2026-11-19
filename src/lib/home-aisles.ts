@@ -6,6 +6,12 @@ import { stallProductCount, stallsWithProducts, type StallListing } from "@/lib/
 
 export type { HomeAisleTile };
 
+/** Launch switch. Unset is off, so the homepage night-aisle block stays hidden. */
+export function showHomeAisles(value = process.env.SHOW_HOME_AISLES) {
+  const flag = value?.trim().toLowerCase() ?? "";
+  return flag === "1" || flag === "true" || flag === "on" || flag === "yes";
+}
+
 /** How many linkable items that href actually shows a signed-out shopper. */
 export function visibleItemCount(href: string, listings: readonly StallListing[]) {
   if (href.startsWith("/aisles/")) {

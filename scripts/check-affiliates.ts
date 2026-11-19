@@ -26,7 +26,7 @@ async function main() {
   const { AffiliateSpot, HomeGiftSpots } = await import("../src/components/affiliate-spot");
   const { DepartmentGrid } = await import("../src/components/department-grid");
   const { NightStalls } = await import("../src/components/night-stalls");
-  const { homeGiftsListed, homepageMoreAisles, homepageNightSlugs, shopStallTabs, visibleItemCount } = await import("../src/lib/home-aisles");
+  const { homeGiftsListed, homepageMoreAisles, homepageNightSlugs, shopStallTabs, showHomeAisles, visibleItemCount } = await import("../src/lib/home-aisles");
   const { ShopScreen, default: ShopPage } = await import("../src/app/shop/page");
 
   for (const root of ["src", "docs"]) {
@@ -230,16 +230,23 @@ async function main() {
     }),
   );
   assert(homeStocked.includes("Our aisles") && homeStocked.includes('href="/shop"'), "a stocked shop restores Our aisles and the shop links");
+  assert(!showHomeAisles(), "the homepage night-aisle block is off unless SHOW_HOME_AISLES is set");
+  const launchMore = more.filter((tile) => tile.href !== "/aisles/tickets-and-events");
   const homeLive = renderToStaticMarkup(
     createElement(JoinScreen, {
       checkoutLine: "Cards are checked on this site.",
       listings: [],
-      nightSlugs: homepageNightSlugs([]),
-      moreAisles: more,
+      nightSlugs: [],
+      moreAisles: launchMore,
     }),
   );
-  assert(homeLive.includes("Our aisles") && homeLive.includes('href="/shop?aisle=home-and-gifts"'), "the live homepage shows Home & Gifts");
-  assert(homeLive.includes('href="/aisles/tickets-and-events"') && !homeLive.includes("dept-grid-single"), "the live homepage shows Tickets beside Kitchen");
+  assert(!homeLive.includes(">Our aisles<") && !homeLive.includes("aisle-stall"), "the launch homepage hides the night-aisle block");
+  assert(homeLive.includes("dept-grid-single") && homeLive.includes('href="/aisles/kitchen"') && !homeLive.includes("tickets-and-events"), "Kitchen is the only homepage aisle tile");
+  const previousAisles = process.env.SHOW_HOME_AISLES;
+  process.env.SHOW_HOME_AISLES = "1";
+  assert(showHomeAisles(), "SHOW_HOME_AISLES=1 turns the night-aisle block back on");
+  if (previousAisles == null) delete process.env.SHOW_HOME_AISLES;
+  else process.env.SHOW_HOME_AISLES = previousAisles;
   const emptyShop = renderToStaticMarkup(createElement(ShopScreen, { slug: "", listings: [] }));
   const shopGridSource = readFileSync(join(process.cwd(), "src/components/shop-grid.tsx"), "utf8");
   assert(shopGridSource.includes("Our current picks live in the aisles."), "the empty-aisle panel copy stays in the source");

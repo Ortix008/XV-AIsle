@@ -3572,17 +3572,20 @@ button.contact-submit {
 }
 
 @media (min-width: 768px) {
-  .partner-spot-solo .partner-card {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    max-height: 320px;
+  .partner-spot-solo {
+    justify-items: start;
   }
-}
 
-@media (min-width: 1024px) {
   .partner-spot-solo .partner-card {
-    aspect-ratio: 21 / 9;
-    max-height: 360px;
+    width: max-content;
+    max-width: 720px;
+    aspect-ratio: auto;
+    max-height: none;
+  }
+
+  .partner-spot-solo .partner-card-cta {
+    width: max-content;
+    white-space: nowrap;
   }
 }
 

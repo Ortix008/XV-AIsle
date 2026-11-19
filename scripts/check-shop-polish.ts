@@ -327,6 +327,21 @@ async function main() {
     );
   }
   const { default: ProductPage } = await import("../src/app/shop/[productId]/page");
+  let soonHidden = false;
+  try {
+    await ProductPage({ params: Promise.resolve({ productId: "soon-pan" }) });
+  } catch (error) {
+    soonHidden = true;
+    const digest = error instanceof Error ? String((error as { digest?: string }).digest ?? error.message) : "";
+    assert(digest.includes("404"), "a Coming soon product page is not found");
+  }
+  assert(soonHidden, "a Coming soon product page does not render");
+  try {
+    await ProductPage({ params: Promise.resolve({ productId: "ready-pan" }) });
+  } catch (error) {
+    const digest = error instanceof Error ? String((error as { digest?: string }).digest ?? error.message) : "";
+    assert(!digest.includes("404"), "a confirmed product page is not a 404");
+  }
   const hiddenPhotos = [
     ["empty-photo", ""],
     ["mark-photo", "/xv-aisle-mark.svg"],

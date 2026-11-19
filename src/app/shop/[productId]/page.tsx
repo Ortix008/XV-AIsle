@@ -34,7 +34,13 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
   const { productId } = await params;
   ensureStarterShelf();
   const listing = getListing(productId);
-  if (!listing || !visibleOnShop(listing) || listingLoss(listing) || !hasRealProductPhoto(listing.image)) {
+  if (
+    !listing ||
+    !visibleOnShop(listing) ||
+    listingLoss(listing) ||
+    !hasRealProductPhoto(listing.image) ||
+    shopperListingOmitted(listing)
+  ) {
     return { title: "Shop · XV-AIsle" };
   }
   const shown = publicListing(listing, isSampleListing(listing));
@@ -71,7 +77,15 @@ export default async function ProductPage({
   if (canceled) releaseHeldStock(canceled, productId);
   ensureStarterShelf();
   const listing = getListing(productId);
-  if (!listing || !visibleOnShop(listing) || listingLoss(listing) || !hasRealProductPhoto(listing.image)) notFound();
+  if (
+    !listing ||
+    !visibleOnShop(listing) ||
+    listingLoss(listing) ||
+    !hasRealProductPhoto(listing.image) ||
+    shopperListingOmitted(listing)
+  ) {
+    notFound();
+  }
   const aisle = aisleKey(listing);
   const pricesOn = showShopPrices();
   const picks: AislePick[] = aisle
