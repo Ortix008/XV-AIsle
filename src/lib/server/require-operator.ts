@@ -1,13 +1,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isOperatorAccount } from "../account";
 import { accountFromToken } from "./accounts";
 import { SESSION_COOKIE } from "./session-cookie";
 
-export function isOperatorAccount<T extends { role: string; emailVerified: boolean }>(
-  account: T | null | undefined,
-): account is T {
-  return Boolean(account && account.role === "admin" && account.emailVerified);
-}
+export { isOperatorAccount };
 
 export async function viewerIsOperator() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;

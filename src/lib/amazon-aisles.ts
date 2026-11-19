@@ -103,7 +103,7 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
       pick(
         "B00004OCIU",
         "OXO Good Grips Y-Peeler, Black",
-        "A Y-peeler from OXO Good Grips, a little everyday tool for every cook.",
+        "A Y-peeler from OXO Good Grips, a little everyday tool for every kitchen.",
       ),
       pick(
         "B008H2JLTE",

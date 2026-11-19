@@ -62,7 +62,7 @@ const EXPECTED_BLURBS: Record<string, string> = {
   B0764HS4SL: "A 4-in-1 vegetable chopper and spiralizer, a handy helper when dinner prep piles up.",
   B00PG6M5BK: "Four black ceramic canisters with wooden spoons, a handy set for a new kitchen.",
   B0CBS8WNY5: "A wavy spoon holder with a sense of humor, for the spot right next to your stove.",
-  B00004OCIU: "A Y-peeler from OXO Good Grips, a little everyday tool for every cook.",
+  B00004OCIU: "A Y-peeler from OXO Good Grips, a little everyday tool for every kitchen.",
   B008H2JLTE: "A small wooden spoon for stirring and tasting, handy at every meal.",
   B088GX8V21: "A 15-piece utensil set with silicone heads and stainless-steel handles, a full kit for a new kitchen.",
   B0157G34AY: "A 9-pack of glass food storage, ready for the leftovers after a big family dinner.",

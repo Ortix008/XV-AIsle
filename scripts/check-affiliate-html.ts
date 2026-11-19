@@ -78,6 +78,11 @@ async function main() {
       "Local business",
       "packs the order",
       "Big companies",
+      "curated US market",
+      "every cook",
+      "Your share",
+      "release a payout",
+      "Reseller program coming soon",
     ]) {
       assert(!homeBody.includes(word), `home HTML/RSC includes ${word}`);
     }

@@ -218,6 +218,7 @@ async function main() {
   const config = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
   assert(config.includes('source: "/reseller"') && config.includes('destination: "/aisles"'), "/reseller redirects to the aisles for launch");
   assert(config.includes('source: "/shop/reseller"') && config.includes('destination: "/aisles"'), "/shop/reseller redirects to the aisles for launch");
+  assert(config.includes('source: "/shop/reseller/terms"') && config.includes('destination: "/aisles"'), "/shop/reseller/terms redirects to the aisles for launch");
   assert(config.includes('source: "/shop/how-we-check"') && config.includes('destination: "/aisles"'), "/shop/how-we-check redirects to the aisles for launch");
   assert(config.includes('source: "/shop/safety"') && config.includes('destination: "/aisles"'), "/shop/safety redirects to the aisles for launch");
   const signup = readFileSync(join(process.cwd(), "src/components/auth-screens.tsx"), "utf8");

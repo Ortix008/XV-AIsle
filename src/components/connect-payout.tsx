@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { accountSupportRef } from "@/lib/account";
+import { accountSupportRef, isOperatorAccount } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
 import { isStripeRedirectUrl } from "@/lib/checkout-url";
 
@@ -31,7 +31,7 @@ export function ConnectPayout() {
   const [origin, setOrigin] = useState("");
   const returned = params.get("connect");
 
-  if (!account) return null;
+  if (!account || !isOperatorAccount(account)) return null;
 
   async function startOnboarding() {
     setPending("setup");

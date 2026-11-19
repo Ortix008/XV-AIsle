@@ -494,6 +494,20 @@ export function setOwnRole(accountId: string, role: "reseller" | "supplier") {
   return { account: getAccount(accountId)! };
 }
 
+/** Shoppers cannot change a role. An operator can. A refusal writes nothing. */
+export function decideRoleChange(
+  requester: { role: string; emailVerified: boolean } | null,
+  targetAccountId: string,
+  role: "reseller" | "supplier",
+) {
+  if (!requester || requester.role !== "admin" || requester.emailVerified !== true) {
+    return { status: 403 as const, error: "Only an operator can change a role." as const };
+  }
+  const result = setOwnRole(targetAccountId, role);
+  if ("error" in result) return { status: 400 as const, error: result.error };
+  return { status: 200 as const, account: result.account };
+}
+
 export function markMember(
   accountId: string,
   stripeCustomerId: string | null,

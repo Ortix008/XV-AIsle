@@ -129,12 +129,12 @@ export function AuthBackdrop({ media = AUTH_BACKDROP_MEDIA }: { media?: AuthBack
   );
 }
 
-export function AuthPane({ children }: { children: ReactNode }) {
+export function AuthPane({ children, sheet = false }: { children: ReactNode; sheet?: boolean }) {
   return (
     <div className="auth-screen auth-screen-pane">
       <AuthBackdrop />
-      <div className="auth-screen-body">
-        <div className="auth-glass auth-glass-wide">{children}</div>
+      <div className={sheet ? "auth-screen-body auth-screen-body-sheet" : "auth-screen-body"}>
+        <div className={sheet ? "auth-glass auth-glass-sheet" : "auth-glass auth-glass-wide"}>{children}</div>
       </div>
     </div>
   );

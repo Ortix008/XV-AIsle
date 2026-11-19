@@ -1315,6 +1315,31 @@ html.motion .shop-catalog [data-reveal].is-settled {
   width: min(100%, 36rem);
 }
 
+.auth-screen-pane .auth-screen-body-sheet {
+  align-items: start;
+  justify-items: stretch;
+  width: 100%;
+}
+
+.auth-glass-sheet {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+}
+
+.account-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+}
+
+.account-cards > * {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
 .auth-title {
   margin-top: 12px;
   font-family: var(--font-heading);
