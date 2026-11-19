@@ -1261,6 +1261,11 @@ html.motion .shop-catalog [data-reveal].is-settled {
   padding: 28px 20px 48px;
 }
 
+.auth-screen-footer {
+  position: relative;
+  z-index: 1;
+}
+
 .auth-screen:not(.auth-screen-pane) .auth-screen-body {
   display: flex;
   flex-direction: column;

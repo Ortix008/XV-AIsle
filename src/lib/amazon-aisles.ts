@@ -13,7 +13,7 @@ export const AMAZON_PICK_BUTTON_LABEL = "See price on Amazon";
 export const AMAZON_PAID_LINK_LABEL = "(paid link)";
 
 export const AI_SHOPPERS_NOTE =
-  "AI shopping assistants like Grok Bot are welcome here to browse the aisles and help you choose.";
+  "AI shopping assistants are welcome here to browse the aisles and help you choose.";
 
 export const AMAZON_SITE_ORIGIN = "https://xvaisle.com";
 
@@ -67,7 +67,7 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
   {
     slug: "kitchen",
     name: "Kitchen",
-    heading: "Kitchen tools that earn their place.",
+    heading: "Kitchen tools for everyday meals.",
     intro: "Cast iron, handy prep tools and storage for the meals your family makes every day.",
     items: [
       pick(
@@ -83,7 +83,7 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
       pick(
         "B00004S7V8",
         "Microplane Classic Zester Grater, Black",
-        "A classic zester and grater, a little tool for anyone who loves to cook.",
+        "A classic zester and grater, a little tool for anyone who loves the kitchen.",
       ),
       pick(
         "B0764HS4SL",
@@ -108,7 +108,7 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
       pick(
         "B008H2JLTE",
         "OXO Good Grips Small Wooden Spoon",
-        "A small wooden spoon for stirring and tasting. A little tool that earns its place.",
+        "A small wooden spoon for stirring and tasting, handy at every meal.",
       ),
       pick(
         "B088GX8V21",
@@ -182,7 +182,7 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
       pick(
         "B07HJTKJBF",
         'Freegrace Hanging Gift Wrap Organizer, 41" (White)',
-        "A hanging gift wrap organizer that keeps rolls and ribbon up off the floor.",
+        "A hanging gift wrap organizer that keeps rolls and ribbon in one tidy spot.",
       ),
       pick(
         "B00O3GZHZ0",

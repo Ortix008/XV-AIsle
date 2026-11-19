@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
 import { AuthBackdrop } from "@/components/auth-backdrop";
+import { ShopFooter } from "@/components/shop-footer";
 import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,9 @@ function AuthScreen({
             {children}
           </main>
         </div>
+      </div>
+      <div className="auth-screen-footer">
+        <ShopFooter />
       </div>
     </div>
   );

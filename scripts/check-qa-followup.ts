@@ -219,11 +219,12 @@ async function main() {
   assert(config.includes('source: "/reseller"') && config.includes('destination: "/aisles"'), "/reseller redirects to the aisles for launch");
   assert(config.includes('source: "/shop/reseller"') && config.includes('destination: "/aisles"'), "/shop/reseller redirects to the aisles for launch");
   assert(config.includes('source: "/shop/how-we-check"') && config.includes('destination: "/aisles"'), "/shop/how-we-check redirects to the aisles for launch");
+  assert(config.includes('source: "/shop/safety"') && config.includes('destination: "/aisles"'), "/shop/safety redirects to the aisles for launch");
   const signup = readFileSync(join(process.cwd(), "src/components/auth-screens.tsx"), "utf8");
   assert(!signup.includes('href="/shop/reseller"'), "sign-up does not link to the hidden reseller page");
   assert(!signup.includes('href="/shop/reseller/terms"'), "sign-up no longer links to the terms path");
 
-  for (const path of ["/shop/order", "/shop/return", "/shop/qa-checkout"]) {
+  for (const path of ["/shop/order", "/shop/return", "/shop/qa-checkout", "/shop/safety"]) {
     assert(!SITEMAP_PATHS.includes(path), `${path} is not a sitemap path`);
   }
   const card = {

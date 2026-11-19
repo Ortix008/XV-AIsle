@@ -66,7 +66,19 @@ async function main() {
     const home = await fetch(base + "/", { redirect: "manual" });
     const homeBody = await home.text();
     assert(home.status === 200, `home returned ${home.status}`);
-    for (const word of ["Viator", "GetYourGuide", "Zazzle", "Bookshop", "[WORDY", viatorUrl, zazzleUrl]) {
+    for (const word of [
+      "Viator",
+      "GetYourGuide",
+      "Zazzle",
+      "Bookshop",
+      "[WORDY",
+      viatorUrl,
+      zazzleUrl,
+      "sent straight to your door",
+      "Local business",
+      "packs the order",
+      "Big companies",
+    ]) {
       assert(!homeBody.includes(word), `home HTML/RSC includes ${word}`);
     }
     const gifts = await fetch(base + "/shop?aisle=home-and-gifts", { redirect: "manual" });

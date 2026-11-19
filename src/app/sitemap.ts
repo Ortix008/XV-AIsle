@@ -19,7 +19,6 @@ export const SITEMAP_PATHS = [
   "/shop/shipping",
   "/shop/returns",
   "/shop/contact",
-  "/shop/safety",
   "/shop/privacy",
   "/shop/terms",
   "/sign-in",

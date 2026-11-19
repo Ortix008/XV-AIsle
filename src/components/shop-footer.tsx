@@ -25,7 +25,6 @@ const columns = [
       { href: "/shop/shipping", label: "Shipping" },
       { href: "/shop/returns", label: "Returns" },
       { href: "/shop/contact", label: "Contact" },
-      { href: "/shop/safety", label: "How buying works" },
     ],
   },
   {
