@@ -1,6 +1,5 @@
 /** Exact eyebrow on the homepage hero. */
-export const HERO_EYEBROW =
-  "XV-AIsle gathers home, kitchen and everyday picks, each linking to the store where you buy it.";
+export const HERO_EYEBROW = "Home, kitchen and everyday picks";
 
 /**
  * Previous live headline.

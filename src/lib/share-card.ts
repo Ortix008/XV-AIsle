@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { publicSiteUrl } from "@/lib/config/env";
 
 export const SHARE_IMAGE_ALT =
-  "XV-AIsle wordmark over a dimly lit aisle of shelves with glowing lanterns. Home, kitchen and everyday picks, each linking to the store where you buy it.";
+  "XV-AIsle wordmark over a dimly lit aisle of shelves with glowing lanterns. Home, kitchen and everyday picks.";
 
 export function shareCard() {
   return {
-    url: `${publicSiteUrl()}/og/og-image.png`,
+    url: `${publicSiteUrl()}/og/og-image.png?v=2`,
     width: 1200,
     height: 630,
     alt: SHARE_IMAGE_ALT,
