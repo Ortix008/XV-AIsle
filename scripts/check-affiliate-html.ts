@@ -210,6 +210,9 @@ async function main() {
     assert(robotsTxt.status === 200, `robots.txt returned ${robotsTxt.status}`);
     assert(robotsBody.includes("Sitemap: https://xvaisle.com/sitemap.xml"), "robots.txt sitemap");
     assert(/disallow:\s*\/account/i.test(robotsBody), "robots.txt disallows /account");
+    for (const path of ["/desk", "/catalog", "/listings", "/floors", "/scout", "/marketing", "/dev"]) {
+      assert(!robotsBody.includes(path), `robots does not advertise ${path}`);
+    }
     for (const token of [
       "Googlebot",
       "Storebot-Google",

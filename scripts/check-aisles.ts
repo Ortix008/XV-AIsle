@@ -559,8 +559,11 @@ assert(sitemapSource.includes("liveAislePaths()"), "the sitemap derives aisle ur
 
 const robots = readFileSync(join(process.cwd(), "src/app/robots.ts"), "utf8");
 assert(robots.includes('userAgent: "*"') && robots.includes('allow: "/"'), "robots allows every agent at /");
-for (const path of ["/api", "/membership", "/orders", "/account", "/desk", "/catalog", "/listings", "/floors", "/scout", "/marketing", "/dev"]) {
-  assert(robots.includes(`"${path}"`), `robots disallows ${path}`);
+for (const path of ["/api", "/membership", "/orders", "/account"]) {
+  assert(robots.includes(`"${path}"`), `robots still disallows ${path}`);
+}
+for (const path of ["/desk", "/catalog", "/listings", "/floors", "/scout", "/marketing", "/dev"]) {
+  assert(!robots.includes(`"${path}"`), `robots does not advertise ${path}`);
 }
 for (const bot of ["GPTBot", "ClaudeBot", "Google-Extended", "Applebot-Extended", "CCBot"]) {
   assert(!robots.includes(bot), `${bot} is not named`);

@@ -1,19 +1,7 @@
 import type { MetadataRoute } from "next";
 import { AGENT_TOKENS } from "@/lib/agent-traffic";
 
-const PRIVATE_PREFIXES = [
-  "/api",
-  "/membership",
-  "/orders",
-  "/account",
-  "/desk",
-  "/catalog",
-  "/listings",
-  "/floors",
-  "/scout",
-  "/marketing",
-  "/dev",
-];
+const PRIVATE_PREFIXES = ["/api", "/membership", "/orders", "/account"];
 
 function group(userAgent: string) {
   return {

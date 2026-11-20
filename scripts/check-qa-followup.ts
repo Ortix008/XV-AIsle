@@ -451,6 +451,9 @@ async function main() {
     for (const path of ["/api", "/membership", "/orders", "/account"]) {
       assert(disallow.includes(path), `robots still disallows ${path}`);
     }
+    for (const path of ["/desk", "/catalog", "/listings", "/floors", "/scout", "/marketing", "/dev"]) {
+      assert(!disallow.includes(path), `robots does not advertise ${path}`);
+    }
   }
 
   console.log("qa followup checks ok");
