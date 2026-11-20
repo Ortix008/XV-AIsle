@@ -4,9 +4,9 @@ title = "xvaisle"
 useDefault = true
 
 [allowlist]
-description = "Next.js build manifests contain content hashes that look like keys"
+description = "Exact files whose content hashes tripped the scanner"
 paths = [
-  '''\.next/[^/]+\.json$''',
-  '''\.next/.+/[^/]+\.json$''',
-  '''usr/local/include/''',
+  '''(?:^|/)\.next/prerender-manifest\.json$''',
+  '''(?:^|/)\.next/server/server-reference-manifest\.json$''',
+  '''(?:^|/)usr/local/include/node/v8-internal\.h$''',
 ]

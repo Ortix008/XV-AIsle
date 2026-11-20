@@ -59,9 +59,19 @@ jobs:
           /tmp/gitleaks detect --source "${GITHUB_WORKSPACE}" --config "${GITHUB_WORKSPACE}/.gitleaks.toml" --redact --no-banner --report-format json --report-path /tmp/gl-git.json
           git_code=$?
           set -e
-          node -e 'const fs=require("fs"); let failed=false; for (const name of ["image","git"]) { const p="/tmp/gl-"+name+".json"; const rows=fs.existsSync(p)?JSON.parse(fs.readFileSync(p,"utf8")||"[]"):[]; console.log(name+" findings: "+rows.length); for (const row of rows) console.log(String(row.RuleID)+" "+String(row.File)+":"+String(row.StartLine)); if (rows.length) failed=true;} if (failed) process.exit(1);'
+          node -e 'const fs=require("fs"); for (const name of ["image","git"]) { const p="/tmp/gl-"+name+".json"; const rows=fs.existsSync(p)?JSON.parse(fs.readFileSync(p,"utf8")||"[]"):[]; console.log(name+" findings: "+rows.length); if (rows.length) { for (const row of rows) console.log(String(row.RuleID)+" "+String(row.File)+":"+String(row.StartLine)); process.exit(1);} }'
           test "$image_code" -eq 0
           test "$git_code" -eq 0
+          pre=$(printf '%s%s' s k)
+          mid=$(printf '%s%s%s%s' l i v e)
+          body=$(printf '%s' notarealkeyvalue0123)
+          planted="${pre}_${mid}_${body}"
+          mkdir -p /tmp/xvaisle-image/app/.next/server/app
+          printf '%s\n' "$planted" > /tmp/xvaisle-image/app/.next/server/app/planted.json
+          printf '%s\n' "$planted" > /tmp/xvaisle-image/app/planted.txt
+          unset planted pre mid body
+          /tmp/gitleaks detect --no-git --source /tmp/xvaisle-image --config "${GITHUB_WORKSPACE}/.gitleaks.toml" --redact --no-banner --report-format json --report-path /tmp/gl-plant.json || true
+          node -e 'const fs=require("fs"); const rows=JSON.parse(fs.readFileSync("/tmp/gl-plant.json","utf8")||"[]"); const rules=[...new Set(rows.map((row)=>row.RuleID))]; const files=rows.map((row)=>String(row.File)); const json=files.some((file)=>file.endsWith("/app/.next/server/app/planted.json")||file.endsWith("app/.next/server/app/planted.json")); const txt=files.some((file)=>file.endsWith("/app/planted.txt")||file.endsWith("app/planted.txt")); console.log("self-test rules: "+rules.join(",")); if (!json || !txt || rules.length===0) process.exit(1);'
       - name: Push the image
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

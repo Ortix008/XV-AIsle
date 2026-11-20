@@ -3642,9 +3642,9 @@ button.contact-submit {
 
 /* (3a) Hero at <768: stack text on top, glowing aisle visible below the CTA. */
 @media (max-width:767px){
-  .hero-aisle{min-height:0}
+  .hero-aisle{min-height:0;background-image:none}
   .hero-aisle > .relative{justify-content:flex-start;padding-top:48px;padding-bottom:var(--hero-art-band-sm)}
-  .hero-aisle-back{inset:auto -6% 0 -6%;height:var(--hero-art-h-sm)}
+  .hero-aisle-stage{inset:auto -6% 0 -6%;height:var(--hero-art-h-sm)}
   .hero-aisle-photo{object-position:50% 60%}
   .hero-aisle-scrim{background:
     linear-gradient(180deg,
