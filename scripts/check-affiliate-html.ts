@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -43,6 +43,47 @@ async function waitForServer() {
   throw new Error("the production server did not start");
 }
 
+function stopServer(child: ChildProcess) {
+  const pid = child.pid;
+  if (!pid || child.exitCode !== null || child.signalCode) return;
+  try {
+    process.kill(-pid, "SIGTERM");
+  } catch {
+    try {
+      child.kill("SIGTERM");
+    } catch {
+      // The server is already gone.
+    }
+  }
+}
+
+function stopServerAndWait(child: ChildProcess) {
+  if (child.exitCode !== null || child.signalCode) return Promise.resolve();
+  stopServer(child);
+  if (child.exitCode !== null || child.signalCode) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(() => {
+      const pid = child.pid;
+      if (pid) {
+        try {
+          process.kill(-pid, "SIGKILL");
+        } catch {
+          try {
+            child.kill("SIGKILL");
+          } catch {
+            // The server is already gone.
+          }
+        }
+      }
+      resolve();
+    }, 3000);
+    child.once("exit", () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
 async function main() {
   const hits: string[] = [];
   walk(join(process.cwd(), ".next"), (file) => hits.push(file));
@@ -51,6 +92,7 @@ async function main() {
   const db = join(mkdtempSync(join(tmpdir(), "xvaisle-html-")), "shop.sqlite");
   const child = spawn("npm", ["run", "start"], {
     cwd: process.cwd(),
+    detached: true,
     env: {
       ...process.env,
       PORT: String(port),
@@ -61,6 +103,13 @@ async function main() {
     },
     stdio: "ignore",
   });
+  const onSignal = (signal: NodeJS.Signals) => {
+    void stopServerAndWait(child).finally(() => {
+      process.exit(signal === "SIGINT" ? 130 : 143);
+    });
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
   try {
     await waitForServer();
     const home = await fetch(base + "/", { redirect: "manual" });
@@ -101,7 +150,7 @@ async function main() {
     assert(ticketsBody.includes('rel="sponsored noopener noreferrer"'), "Tickets partner links are sponsored");
     assert(ticketsBody.includes(disclosure) && !ticketsBody.includes("[WORDY"), "Tickets shows the short disclosure");
   } finally {
-    child.kill("SIGTERM");
+    await stopServerAndWait(child);
   }
   console.log("affiliate html checks ok");
 }

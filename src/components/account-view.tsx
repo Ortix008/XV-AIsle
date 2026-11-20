@@ -193,7 +193,8 @@ export function AccountView() {
           ) : null}
         </div>
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-          The account is kept on the server. Bank details stay at Stripe.
+          The account is kept on the server.
+          {operator ? " Bank details stay at Stripe." : null}
         </p>
       </div>
     </AuthPane>
