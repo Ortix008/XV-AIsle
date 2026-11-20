@@ -204,9 +204,41 @@ docker compose exec -e ADMIN_EMAIL=owner@example.com store npm run admin:status
 
 ## Stock caps
 
-The launch script hides Pearl (`20-PEARL-GS`) and Garnet (`20-GARNET-GS`), and sets the remaining stock for Flag `DAC7237CHF` (999), Dark Blue 2XS (30), Dark Blue XS (42), Green 2XS (25), and Green XS (161). It matches the listing or variant SKU exactly. A size name on a different SKU is left alone. Running it again does not restock units that already sold. It writes listings, variants, and its own audit table. It does not change orders or the reseller waitlist, and it does not print keys.
+The targets live in `scripts/stock-caps.json`. That file is the only place to change them. The script matches `listings.sku` or `listing_variants.sku` exactly, aside from case and extra space. A title or a size label on a different SKU is left alone. It writes listings, variants, and its own audit table. It does not change orders, the reseller waitlist, or the published flag, and it does not print keys.
+
+Hidden:
+
+- `XV-CLEAR-CRYSTAL-ARROWHEAD-SUNCATCHER`
+- `XV-PET-SEAT-BELT-TETHER`
+
+Capped, with on-hand set to the same number:
+
+- `XV-10-PIECE-MAGNETIC-BAG-CLIP-SET` at 8
+- `XV-6-INCH-YOGA-WHEEL` at 148
+- `XV-BEAGLE-LUAU-KITCHEN-TOWEL` at 99
+- `XV-CORGI-LUAU-KITCHEN-TOWEL` at 999
+- `XV-CELL-PHONE-LANYARD` at 50
+- `XV-YOGA-PILATES-RING` at 100
+
+These rows are not targets and stay as they are, including the unpublished candle: `LN-SCR-1`, `LN-PAN-Q`, `XV-SCENTED-CANDLE-16-OZ`, `XV-WOOD-TRAY`.
+
+Each row the script changes keeps its previous hidden flag and stock numbers in `stock_cap_audit`. The reverse script puts that prior state back, so a hide can be undone. A row that was already hidden is left hidden. Running the script again does not restock units that already sold. If a paid order already lowered a count, the reverse script leaves that SKU and the log says `restore_skipped`. Use the backup in that case.
 
 The command is a dry-run until you pass `--apply`. The dry-run prints one line per SKU and does not change stock. If any SKU is missing, or two rows share a SKU, it prints `aborted` and exits non-zero. `--apply` writes only after that plan is clean. Run the dry-run on production first, read the plan, then apply.
+
+On a first run, when each of the eight SKUs matches one visible listing and stock is still unset, the dry-run plan is:
+
+```text
+dry-run
+XV-CLEAR-CRYSTAL-ARROWHEAD-SUNCATCHER hidden
+XV-PET-SEAT-BELT-TETHER hidden
+XV-10-PIECE-MAGNETIC-BAG-CLIP-SET cap 8 on_hand 8
+XV-6-INCH-YOGA-WHEEL cap 148 on_hand 148
+XV-BEAGLE-LUAU-KITCHEN-TOWEL cap 99 on_hand 99
+XV-CORGI-LUAU-KITCHEN-TOWEL cap 999 on_hand 999
+XV-CELL-PHONE-LANYARD cap 50 on_hand 50
+XV-YOGA-PILATES-RING cap 100 on_hand 100
+```
 
 The store container keeps SQLite on the `xvaisle_xvaisle-data` volume at `/data/xvaisle.sqlite`. Stop the store before copying that file so the backup is a complete snapshot. Restore that copy to undo the run, including any sales that happened after it. The reverse script puts back the hidden flag and the stock numbers from its audit. If a paid order already lowered a count, that SKU is left as it is and the log says `restore_skipped`. Use the backup in that case.
 
