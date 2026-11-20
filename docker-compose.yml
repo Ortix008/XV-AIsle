@@ -4,6 +4,8 @@
 # 0 * * * * cd /opt/xvaisle && npx tsx scripts/notify-unshipped-orders.ts
 services:
   store:
+    image: ghcr.io/ortix008/xv-aisle-store:${IMAGE_TAG:-main}
+    pull_policy: missing
     build: .
     restart: unless-stopped
     env_file: .env

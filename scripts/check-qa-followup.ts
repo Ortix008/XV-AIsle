@@ -437,14 +437,20 @@ async function main() {
   else process.env.SUPPORT_EMAIL = previousSupport;
 
   const robots = (await import("../src/app/robots")).default();
-  const rule = Array.isArray(robots.rules) ? robots.rules[0] : robots.rules;
-  const disallow = Array.isArray(rule?.disallow) ? rule.disallow : rule?.disallow ? [rule.disallow] : [];
-  assert(!disallow.includes("/shop/reseller"), "robots allows the public reseller page");
-  for (const path of ["/api", "/membership", "/orders"]) {
-    assert(disallow.includes(path), `robots still disallows ${path}`);
-  }
-  for (const path of ["/account", "/desk", "/scout", "/listings", "/marketing", "/floors", "/catalog"]) {
-    assert(!disallow.includes(path), `robots does not advertise ${path}`);
+  const rules = Array.isArray(robots.rules) ? robots.rules : [robots.rules];
+  assert(rules.length > 1, "robots lists explicit user agents");
+  assert(robots.sitemap === "https://xvaisle.com/sitemap.xml", "robots publishes the sitemap");
+  for (const rule of rules) {
+    const disallow = Array.isArray(rule?.disallow) ? rule.disallow : rule?.disallow ? [rule.disallow] : [];
+    const allow = Array.isArray(rule?.allow) ? rule.allow : rule?.allow ? [rule.allow] : [];
+    assert(allow.includes("/"), "robots allows /");
+    assert(!disallow.includes("/shop/reseller"), "robots allows the public reseller page");
+    for (const path of ["/", "/aisles", "/llms.txt", "/agents", "/shop"]) {
+      assert(!disallow.includes(path), `robots does not disallow ${path}`);
+    }
+    for (const path of ["/api", "/membership", "/orders", "/account"]) {
+      assert(disallow.includes(path), `robots still disallows ${path}`);
+    }
   }
 
   console.log("qa followup checks ok");

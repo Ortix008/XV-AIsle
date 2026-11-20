@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { runWithTraffic, type Traffic } from "@/lib/agent-traffic";
 import {
   AI_SHOPPERS_NOTE,
   AISLE_INDEX_COPY,
@@ -112,11 +113,13 @@ export function AisleIndex({
 export function AisleDetail({
   aisle,
   belowHero = null,
+  traffic = null,
 }: {
   aisle: AmazonAisle;
   belowHero?: ReactNode;
+  traffic?: Traffic | null;
 }) {
-  return (
+  return runWithTraffic(traffic, () => (
     <article className="affiliate-shell">
       <header className="affiliate-hero">
         <div className="affiliate-hero-copy">
@@ -159,5 +162,5 @@ export function AisleDetail({
       </ul>
       <JsonLd data={aisleProductJsonLd(aisle)} />
     </article>
-  );
+  ));
 }

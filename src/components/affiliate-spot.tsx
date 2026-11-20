@@ -7,15 +7,18 @@ import {
   type AffiliateOffer,
   type AffiliateSpot,
 } from "@/config/affiliates";
+import { servedTrackingHref, type Traffic } from "@/lib/agent-traffic";
 
 export function AffiliateSpot({
   spot,
   item,
   offers = AFFILIATE_OFFERS,
+  traffic = null,
 }: {
   spot: AffiliateSpot;
   item?: AffiliateItem | null;
   offers?: readonly AffiliateOffer[];
+  traffic?: Traffic | null;
 }) {
   const shown = visibleAffiliateOffers(spot, item, offers);
   if (shown.length === 0) return null;
@@ -26,7 +29,7 @@ export function AffiliateSpot({
         {shown.map((offer) => (
           <li key={offer.id}>
             <AffiliateLink
-              href={offer.href}
+              href={offer.href ? servedTrackingHref(offer.href, offer.id, traffic) : offer.href}
               label={offer.label}
               network={offer.network}
               item={item}
@@ -40,13 +43,19 @@ export function AffiliateSpot({
 }
 
 /** Bookshop and Zazzle sit side by side once either card has a link. */
-export function HomeGiftSpots({ offers = AFFILIATE_OFFERS }: { offers?: readonly AffiliateOffer[] }) {
+export function HomeGiftSpots({
+  offers = AFFILIATE_OFFERS,
+  traffic = null,
+}: {
+  offers?: readonly AffiliateOffer[];
+  traffic?: Traffic | null;
+}) {
   const spots = (["books", "gifts"] as const).filter((spot) => visibleAffiliateOffers(spot, null, offers).length > 0);
   if (spots.length === 0) return null;
   return (
     <div className={spots.length === 1 ? "partner-spot-row partner-spot-solo" : "partner-spot-row"}>
       {spots.map((spot) => (
-        <AffiliateSpot key={spot} spot={spot} offers={offers} />
+        <AffiliateSpot key={spot} spot={spot} offers={offers} traffic={traffic} />
       ))}
     </div>
   );

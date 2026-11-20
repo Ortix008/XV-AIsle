@@ -14,6 +14,43 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
+function decode(html: string) {
+  return html.replaceAll("&#x27;", "'").replaceAll("&apos;", "'").replaceAll("&amp;", "&");
+}
+
+function assertNoPlatformBrands(html: string) {
+  const body = html.includes("<body") ? html.slice(html.indexOf("<body")) : html;
+  const text = decode(body.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " "));
+  const brands = [
+    "chatgpt",
+    "openai",
+    "claude",
+    "anthropic",
+    "perplexity",
+    "gemini",
+    "copilot",
+    "grok",
+    "google",
+    "bing",
+    "apple",
+    "microsoft",
+    "facebook",
+    "instagram",
+    "viator",
+    "getyourguide",
+    "zazzle",
+    "bookshop",
+    "awin",
+    "impact",
+  ];
+  for (const brand of brands) {
+    assert(!new RegExp(`\\b${brand}\\b`, "i").test(text), `/agents names ${brand}`);
+  }
+  const sentence = "As an Amazon Associate I earn from qualifying purchases.";
+  assert(text.includes(sentence), "the Associates sentence is on /agents");
+  assert(!/amazon/i.test(text.split(sentence).join("")), "Amazon appears only in the Associates sentence");
+}
+
 function walk(dir: string, hit: (file: string, text: string) => void) {
   for (const name of readdirSync(dir)) {
     if (name === "cache" || name === "node_modules") continue;
@@ -100,6 +137,7 @@ async function main() {
       APP_URL: base,
       SUPPORT_EMAIL: "support@example.com",
       NEXT_TELEMETRY_DISABLED: "1",
+      STRIPE_SECRET_KEY: ["sk", "test", "htmlcheck"].join("_"),
     },
     stdio: "ignore",
   });
@@ -149,6 +187,85 @@ async function main() {
     assert(ticketsBody.includes(guideUrl), "Tickets HTML renders the GetYourGuide URL");
     assert(ticketsBody.includes('rel="sponsored noopener noreferrer"'), "Tickets partner links are sponsored");
     assert(ticketsBody.includes(disclosure) && !ticketsBody.includes("[WORDY"), "Tickets shows the short disclosure");
+    assert(ticketsBody.includes("Tours and things to do for days out with family and friends."), "Tickets HTML uses the approved blurb");
+    assert(!ticketsBody.includes("Tickets and events for nights out with family and friends."), "Tickets HTML drops the old blurb");
+
+    const llms = await fetch(base + "/llms.txt");
+    const llmsBody = await llms.text();
+    assert(llms.status === 200, `llms.txt returned ${llms.status}`);
+    assert(llmsBody.includes("As an Amazon Associate I earn from qualifying purchases."), "llms.txt keeps the Associates sentence");
+    assert(llmsBody.includes("Pets"), "llms.txt keeps Pets");
+    assert(
+      llmsBody.includes(
+        "- [For AI shopping assistants](https://xvaisle.com/agents): How assistants can browse, and where purchases finish.",
+      ),
+      "llms.txt policy link",
+    );
+    assert(llmsBody.includes("Rate limits aren't set yet, so please keep requests light."), "llms.txt rate-limit sentence");
+    assert(llmsBody.includes("Tours and things to do for days out with family and friends."), "llms.txt tickets line");
+    assert(!llmsBody.includes("AI shopping agents"), "llms.txt does not say AI shopping agents");
+
+    const robotsTxt = await fetch(base + "/robots.txt");
+    const robotsBody = await robotsTxt.text();
+    assert(robotsTxt.status === 200, `robots.txt returned ${robotsTxt.status}`);
+    assert(robotsBody.includes("Sitemap: https://xvaisle.com/sitemap.xml"), "robots.txt sitemap");
+    assert(/disallow:\s*\/account/i.test(robotsBody), "robots.txt disallows /account");
+    for (const token of [
+      "Googlebot",
+      "Storebot-Google",
+      "bingbot",
+      "Applebot",
+      "OAI-SearchBot",
+      "ChatGPT-User",
+      "Claude-SearchBot",
+      "Claude-User",
+      "PerplexityBot",
+      "Perplexity-User",
+      "Amzn-SearchBot",
+      "Amzn-User",
+      "meta-webindexer",
+      "meta-externalfetcher",
+    ]) {
+      assert(new RegExp(`user-agent:\\s*${token}`, "i").test(robotsBody), `robots.txt names ${token}`);
+    }
+    for (const token of ["GPTBot", "ClaudeBot", "Google-Extended", "Applebot-Extended", "CCBot"]) {
+      assert(!robotsBody.includes(token), `robots.txt does not name ${token}`);
+    }
+
+    const agents = await fetch(base + "/agents");
+    const agentsBody = decode(await agents.text());
+    assert(agents.status === 200, `/agents returned ${agents.status}`);
+    for (const line of [
+      "For AI shopping assistants · XV-AIsle",
+      "How AI shopping assistants can browse XV-AIsle, follow our partner links and help a shopper choose.",
+      "For AI shopping assistants",
+      "AI shopping assistants are welcome here to browse the aisles and help you choose. Here's how our shelf works, for them and for you.",
+      "What assistants can do",
+      "Read our public pages, like the home page, the aisles, this page and /llms.txt.",
+      "Follow the partner links on any aisle page to help a shopper buy.",
+      "Please stay out of",
+      "Account, membership, order and API pages. They're private.",
+      "Heavy crawling. We haven't set rate limits yet, so please keep requests light.",
+      "Prices and buying",
+      "Aisle picks don't show a price on our pages. You'll find the current price on the partner's site, where the purchase finishes. We don't take payment for aisle picks.",
+      "Prices, shipping and returns are set by the store you buy from, so reach out to that store for help with an order.",
+      "How we earn",
+      "We may earn a commission when you buy through partner links on our site. Each aisle page shows a disclosure next to its partner links.",
+      "As an Amazon Associate I earn from qualifying purchases.",
+      "The shopper decides",
+      "The shopper you're helping makes the final choice and checks out on the partner's site.",
+    ]) {
+      assert(agentsBody.includes(line), `/agents is missing ${line}`);
+    }
+    assert(!agentsBody.includes("AI shopping agents"), "/agents does not say AI shopping agents");
+    assertNoPlatformBrands(agentsBody);
+
+    const orders = await fetch(base + "/orders", { redirect: "manual" });
+    const ordersBody = await orders.text();
+    assert(orders.status === 200, `/orders returned ${orders.status}`);
+    assert(!ordersBody.toLowerCase().includes("test mode"), "signed-out /orders omits the test mode line");
+    assert(!ordersBody.includes("no real money is charged"), "signed-out /orders omits the test checkout sentence");
+    assert(ordersBody.includes("Opening the market"), "signed-out /orders still renders the existing screen");
   } finally {
     await stopServerAndWait(child);
   }

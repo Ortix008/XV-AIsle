@@ -11,8 +11,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 FROM node:22-bookworm-slim AS run
+ARG DEPLOYED_COMMIT=unknown
 WORKDIR /app
 ENV NODE_ENV=production
+ENV DEPLOYED_COMMIT=${DEPLOYED_COMMIT}
+LABEL org.opencontainers.image.source="https://github.com/Ortix008/XV-AIsle"
+LABEL org.opencontainers.image.revision="${DEPLOYED_COMMIT}"
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=4317
@@ -33,6 +37,7 @@ COPY --from=build /app/package.json /tmp/xvaisle-package.json
 RUN node -e 'const fs=require("fs"); const app=JSON.parse(fs.readFileSync("/tmp/xvaisle-package.json","utf8")); const stand=JSON.parse(fs.readFileSync("/app/package.json","utf8")); stand.scripts=Object.assign({}, stand.scripts, {"admin:create":"node scripts/admin-create.mjs","admin:reset-password":"node --experimental-strip-types scripts/admin-reset-password.ts","admin:status":"node --experimental-strip-types scripts/admin-status.ts","catalog:import":"node scripts/catalog-import.mjs"}); fs.writeFileSync("/app/package.json", JSON.stringify(stand,null,2)+"\n");' \
   && chown node:node /app/package.json \
   && rm /tmp/xvaisle-package.json
+RUN printf '%s\n' "$DEPLOYED_COMMIT" > /app/DEPLOYED_COMMIT && chown node:node /app/DEPLOYED_COMMIT
 USER node
 EXPOSE 4317
 VOLUME /data

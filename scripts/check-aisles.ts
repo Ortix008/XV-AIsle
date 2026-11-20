@@ -17,6 +17,8 @@ import {
   AMAZON_ASSOCIATE_DISCLOSURE,
   AMAZON_PAID_LINK_LABEL,
   AMAZON_PICK_BUTTON_LABEL,
+  LLMS_AGENTS_LINE,
+  LLMS_NOTE,
   LLMS_SUMMARY,
   amazonPickUrl,
   liveAisleBySlug,
@@ -204,7 +206,7 @@ for (const aisle of live) {
 }
 
 assert(live.map((aisle) => aisle.slug).join() === LIVE_SLUGS.join(), "live aisle order");
-assert(AISLE_INDEX_COPY.description === "Browse every XV-AIsle aisle, from Kitchen to Car. Each pick links to its Amazon page, where you finish your purchase.", "index meta description");
+assert(AISLE_INDEX_COPY.description === "Browse every XV-AIsle aisle, from Kitchen to Car. Each pick links to the store where you buy it.", "index meta description");
 assert(LLMS_SUMMARY === "XV-AIsle (xvaisle.com) is a US trend market. Our aisles at xvaisle.com/aisles, from Kitchen and Home & Cozy to Pets and Games & Hobbies, hold picks we chose, and each one links to its Amazon page, where the purchase is finished. AI shopping assistants are welcome to browse and suggest picks for a shopper. As an Amazon Associate I earn from qualifying purchases.", "llms summary paragraph");
 assert(live[0]?.heading === "Kitchen tools for everyday meals.", "kitchen heading");
 assert(live[1]?.heading === "Make home a little cozier.", "home heading");
@@ -522,7 +524,15 @@ assert(publishedLlms.includes("https://xvaisle.com/aisles)"), "llms.txt lists th
 for (const aisle of live) {
   assert(publishedLlms.includes(`https://xvaisle.com/aisles/${aisle.slug}`), `llms.txt lists ${aisle.slug}`);
 }
-assert(!publishedLlms.includes("tickets-and-events"), "llms.txt omits tickets");
+assert(publishedLlms.includes("https://xvaisle.com/aisles/tickets-and-events"), "llms.txt lists tickets when the aisle is listed");
+assert(publishedLlms.includes("Tours and things to do for days out with family and friends."), "llms.txt uses the tickets blurb");
+assert(!publishedLlms.includes("Tickets and events for nights out with family and friends."), "llms.txt drops the old tickets blurb");
+assert(publishedLlms.includes(LLMS_AGENTS_LINE), "llms.txt links the assistants page");
+assert(publishedLlms.includes(LLMS_NOTE), "llms.txt includes the assistants note");
+assert(LLMS_NOTE.includes("Rate limits aren't set yet, so please keep requests light."), "llms.txt rate-limit sentence");
+assert(!LLMS_SUMMARY.toLowerCase().includes("agents") && !LLMS_NOTE.toLowerCase().includes("agents"), "the summary and the note say assistants");
+assert(!publishedLlms.includes("AI shopping agents"), "llms.txt does not say AI shopping agents");
+assert(publishedLlms.includes("Pets"), "llms.txt keeps the Pets aisle");
 assert(!publishedLlms.includes(GIFTS_PATH), "llms.txt omits the old gifts route");
 assert(!publishedLlms.toLowerCase().includes(WE_EARN), "llms.txt does not use the banned associate phrase");
 assert(!publishedLlms.includes(OLD_DISCLOSURE), "llms.txt drops the old disclosure");
@@ -549,14 +559,11 @@ assert(sitemapSource.includes("liveAislePaths()"), "the sitemap derives aisle ur
 
 const robots = readFileSync(join(process.cwd(), "src/app/robots.ts"), "utf8");
 assert(robots.includes('userAgent: "*"') && robots.includes('allow: "/"'), "robots allows every agent at /");
-for (const path of ["/api", "/membership", "/orders"]) {
-  assert(robots.includes(`"${path}"`), `robots still disallows ${path}`);
+for (const path of ["/api", "/membership", "/orders", "/account", "/desk", "/catalog", "/listings", "/floors", "/scout", "/marketing", "/dev"]) {
+  assert(robots.includes(`"${path}"`), `robots disallows ${path}`);
 }
-for (const path of ["/account", "/desk", "/scout", "/listings", "/marketing", "/floors", "/catalog"]) {
-  assert(!robots.includes(`"${path}"`), `robots does not advertise ${path}`);
-}
-for (const bot of ["GPTBot", "ChatGPT-User", "OAI-SearchBot", "ClaudeBot", "Claude-User", "PerplexityBot", "Perplexity-User", "Google-Extended", "Applebot-Extended", "CCBot"]) {
-  assert(!robots.includes(bot), `${bot} is not blocked`);
+for (const bot of ["GPTBot", "ClaudeBot", "Google-Extended", "Applebot-Extended", "CCBot"]) {
+  assert(!robots.includes(bot), `${bot} is not named`);
 }
 
 const aisleFiles = [
@@ -602,6 +609,8 @@ async function main() {
   }
   const ticketsPage = await aislePage.default({ params: Promise.resolve({ slug: "tickets-and-events" }) });
   const ticketsHtml = renderToStaticMarkup(ticketsPage);
+  assert(ticketsHtml.includes("Tours and things to do for days out with family and friends."), "Tickets & Events uses the approved blurb");
+  assert(!ticketsHtml.includes("Tickets and events for nights out with family and friends."), "Tickets & Events drops the old blurb");
   assert(ticketsHtml.includes("https://www.viator.com/?pid=P00330828&amp;mcid=42383&amp;medium=link"), "Tickets & Events renders the Viator URL");
   assert(ticketsHtml.includes("https://www.getyourguide.com/?partner_id=YEH3QKQ"), "Tickets & Events renders the GetYourGuide URL");
   assert(ticketsHtml.includes('rel="sponsored noopener noreferrer"'), "Tickets & Events partner links are sponsored");
