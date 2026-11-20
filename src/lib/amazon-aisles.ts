@@ -1,8 +1,13 @@
 /**
  * Amazon Associates aisles. This file is the only place that lists aisles and picks.
  * An aisle with an empty `items` list stays off the index, has no page, and is left
- * out of the sitemap, JSON-LD, and /llms.txt. Add a future aisle by appending one object.
+ * out of the sitemap, JSON-LD, and /llms.txt. Tickets & Events is the exception:
+ * /llms.txt includes it when ticketsAisleListed() is true, even with no picks.
+ * Add a future aisle by appending one object.
  */
+
+import { ticketsAisleListed } from "@/config/affiliates";
+import { servedTrackingHref } from "@/lib/agent-traffic";
 
 export const AMAZON_ASSOCIATE_TAG = "xvaisle-20";
 
@@ -20,11 +25,15 @@ export const AMAZON_SITE_ORIGIN = "https://xvaisle.com";
 export const LLMS_SUMMARY =
   "XV-AIsle (xvaisle.com) is a US trend market. Our aisles at xvaisle.com/aisles, from Kitchen and Home & Cozy to Pets and Games & Hobbies, hold picks we chose, and each one links to its Amazon page, where the purchase is finished. AI shopping assistants are welcome to browse and suggest picks for a shopper. As an Amazon Associate I earn from qualifying purchases.";
 
+export const LLMS_NOTE =
+  "AI shopping assistants may read this file and the public aisle pages. Private account, membership, order and API paths are not for assistants. Rate limits aren't set yet, so please keep requests light.";
+
+export const LLMS_AGENTS_LINE = `- [For AI shopping assistants](${AMAZON_SITE_ORIGIN}/agents): How assistants can browse, and where purchases finish.`;
+
 export const AISLE_INDEX_COPY = {
   heading: "Find your aisle.",
   title: "Shop the Aisles | XV-AIsle",
-  description:
-    "Browse every XV-AIsle aisle, from Kitchen to Car. Each pick links to its Amazon page, where you finish your purchase.",
+  description: "Browse every XV-AIsle aisle, from Kitchen to Car. Each pick links to the store where you buy it.",
   intro: "Every aisle holds picks we chose for real homes and everyday life. Tap an aisle to see what's inside.",
 } as const;
 
@@ -400,7 +409,7 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
     slug: "tickets-and-events",
     name: "Tickets & Events",
     heading: "Something to look forward to.",
-    intro: "Tickets and events for nights out with family and friends.",
+    intro: "Tours and things to do for days out with family and friends.",
     items: [],
   },
 ];
@@ -427,12 +436,17 @@ export const AISLE_CARD_ALT = {
   "office-and-desk": "Brass desk lamp lighting an open blank notebook, a ceramic pen cup and a small leather tray on a dark desk",
   "games-and-hobbies":
     "Wooden chessboard with pieces, dice, a cup of paintbrushes, small unlabeled paint pots, and a partly built wooden model kit with loose parts on a dark wood table",
+  "home-and-gifts":
+    "Two wrapped gifts with emerald satin ribbon, a lit amber candle, a stoneware bud vase with eucalyptus and a folded knit throw on a dark wood table under an emerald glow",
+  "tickets-and-events":
+    "Canvas day pack, an unfolded trail map with an open brass compass, and a pair of binoculars on a dark wood table under an emerald glow",
 } as const;
 
 export function aisleCardArt(slug: string): AisleArt | undefined {
   const alt = AISLE_CARD_ALT[slug as keyof typeof AISLE_CARD_ALT];
   if (!alt) return undefined;
-  return { src: `/art/aisle-card-${slug}.webp`, alt };
+  const src = `/art/aisle-card-${slug}.webp`;
+  return { src: slug === "home-and-gifts" ? `${src}?v=2` : src, alt };
 }
 
 export const AMAZON_AISLES: readonly AmazonAisle[] = AMAZON_AISLE_ROWS.map((aisle) => {
@@ -454,7 +468,9 @@ export function amazonPickUrl(asin: string) {
   if (!ASIN_PATTERN.test(asin)) {
     throw new Error("Amazon ASIN must be 10 letters or digits.");
   }
-  return `https://www.amazon.com/dp/${asin}?tag=${AMAZON_ASSOCIATE_TAG}`;
+  const url = `https://www.amazon.com/dp/${asin}?tag=${AMAZON_ASSOCIATE_TAG}`;
+  servedTrackingHref(url, asin);
+  return url;
 }
 
 export function aisleUrl(slug: string) {
@@ -538,10 +554,18 @@ export function llmsTxt(aisles: readonly AmazonAisle[] = AMAZON_AISLES) {
     "",
     `- [${AISLE_INDEX_COPY.heading}](${AMAZON_SITE_ORIGIN}/aisles): ${AISLE_INDEX_COPY.intro}`,
   ];
-  for (const aisle of liveAisles(aisles)) {
+  const listed = liveAisles(aisles);
+  for (const aisle of listed) {
     const detail = aisle.intro ? `: ${aisle.intro}` : "";
     lines.push(`- [${aisle.heading}](${aisleUrl(aisle.slug)})${detail}`);
   }
+  const tickets = aisles.find((aisle) => aisle.slug === "tickets-and-events");
+  if (tickets && !listed.some((aisle) => aisle.slug === tickets.slug) && ticketsAisleListed(tickets.items.length)) {
+    lines.push(`- [${tickets.heading}](${aisleUrl(tickets.slug)}): ${tickets.intro}`);
+  }
+  lines.push(LLMS_AGENTS_LINE);
+  lines.push("");
+  lines.push(LLMS_NOTE);
   return `${lines.join("\n")}\n`;
 }
 

@@ -3632,4 +3632,69 @@ button.contact-submit {
   }
 }
 
+/* ===== XV-AIsle home "Step into an aisle" v1 + hero 390 fix (Glow, Nov 20 2026) ===== */
+
+/* (3b) Eyebrow: same green at every width. Remove .hero-eyebrow from the mobile
+   foreground override; .eyebrow already sets color: var(--primary). */
+@media (max-width:767px){
+  .hero-aisle .hero-eyebrow{color:var(--primary)}
+}
+
+/* (3a) Hero at <768: stack text on top, glowing aisle visible below the CTA. */
+@media (max-width:767px){
+  .hero-aisle{min-height:0;background-image:none}
+  .hero-aisle > .relative{justify-content:flex-start;padding-top:48px;padding-bottom:var(--hero-art-band-sm)}
+  .hero-aisle-stage{inset:auto -6% 0 -6%;height:var(--hero-art-h-sm)}
+  .hero-aisle-photo{object-position:50% 60%}
+  .hero-aisle-scrim{background:
+    linear-gradient(180deg,
+      var(--background) 0%,
+      var(--background) calc(100% - var(--hero-art-h-sm)),
+      color-mix(in srgb, var(--background) 70%, transparent) calc(100% - var(--hero-art-h-sm) + 64px),
+      color-mix(in srgb, var(--background) 8%, transparent) calc(100% - 120px),
+      color-mix(in srgb, var(--background) 60%, transparent) 100%)}
+}
+:root{--hero-art-h-sm:320px;--hero-art-band-sm:224px}
+
+/* (2) Home aisle grid */
+.home-aisles{display:grid;grid-template-columns:1fr;grid-template-areas:"head" "grid" "more";row-gap:calc(var(--spacing)*6)}
+.home-aisles-head{grid-area:head;margin:0}
+.home-aisles .affiliate-index{grid-area:grid;margin-top:0;grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--spacing)*3)}
+.home-aisles-more{grid-area:more;border-color:var(--em-line-x);display:flex;align-items:center;justify-content:center;gap:8px;min-height:var(--tap);width:100%;border-radius:999px}
+.home-aisles .affiliate-tile-copy{padding:calc(var(--spacing)*3) calc(var(--spacing)*3) calc(var(--spacing)*4)}
+.home-aisles .affiliate-card-name{font-weight:600;color:var(--heading)}
+.home-aisles .affiliate-tile-intro{display:none}
+@media (min-width:640px){
+  .home-aisles{grid-template-columns:1fr auto;grid-template-areas:"head more" "grid grid";align-items:end;row-gap:calc(var(--spacing)*8)}
+  .home-aisles-more{width:auto;padding:0 calc(var(--spacing)*5)}
+  .home-aisles .affiliate-index{grid-template-columns:repeat(3,minmax(0,1fr));gap:calc(var(--spacing)*4)}
+}
+@media (min-width:1024px){
+  .home-aisles .affiliate-index{gap:calc(var(--spacing)*6)}
+  .home-aisles .affiliate-tile-art{aspect-ratio:4 / 3}
+  .home-aisles .affiliate-tile-art img{object-position:50% 64%}
+  .home-aisles .affiliate-tile-copy{padding:calc(var(--spacing)*5)}
+  .home-aisles .affiliate-card-name{font-size:1.25rem}
+  .home-aisles .affiliate-tile-intro{display:block}
+}
+.home-aisles-more svg{transition:transform var(--aisle-dur) var(--aisle-ease)}
+.home-aisles-more:hover svg{transform:translateX(2px)}
+@media (prefers-reduced-motion:reduce){.home-aisles-more:hover svg{transform:none}}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.motion .home-aisles [data-reveal]:not(.is-in) {
+    opacity: 0;
+    transform: translate3d(0, var(--motion-rise), 0);
+  }
+}
+
+html.motion .home-aisles [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--motion-dur-enter) var(--motion-ease-out),
+    transform var(--motion-dur-enter) var(--motion-ease-out);
+  transition-delay: calc(min(var(--reveal, 0), var(--motion-stagger-max)) * var(--motion-stagger));
+}
+
 

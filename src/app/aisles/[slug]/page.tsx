@@ -4,6 +4,7 @@ import { AffiliateSpot } from "@/components/affiliate-spot";
 import { AisleDetail } from "@/components/amazon-aisles";
 import { ShopFrame } from "@/components/shop-frame";
 import { ticketsAisleListed } from "@/config/affiliates";
+import { requestTraffic } from "@/lib/agent-request";
 import { AMAZON_AISLES, liveAisleBySlug, liveAisles } from "@/lib/amazon-aisles";
 
 export function generateStaticParams() {
@@ -27,12 +28,17 @@ export async function generateMetadata({
 
 export default async function AislePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const traffic = await requestTraffic(`/aisles/${slug}`);
   if (slug === "tickets-and-events") {
     const aisle = AMAZON_AISLES.find((row) => row.slug === slug);
     if (!aisle || !ticketsAisleListed(aisle.items.length)) notFound();
     return (
       <ShopFrame showStorePayLine={false} showBrandBlock={false} showAmazonDisclosure={aisle.items.length > 0}>
-        <AisleDetail aisle={{ ...aisle, art: undefined }} belowHero={<AffiliateSpot spot="experiences" />} />
+        <AisleDetail
+          aisle={{ ...aisle, art: undefined }}
+          traffic={traffic}
+          belowHero={<AffiliateSpot spot="experiences" traffic={traffic} />}
+        />
       </ShopFrame>
     );
   }
@@ -40,7 +46,7 @@ export default async function AislePage({ params }: { params: Promise<{ slug: st
   if (!aisle) notFound();
   return (
     <ShopFrame showStorePayLine={false} showBrandBlock={false} showAmazonDisclosure={aisle.items.length > 0}>
-      <AisleDetail aisle={aisle} />
+      <AisleDetail aisle={aisle} traffic={traffic} />
     </ShopFrame>
   );
 }

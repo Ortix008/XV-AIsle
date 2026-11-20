@@ -9,6 +9,8 @@ import { showShopPrices } from "@/lib/shop-prices";
 import { shopCardsWithPhotos } from "@/lib/shop-photo";
 import { homeGiftsListed, shopStallTabs } from "@/lib/home-aisles";
 import { listingInStall } from "@/lib/shop-stalls";
+import { requestTraffic } from "@/lib/agent-request";
+import type { Traffic } from "@/lib/agent-traffic";
 import { publicGridListings } from "@/lib/server/shop-catalog";
 
 export const dynamic = "force-dynamic";
@@ -29,11 +31,13 @@ export function ShopScreen({
   listings,
   showPrices = false,
   giftOffers,
+  traffic = null,
 }: {
   slug: string;
   listings: ShopCard[];
   showPrices?: boolean;
   giftOffers?: Parameters<typeof HomeGiftSpots>[0]["offers"];
+  traffic?: Traffic | null;
 }) {
   const canonical = canonicalStallSlug(slug);
   const aisle = canonical ? aisleBySlug(canonical) : null;
@@ -58,7 +62,7 @@ export function ShopScreen({
         stalls={stalls}
         showPrices={showPrices}
         initialListings={shown}
-        afterHero={canonical === "home-and-gifts" ? <HomeGiftSpots offers={giftOffers} /> : null}
+        afterHero={canonical === "home-and-gifts" ? <HomeGiftSpots offers={giftOffers} traffic={traffic} /> : null}
       />
     </ShopFrame>
   );
@@ -76,5 +80,6 @@ export default async function ShopPage({
   const listings = publicGridListings() as ShopCard[];
   if (slug === "home-and-gifts" && !homeGiftsListed(listings)) redirect("/shop");
   if (!slug && listings.length === 0) redirect("/aisles");
-  return <ShopScreen slug={slug} listings={listings} showPrices={showShopPrices()} />;
+  const traffic = await requestTraffic("/shop");
+  return <ShopScreen slug={slug} listings={listings} showPrices={showShopPrices()} traffic={traffic} />;
 }

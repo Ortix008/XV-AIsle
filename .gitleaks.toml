@@ -1,0 +1,12 @@
+title = "xvaisle"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Exact files whose content hashes tripped the scanner"
+paths = [
+  '''(?:^|/)\.next/prerender-manifest\.json$''',
+  '''(?:^|/)\.next/server/server-reference-manifest\.json$''',
+  '''(?:^|/)usr/local/include/node/v8-internal\.h$''',
+]

@@ -1,5 +1,5 @@
 import { giftSpotsHaveLinks, ticketsAisleListed, type AffiliateOffer } from "@/config/affiliates";
-import { AMAZON_AISLES, liveAisleBySlug } from "@/lib/amazon-aisles";
+import { AMAZON_AISLES, aisleCardArt, liveAisleBySlug } from "@/lib/amazon-aisles";
 import { departmentHref, floorDepartments, type HomeAisleTile } from "@/lib/department-href";
 import { nightWorldBySlug, nightWorlds, type NightWorld, type NightWorldSlug } from "@/lib/night-worlds";
 import { stallProductCount, stallsWithProducts, type StallListing } from "@/lib/shop-stalls";
@@ -50,6 +50,30 @@ export function shopStallTabs<T extends StallListing>(listings: readonly T[], of
   if (!homeGiftsListed(listings, offers) || tabs.some((tab) => tab.slug === "home-and-gifts")) return tabs;
   const gifts = nightWorldBySlug("home-and-gifts");
   return gifts ? [...tabs, gifts] : tabs;
+}
+
+const HOME_STEP_SLUGS = ["home-and-gifts", "kitchen", "home-and-cozy", "holiday", "on-the-go", "tickets-and-events"] as const;
+
+/** Names and blurbs come from the same aisle records the /aisles index uses. */
+export function homeStepTiles() {
+  return HOME_STEP_SLUGS.map((slug) => {
+    if (slug === "home-and-gifts") {
+      const gifts = nightWorldBySlug("home-and-gifts");
+      return {
+        href: "/shop?aisle=home-and-gifts",
+        name: gifts?.title ?? "",
+        intro: gifts?.story ?? "",
+        src: aisleCardArt(slug)?.src ?? "",
+      };
+    }
+    const aisle = AMAZON_AISLES.find((row) => row.slug === slug);
+    return {
+      href: `/aisles/${slug}`,
+      name: aisle?.name ?? "",
+      intro: aisle?.intro ?? "",
+      src: aisleCardArt(slug)?.src ?? "",
+    };
+  });
 }
 
 export function homepageMoreAisles(listings: readonly StallListing[], offers?: readonly AffiliateOffer[]): HomeAisleTile[] {
