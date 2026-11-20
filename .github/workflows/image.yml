@@ -53,8 +53,15 @@ jobs:
           cid=$(docker create "ghcr.io/ortix008/xv-aisle-store:${{ github.sha }}")
           docker export "$cid" | tar -C /tmp/xvaisle-image -xf -
           docker rm "$cid" >/dev/null
-          /tmp/gitleaks detect --no-git --source /tmp/xvaisle-image --config "${GITHUB_WORKSPACE}/.gitleaks.toml" --redact --no-banner --exit-code 1
-          /tmp/gitleaks detect --source "${GITHUB_WORKSPACE}" --config "${GITHUB_WORKSPACE}/.gitleaks.toml" --redact --no-banner --exit-code 1
+          set +e
+          /tmp/gitleaks detect --no-git --source /tmp/xvaisle-image --config "${GITHUB_WORKSPACE}/.gitleaks.toml" --redact --no-banner --report-format json --report-path /tmp/gl-image.json
+          image_code=$?
+          /tmp/gitleaks detect --source "${GITHUB_WORKSPACE}" --config "${GITHUB_WORKSPACE}/.gitleaks.toml" --redact --no-banner --report-format json --report-path /tmp/gl-git.json
+          git_code=$?
+          set -e
+          node -e 'const fs=require("fs"); let failed=false; for (const name of ["image","git"]) { const p="/tmp/gl-"+name+".json"; const rows=fs.existsSync(p)?JSON.parse(fs.readFileSync(p,"utf8")||"[]"):[]; console.log(name+" findings: "+rows.length); for (const row of rows) console.log(String(row.RuleID)+" "+String(row.File)+":"+String(row.StartLine)); if (rows.length) failed=true;} if (failed) process.exit(1);'
+          test "$image_code" -eq 0
+          test "$git_code" -eq 0
       - name: Push the image
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
