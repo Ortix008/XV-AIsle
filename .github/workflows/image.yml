@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -28,7 +30,8 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          load: true
+          push: false
           provenance: false
           sbom: false
           tags: |
@@ -41,3 +44,19 @@ jobs:
             DEPLOYED_COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Scan the image and git history
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          mkdir -p /tmp/xvaisle-image
+          cid=$(docker create "ghcr.io/ortix008/xv-aisle-store:${{ github.sha }}")
+          docker export "$cid" | tar -C /tmp/xvaisle-image -xf -
+          docker rm "$cid" >/dev/null
+          /tmp/gitleaks detect --no-git --source /tmp/xvaisle-image --redact --no-banner --exit-code 1
+          /tmp/gitleaks detect --source "${GITHUB_WORKSPACE}" --redact --no-banner --exit-code 1
+      - name: Push the image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push "ghcr.io/ortix008/xv-aisle-store:${{ github.sha }}"
+          docker push ghcr.io/ortix008/xv-aisle-store:main

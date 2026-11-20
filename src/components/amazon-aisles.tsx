@@ -8,6 +8,7 @@ import {
   AMAZON_ASSOCIATE_DISCLOSURE,
   AMAZON_PAID_LINK_LABEL,
   AMAZON_PICK_BUTTON_LABEL,
+  aisleCardArt,
   aisleIndexJsonLd,
   aisleProductJsonLd,
   amazonPickUrl,
@@ -67,7 +68,7 @@ export function AisleIndex({
 }: {
   aisles: readonly AmazonAisle[];
   includeTickets?: boolean;
-  extras?: readonly { href: string; name: string; intro: string }[];
+  extras?: readonly { href: string; name: string; intro: string; art?: AisleArt }[];
 }) {
   const live = [
     ...liveAisles(aisles),
@@ -82,6 +83,11 @@ export function AisleIndex({
         {extras.map((extra) => (
           <li key={extra.href}>
             <Link href={extra.href} className="affiliate-tile">
+              {extra.art ? (
+                <span className="affiliate-tile-art">
+                  <Still art={extra.art} loading="lazy" />
+                </span>
+              ) : null}
               <span className="affiliate-tile-copy">
                 <h2 className="affiliate-card-name">{extra.name}</h2>
                 {extra.intro ? <p className="affiliate-blurb affiliate-tile-intro">{extra.intro}</p> : null}
@@ -89,21 +95,24 @@ export function AisleIndex({
             </Link>
           </li>
         ))}
-        {live.map((aisle) => (
-          <li key={aisle.slug}>
-            <Link href={`/aisles/${aisle.slug}`} className="affiliate-tile">
-              {aisle.art ? (
-                <span className="affiliate-tile-art">
-                  <Still art={aisle.art} loading="lazy" />
+        {live.map((aisle) => {
+          const art = aisle.art ?? aisleCardArt(aisle.slug);
+          return (
+            <li key={aisle.slug}>
+              <Link href={`/aisles/${aisle.slug}`} className="affiliate-tile">
+                {art ? (
+                  <span className="affiliate-tile-art">
+                    <Still art={art} loading="lazy" />
+                  </span>
+                ) : null}
+                <span className="affiliate-tile-copy">
+                  <h2 className="affiliate-card-name">{aisle.name}</h2>
+                  {aisle.intro ? <p className="affiliate-blurb affiliate-tile-intro">{aisle.intro}</p> : null}
                 </span>
-              ) : null}
-              <span className="affiliate-tile-copy">
-                <h2 className="affiliate-card-name">{aisle.name}</h2>
-                {aisle.intro ? <p className="affiliate-blurb affiliate-tile-intro">{aisle.intro}</p> : null}
-              </span>
-            </Link>
-          </li>
-        ))}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
       <JsonLd data={aisleIndexJsonLd(aisles)} />
     </article>

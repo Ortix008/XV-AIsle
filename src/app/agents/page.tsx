@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ShopFrame } from "@/components/shop-frame";
 
 export const metadata: Metadata = {
@@ -42,6 +43,11 @@ export default function AgentsPage() {
           <p>As an Amazon Associate I earn from qualifying purchases.</p>
           <h2 className="font-heading text-2xl">The shopper decides</h2>
           <p>{"The shopper you're helping makes the final choice and checks out on the partner's site."}</p>
+          <h2 className="font-heading text-2xl">Building an assistant?</h2>
+          <p>
+            {"If you'd like our aisles inside it, let us know on our "}
+            <Link href="/shop/contact">contact page</Link>.
+          </p>
         </div>
       </article>
     </ShopFrame>

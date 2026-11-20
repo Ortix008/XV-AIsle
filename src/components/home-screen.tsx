@@ -5,9 +5,8 @@ import Link from "next/link";
 import { Reveal } from "@/components/reveal";
 import { ShopFooter } from "@/components/shop-footer";
 import { StoreHeader } from "@/components/store-header";
-import { DepartmentGrid } from "@/components/department-grid";
 import { NightStalls } from "@/components/night-stalls";
-import type { HomeAisleTile } from "@/lib/department-href";
+import { homeStepTiles } from "@/lib/home-aisles";
 import type { NightWorldSlug } from "@/lib/night-worlds";
 import { AisleParallax, XvAisleFlow } from "@/components/xvaisle-flow";
 import { MarkTile } from "@/components/mark-tile";
@@ -28,7 +27,6 @@ export function JoinScreen({
   showBuying = false,
   listings,
   nightSlugs = [],
-  moreAisles = [],
 }: {
   checkoutLine: string;
   operator?: boolean;
@@ -37,7 +35,6 @@ export function JoinScreen({
   showBuying?: boolean;
   listings?: ShopCard[];
   nightSlugs?: readonly NightWorldSlug[];
-  moreAisles?: readonly HomeAisleTile[];
 }) {
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -65,7 +62,7 @@ export function JoinScreen({
             <XvAisleFlow />
             <div className="hero-aisle-scrim" />
           </div>
-          <div className="relative z-[1] mx-auto flex min-h-[inherit] max-w-[1280px] flex-col justify-center px-5 py-16 sm:px-10 lg:py-24">
+          <div className="hero-aisle-inner relative z-[1] mx-auto flex min-h-[inherit] max-w-[1280px] flex-col justify-center px-5 py-16 sm:px-10 lg:py-24">
             <div className="hero-glow" aria-hidden />
             <div className="hero-text-scrim" aria-hidden />
             <div className="relative z-[1] max-w-xl">
@@ -112,14 +109,39 @@ export function JoinScreen({
                 <NightStalls slugs={nightSlugs} />
               </>
             ) : null}
-            {moreAisles.length > 0 ? (
-              <>
-                <h3 className={nightSlugs.length > 0 ? "mt-16 mb-8 text-3xl sm:text-4xl" : "mb-8 text-3xl sm:text-4xl"}>
-                  Step into an aisle.
-                </h3>
-                <DepartmentGrid tiles={moreAisles} />
-              </>
-            ) : null}
+            <div className={nightSlugs.length > 0 ? "home-aisles mt-16" : "home-aisles"}>
+              <h2 className="home-aisles-head text-3xl sm:text-4xl">Step into an aisle.</h2>
+              <ul className="affiliate-index">
+                {homeStepTiles().map((tile, index) => (
+                  <Reveal as="li" key={tile.href} index={index} pace="shop">
+                    <Link href={tile.href} className="affiliate-tile">
+                      <span className="affiliate-tile-art">
+                        {/* Plain img so the 800px still ships as is. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={tile.src} alt="" width={800} height={800} loading="lazy" decoding="async" />
+                      </span>
+                      <span className="affiliate-tile-copy">
+                        <h3 className="affiliate-card-name">{tile.name}</h3>
+                        <p className="affiliate-blurb affiliate-tile-intro">{tile.intro}</p>
+                      </span>
+                    </Link>
+                  </Reveal>
+                ))}
+              </ul>
+              <Link href="/aisles" className="pill pill-ghost home-aisles-more">
+                See all aisles
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                  <path
+                    d="M6 3.5 10.5 8 6 12.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </Link>
+            </div>
           </div>
         </section>
 

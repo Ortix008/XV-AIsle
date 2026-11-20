@@ -212,7 +212,6 @@ async function main() {
       checkoutLine: "Cards are checked on this site.",
       listings: [],
       nightSlugs: [],
-      moreAisles: closedMore,
     }),
   );
   assert(homeEmpty.includes("Browse the aisles") && homeEmpty.includes('href="/aisles"'), "an empty shop points the hero at the aisles");
@@ -220,28 +219,33 @@ async function main() {
   assert(homeEmpty.includes("Step into an aisle."), "the single-aisle heading is the approved line");
   assert(!homeEmpty.includes("Four aisles") && !homeEmpty.includes("Our aisles"), "the night-aisle block stays hidden with no stalls");
   assert(!homeEmpty.includes("close look") && !homeEmpty.toLowerCase().includes("reviewed"), "the homepage makes no review claim");
-  assert(homeEmpty.includes("dept-grid-single"), "one More aisles tile uses the full-width card");
+  assert(homeEmpty.includes("home-aisles") && homeEmpty.includes("See all aisles"), "the home aisle set uses the aisle tiles");
   const homeStocked = renderToStaticMarkup(
     createElement(JoinScreen, {
       checkoutLine: "Cards are checked on this site.",
       listings: [{ productId: "pan", title: "Pan", image: "/art/mock-sheet-pan-1.png" }],
       nightSlugs: ["everyday-finds"],
-      moreAisles: closedMore,
     }),
   );
   assert(homeStocked.includes("Our aisles") && homeStocked.includes('href="/shop"'), "a stocked shop restores Our aisles and the shop links");
   assert(!showHomeAisles(), "the homepage night-aisle block is off unless SHOW_HOME_AISLES is set");
-  const launchMore = more.filter((tile) => tile.href !== "/aisles/tickets-and-events");
   const homeLive = renderToStaticMarkup(
     createElement(JoinScreen, {
       checkoutLine: "Cards are checked on this site.",
       listings: [],
       nightSlugs: [],
-      moreAisles: launchMore,
     }),
   );
   assert(!homeLive.includes(">Our aisles<") && !homeLive.includes("aisle-stall"), "the launch homepage hides the night-aisle block");
-  assert(homeLive.includes("dept-grid-single") && homeLive.includes('href="/aisles/kitchen"') && !homeLive.includes("tickets-and-events"), "Kitchen is the only homepage aisle tile");
+  assert(
+    homeLive.includes('href="/shop?aisle=home-and-gifts"') &&
+      homeLive.includes('href="/aisles/kitchen"') &&
+      homeLive.includes('href="/aisles/home-and-cozy"') &&
+      homeLive.includes('href="/aisles/holiday"') &&
+      homeLive.includes('href="/aisles/on-the-go"') &&
+      homeLive.includes('href="/aisles/tickets-and-events"'),
+    "the homepage aisle set is Home & Gifts, Kitchen, Home & Cozy, Holiday, On the Go, and Tickets",
+  );
   const previousAisles = process.env.SHOW_HOME_AISLES;
   process.env.SHOW_HOME_AISLES = "1";
   assert(showHomeAisles(), "SHOW_HOME_AISLES=1 turns the night-aisle block back on");

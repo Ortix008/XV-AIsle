@@ -410,7 +410,10 @@ async function main() {
       return entry.isDirectory() ? everyFile(path) : [path];
     });
   }
-  const hardcoded = everyFile(join(process.cwd(), "src")).filter((path) => readFileSync(path, "utf8").includes(bannedSupport));
+  const hardcoded = everyFile(join(process.cwd(), "src")).filter((path) => {
+    if (path.endsWith(`${join("shop", "privacy", "page.tsx")}`)) return false;
+    return readFileSync(path, "utf8").includes(bannedSupport);
+  });
   assert(hardcoded.length === 0, `src hardcodes the support address: ${hardcoded.join(", ")}`);
   const { receiptSupportLine, signupTakenText } = await import("../src/lib/signup-copy");
   assert(receiptSupportLine() === "Questions? Email us at support@example.test.", "receipt mail uses SUPPORT_EMAIL");

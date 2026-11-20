@@ -436,12 +436,17 @@ export const AISLE_CARD_ALT = {
   "office-and-desk": "Brass desk lamp lighting an open blank notebook, a ceramic pen cup and a small leather tray on a dark desk",
   "games-and-hobbies":
     "Wooden chessboard with pieces, dice, a cup of paintbrushes, small unlabeled paint pots, and a partly built wooden model kit with loose parts on a dark wood table",
+  "home-and-gifts":
+    "Two wrapped gifts with emerald satin ribbon, a lit amber candle, a stoneware bud vase with eucalyptus and a folded knit throw on a dark wood table under an emerald glow",
+  "tickets-and-events":
+    "Canvas day pack, an unfolded trail map with an open brass compass, and a pair of binoculars on a dark wood table under an emerald glow",
 } as const;
 
 export function aisleCardArt(slug: string): AisleArt | undefined {
   const alt = AISLE_CARD_ALT[slug as keyof typeof AISLE_CARD_ALT];
   if (!alt) return undefined;
-  return { src: `/art/aisle-card-${slug}.webp`, alt };
+  const src = `/art/aisle-card-${slug}.webp`;
+  return { src: slug === "home-and-gifts" ? `${src}?v=2` : src, alt };
 }
 
 export const AMAZON_AISLES: readonly AmazonAisle[] = AMAZON_AISLE_ROWS.map((aisle) => {
