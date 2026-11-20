@@ -53,8 +53,8 @@ jobs:
           cid=$(docker create "ghcr.io/ortix008/xv-aisle-store:${{ github.sha }}")
           docker export "$cid" | tar -C /tmp/xvaisle-image -xf -
           docker rm "$cid" >/dev/null
-          /tmp/gitleaks detect --no-git --source /tmp/xvaisle-image --redact --no-banner --exit-code 1
-          /tmp/gitleaks detect --source "${GITHUB_WORKSPACE}" --redact --no-banner --exit-code 1
+          /tmp/gitleaks detect --no-git --source /tmp/xvaisle-image --config "${GITHUB_WORKSPACE}/.gitleaks.toml" --redact --no-banner --exit-code 1
+          /tmp/gitleaks detect --source "${GITHUB_WORKSPACE}" --config "${GITHUB_WORKSPACE}/.gitleaks.toml" --redact --no-banner --exit-code 1
       - name: Push the image
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

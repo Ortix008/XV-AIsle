@@ -1,0 +1,11 @@
+title = "xvaisle"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Next.js build manifests contain content hashes that look like keys"
+paths = [
+  '''\.next/[^/]+\.json$''',
+  '''\.next/.+/[^/]+\.json$''',
+]
