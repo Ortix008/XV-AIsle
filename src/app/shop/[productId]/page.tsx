@@ -17,6 +17,7 @@ import { comingSoonListing } from "@/lib/supplier-confirm";
 import { returnCopyForListing } from "@/lib/server/supplier-returns";
 import { getListing, listPublished, listingLoss } from "@/lib/server/store";
 import { publicSiteUrl } from "@/lib/config/env";
+import { shopperListingOmitted } from "@/lib/shop-public";
 import { hasRealProductPhoto } from "@/lib/shop-photo";
 import { productShopperJsonLd, shopperPriceView, showShopPrices } from "@/lib/shop-prices";
 import { productOgImage } from "@/lib/product-og";
@@ -33,7 +34,13 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
   const { productId } = await params;
   ensureStarterShelf();
   const listing = getListing(productId);
-  if (!listing || !visibleOnShop(listing) || listingLoss(listing) || !hasRealProductPhoto(listing.image)) {
+  if (
+    !listing ||
+    !visibleOnShop(listing) ||
+    listingLoss(listing) ||
+    !hasRealProductPhoto(listing.image) ||
+    shopperListingOmitted(listing)
+  ) {
     return { title: "Shop · XV-AIsle" };
   }
   const shown = publicListing(listing, isSampleListing(listing));
@@ -70,12 +77,26 @@ export default async function ProductPage({
   if (canceled) releaseHeldStock(canceled, productId);
   ensureStarterShelf();
   const listing = getListing(productId);
-  if (!listing || !visibleOnShop(listing) || listingLoss(listing) || !hasRealProductPhoto(listing.image)) notFound();
+  if (
+    !listing ||
+    !visibleOnShop(listing) ||
+    listingLoss(listing) ||
+    !hasRealProductPhoto(listing.image) ||
+    shopperListingOmitted(listing)
+  ) {
+    notFound();
+  }
   const aisle = aisleKey(listing);
   const pricesOn = showShopPrices();
   const picks: AislePick[] = aisle
     ? listPublished({ aisle })
-        .filter((item) => item.productId !== listing.productId && listedOnGrid(item) && hasRealProductPhoto(item.image))
+        .filter(
+          (item) =>
+            item.productId !== listing.productId &&
+            listedOnGrid(item) &&
+            hasRealProductPhoto(item.image) &&
+            !shopperListingOmitted(item),
+        )
         .slice(0, 4)
         .map((item) =>
           shopperPriceView({

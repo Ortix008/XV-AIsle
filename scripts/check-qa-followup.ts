@@ -149,7 +149,7 @@ async function main() {
       showPrices: true,
     }),
   );
-  assert(open.includes("Continue to checkout"), "a confirmed US ship-from keeps the buy button");
+  assert(!open.includes("Continue to checkout") && !open.includes("Pay "), "a confirmed US ship-from has no checkout button");
   const productPage = readFileSync(join(process.cwd(), "src/app/shop/[productId]/page.tsx"), "utf8");
   assert(productPage.includes("comingSoonListing(listing)"), "the product page uses the US ship-from gate");
 
@@ -216,12 +216,16 @@ async function main() {
   assert(!resellerSource.includes("requireOperator") && resellerSource.includes("viewerIsOperator"), "the reseller page is public");
   assert(!termsSource.includes("requireOperator") && termsSource.includes("viewerIsOperator"), "the reseller terms page is public");
   const config = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
-  assert(config.includes('source: "/reseller"') && config.includes('destination: "/shop/reseller"'), "/reseller still opens the public reseller page");
+  assert(config.includes('source: "/reseller"') && config.includes('destination: "/aisles"'), "/reseller redirects to the aisles for launch");
+  assert(config.includes('source: "/shop/reseller"') && config.includes('destination: "/aisles"'), "/shop/reseller redirects to the aisles for launch");
+  assert(config.includes('source: "/shop/reseller/terms"') && config.includes('destination: "/aisles"'), "/shop/reseller/terms redirects to the aisles for launch");
+  assert(config.includes('source: "/shop/how-we-check"') && config.includes('destination: "/aisles"'), "/shop/how-we-check redirects to the aisles for launch");
+  assert(config.includes('source: "/shop/safety"') && config.includes('destination: "/aisles"'), "/shop/safety redirects to the aisles for launch");
   const signup = readFileSync(join(process.cwd(), "src/components/auth-screens.tsx"), "utf8");
-  assert(signup.includes('href="/shop/reseller"') && signup.includes("Reseller terms"), "sign-up points Reseller terms at the public reseller page");
+  assert(!signup.includes('href="/shop/reseller"'), "sign-up does not link to the hidden reseller page");
   assert(!signup.includes('href="/shop/reseller/terms"'), "sign-up no longer links to the terms path");
 
-  for (const path of ["/shop/order", "/shop/return", "/shop/qa-checkout"]) {
+  for (const path of ["/shop/order", "/shop/return", "/shop/qa-checkout", "/shop/safety"]) {
     assert(!SITEMAP_PATHS.includes(path), `${path} is not a sitemap path`);
   }
   const card = {

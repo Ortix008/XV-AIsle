@@ -7,6 +7,8 @@ import { ShopFooter } from "@/components/shop-footer";
 import { StoreHeader } from "@/components/store-header";
 import { DepartmentGrid } from "@/components/department-grid";
 import { NightStalls } from "@/components/night-stalls";
+import type { HomeAisleTile } from "@/lib/department-href";
+import type { NightWorldSlug } from "@/lib/night-worlds";
 import { AisleParallax, XvAisleFlow } from "@/components/xvaisle-flow";
 import { MarkTile } from "@/components/mark-tile";
 import { ShopGrid, type ShopCard } from "@/components/shop-grid";
@@ -23,12 +25,19 @@ export function JoinScreen({
   checkoutLine,
   operator = false,
   showPrices = false,
+  showBuying = false,
   listings,
+  nightSlugs = [],
+  moreAisles = [],
 }: {
   checkoutLine: string;
   operator?: boolean;
   showPrices?: boolean;
+  /** Launch switch. The buying block under the aisle grid stays in source and is hidden while this is off. */
+  showBuying?: boolean;
   listings?: ShopCard[];
+  nightSlugs?: readonly NightWorldSlug[];
+  moreAisles?: readonly HomeAisleTile[];
 }) {
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -58,18 +67,18 @@ export function JoinScreen({
           </div>
           <div className="relative z-[1] mx-auto flex min-h-[inherit] max-w-[1280px] flex-col justify-center px-5 py-16 sm:px-10 lg:py-24">
             <div className="hero-glow" aria-hidden />
+            <div className="hero-text-scrim" aria-hidden />
             <div className="relative z-[1] max-w-xl">
               <p className="eyebrow hero-eyebrow">{HERO_EYEBROW}</p>
               <h1 className="mt-5 text-[3.25rem] leading-[0.95] font-bold tracking-[-0.045em] sm:text-7xl lg:text-[5.5rem]">
                 <span className="hero-break">Goods that </span>earn their <span className="text-primary">place.</span>
               </h1>
               <p className="hero-lede mt-7 max-w-md text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-                A curated market of home, kitchen, and everyday goods.{" "}
-                {"Shipping details are added to each product once its supplier confirms them."}
+                Each pick links to the store where you buy it.
               </p>
               <div className="hero-actions">
-                <Link href="/shop" className="pill pill-primary">
-                  Shop the aisles
+                <Link href={(listings?.length ?? 0) > 0 ? "/shop" : "/aisles"} className="pill pill-primary">
+                  Browse the aisles
                 </Link>
                 {operator ? (
                   <Link href="/shop/reseller" className="status-chip">
@@ -83,28 +92,41 @@ export function JoinScreen({
 
         <section id="aisles" className="scroll-mt-24">
           <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]">
-            <Reveal className="mb-10 flex items-end justify-between gap-5">
-              <div>
-                <p className="eyebrow">Aisles</p>
-                <h2 className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">Four aisles</h2>
-                <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">
-                  {"Each one has its own glow. Here's what you'll find inside."}
-                </p>
-              </div>
-              <Link href="/shop" className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary">
-                View all →
-              </Link>
-            </Reveal>
-            <NightStalls />
-            <h3 className="mt-16 mb-8 text-3xl sm:text-4xl">More aisles to wander.</h3>
-            <DepartmentGrid />
+            {nightSlugs.length > 0 ? (
+              <>
+                <Reveal className="mb-10 flex items-end justify-between gap-5">
+                  <div>
+                    <p className="eyebrow">Aisles</p>
+                    <h2 className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">Our aisles</h2>
+                    <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">
+                      {"Each one has its own glow. Here's what you'll find inside."}
+                    </p>
+                  </div>
+                  <Link
+                    href={(listings?.length ?? 0) > 0 ? "/shop" : "/aisles"}
+                    className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary"
+                  >
+                    View all →
+                  </Link>
+                </Reveal>
+                <NightStalls slugs={nightSlugs} />
+              </>
+            ) : null}
+            {moreAisles.length > 0 ? (
+              <>
+                <h3 className={nightSlugs.length > 0 ? "mt-16 mb-8 text-3xl sm:text-4xl" : "mb-8 text-3xl sm:text-4xl"}>
+                  Step into an aisle.
+                </h3>
+                <DepartmentGrid tiles={moreAisles} />
+              </>
+            ) : null}
           </div>
         </section>
 
         <ShopGrid
           kicker="Featured"
           title="In the store"
-          lede="Every item is reviewed before it's listed. Shipping details are added to each product once its supplier confirms them."
+          lede="Prices, shipping and returns are set by the store you buy from."
           query=""
           empty="Nothing's on the shelves yet. We're picking the first pieces now."
           limit={4}
@@ -117,69 +139,63 @@ export function JoinScreen({
           initialListings={listings}
         />
 
-        <section>
-          <div className="mx-auto grid max-w-[1280px] gap-5 px-5 py-16 sm:px-10 sm:py-[72px] lg:grid-cols-3 lg:py-[110px]">
-            <Reveal as="article" index={0} className="rounded-2xl border border-border bg-secondary p-7">
-              <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
-              <h2 className="text-lg">Open product info</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Shipping details are added to each product once its supplier confirms them.
-              </p>
-            </Reveal>
-            <Reveal as="article" index={1} className="rounded-2xl border border-border bg-secondary p-7">
-              <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
-              <h2 className="text-lg">{RETURN_WINDOW_DAYS}-day returns</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Changed your mind? Start a return within {RETURN_WINDOW_DAYS} days of delivery.
-              </p>
-            </Reveal>
-            <Reveal as="article" index={2} className="rounded-2xl border border-border bg-secondary p-7">
-              <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
-              <p className="text-sm leading-relaxed text-muted-foreground">{checkoutLine}</p>
-            </Reveal>
-          </div>
-        </section>
+        {showBuying ? (
+          <>
+            <section>
+              <div className="mx-auto grid max-w-[1280px] gap-5 px-5 py-16 sm:px-10 sm:py-[72px] lg:grid-cols-3 lg:py-[110px]">
+                <Reveal as="article" index={0} className="rounded-2xl border border-border bg-secondary p-7">
+                  <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
+                  <h2 className="text-lg">Open product info</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    Shipping details are added to each product once its supplier confirms them.
+                  </p>
+                </Reveal>
+                <Reveal as="article" index={1} className="rounded-2xl border border-border bg-secondary p-7">
+                  <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
+                  <h2 className="text-lg">{RETURN_WINDOW_DAYS}-day returns</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    Changed your mind? Start a return within {RETURN_WINDOW_DAYS} days of delivery.
+                  </p>
+                </Reveal>
+                <Reveal as="article" index={2} className="rounded-2xl border border-border bg-secondary p-7">
+                  <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
+                  <p className="text-sm leading-relaxed text-muted-foreground">{checkoutLine}</p>
+                </Reveal>
+              </div>
+            </section>
 
-        <section className="border-t border-border">
-          <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10">
-            <Reveal>
-              <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
-                We take a close look at every product before it reaches our aisles.
-              </p>
-            </Reveal>
-          </div>
-        </section>
-
-        {hasCards(welcomeReach.length) ? (
-        <section className="border-t border-border">
-          <div className="relative isolate min-h-[360px] overflow-hidden">
-            <Image
-              src="/brand/hero-warehouse-flow-green.webp"
-              alt=""
-              fill
-              sizes="100vw"
-              className="object-cover object-center"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/82 via-black/55 to-black/30" />
-            <Reveal className="relative z-10 mx-auto flex min-h-[360px] w-full max-w-[1280px] flex-col justify-end px-5 py-12 sm:px-10">
-              <h2 className="text-4xl text-white sm:text-5xl">Who ships</h2>
-              <p className="mt-3 max-w-xl text-base leading-relaxed text-white/90">
-                Your order is sent straight to your door.
-              </p>
-            </Reveal>
-          </div>
-          <ul className="mx-auto grid max-w-[1280px] gap-5 px-5 py-8 sm:px-10 md:grid-cols-2">
-            {welcomeReach.map((place, index) => (
-              <Reveal key={place.title} as="li" index={index} className="product-card overflow-hidden rounded-2xl border border-border bg-card">
-                <MarkTile src={place.src} alt="" sizes="(min-width: 768px) 50vw, 100vw" zoom />
-                <div className="px-5 py-4">
-                  <p className="font-heading text-lg">{place.title}</p>
-                  <p className="mt-1 text-pretty text-sm text-muted-foreground">{place.line}</p>
+            {hasCards(welcomeReach.length) ? (
+              <section className="border-t border-border">
+                <div className="relative isolate min-h-[360px] overflow-hidden">
+                  <Image
+                    src="/brand/hero-warehouse-flow-green.webp"
+                    alt=""
+                    fill
+                    sizes="100vw"
+                    className="object-cover object-center"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/82 via-black/55 to-black/30" />
+                  <Reveal className="relative z-10 mx-auto flex min-h-[360px] w-full max-w-[1280px] flex-col justify-end px-5 py-12 sm:px-10">
+                    <h2 className="text-4xl text-white sm:text-5xl">Who ships</h2>
+                    <p className="mt-3 max-w-xl text-base leading-relaxed text-white/90">
+                      Your order is sent straight to your door.
+                    </p>
+                  </Reveal>
                 </div>
-              </Reveal>
-            ))}
-          </ul>
-        </section>
+                <ul className="mx-auto grid max-w-[1280px] gap-5 px-5 py-8 sm:px-10 md:grid-cols-2">
+                  {welcomeReach.map((place, index) => (
+                    <Reveal key={place.title} as="li" index={index} className="product-card overflow-hidden rounded-2xl border border-border bg-card">
+                      <MarkTile src={place.src} alt="" sizes="(min-width: 768px) 50vw, 100vw" zoom />
+                      <div className="px-5 py-4">
+                        <p className="font-heading text-lg">{place.title}</p>
+                        <p className="mt-1 text-pretty text-sm text-muted-foreground">{place.line}</p>
+                      </div>
+                    </Reveal>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+          </>
         ) : null}
       </main>
       <ShopFooter showReseller={operator} />

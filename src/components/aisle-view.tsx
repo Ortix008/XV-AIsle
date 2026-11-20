@@ -8,7 +8,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { NightMotif } from "@/components/night-motif";
 import { placeProduct, type Aisle } from "@/lib/aisles";
 import { getProduct } from "@/lib/catalog";
-import { useDesk } from "@/lib/desk-store";
+import { useDeskOptional } from "@/lib/desk-store";
 import { nightWorldBySlug, nightWorldVars } from "@/lib/night-worlds";
 import { cn } from "cn";
 
@@ -20,7 +20,7 @@ const statusLabel = {
 
 export function AisleView({ aisle, onClose }: { aisle: Aisle; onClose: () => void }) {
   const router = useRouter();
-  const { state, select } = useDesk();
+  const desk = useDeskOptional();
   const closeRef = useRef(onClose);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -81,7 +81,7 @@ export function AisleView({ aisle, onClose }: { aisle: Aisle; onClose: () => voi
 
   const world = nightWorldBySlug(aisle.slug);
   const sections = aisle.sections.map((section) => {
-    const items = state.pipeline.flatMap((row) => {
+    const items = (desk?.state.pipeline ?? []).flatMap((row) => {
       const product = getProduct(row.productId);
       const place = placeProduct(product);
       if (!place || place.aisle !== aisle.title || place.section !== section.name) return [];
@@ -99,7 +99,8 @@ export function AisleView({ aisle, onClose }: { aisle: Aisle; onClose: () => voi
   const found = sections.reduce((sum, section) => sum + section.items.length, 0);
 
   function openInSignal(id: string) {
-    select("scout", id);
+    if (!desk) return;
+    desk.select("scout", id);
     router.push(`/scout?item=${encodeURIComponent(id)}`);
   }
 

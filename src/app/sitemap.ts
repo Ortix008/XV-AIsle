@@ -5,6 +5,8 @@ import { visibleOnShop } from "@/lib/server/starter-shelf";
 import { appOrigin } from "@/lib/server/stripe";
 import { listPublished } from "@/lib/server/store";
 import { liveAislePaths } from "@/lib/amazon-aisles";
+import { homeGiftsListed } from "@/lib/home-aisles";
+import { publicGridListings } from "@/lib/server/shop-catalog";
 import { hasRealProductPhoto } from "@/lib/shop-photo";
 import { comingSoonListing } from "@/lib/supplier-confirm";
 
@@ -14,11 +16,9 @@ export const SITEMAP_PATHS = [
   "/",
   "/shop",
   "/shop/small",
-  "/shop/how-we-check",
   "/shop/shipping",
   "/shop/returns",
   "/shop/contact",
-  "/shop/safety",
   "/shop/privacy",
   "/shop/terms",
   "/sign-in",
@@ -35,9 +35,11 @@ export function sitemapListsProduct(listing: {
   shipsFrom?: string | null;
   supplierUsConfirmed?: boolean | null;
   image?: string | null;
+  kind?: string | null;
 }) {
   if (isQaCheckoutListing(listing)) return false;
   if (!visibleOnShop(listing)) return false;
+  if (listing.kind === "bundle") return false;
   if (comingSoonListing(listing)) return false;
   if (!hasRealProductPhoto(listing.image)) return false;
   return true;
@@ -49,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages = [
     ...SITEMAP_PATHS.map((path) => `${origin}${path}`),
     ...liveAislePaths().map((path) => `${origin}${path}`),
-    `${origin}/shop?aisle=bundles`,
+    ...(homeGiftsListed(publicGridListings()) ? [`${origin}/shop?aisle=home-and-gifts`] : []),
   ];
   const products = listPublished()
     .filter(sitemapListsProduct)

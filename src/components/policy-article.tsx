@@ -1,9 +1,7 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { AisleHero } from "@/components/aisle-hero";
 import { Reveal } from "@/components/reveal";
 import { ShopFrame } from "@/components/shop-frame";
-import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { RESELLER_DAMAGE_NOTE } from "@/lib/reseller-copy";
 import { DAMAGE_PHOTO_LINE } from "@/lib/returns-policy";
 import { supportEmailForDisplay } from "@/lib/server/settings";
@@ -59,11 +57,6 @@ export function PolicyArticle({
           <Reveal as="article" className="policy-card">
             <h1 className="page-title">{title}</h1>
             <div className="policy-copy">{children}</div>
-            <p className="policy-more">
-              <Link href={HOW_WE_CHECK_HREF} className="tap-link underline underline-offset-4">
-                How we check
-              </Link>
-            </p>
             {contact("policy-contact")}
           </Reveal>
         </div>
@@ -82,11 +75,6 @@ export function PolicyArticle({
           </>
         )}
         <div className={story ? "space-y-4 text-base leading-relaxed text-foreground" : "mt-8 space-y-4 text-base leading-relaxed text-foreground"}>{children}</div>
-        <p className="mt-6">
-          <Link href={HOW_WE_CHECK_HREF} className="tap-link underline underline-offset-4">
-            How we check
-          </Link>
-        </p>
         {contact("mt-10 space-y-3 border-t border-border pt-6 text-base leading-relaxed")}
       </Reveal>
     </ShopFrame>

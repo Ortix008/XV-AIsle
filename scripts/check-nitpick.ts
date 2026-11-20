@@ -121,7 +121,7 @@ async function main() {
       showPrices: true,
     }),
   );
-  assert(open.includes("Continue to checkout"), "a confirmed product can still be bought");
+  assert(!open.includes("Continue to checkout") && !open.includes("Pay "), "a confirmed product has no checkout button");
   assert(open.includes("Return address"), "an operator product page keeps the return address");
 
   assert(requireSupplierConfirmed() === true, "the supplier switch defaults on");

@@ -7,7 +7,7 @@ export default function Error({ reset }: { error: Error & { digest?: string }; r
         <p className="eyebrow">Market</p>
         <h1 className="page-title">Something interrupted this page.</h1>
         <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground">
-          {"You're still signed in. Try refreshing the page."}
+          {"This page didn't load. Refresh to try again, or go back to the homepage."}
         </p>
         <button type="button" className="pill pill-primary mt-8" onClick={() => reset()}>
           Try again

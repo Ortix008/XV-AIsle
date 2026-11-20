@@ -71,3 +71,39 @@ Exact text: Review this order before it ships. Payment came in after the stock h
 Defined at `src/lib/order-flags.ts:4`. Shown to an admin on a store order at `src/components/orders-view.tsx:237` when the paid order could not take stock. Shoppers do not see this line.
 
 Approved by Genie, Oct 27 2026.
+
+## Affiliate disclosure
+
+Card text, on all four partner cards: We may earn a commission when you buy through these links.
+
+Longer line kept in config, not shown on the cards: We may earn a commission when you buy through these links, at no extra cost to you.
+
+Defined at `src/config/affiliates.ts`. Each program has its own `disclosure`. The cards use the shorter sentence. It renders under the button only when that link's href is set.
+
+The Amazon aisle line stays "As an Amazon Associate I earn from qualifying purchases." and the aisle label stays "(paid link)".
+
+Approved by Genie, Nov 16 2026. Disclosure wording after this default is still open.
+
+## Affiliate spot copy
+
+| Exact text | Where |
+| --- | --- |
+| Gift a book | Books heading on Home & Gifts, `src/config/affiliates.ts` |
+| Browse books on Bookshop.org | Bookshop link, same file |
+| Tours and things to do | Experiences heading on Tickets & Events, same file |
+| See things to do on Viator | Viator link, same file |
+| See things to do on GetYourGuide | GetYourGuide link, same file |
+| Gift ideas | Gifts heading on Home & Gifts, same file |
+| Browse gifts on Zazzle | Zazzle link, same file |
+
+These strings render only when that program's href is set.
+
+Approved by Genie, Nov 16 2026.
+
+## Error boundary
+
+Exact text: This page didn't load. Refresh to try again, or go back to the homepage.
+
+The body line in `src/app/error.tsx` and `src/app/global-error.tsx`.
+
+Approved by Genie, Nov 16 2026.

@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { HomeGiftSpots } from "@/components/affiliate-spot";
 import { ShopFrame } from "@/components/shop-frame";
 import { ShopGrid, type ShopCard } from "@/components/shop-grid";
 import { aisleBySlug } from "@/lib/aisles";
 import { canonicalStallSlug, LEGACY_RIG_SLUG, nightWorldBySlug } from "@/lib/night-worlds";
 import { showShopPrices } from "@/lib/shop-prices";
 import { shopCardsWithPhotos } from "@/lib/shop-photo";
-import { listingInStall, stallsWithProducts } from "@/lib/shop-stalls";
+import { homeGiftsListed, shopStallTabs } from "@/lib/home-aisles";
+import { listingInStall } from "@/lib/shop-stalls";
 import { publicGridListings } from "@/lib/server/shop-catalog";
 
 export const dynamic = "force-dynamic";
@@ -26,16 +28,18 @@ export function ShopScreen({
   slug,
   listings,
   showPrices = false,
+  giftOffers,
 }: {
   slug: string;
   listings: ShopCard[];
   showPrices?: boolean;
+  giftOffers?: Parameters<typeof HomeGiftSpots>[0]["offers"];
 }) {
   const canonical = canonicalStallSlug(slug);
   const aisle = canonical ? aisleBySlug(canonical) : null;
   const world = canonical ? nightWorldBySlug(canonical) : null;
   const photos = shopCardsWithPhotos(listings);
-  const stalls = stallsWithProducts(photos);
+  const stalls = shopStallTabs(photos, giftOffers);
   const shown = world ? photos.filter((item) => listingInStall(item, world.slug)) : photos;
   return (
     <ShopFrame>
@@ -54,6 +58,7 @@ export function ShopScreen({
         stalls={stalls}
         showPrices={showPrices}
         initialListings={shown}
+        afterHero={canonical === "home-and-gifts" ? <HomeGiftSpots offers={giftOffers} /> : null}
       />
     </ShopFrame>
   );
@@ -67,6 +72,9 @@ export default async function ShopPage({
   const params = searchParams ? await searchParams : {};
   const slug = firstParam(params.aisle);
   if (slug === LEGACY_RIG_SLUG) redirect("/shop?aisle=everyday-finds");
+  if (slug === "bundles") redirect("/shop");
   const listings = publicGridListings() as ShopCard[];
+  if (slug === "home-and-gifts" && !homeGiftsListed(listings)) redirect("/shop");
+  if (!slug && listings.length === 0) redirect("/aisles");
   return <ShopScreen slug={slug} listings={listings} showPrices={showShopPrices()} />;
 }

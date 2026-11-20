@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
 import { useOptionalAccount } from "@/lib/account-store";
 import { cn } from "cn";
 
@@ -21,7 +20,6 @@ export const storeNav = [
   { href: "/shop", label: "Shop" },
   { href: "/aisles", label: "Aisles" },
   { href: "/shop/small", label: "Small business" },
-  { href: HOW_WE_CHECK_HREF, label: "How we check" },
   { href: "/account", label: "Account" },
 ] as const;
 

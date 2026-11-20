@@ -5,12 +5,14 @@ import { AccountProvider } from "@/lib/account-store";
 
 export function ShopFrame({
   children,
-  showStorePayLine = true,
-  showBrandBlock = true,
+  showStorePayLine = false,
+  showBrandBlock = false,
+  showAmazonDisclosure = false,
 }: {
   children: ReactNode;
   showStorePayLine?: boolean;
   showBrandBlock?: boolean;
+  showAmazonDisclosure?: boolean;
 }) {
   return (
     <AccountProvider>
@@ -25,7 +27,11 @@ export function ShopFrame({
       <main id="store-main" className="flex-1">
         {children}
       </main>
-      <ShopFooter showStorePayLine={showStorePayLine} showBrandBlock={showBrandBlock} />
+      <ShopFooter
+        showStorePayLine={showStorePayLine}
+        showBrandBlock={showBrandBlock}
+        showAmazonDisclosure={showAmazonDisclosure}
+      />
     </div>
     </AccountProvider>
   );

@@ -46,7 +46,11 @@ const nextConfig: NextConfig = {
       { source: "/login", destination: "/sign-in", permanent: false },
       { source: "/signup", destination: "/sign-up", permanent: false },
       { source: "/returns", destination: "/shop/returns", permanent: false },
-      { source: "/reseller", destination: "/shop/reseller", permanent: false },
+      { source: "/reseller", destination: "/aisles", permanent: false },
+      { source: "/shop/reseller/terms", destination: "/aisles", permanent: false },
+      { source: "/shop/reseller", destination: "/aisles", permanent: false },
+      { source: "/shop/how-we-check", destination: "/aisles", permanent: false },
+      { source: "/shop/safety", destination: "/aisles", permanent: false },
     ];
   },
   async headers() {

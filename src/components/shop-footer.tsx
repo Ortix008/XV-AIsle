@@ -5,7 +5,8 @@ import { BrandMark } from "@/components/brand-mark";
 import { MissionValues } from "@/components/mission-values";
 import { useOptionalAccount } from "@/lib/account-store";
 import { AMAZON_ASSOCIATE_DISCLOSURE } from "@/lib/amazon-aisles";
-import { HOW_WE_CHECK_HREF } from "@/lib/honest-price";
+import { giftSpotsHaveLinks } from "@/config/affiliates";
+import { OPERATOR_ABOUT } from "@/config/operator-about";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
 const RESELLER_LINKS = new Set(["/shop/reseller", "/shop/reseller/terms"]);
@@ -24,15 +25,12 @@ const columns = [
       { href: "/shop/shipping", label: "Shipping" },
       { href: "/shop/returns", label: "Returns" },
       { href: "/shop/contact", label: "Contact" },
-      { href: "/shop/safety", label: "How buying works" },
     ],
   },
   {
     title: "Company",
     links: [
-      { href: "/shop/reseller", label: "Reseller program coming soon." },
       { href: "/shop/reseller/terms", label: "Reseller terms" },
-      { href: HOW_WE_CHECK_HREF, label: "How we check" },
       { href: "/shop/privacy", label: "Privacy" },
       { href: "/shop/terms", label: "Terms" },
     ],
@@ -41,12 +39,16 @@ const columns = [
 
 export function ShopFooter({
   showReseller,
-  showStorePayLine = true,
-  showBrandBlock = true,
+  showStorePayLine = false,
+  showBrandBlock = false,
+  showAmazonDisclosure = false,
+  about = OPERATOR_ABOUT,
 }: {
   showReseller?: boolean;
   showStorePayLine?: boolean;
   showBrandBlock?: boolean;
+  showAmazonDisclosure?: boolean;
+  about?: string;
 }) {
   const session = useOptionalAccount();
   const account = session?.account;
@@ -54,7 +56,12 @@ export function ShopFooter({
   const operator = showReseller ?? signedInOperator;
   const shown = columns.map((column) => ({
     ...column,
-    links: operator ? column.links : column.links.filter((link) => !RESELLER_LINKS.has(link.href)),
+    links: [
+      ...(operator ? column.links : column.links.filter((link) => !RESELLER_LINKS.has(link.href))),
+      ...(column.title === "Shop" && giftSpotsHaveLinks()
+        ? [{ href: "/shop?aisle=home-and-gifts", label: "Home & Gifts" }]
+        : []),
+    ],
   }));
   return (
     <footer className="shop-footer mt-auto bg-[var(--footer)] pb-9">
@@ -62,15 +69,11 @@ export function ShopFooter({
       <div className={`mx-auto max-w-[1280px] px-5 sm:px-10 ${showBrandBlock ? "pt-16" : "pt-8"}`}>
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
           <div>
-            <Link href="/" className="inline-flex">
+            <Link href="/" className="footer-mark">
               <BrandMark />
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-              No fake discounts, countdown timers, spin wheels, or made-up stock counts.{" "}
-              <Link href={HOW_WE_CHECK_HREF} className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
-                How we check
-              </Link>
-              .
+              No fake discounts, countdown timers, spin wheels, or made-up stock counts.
             </p>
           </div>
           {shown.map((column) => (
@@ -91,7 +94,8 @@ export function ShopFooter({
           ))}
         </div>
         <div className="mt-14 flex flex-col gap-3 border-t border-border pt-6 text-[13px] text-muted-foreground">
-          <p>{AMAZON_ASSOCIATE_DISCLOSURE}</p>
+          {about.trim() ? <p className="footer-about">{about}</p> : null}
+          {showAmazonDisclosure ? <p>{AMAZON_ASSOCIATE_DISCLOSURE}</p> : null}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
             <span>© {new Date().getFullYear()} XV-AIsle</span>
             {showStorePayLine ? <span>Buyers pay on xvaisle.com</span> : null}
@@ -120,9 +124,6 @@ export function CheckoutPolicies() {
       </Link>
       <Link href="/shop/contact" className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
         Contact
-      </Link>
-      <Link href={HOW_WE_CHECK_HREF} className="tap-link text-[var(--link)] underline underline-offset-4 hover:text-foreground">
-        How we check
       </Link>
     </div>
   );

@@ -9,7 +9,7 @@ import { CheckoutPolicies } from "@/components/shop-footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isStripeCheckoutUrl } from "@/lib/checkout-url";
-import { formatCheckDate, HOW_WE_CHECK_HREF } from "@/lib/honest-price";
+import { formatCheckDate } from "@/lib/honest-price";
 import { money } from "@/lib/money";
 import { QA_CHECKOUT_PRODUCT_ID } from "@/lib/qa-checkout";
 import { QA_TEST_BANNER, SAMPLE_UNAVAILABLE, UNCONFIRMED_BUTTON, UNCONFIRMED_LABEL } from "@/lib/shelf-copy";
@@ -18,6 +18,7 @@ import { aisleBySlug, aisleByTitle } from "@/lib/aisles";
 import { nightWorldBySlug, nightWorldByTitle, nightWorldForListing, nightWorldVars } from "@/lib/night-worlds";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 import { SOLD_OUT_LABEL } from "@/lib/sold-out-label";
+import { shopperCheckoutRefused } from "@/lib/shop-buying";
 import { productIsPackshot } from "@/lib/shop-packshot";
 
 export type ProductListing = {
@@ -118,8 +119,9 @@ export function ProductBuy({
   const worldStyle = world ? (nightWorldVars(world) as CSSProperties) : undefined;
   const aisleCrumb = productAisleCrumb(listing);
   const shipping = shipWindow ?? productShipLine(listing);
+  const buyClosed = shopperCheckoutRefused();
   const coming = !held && !soldOut && (unconfirmed || !pricesOn);
-  const blocked = held || unconfirmed || soldOut || !pricesOn;
+  const blocked = held || unconfirmed || soldOut || !pricesOn || buyClosed;
   const namePlace = nameUsSupplier ?? shopperMayNameUsSupplier(listing);
 
   useEffect(() => {
@@ -128,7 +130,7 @@ export function ProductBuy({
 
   async function checkout(event: FormEvent) {
     event.preventDefault();
-    if (held || unconfirmed || soldOut || !pricesOn) return;
+    if (held || unconfirmed || soldOut || !pricesOn || buyClosed) return;
     if (!details) {
       setPending(true);
       setError(null);
@@ -277,7 +279,7 @@ export function ProductBuy({
               <button type="button" className="sample-hold" disabled aria-disabled="true">
                 {SOLD_OUT_LABEL}
               </button>
-            ) : details ? null : (
+            ) : buyClosed || details ? null : (
               <Button type="submit" className="product-pay" disabled={pending}>
                 Continue to checkout
               </Button>
@@ -392,9 +394,6 @@ export function ProductBuy({
           </dl>
         </section>
         <div className="product-links link-row">
-          <Link href={HOW_WE_CHECK_HREF} className="tap-link">
-            How we check
-          </Link>
           <ShareToX href={shareHref} />
         </div>
         <CheckoutPolicies />

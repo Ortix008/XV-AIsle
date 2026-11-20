@@ -58,12 +58,12 @@ const LINK = /^https:\/\/www\.amazon\.com\/dp\/[A-Z0-9]{10}\?tag=xvaisle-20$/;
 const EXPECTED_BLURBS: Record<string, string> = {
   B00006JSUA: "A 10.25-inch cast iron skillet, pre-seasoned and ready for the first family breakfast.",
   B000N501BK: "A 6-quart enameled cast iron Dutch oven in Island Spice Red, made for slow Sunday stews.",
-  B00004S7V8: "A classic zester and grater, a little tool for anyone who loves to cook.",
+  B00004S7V8: "A classic zester and grater, a little tool for anyone who loves the kitchen.",
   B0764HS4SL: "A 4-in-1 vegetable chopper and spiralizer, a handy helper when dinner prep piles up.",
   B00PG6M5BK: "Four black ceramic canisters with wooden spoons, a handy set for a new kitchen.",
   B0CBS8WNY5: "A wavy spoon holder with a sense of humor, for the spot right next to your stove.",
-  B00004OCIU: "A Y-peeler from OXO Good Grips, a little everyday tool for every cook.",
-  B008H2JLTE: "A small wooden spoon for stirring and tasting. A little tool that earns its place.",
+  B00004OCIU: "A Y-peeler from OXO Good Grips, a little everyday tool for every kitchen.",
+  B008H2JLTE: "A small wooden spoon for stirring and tasting, handy at every meal.",
   B088GX8V21: "A 15-piece utensil set with silicone heads and stainless-steel handles, a full kit for a new kitchen.",
   B0157G34AY: "A 9-pack of glass food storage, ready for the leftovers after a big family dinner.",
   B08BC2MSKW: "A cream fleece throw, 50 by 60 inches, for movie nights on the couch with family.",
@@ -73,7 +73,7 @@ const EXPECTED_BLURBS: Record<string, string> = {
   B0CYQHK92G: "A 16 oz travel mug in Crystal Sake, a handy pick for your morning commute.",
   B0119IOLQU: "A 38-piece white dinnerware set that serves 12, ready for a full holiday table.",
   B07QSXHZPF: "A 40-inch gift wrap organizer in red, with pockets for bows, tags and ribbon.",
-  B07HJTKJBF: "A hanging gift wrap organizer that keeps rolls and ribbon up off the floor.",
+  B07HJTKJBF: "A hanging gift wrap organizer that keeps rolls and ribbon in one tidy spot.",
   B00O3GZHZ0: "A red ornament box with 64 slots, so each one has its own spot until next year.",
   B07NZ1YQ78: "A black aluminum phone grip that sticks on, folds flat and props your phone up to watch.",
   B07BVZ4TN7: "Desk and pocket bottles of screen cleaner spray, with two microfiber cloths.",
@@ -206,7 +206,7 @@ for (const aisle of live) {
 assert(live.map((aisle) => aisle.slug).join() === LIVE_SLUGS.join(), "live aisle order");
 assert(AISLE_INDEX_COPY.description === "Browse every XV-AIsle aisle, from Kitchen to Car. Each pick links to its Amazon page, where you finish your purchase.", "index meta description");
 assert(LLMS_SUMMARY === "XV-AIsle (xvaisle.com) is a US trend market. Our aisles at xvaisle.com/aisles, from Kitchen and Home & Cozy to Pets and Games & Hobbies, hold picks we chose, and each one links to its Amazon page, where the purchase is finished. AI shopping assistants are welcome to browse and suggest picks for a shopper. As an Amazon Associate I earn from qualifying purchases.", "llms summary paragraph");
-assert(live[0]?.heading === "Kitchen tools that earn their place.", "kitchen heading");
+assert(live[0]?.heading === "Kitchen tools for everyday meals.", "kitchen heading");
 assert(live[1]?.heading === "Make home a little cozier.", "home heading");
 assert(live[2]?.heading === "Take it with you.", "on the go heading");
 assert(live[3]?.heading === "Ready for the holidays.", "holiday heading");
@@ -353,7 +353,7 @@ const indexText = decode(indexHtml);
 assert(indexText.includes(AISLE_INDEX_COPY.heading), "the index shows the heading");
 assert(indexText.includes(AISLE_INDEX_COPY.intro), "the index shows the intro");
 assert(indexText.includes(AI_SHOPPERS_NOTE), "the index shows the AI shoppers note");
-assert(!indexText.includes("Grok Bot logo") && indexText.split(AI_SHOPPERS_NOTE).length === 2, "the AI note is plain text once");
+assert(!indexText.includes("Grok Bot") && indexText.split(AI_SHOPPERS_NOTE).length === 2, "the AI note is plain text once");
 assert(amazonAnchors(indexHtml).length === 0, "the index has no Amazon links");
 assert((indexHtml.match(/<img\b/g) ?? []).length === live.length, "each live aisle tile has one image");
 assert(!indexText.toLowerCase().includes(WE_EARN), "the index does not use the banned associate phrase");
@@ -447,25 +447,41 @@ for (const aisle of live) {
 
 const PAY_LINE = "Buyers pay on xvaisle.com";
 const footerHtml = renderToStaticMarkup(createElement(ShopFooter));
-assert(footerHtml.includes(PAY_LINE), "the shop footer still names where buyers pay");
-assert(renderToStaticMarkup(createElement(ShopFooter, { showReseller: true })).includes(PAY_LINE), "the home footer still names where buyers pay");
+const footerSource = readFileSync(join(process.cwd(), "src/components/shop-footer.tsx"), "utf8");
+assert(footerSource.includes(PAY_LINE), "the buyers-pay line stays in the footer source");
+assert(!footerHtml.includes(PAY_LINE), "the shop footer hides the buyers-pay line");
+assert(!renderToStaticMarkup(createElement(ShopFooter, { showReseller: true })).includes(PAY_LINE), "the home footer hides the buyers-pay line");
 const aisleIndexPage = renderToStaticMarkup(createElement(AislesPage));
 assert(!aisleIndexPage.includes(PAY_LINE), "the aisle index footer omits the store pay line");
-assert(aisleIndexPage.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the aisle index footer keeps the disclosure");
+assert(!aisleIndexPage.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the aisle index has no Amazon picks, so the footer omits the disclosure");
 for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
   assert(!aisleIndexPage.includes(phrase), `the aisle index omits ${phrase}`);
 }
 const shopPage = renderToStaticMarkup(createElement(ShopScreen, { slug: "", listings: [] }));
-assert(shopPage.includes(PAY_LINE), "the shop page footer still names where buyers pay");
+assert(!shopPage.includes(PAY_LINE), "the shop page footer hides the buyers-pay line");
 for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
-  assert(shopPage.includes(phrase), `the shop page still shows ${phrase}`);
+  assert(!shopPage.includes(phrase), `the shop page hides ${phrase}`);
 }
 const homePage = renderToStaticMarkup(createElement(JoinScreen, { checkoutLine: "Cards are checked on this site." }));
-assert(homePage.includes(PAY_LINE), "the home footer still names where buyers pay");
+assert(!homePage.includes(PAY_LINE), "the home footer hides the buyers-pay line");
 for (const phrase of ["Our mission", "What we stand for", "visible pricing"]) {
-  assert(homePage.includes(phrase), `the home page still shows ${phrase}`);
+  assert(!homePage.includes(phrase), `the home page hides ${phrase}`);
 }
-assert(footerHtml.includes(AMAZON_ASSOCIATE_DISCLOSURE), "the footer shows the disclosure");
+const missionSource = readFileSync(join(process.cwd(), "src/components/mission-values.tsx"), "utf8");
+assert(
+  missionSource.includes("Our mission") && missionSource.includes("Our vision") && missionSource.includes("What we stand for"),
+  "the mission section text stays in the source",
+);
+assert(!footerHtml.includes(AMAZON_ASSOCIATE_DISCLOSURE), "a page with no Amazon picks omits the disclosure");
+assert(
+  renderToStaticMarkup(createElement(ShopFooter, { showAmazonDisclosure: true })).includes(AMAZON_ASSOCIATE_DISCLOSURE),
+  "a page with Amazon picks keeps the disclosure wording",
+);
+assert(footerHtml.includes("xvaisle.com is operated by XV-AIsle."), "the footer names the operator");
+assert(
+  renderToStaticMarkup(createElement(ShopFooter, { about: "Operator note for later." })).includes("Operator note for later."),
+  "the About slot shows a configured line",
+);
 assert(!footerHtml.includes(HERO_SUBHEAD), "the footer is not the hero subhead");
 assert(!footerHtml.toLowerCase().includes(WE_EARN), "the footer does not use the banned associate phrase");
 assert(!footerHtml.includes(OLD_DISCLOSURE), "the footer drops the old disclosure");
@@ -584,7 +600,15 @@ async function main() {
       assert(!html.includes(phrase), `${slug} omits ${phrase}`);
     }
   }
-  for (const slug of ["tickets-and-events", "no-such-aisle", "gifts"]) {
+  const ticketsPage = await aislePage.default({ params: Promise.resolve({ slug: "tickets-and-events" }) });
+  const ticketsHtml = renderToStaticMarkup(ticketsPage);
+  assert(ticketsHtml.includes("https://www.viator.com/?pid=P00330828&amp;mcid=42383&amp;medium=link"), "Tickets & Events renders the Viator URL");
+  assert(ticketsHtml.includes("https://www.getyourguide.com/?partner_id=YEH3QKQ"), "Tickets & Events renders the GetYourGuide URL");
+  assert(ticketsHtml.includes('rel="sponsored noopener noreferrer"'), "Tickets & Events partner links are sponsored");
+  assert(ticketsHtml.includes("We may earn a commission when you buy through these links."), "Tickets & Events shows the short disclosure");
+  assert(!ticketsHtml.includes("New finds landing soon") && !ticketsHtml.includes("Our current picks live in the aisles."), "Tickets hides the empty-aisle panel");
+  assert(!ticketsHtml.includes("Our mission") && !ticketsHtml.includes(PAY_LINE), "Tickets hides the mission block and the buyers-pay line");
+  for (const slug of ["no-such-aisle", "gifts"]) {
     try {
       await aislePage.default({ params: Promise.resolve({ slug }) });
       throw new Error(`${slug} rendered a page`);

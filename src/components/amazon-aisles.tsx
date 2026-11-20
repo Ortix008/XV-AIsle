@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,14 +59,35 @@ function AiShoppersNote() {
   return <p className="affiliate-note">{AI_SHOPPERS_NOTE}</p>;
 }
 
-export function AisleIndex({ aisles }: { aisles: readonly AmazonAisle[] }) {
-  const live = liveAisles(aisles);
+export function AisleIndex({
+  aisles,
+  includeTickets = false,
+  extras = [],
+}: {
+  aisles: readonly AmazonAisle[];
+  includeTickets?: boolean;
+  extras?: readonly { href: string; name: string; intro: string }[];
+}) {
+  const live = [
+    ...liveAisles(aisles),
+    ...(includeTickets ? aisles.filter((aisle) => aisle.slug === "tickets-and-events" && aisle.items.length === 0) : []),
+  ];
   return (
     <article className="affiliate-shell">
       <h1 className="page-title">{AISLE_INDEX_COPY.heading}</h1>
       {AISLE_INDEX_COPY.intro ? <p className="affiliate-intro">{AISLE_INDEX_COPY.intro}</p> : null}
       <AiShoppersNote />
       <ul className="affiliate-index">
+        {extras.map((extra) => (
+          <li key={extra.href}>
+            <Link href={extra.href} className="affiliate-tile">
+              <span className="affiliate-tile-copy">
+                <h2 className="affiliate-card-name">{extra.name}</h2>
+                {extra.intro ? <p className="affiliate-blurb affiliate-tile-intro">{extra.intro}</p> : null}
+              </span>
+            </Link>
+          </li>
+        ))}
         {live.map((aisle) => (
           <li key={aisle.slug}>
             <Link href={`/aisles/${aisle.slug}`} className="affiliate-tile">
@@ -87,7 +109,13 @@ export function AisleIndex({ aisles }: { aisles: readonly AmazonAisle[] }) {
   );
 }
 
-export function AisleDetail({ aisle }: { aisle: AmazonAisle }) {
+export function AisleDetail({
+  aisle,
+  belowHero = null,
+}: {
+  aisle: AmazonAisle;
+  belowHero?: ReactNode;
+}) {
   return (
     <article className="affiliate-shell">
       <header className="affiliate-hero">
@@ -102,7 +130,8 @@ export function AisleDetail({ aisle }: { aisle: AmazonAisle }) {
           </div>
         ) : null}
       </header>
-      <p className="affiliate-disclosure">{AMAZON_ASSOCIATE_DISCLOSURE}</p>
+      {belowHero}
+      {aisle.items.length > 0 ? <p className="affiliate-disclosure">{AMAZON_ASSOCIATE_DISCLOSURE}</p> : null}
       <ul className="affiliate-grid">
         {aisle.items.map((item) => (
           <li key={item.asin}>

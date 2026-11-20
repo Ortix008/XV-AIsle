@@ -259,33 +259,44 @@ assert(shareMarkup.includes('aria-hidden="true"') && !shareMarkup.includes("TODO
 assert(shareMarkup.includes("xvaisle.com") && !shareMarkup.includes("localhost") && !shareMarkup.includes("127.0.0.1"), "the rendered share link stays on the public site");
 process.env.PUBLIC_SITE_URL = "https://preview.xvaisle.com";
 const previewCard = shareCard();
-assert(previewCard.url === "https://preview.xvaisle.com/og/og-image.png", "the share card uses PUBLIC_SITE_URL when it is public");
+assert(previewCard.url === "https://preview.xvaisle.com/og/og-image.png?v=2", "the share card uses PUBLIC_SITE_URL when it is public");
 delete process.env.PUBLIC_SITE_URL;
 const card = shareCard();
-assert(card.url === "https://xvaisle.com/og/og-image.png", "the share card defaults to the public site");
+assert(card.url === "https://xvaisle.com/og/og-image.png?v=2", "the share card defaults to the public site");
 assert(card.url.startsWith("https://"), "the share card image is absolute");
 assert(card.width === 1200 && card.height === 630, "the share card is 1200 by 630");
 assert(card.card === "summary_large_image", "the share card is a large image");
 assert(card.alt === SHARE_IMAGE_ALT, "the share card uses the approved alt text");
 const tags = JSON.stringify(shareCardMetadata());
-assert(tags.includes("https://xvaisle.com/og/og-image.png"), "og and twitter images are the absolute public card");
+assert(tags.includes("https://xvaisle.com/og/og-image.png?v=2"), "og and twitter images are the absolute public card");
 assert(tags.includes("summary_large_image"), "twitter card is summary_large_image");
 assert(!tags.includes("localhost") && !tags.includes("127.0.0.1"), "share card tags have no localhost");
+const layoutSource = readFileSync(join(process.cwd(), "src/app/layout.tsx"), "utf8");
+const siteDescription = "XV-AIsle gathers home, kitchen and everyday picks, each linking to the store where you buy it.";
+assert(layoutSource.includes(`description: SITE_DESCRIPTION`), "the document description uses one sentence");
+assert(layoutSource.includes("openGraph: { ...share.openGraph, description: SITE_DESCRIPTION }"), "og:description uses that sentence");
+assert(layoutSource.includes("twitter: { ...share.twitter, description: SITE_DESCRIPTION }"), "twitter:description uses that sentence");
+assert(layoutSource.includes(siteDescription) && !layoutSource.includes("curated US market"), "the layout description is not the old market line");
 const productCard = productOgImage("https://xvaisle.com", "/art/mock-sheet-pan-1.png", "Quarter sheet pan");
 assert(productCard.url === "https://xvaisle.com/art/mock-sheet-pan-1.png", "a product card image is absolute");
 assert(productCard.width === 1152 && productCard.height === 864, "a product card uses the file's real size");
 assert(!String(productCard.url).includes("localhost") && !String(productCard.url).includes("127.0.0.1"), "a product card image has no localhost");
 const siteCard = productOgImage("https://xvaisle.com", "", "Missing photo");
-assert(siteCard.url === "https://xvaisle.com/og/og-image.png", "a product without a photo uses the site card");
+assert(siteCard.url === "https://xvaisle.com/og/og-image.png?v=2", "a product without a photo uses the site card");
 assert(siteCard.width === 1200 && siteCard.height === 630, "the site card on a product is 1200 by 630");
 const productPage = readFileSync(join(process.cwd(), "src/app/shop/[productId]/page.tsx"), "utf8");
 assert(productPage.includes("productOgImage"), "product share cards set image width and height");
 const mission = renderToStaticMarkup(createElement(MissionValues));
+const missionSource = readFileSync(join(process.cwd(), "src/components/mission-values.tsx"), "utf8");
 assert(
-  mission.includes("Shoppers buy products that are reviewed before they") &&
-    mission.includes("from their shelf to your home."),
-  "the mission sentence renders without a browser",
+  missionSource.includes("trust that is earned, not\\u00A0assumed."),
+  "the locked mission paragraph stays in the source",
 );
+assert(
+  !mission.includes("vm-body") && !mission.includes("trust that is earned") && !mission.includes("reviewed"),
+  "the mission paragraph is hidden for launch",
+);
+assert(mission.includes("Our mission") && mission.includes("Our vision"), "the mission block still renders without that paragraph");
 setAppUrl(saved.appUrl);
 if (saved.site == null) delete process.env.PUBLIC_SITE_URL;
 else process.env.PUBLIC_SITE_URL = saved.site;

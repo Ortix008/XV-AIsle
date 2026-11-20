@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
 import { connection } from "next/server";
 import { shareCardMetadata } from "@/lib/share-card";
-import { stripeTestMode } from "@/lib/server/stripe";
 import "./globals.css";
 
 const inter = Inter({
@@ -24,18 +23,21 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+const SITE_DESCRIPTION = "XV-AIsle gathers home, kitchen and everyday picks, each linking to the store where you buy it.";
+
 export function generateMetadata(): Metadata {
+  const share = shareCardMetadata();
   return {
     title: "XV-AIsle",
-    description:
-      "XV-AIsle is a curated US market for home, kitchen and everyday goods. Every item is reviewed before it's listed.",
-    ...shareCardMetadata(),
+    description: SITE_DESCRIPTION,
+    ...share,
+    openGraph: { ...share.openGraph, description: SITE_DESCRIPTION },
+    twitter: { ...share.twitter, description: SITE_DESCRIPTION },
   };
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   await connection();
-  const testMode = stripeTestMode();
   return (
     <html
       lang="en"
@@ -49,11 +51,6 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <noscript>
           <style>{".page-enter,[data-reveal]{animation:none !important;opacity:1 !important;transform:none !important;}"}</style>
         </noscript>
-        {testMode ? (
-          <p className="product-test" role="status">
-            Test mode
-          </p>
-        ) : null}
         {children}
       </body>
     </html>

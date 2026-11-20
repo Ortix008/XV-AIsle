@@ -18,6 +18,12 @@ export function accountSupportRef(id: string) {
   return `Ref …${id.slice(-6)}`;
 }
 
+export function isOperatorAccount<T extends { role: string; emailVerified: boolean }>(
+  account: T | null | undefined,
+): account is T {
+  return Boolean(account && account.role === "admin" && account.emailVerified);
+}
+
 export function isAccountRole(value: string | null | undefined): value is AccountRole {
   switch (value) {
     case "admin":

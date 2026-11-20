@@ -200,6 +200,27 @@ async function checkPasswordReset() {
     throw new Error("background mail logs omit the address and the token");
   }
   console.log("password reset emails a one-time link");
+
+  const { decideRoleChange, getAccount } = await import("../src/lib/server/accounts");
+  const shopper = signUp({ name: "Role Shopper", email: "role-shopper@example.com", password: "lane-role-9" });
+  const operatorJoin = signUp({ name: "Role Operator", email: "role-operator@example.com", password: "lane-role-9" });
+  if ("error" in shopper || "error" in operatorJoin) throw new Error("role accounts were not created");
+  getDb().prepare("UPDATE accounts SET role = 'admin', email_verified = 1 WHERE id = ?").run(operatorJoin.account.id);
+  const operator = getAccount(operatorJoin.account.id);
+  if (!operator || operator.role !== "admin") throw new Error("operator missing");
+  const before = getAccount(shopper.account.id)?.role;
+  const refused = decideRoleChange(shopper.account, shopper.account.id, "reseller");
+  if (refused.status !== 403) throw new Error("a shopper role change is refused");
+  if (getAccount(shopper.account.id)?.role !== before) throw new Error("a refused role change writes nothing");
+  const aimed = decideRoleChange(shopper.account, operator.id, "supplier");
+  if (aimed.status !== 403 || getAccount(operator.id)?.role !== "admin") {
+    throw new Error("a shopper cannot change the operator");
+  }
+  const changed = decideRoleChange(operator, shopper.account.id, "supplier");
+  if (changed.status !== 200 || getAccount(shopper.account.id)?.role !== "supplier") {
+    throw new Error("an operator can change a shopper role");
+  }
+  console.log("role changes stay with the operator");
 }
 
 const MISMATCH = "That email and password do not match.";

@@ -112,7 +112,7 @@ export function DeskShell({ children, checkoutLine }: { children: ReactNode; che
           <BrandMark />
         </Link>
         <div className="flex items-center gap-4">
-          <p className="hidden text-xs text-muted-foreground md:block">Your corner of a curated US market</p>
+          <p className="hidden text-xs text-muted-foreground md:block">Your corner of XV-AIsle.</p>
           <Link
             href="/shop"
             className="rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:shadow-[0_0_24px_rgba(61,220,132,0.45)]"

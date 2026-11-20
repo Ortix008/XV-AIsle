@@ -7,9 +7,18 @@ import { Button } from "@/components/ui/button";
 import { ConnectPayout } from "@/components/connect-payout";
 import { Input } from "@/components/ui/input";
 import { AuthPane } from "@/components/auth-backdrop";
+import { isOperatorAccount } from "@/lib/account";
 import { useAccount } from "@/lib/account-store";
 
-function AuthenticatorSetup({ enabled, onChanged }: { enabled: boolean; onChanged: () => Promise<void> }) {
+function AuthenticatorSetup({
+  enabled,
+  operator,
+  onChanged,
+}: {
+  enabled: boolean;
+  operator: boolean;
+  onChanged: () => Promise<void>;
+}) {
   const [secret, setSecret] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -55,13 +64,19 @@ function AuthenticatorSetup({ enabled, onChanged }: { enabled: boolean; onChange
     <section id="authenticator" className="auth-subcard">
       <h2 className="text-base font-medium">Authenticator app</h2>
       {enabled ? (
-        <p className="mt-2 text-sm leading-relaxed">
-          This account asks for a code when you sign in. Admins need this before they can approve a product or release a payout.
-        </p>
+        operator ? (
+          <p className="mt-2 text-sm leading-relaxed">
+            This account asks for a code when you sign in. Admins need this before they can approve a product or release a payout.
+          </p>
+        ) : null
       ) : (
         <>
+          {operator ? (
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Optional for most accounts. If you are an admin, turn this on before you approve a product or release a payout.
+            </p>
+          ) : null}
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Optional for most accounts. If you are an admin, turn this on before you approve a product or release a payout.
             Add the secret to any authenticator app, then enter the 6-digit code.
           </p>
           {secret ? (
@@ -148,9 +163,10 @@ export function AccountView() {
   }, [params, refresh]);
 
   if (!account) return null;
+  const operator = isOperatorAccount(account);
 
   return (
-    <AuthPane>
+    <AuthPane sheet>
       <div className="flex flex-col gap-4">
         <p className="eyebrow">Account</p>
         <h1 className="auth-title">Your account</h1>
@@ -160,20 +176,25 @@ export function AccountView() {
           </Link>
         ) : null}
         {params.get("verified") === "1" ? <p className="text-base">Email verified.</p> : null}
-        {account.role === "admin" && account.emailVerified ? (
+        {operator ? (
           <p className="text-pretty text-base leading-relaxed text-muted-foreground">
             <Link href="/shop/reseller" className="auth-text-link">
               Reseller program coming soon.
             </Link>
           </p>
         ) : null}
-        <ReceiptEmail />
-        <AuthenticatorSetup enabled={account.totpEnabled === true} onChanged={refresh} />
-        <div id="payouts">
-          <ConnectPayout />
+        <div className="account-cards">
+          <ReceiptEmail />
+          <AuthenticatorSetup enabled={account.totpEnabled === true} operator={operator} onChanged={refresh} />
+          {operator ? (
+            <div id="payouts">
+              <ConnectPayout />
+            </div>
+          ) : null}
         </div>
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-          The account is kept on the server. Bank details stay at Stripe.
+          The account is kept on the server.
+          {operator ? " Bank details stay at Stripe." : null}
         </p>
       </div>
     </AuthPane>

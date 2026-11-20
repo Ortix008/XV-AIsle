@@ -268,8 +268,8 @@ async function main() {
     }),
   );
   const body = (await response.json()) as { url?: string; error?: string };
-  assert(response.ok && body.url === "https://checkout.stripe.com/c/pay/cs_test_qa_checkout", body.error ?? "test checkout did not open");
-  assert(Object.keys(body).join(",") === "url", "checkout returns only the session url");
+  assert(response.status === 400 && body.error === "That page is not on the store." && !body.url, body.error ?? "checkout refuses every item");
+  assert(!("url" in body), "checkout does not return a session url");
   setStripeFetch(null);
   delete env.SHOW_PRICES;
 
