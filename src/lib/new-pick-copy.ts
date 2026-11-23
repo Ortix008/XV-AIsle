@@ -6,52 +6,52 @@
 export const NEW_PICK_COPY = {
   amazon: {
     B08R6KMBQT: {
-      name: "Instant Pot Vortex Plus Mini 4-Qt 6-in-1 Air Fryer",
-      why: "A compact 4-quart air fryer the Kitchen aisle does not already carry.",
+      name: "Instant Pot Vortex Plus Mini Air Fryer, 4 Qt",
+      why: "A compact 4-quart, 6-in-1 air fryer for small batches and weeknight sides.",
     },
     B0CFPJYX7P: {
-      name: "Amazon Kindle Paperwhite 16GB (2024 model)",
-      why: "A 7-inch e-reader gift and everyday pick.",
+      name: "Kindle Paperwhite 16GB (2024)",
+      why: "A 7-inch e-reader that puts a whole stack of books in one bag, a gift for anyone who reads.",
     },
     B003PWNH4Q: {
       name: "SafeRest Waterproof Queen Mattress Protector",
-      why: "A basic waterproof queen mattress protector.",
+      why: "A waterproof cover that helps keep a queen mattress safe from spills and accidents.",
     },
     B00EVY54IE: {
-      name: "Eddie Bauer Queen Flannel Sheet Set",
-      why: "A named-brand cotton flannel queen sheet set for colder months.",
+      name: "Eddie Bauer Queen Sheet Set",
+      why: "A queen set with a fitted sheet and pillowcases, for cozy nights in colder months.",
     },
     B0010TEFFQ: {
-      name: "Buddha Board Original Water Painting Board",
-      why: "A mess-free water painting board.",
+      name: "Buddha Board Water Painting Board",
+      why: "Paint with just water for a calm, creative break, with no mess to clean up.",
     },
   },
   books: {
     salt: {
-      name: "Salt, Fat, Acid, Heat (Samin Nosrat)",
-      why: "A modern cooking classic that makes a great gift for anyone who cooks.",
+      name: "Salt, Fat, Acid, Heat by Samin Nosrat",
+      why: "A book on the four elements of good cooking, a gift for anyone learning their way around a kitchen.",
     },
     simple: {
-      name: "Ottolenghi Simple (Yotam Ottolenghi)",
-      why: "A beautiful, easy weeknight cookbook from a well-known chef.",
+      name: "Ottolenghi Simple by Yotam Ottolenghi",
+      why: "Easy weeknight recipes in a beautiful cookbook, a gift for the home cook in your life.",
     },
     habits: {
-      name: "Atomic Habits (James Clear)",
-      why: "A bestselling habits book that's a safe gift for the desk or for New Year.",
+      name: "Atomic Habits by James Clear",
+      why: "A guide to building good habits and breaking bad ones, a thoughtful gift for the new year.",
     },
     dog: {
-      name: "Dog Is Love (Clive D. L. Wynne)",
-      why: "An easy, affordable gift for dog lovers.",
+      name: "Dog Is Love by Clive D. L. Wynne",
+      why: "A look at why and how your dog loves you, a sweet gift for any dog lover.",
     },
   },
   tours: {
     kennedy: {
-      name: "From Orlando: Kennedy Space Center Trip with Transport",
-      why: "A full space-coast day out with the ride included.",
+      name: "Kennedy Space Center Day Trip from Orlando",
+      why: "A full day at Kennedy Space Center with hotel pickup in Orlando, so nobody has to drive.",
     },
     everglades: {
-      name: "Orlando: Everglades Airboat Ride and Wildlife Park Ticket",
-      why: "A cheap, real-Florida wildlife outing near Orlando.",
+      name: "Everglades Airboat Ride and Wildlife Park",
+      why: "An airboat ride plus a wildlife park visit in Kissimmee, a real taste of Florida near Orlando.",
     },
   },
 } as const;
