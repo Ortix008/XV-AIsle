@@ -49,7 +49,7 @@ for (const href of [BOOKSHOP_OFFER_HREF, ...bookHrefs]) {
 
 const tours = AFFILIATE_OFFERS.find((offer) => offer.id === "getyourguide")?.picks ?? [];
 const tourHrefs = [
-  "https://www.getyourguide.com/orlando-l191/kennedy-space-center-tour-t11881/?partner_id=YEH3QKQ",
+  "https://www.getyourguide.com/orlando-l191/kennedy-space-center-tour-t11881/?partner_id=YEH3QKQ&mkt_cmp=true",
   "https://www.getyourguide.com/orlando-l191/orlando-everglades-airboat-ride-and-wildlife-park-ticket-t20590/?partner_id=YEH3QKQ",
 ];
 assert(tours.map((pick) => pick.href).join() === tourHrefs.join(), "GetYourGuide tour links");
@@ -82,8 +82,26 @@ const books = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "books" 
 const experiences = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "experiences" }));
 assert(!/\$\s*\d/.test(books + experiences), "partner cards show no price");
 assert(!banned.test(books + experiences), "rendered partner cards pass the free scan");
-assert(books.includes('rel="sponsored noopener noreferrer"'), "book links are sponsored");
-assert(experiences.includes('rel="sponsored noopener noreferrer"'), "tour links are sponsored");
+assert(books.includes('rel="sponsored nofollow noopener noreferrer"'), "book links are sponsored and nofollow");
+assert(experiences.includes('rel="sponsored nofollow noopener noreferrer"'), "GetYourGuide links are sponsored and nofollow");
+assert(experiences.includes('rel="sponsored noopener noreferrer"'), "Viator keeps its existing rel");
+for (const text of [
+  "See Salt, Fat, Acid, Heat on Bookshop.org",
+  "See Ottolenghi Simple on Bookshop.org",
+  "See Atomic Habits on Bookshop.org",
+  "See Dog Is Love on Bookshop.org",
+  "Browse books on Bookshop.org",
+]) {
+  assert(books.includes(text), `books render ${text}`);
+}
+for (const text of [
+  "See the Kennedy Space Center trip on GetYourGuide",
+  "See the Everglades airboat ride on GetYourGuide",
+  "See things to do on GetYourGuide",
+]) {
+  assert(experiences.includes(text), `tours render ${text}`);
+}
+assert(experiences.includes("Kennedy Space Center Trip from Orlando with Transport"), "Kennedy card uses the approved title");
 
 for (const aisle of AMAZON_AISLES) {
   for (const item of aisle.items) {

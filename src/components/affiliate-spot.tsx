@@ -28,20 +28,28 @@ export function AffiliateSpot({
       <ul className="partner-spot-list">
         {shown.flatMap((offer) => {
           const cards = [
-            { key: offer.id, href: offer.href, id: offer.id, heading: undefined as string | undefined, blurb: undefined as string | undefined },
+            {
+              key: offer.id,
+              href: offer.href,
+              id: offer.id,
+              heading: undefined as string | undefined,
+              blurb: undefined as string | undefined,
+              label: offer.label,
+            },
             ...(offer.picks ?? []).map((pick) => ({
               key: `${offer.id}-${pick.id}`,
               href: pick.href,
               id: pick.id,
               heading: pick.name,
               blurb: pick.why,
+              label: pick.label,
             })),
           ];
           return cards.map((card) => (
             <li key={card.key}>
               <AffiliateLink
                 href={card.href ? servedTrackingHref(card.href, card.id, traffic) : card.href}
-                label={offer.label}
+                label={card.label}
                 network={offer.network}
                 item={item}
                 disclosure={offer.disclosure}

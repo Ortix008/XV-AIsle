@@ -8,6 +8,7 @@ import {
   AMAZON_ASSOCIATE_DISCLOSURE,
   AMAZON_PAID_LINK_LABEL,
   AMAZON_PICK_BUTTON_LABEL,
+  AISLE_TILE_SIZES,
   aisleCardArt,
   aisleIndexJsonLd,
   aisleProductJsonLd,
@@ -28,7 +29,7 @@ function JsonLd({ data }: { data: unknown }) {
   );
 }
 
-const TILE_SIZES = "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw";
+const TILE_SIZES = AISLE_TILE_SIZES;
 
 function Still({
   art,

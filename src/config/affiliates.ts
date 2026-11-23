@@ -32,6 +32,8 @@ export type AffiliatePick = {
   name: string;
   why: string;
   href: string;
+  /** Accessible name of the card link. The general shop link uses the offer label. */
+  label: string;
 };
 
 export type AffiliateOffer = {
@@ -58,20 +60,34 @@ const BOOK_HREFS = {
 } as const;
 
 const TOUR_HREFS = {
-  kennedy: "https://www.getyourguide.com/orlando-l191/kennedy-space-center-tour-t11881/?partner_id=YEH3QKQ",
+  kennedy: "https://www.getyourguide.com/orlando-l191/kennedy-space-center-tour-t11881/?partner_id=YEH3QKQ&mkt_cmp=true",
   everglades:
     "https://www.getyourguide.com/orlando-l191/orlando-everglades-airboat-ride-and-wildlife-park-ticket-t20590/?partner_id=YEH3QKQ",
+} as const;
+
+const BOOK_LABELS = {
+  salt: "See Salt, Fat, Acid, Heat on Bookshop.org",
+  simple: "See Ottolenghi Simple on Bookshop.org",
+  habits: "See Atomic Habits on Bookshop.org",
+  dog: "See Dog Is Love on Bookshop.org",
+} as const;
+
+const TOUR_LABELS = {
+  kennedy: "See the Kennedy Space Center trip on GetYourGuide",
+  everglades: "See the Everglades airboat ride on GetYourGuide",
 } as const;
 
 function picksFrom<Key extends string>(
   copy: Record<Key, { name: string; why: string }>,
   hrefs: Record<Key, string>,
+  labels: Record<Key, string>,
 ): AffiliatePick[] {
   return (Object.keys(hrefs) as Key[]).map((id) => ({
     id,
     name: copy[id].name,
     why: copy[id].why,
     href: hrefs[id],
+    label: labels[id],
   }));
 }
 
@@ -116,7 +132,7 @@ export const AFFILIATE_OFFERS: readonly AffiliateOffer[] = [
     label: AFFILIATE_COPY.bookshopLink,
     partnerId: "131173",
     disclosure: AFFILIATE_DISCLOSURE_SHORT,
-    picks: picksFrom(NEW_PICK_COPY.books, BOOK_HREFS),
+    picks: picksFrom(NEW_PICK_COPY.books, BOOK_HREFS, BOOK_LABELS),
   },
   {
     id: "viator",
@@ -135,7 +151,7 @@ export const AFFILIATE_OFFERS: readonly AffiliateOffer[] = [
     label: AFFILIATE_COPY.getyourguideLink,
     partnerId: "YEH3QKQ",
     disclosure: AFFILIATE_DISCLOSURE_SHORT,
-    picks: picksFrom(NEW_PICK_COPY.tours, TOUR_HREFS),
+    picks: picksFrom(NEW_PICK_COPY.tours, TOUR_HREFS, TOUR_LABELS),
   },
   {
     id: "zazzle",

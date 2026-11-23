@@ -458,6 +458,8 @@ export const AISLE_CARD_ALT = {
     "Canvas day pack, an unfolded trail map with an open brass compass, and a pair of binoculars on a dark wood table under an emerald glow",
 } as const;
 
+export const AISLE_TILE_SIZES = "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw";
+
 export function aisleCardArt(slug: string): AisleArt | undefined {
   const alt = AISLE_CARD_ALT[slug as keyof typeof AISLE_CARD_ALT];
   if (!alt) return undefined;

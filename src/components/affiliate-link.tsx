@@ -30,7 +30,16 @@ export function AffiliateLink({
       <p className="partner-card-name">{PARTNER_CARD_NAME[network]}</p>
       {heading ? <h3 className="affiliate-card-name">{heading}</h3> : null}
       {blurb ? <p className="affiliate-blurb">{blurb}</p> : null}
-      <a className="partner-card-cta" href={href} rel="sponsored noopener noreferrer" target="_blank">
+      <a
+        className="partner-card-cta"
+        href={href}
+        rel={
+          network === "bookshop" || network === "getyourguide"
+            ? "sponsored nofollow noopener noreferrer"
+            : "sponsored noopener noreferrer"
+        }
+        target="_blank"
+      >
         {label}
         <ExternalLink className="partner-card-icon" aria-hidden />
       </a>

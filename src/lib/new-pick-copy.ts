@@ -46,7 +46,7 @@ export const NEW_PICK_COPY = {
   },
   tours: {
     kennedy: {
-      name: "Kennedy Space Center Day Trip from Orlando",
+      name: "Kennedy Space Center Trip from Orlando with Transport",
       why: "A full day at Kennedy Space Center with hotel pickup in Orlando, so nobody has to drive.",
     },
     everglades: {
