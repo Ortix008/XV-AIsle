@@ -147,7 +147,7 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
     slug: "home-and-cozy",
     name: "Home & Cozy",
     heading: "Make home a little cozier.",
-    intro: "Soft throws and pillow covers for movie nights and slow weekends.",
+    intro: "Soft throws and pillow covers for movie nights and lazy Sundays.",
     items: [
       pick(
         "B08BC2MSKW",
