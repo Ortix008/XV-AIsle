@@ -179,12 +179,28 @@ async function main() {
     assert(giftsBody.includes(zazzleUrl.replaceAll("&", "&amp;")), "Home & Gifts HTML renders the Zazzle URL");
     assert(giftsBody.includes('rel="sponsored noopener noreferrer"'), "Home & Gifts partner links are sponsored");
     assert(giftsBody.includes(disclosure), "Home & Gifts shows the short disclosure");
-    assert(!giftsBody.includes("bookshop.org") && !giftsBody.includes("[WORDY"), "Home & Gifts omits the unset Bookshop link");
+    assert(giftsBody.includes("https://bookshop.org/a/131173/9781476753836"), "Home &amp; Gifts renders Salt, Fat, Acid, Heat");
+    assert(giftsBody.includes("https://bookshop.org/a/131173/9781607749165"), "Home &amp; Gifts renders Ottolenghi Simple");
+    assert(giftsBody.includes("https://bookshop.org/a/131173/9780735211292"), "Home &amp; Gifts renders Atomic Habits");
+    assert(giftsBody.includes("https://bookshop.org/a/131173/9780358414230"), "Home &amp; Gifts renders Dog Is Love");
+    assert(!giftsBody.includes("[WORDY"), "Home & Gifts has no pending copy marker");
     const tickets = await fetch(base + "/aisles/tickets-and-events", { redirect: "manual" });
     const ticketsBody = await tickets.text();
     assert(tickets.status === 200, `Tickets & Events returned ${tickets.status}`);
     assert(ticketsBody.includes(viatorUrl.replaceAll("&", "&amp;")), "Tickets HTML renders the Viator URL");
     assert(ticketsBody.includes(guideUrl), "Tickets HTML renders the GetYourGuide URL");
+    assert(
+      ticketsBody.includes(
+        "https://www.getyourguide.com/orlando-l191/kennedy-space-center-tour-t11881/?partner_id=YEH3QKQ&mkt_cmp=true".replaceAll("&", "&amp;"),
+      ),
+      "Tickets HTML renders the Kennedy Space Center tour",
+    );
+    assert(
+      ticketsBody.includes(
+        "https://www.getyourguide.com/orlando-l191/orlando-everglades-airboat-ride-and-wildlife-park-ticket-t20590/?partner_id=YEH3QKQ",
+      ),
+      "Tickets HTML renders the Everglades tour",
+    );
     assert(ticketsBody.includes('rel="sponsored noopener noreferrer"'), "Tickets partner links are sponsored");
     assert(ticketsBody.includes(disclosure) && !ticketsBody.includes("[WORDY"), "Tickets shows the short disclosure");
     assert(ticketsBody.includes("Tours and things to do for days out with family and friends."), "Tickets HTML uses the approved blurb");

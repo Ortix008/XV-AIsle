@@ -25,11 +25,13 @@ import {
   liveAislePaths,
   liveAisles,
   llmsTxt,
+  aisleCardArt,
   qaPickRows,
   resolvePickImage,
   type AmazonAisle,
   type AmazonPick,
 } from "../src/lib/amazon-aisles";
+import { NEW_PICK_COPY } from "../src/lib/new-pick-copy";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -55,7 +57,7 @@ const OLD_DISCLOSURE = ["As an Amazon Associate, XV-AIsle", "earns from qualifyi
 const GIFTS_PATH = `/${"gifts"}`;
 const BLOCKED_COPY = [HERO_SUBHEAD, "14-day", "14 days", "3 to 8", "3–8", "3-8 day", COMING_SOON];
 const AMAZON_IMAGE = /images-amazon\.com|ssl-images-amazon|media-amazon\.com|m\.media-amazon/i;
-const LINK = /^https:\/\/www\.amazon\.com\/dp\/[A-Z0-9]{10}\?tag=xvaisle-20$/;
+const LINK = /^https:\/\/www\.amazon\.com\/dp\/[A-Z0-9]{10}\/?\?tag=xvaisle-20$/;
 
 const EXPECTED_BLURBS: Record<string, string> = {
   B00006JSUA: "A 10.25-inch cast iron skillet, pre-seasoned and ready for the first family breakfast.",
@@ -105,6 +107,7 @@ const EXPECTED_BLURBS: Record<string, string> = {
   B0DYK1ZH2D: "CATAN 6th Edition, the classic strategy board game for 3 to 4 players, ages 10 and up.",
   B077MZ2MPW: "Azul, a tile-placement strategy game for 2 to 4 players, ages 8 and up.",
   B00006IEEU: "A 24-count tin of Prismacolor Premier soft core colored pencils for drawing and coloring.",
+  ...Object.fromEntries(Object.entries(NEW_PICK_COPY.amazon).map(([asin, copy]) => [asin, copy.why])),
 };
 
 const LIVE_SLUGS = [
@@ -144,7 +147,7 @@ function decode(value: string) {
 }
 
 function attr(tag: string, name: string) {
-  const match = tag.match(new RegExp(`\\b${name}="([^"]*)"`));
+  const match = tag.match(new RegExp(`\\b${name}="([^"]*)"`, "i"));
   return decode(match?.[1] ?? "");
 }
 
@@ -184,14 +187,15 @@ function assertJsonLd(data: unknown, expectedCount: number, label: string) {
 
 const live = liveAisles();
 const asins = live.flatMap((aisle) => aisle.items.map((item) => item.asin));
-assert(asins.length === 47, "the live aisles hold 47 picks");
-assert(new Set(asins).size === 47, "every ASIN is in exactly one aisle");
-assert(Object.keys(EXPECTED_BLURBS).length === 47, "the approved blurb list has 47 entries");
+assert(asins.length === 52, "the live aisles hold 52 picks");
+assert(new Set(asins).size === 52, "every ASIN is in exactly one aisle");
+assert(Object.keys(EXPECTED_BLURBS).length === 52, "the approved blurb list has 52 entries");
 
 for (const aisle of live) {
   for (const item of aisle.items) {
     assert(item.blurb === EXPECTED_BLURBS[item.asin], `${item.asin} blurb matches the approved copy`);
-    assert(amazonPickUrl(item.asin) === `https://www.amazon.com/dp/${item.asin}?tag=xvaisle-20`, `${item.asin} url`);
+    const slash = item.asin in NEW_PICK_COPY.amazon ? "/" : "";
+    assert(amazonPickUrl(item.asin) === `https://www.amazon.com/dp/${item.asin}${slash}?tag=xvaisle-20`, `${item.asin} url`);
     if (item.asin === "B088GX8V21") {
       assert(item.name === "Umite Chef 15-piece utensil set", "the Umite name is the approved line");
     }
@@ -274,6 +278,10 @@ for (const aisle of AMAZON_AISLES) {
     assert(bytes.length > 0 && bytes.length < ART_BYTE_LIMIT, `${aisle.slug} art is under 80KB`);
     const size = webpSize(bytes);
     assert(size.width === 800 && size.height === 800, `${aisle.slug} art is 800x800`);
+    const smallPath = aisle.art.srcSet?.split(" ")[0]?.split("?")[0];
+    assert(smallPath, `${aisle.slug} art has a srcset`);
+    const small = webpSize(readFileSync(join(process.cwd(), "public", smallPath)));
+    assert(small.width === 390 && small.height === 390, `${aisle.slug} 390 variant`);
     const text = bytes.toString("utf8");
     for (const host of AMAZON_MEDIA_HOSTS) {
       assert(!text.includes(host), `${aisle.slug} art file points at ${host}`);
@@ -372,24 +380,32 @@ for (const aisle of live) {
   assert(attr(tileImg, "alt") === aisle.art.alt && attr(tileImg, "alt").trim().length > 0, `${aisle.slug} tile alt`);
   assert(attr(tileImg, "width") === "800" && attr(tileImg, "height") === "800", `${aisle.slug} tile size`);
   assert(attr(tileImg, "decoding") === "async", `${aisle.slug} tile decoding`);
-  assert(!tile.includes("srcset"), `${aisle.slug} tile has no srcset`);
+  const first = live[0]?.slug === aisle.slug;
+  if (first) {
+    assert(/srcset=/i.test(tile) && tile.includes("390w"), `${aisle.slug} tile srcset`);
+    assert(attr(tileImg, "sizes").length > 0, `${aisle.slug} tile sizes`);
+  } else {
+    assert(!/srcset=/i.test(tile) && attr(tileImg, "sizes") === "", `${aisle.slug} tile has no srcset`);
+  }
 }
 const indexImgs = [...indexHtml.matchAll(/<img\b[^>]*>/g)].map((match) => match[0]);
 indexImgs.forEach((tag, index) => {
-  const eager = index < 3;
+  const eager = index === 0;
   assert(attr(tag, "loading") === (eager ? "eager" : "lazy"), `index image ${index} loading`);
   assert(attr(tag, "width") === "800" && attr(tag, "height") === "800", `index image ${index} size`);
   assert(attr(tag, "decoding") === "async", `index image ${index} decoding`);
   if (eager) {
     assert(/fetchpriority="high"/i.test(tag), `index image ${index} fetch priority`);
-    assert(
-      attr(tag, "sizes") === "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw",
-      `index image ${index} sizes`,
-    );
+    assert(attr(tag, "sizes") === "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw", `index image ${index} sizes`);
+    assert(attr(tag, "srcset").includes("390w"), `index image ${index} srcset`);
   } else {
     assert(attr(tag, "fetchpriority") === "", `index image ${index} stays lazy`);
+    assert(attr(tag, "sizes") === "" && attr(tag, "srcset") === "", `index image ${index} has no sizes`);
   }
 });
+for (const tag of [...indexHtml.matchAll(/<(?:img|source)\b[^>]*>/g)].map((match) => match[0])) {
+  if (attr(tag, "sizes")) assert(attr(tag, "srcset").length > 0, "an image with sizes has a srcset");
+}
 for (const name of hiddenNames) {
   assert(!indexText.includes(name), `${name} stays off the index`);
 }
@@ -556,8 +572,21 @@ assert(publishedLlms.includes(`> ${LLMS_SUMMARY}`), "llms.txt quotes the approve
 assert(!publishedLlms.includes("$"), "llms.txt has no prices");
 
 const rows = qaPickRows();
-assert(rows.length === 47, "the QA table has 47 rows");
-assert(rows.every((row) => row.url === `https://www.amazon.com/dp/${row.asin}?tag=xvaisle-20`), "QA urls");
+assert(rows.length === 52, "the QA table has 52 rows");
+assert(
+  rows.every((row) => {
+    const slash = row.asin in NEW_PICK_COPY.amazon ? "/" : "";
+    return row.url === `https://www.amazon.com/dp/${row.asin}${slash}?tag=xvaisle-20`;
+  }),
+  "QA urls",
+);
+const kept = ["B0BPLFGJ3B", "B07QSXHZPF", "B00O3GZHZ0"];
+for (const asin of kept) {
+  const row = rows.find((entry) => entry.asin === asin);
+  assert(row?.url === `https://www.amazon.com/dp/${asin}?tag=xvaisle-20`, `${asin} keeps tag=xvaisle-20`);
+}
+const giftsArt = aisleCardArt("home-and-gifts");
+assert(giftsArt?.srcSet?.includes("390w"), "the Home & Gifts tile has a 390 variant");
 
 assert(storeNav[0]?.label === "Shop" && storeNav[1]?.label === "Aisles", "Aisles sits next to Shop");
 assert(storeNav[1]?.href === "/aisles", "Aisles points at /aisles");

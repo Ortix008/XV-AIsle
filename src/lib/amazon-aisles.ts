@@ -8,6 +8,7 @@
 
 import { ticketsAisleListed } from "@/config/affiliates";
 import { servedTrackingHref } from "@/lib/agent-traffic";
+import { NEW_PICK_COPY } from "@/lib/new-pick-copy";
 
 export const AMAZON_ASSOCIATE_TAG = "xvaisle-20";
 
@@ -53,6 +54,9 @@ export type AmazonPick = {
 export type AisleArt = {
   src: string;
   alt: string;
+  /** 390w variant plus the 800w original. Present for every aisle still. */
+  srcSet?: string;
+  avifSrcSet?: string;
 };
 
 export type AmazonAisle = {
@@ -70,6 +74,13 @@ const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function pick(asin: string, name: string, blurb: string, note?: string): AmazonPick {
   return note ? { asin, name, blurb, note } : { asin, name, blurb };
+}
+
+const NEW_AMAZON_ASINS = new Set<string>(Object.keys(NEW_PICK_COPY.amazon));
+
+function addedPick(asin: keyof typeof NEW_PICK_COPY.amazon): AmazonPick {
+  const copy = NEW_PICK_COPY.amazon[asin];
+  return pick(asin, copy.name, copy.why);
 }
 
 const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
@@ -129,13 +140,14 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
         "Pyrex Simply Store 9-Pack Mixed Glass Food Storage Set",
         "A 9-pack of glass food storage, ready for the leftovers after a big family dinner.",
       ),
+      addedPick("B08R6KMBQT"),
     ],
   },
   {
     slug: "home-and-cozy",
     name: "Home & Cozy",
     heading: "Make home a little cozier.",
-    intro: "Soft throws and pillow covers for movie nights and slow weekends.",
+    intro: "Soft throws and pillow covers for movie nights and lazy Sundays.",
     items: [
       pick(
         "B08BC2MSKW",
@@ -152,6 +164,8 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
         "Foindtower Chenille Throw Pillow Covers, Burnt Orange, 22x22 (Pack of 2)",
         "Two burnt orange chenille pillow covers, 22 by 22 inches, for a cozy sofa refresh.",
       ),
+      addedPick("B003PWNH4Q"),
+      addedPick("B00EVY54IE"),
     ],
   },
   {
@@ -226,6 +240,7 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
         "Rain Design mStand Laptop Stand, Black",
         "An aluminum laptop stand that lifts your screen about 5.9 inches, with room below.",
       ),
+      addedPick("B0CFPJYX7P"),
     ],
   },
   {
@@ -403,6 +418,7 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
         "Prismacolor Premier Soft Core Colored Pencils, 24 Count",
         "A 24-count tin of Prismacolor Premier soft core colored pencils for drawing and coloring.",
       ),
+      addedPick("B0010TEFFQ"),
     ],
   },
   {
@@ -442,11 +458,21 @@ export const AISLE_CARD_ALT = {
     "Canvas day pack, an unfolded trail map with an open brass compass, and a pair of binoculars on a dark wood table under an emerald glow",
 } as const;
 
+export const AISLE_TILE_SIZES = "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw";
+
 export function aisleCardArt(slug: string): AisleArt | undefined {
   const alt = AISLE_CARD_ALT[slug as keyof typeof AISLE_CARD_ALT];
   if (!alt) return undefined;
-  const src = `/art/aisle-card-${slug}.webp`;
-  return { src: slug === "home-and-gifts" ? `${src}?v=2` : src, alt };
+  const base = `/art/aisle-card-${slug}`;
+  const query = slug === "home-and-gifts" ? "?v=2" : "";
+  const src = `${base}.webp${query}`;
+  const small = `${base}-390.webp${query}`;
+  return {
+    src,
+    alt,
+    srcSet: `${small} 390w, ${src} 800w`,
+    avifSrcSet: `${base}-390.avif${query} 390w`,
+  };
 }
 
 export const AMAZON_AISLES: readonly AmazonAisle[] = AMAZON_AISLE_ROWS.map((aisle) => {
@@ -468,7 +494,8 @@ export function amazonPickUrl(asin: string) {
   if (!ASIN_PATTERN.test(asin)) {
     throw new Error("Amazon ASIN must be 10 letters or digits.");
   }
-  const url = `https://www.amazon.com/dp/${asin}?tag=${AMAZON_ASSOCIATE_TAG}`;
+  const slash = NEW_AMAZON_ASINS.has(asin) ? "/" : "";
+  const url = `https://www.amazon.com/dp/${asin}${slash}?tag=${AMAZON_ASSOCIATE_TAG}`;
   servedTrackingHref(url, asin);
   return url;
 }

@@ -13,7 +13,7 @@ const FIELDS = {
 function material(name) {
   const fromEnv = process.env[name];
   if (typeof fromEnv === "string" && fromEnv.trim()) return fromEnv.trim();
-  return randomBytes(32).toString("hex");
+  return randomBytes(32).toString("base64");
 }
 
 const values = Object.fromEntries(Object.entries(FIELDS).map(([field, envName]) => [field, material(envName)]));

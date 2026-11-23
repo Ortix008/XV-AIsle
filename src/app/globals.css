@@ -1678,6 +1678,10 @@ video.auth-plate-media {
 }
 
 .hero-aisle-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   object-position: center 58%;
   filter: saturate(1.4) contrast(1.16) brightness(1.6);
@@ -3520,10 +3524,13 @@ button.contact-submit {
 .partner-card-cta {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   justify-content: center;
   gap: calc(var(--spacing) * 2);
-  width: 12.5rem;
-  min-width: var(--tap);
+  box-sizing: border-box;
+  width: auto;
+  min-width: 200px;
+  max-width: 100%;
   min-height: 48px;
   padding-inline: calc(var(--spacing) * 4);
   border-radius: var(--r-lg);
@@ -3534,6 +3541,11 @@ button.contact-submit {
   line-height: 1.2;
   text-decoration: none;
   transition: filter var(--aisle-dur) var(--aisle-ease);
+}
+
+.partner-card-cta-label {
+  min-width: 0;
+  text-align: center;
 }
 
 .partner-card-icon {
@@ -3551,10 +3563,48 @@ button.contact-submit {
   line-height: 1.45;
 }
 
+@media (max-width: 480px) {
+  .partner-card-cta,
+  .affiliate-card a.affiliate-buy {
+    align-self: stretch;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: auto;
+    min-height: 48px;
+    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--spacing) * 2);
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  .partner-card-cta-label {
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  .partner-card-icon {
+    width: calc(var(--spacing) * 4);
+    height: calc(var(--spacing) * 4);
+    flex-shrink: 0;
+  }
+}
+
 .partner-card-cta:focus-visible {
   outline: 2px solid var(--em);
-  outline-offset: var(--aisle-focus-offset);
+  outline-offset: 2px;
   box-shadow: var(--glow);
+}
+
+.affiliate-card a.affiliate-buy:focus-visible {
+  outline: 2px solid var(--em);
+  outline-offset: 2px;
 }
 
 .partner-card::after {
@@ -3614,8 +3664,9 @@ button.contact-submit {
   }
 
   .partner-spot-solo .partner-card-cta {
-    width: max-content;
-    white-space: nowrap;
+    width: auto;
+    max-width: 100%;
+    white-space: normal;
   }
 }
 
