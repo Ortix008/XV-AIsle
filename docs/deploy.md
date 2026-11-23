@@ -35,6 +35,8 @@ The health check retries for about 90 seconds (2, 4, 8, 16, 30, then 30 seconds)
 
 ## Roll back
 
+Every deploy takes a SQLite backup before it switches the store. Copy `/data/xvaisle.sqlite` out of the `xvaisle_xvaisle-data` volume to `/root/db-backup-<YYYYMMDD-HHMM>.sqlite`, then run `PRAGMA integrity_check` on that file and keep it only if the check says ok.
+
 ```sh
 scripts/rollback-pull.sh
 scripts/rollback-pull.sh <full sha>
@@ -43,6 +45,12 @@ scripts/rollback-pull.sh <full sha>
 With no argument, this reads `previous=` from `/root/xvaisle/.deploy-state`. With an argument, it pulls that sha instead. It uses the same health checks. A failed rollback does not start another rollback.
 
 If a deploy fails its health checks, the script rolls back and then writes the state file again. `current=` is the good sha it returned to. `previous=` is the last known good from before that deploy, not the sha that just failed.
+
+Rollback order:
+
+1. Roll the image back with `scripts/rollback-pull.sh`, or with the local tag command below.
+2. Only if that release changed or corrupted data: stop the store, restore the matching pre-deploy backup into the volume, then start the store. Restoring the database drops any orders written after that backup, so check for those orders first.
+3. Verify that the homepage returns 200, the running image revision label is the restored sha, and Stripe is still in test mode. Check the key prefix only. Do not print the key.
 
 ## First deploy, back to 9165ed0
 

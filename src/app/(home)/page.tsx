@@ -10,6 +10,7 @@ import { viewerIsOperator } from "@/lib/server/require-operator";
 import { stripeTestMode } from "@/lib/server/stripe";
 
 const HERO_POSTER = "/brand/hero-aisle-pedestals.webp";
+const HERO_BAND_AVIF = "/brand/hero-band-640.avif 640w, /brand/hero-band-983.avif 983w";
 
 export default async function Page() {
   await connection();
@@ -20,7 +21,17 @@ export default async function Page() {
   const nightsOn = showHomeAisles();
   return (
     <>
-      <link rel="preload" href={HERO_POSTER} as="image" fetchPriority="high" />
+      <link
+        rel="preload"
+        as="image"
+        type="image/avif"
+        media="(max-width: 767px)"
+        href="/brand/hero-band-640.avif"
+        imageSrcSet={HERO_BAND_AVIF}
+        imageSizes="125vw"
+        fetchPriority="high"
+      />
+      <link rel="preload" as="image" href={HERO_POSTER} media="(min-width: 768px)" fetchPriority="high" />
       <AccountProvider>
         <JoinScreen
           checkoutLine={checkoutLine}

@@ -49,14 +49,29 @@ export function JoinScreen({
         <section className="hero-aisle">
           <div className="hero-aisle-stage" aria-hidden>
             <AisleParallax>
-              <Image
-                src="/brand/hero-aisle-pedestals.webp"
-                alt=""
-                fill
-                priority
-                sizes="100vw"
-                className="hero-aisle-photo"
-              />
+              <picture>
+                <source
+                  media="(max-width: 767px)"
+                  type="image/avif"
+                  srcSet="/brand/hero-band-640.avif 640w, /brand/hero-band-983.avif 983w"
+                  sizes="125vw"
+                />
+                <source
+                  media="(max-width: 767px)"
+                  type="image/webp"
+                  srcSet="/brand/hero-band-640.webp 640w, /brand/hero-band-983.webp 983w"
+                  sizes="125vw"
+                />
+                <img
+                  src="/brand/hero-aisle-pedestals.webp"
+                  alt=""
+                  width={983}
+                  height={720}
+                  fetchPriority="high"
+                  decoding="async"
+                  className="hero-aisle-photo"
+                />
+              </picture>
             </AisleParallax>
             <div className="hero-aisle-grade" />
             <XvAisleFlow />

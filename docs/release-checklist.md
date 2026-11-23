@@ -7,4 +7,5 @@ Confirm these before a production release.
   - A receipt email arrives after a 4242 test checkout.
   - A full Continue with X login completes.
   - Stripe is confirmed in TEST mode. Check the key prefix type only. Do not print the key.
-  - A fresh parse of banned-words.md is run against the live pages.
+  - A fresh parse of docs/banned-words.md is run against the live pages.
+  - The release parse also reads a private supplement kept off the repo by the release engineer.

@@ -1,0 +1,20 @@
+# xvaisle banned words for QA (owner: copy team). A hit is an S3 copy bug (S2 if it's a claim).
+- operator, stock holder, supplier ledger
+- floor / "on the floor" / national floors
+- stall (say "aisles")
+- SI Team
+- "Secure checkout" (until Stripe is live)
+- 30 days / 30-day (returns window is 14)
+- "ships from the US" (only when confirmed for that product)
+- "packed with care", "best", "fastest" (unbacked quality/speed claims)
+- "Join free", "no fee", commission, "Earn 5%", reseller price (resellers = coming soon)
+- kids, funds, donations
+- "night market" (dropped "night")
+- Launch scan (fail if any appear): "free", "no fee", "5%", "Earn", "$10", trial wording ("free trial", "first 30 days"). Approved exceptions: mission "trust that is earned, not assumed"; hero h1 "Goods that earn their place." (hero only)
+- "best estimate" (phrase; use "an estimate" or "expected window")
+- "January" in reseller copy (internal target only; say "soon")
+- "Usually ships in" (retired everywhere Oct 21; use the approved window line or "Tracking emailed when it ships.")
+- Locked Oct 21 2026: reseller pricing is free to join at launch. Never write "$10/month", "30-day trial" or any future paid plan. "free" is still on the launch scan, so any "free to join" line needs an approved exception first.
+- Locked Oct 21 2026: no AI or platform brand names in public copy (Grok, Grok Bot, X, xAI, Google, ChatGPT, OpenAI). Use "AI shopping agents". Exception: the functional "Continue with X" sign-in button.
+- Approved exception (Oct 21 2026): the exact phrase "Free to join" is allowed only in reseller signup and program copy. Every other "free" still fails the scan, including free shipping and free gifts.
+- Locked Oct 22 2026: no "Made in the USA" or any made-in origin claim in shopper copy, and /shop/usa returns a 404. A made-in line comes back one item at a time, only after written proof is logged for that item.

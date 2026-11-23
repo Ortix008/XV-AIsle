@@ -66,7 +66,11 @@ assert(
   releaseChecklist.includes("Stripe is confirmed in TEST mode. Check the key prefix type only. Do not print the key."),
   "the release checklist checks Stripe test mode by prefix type only",
 );
-assert(releaseChecklist.includes("banned-words.md"), "the release checklist parses banned-words.md against live pages");
+assert(releaseChecklist.includes("docs/banned-words.md"), "the release checklist parses docs/banned-words.md against live pages");
+assert(
+  releaseChecklist.includes("The release parse also reads a private supplement kept off the repo by the release engineer."),
+  "the release checklist names the private supplement",
+);
 assert(!/sk_live_|sk_test_|ghp_|xox[baprs]-|-----BEGIN/.test(releaseChecklist), "the release checklist has no secret values");
 const postLaunch = readFileSync(join(process.cwd(), "docs/post-launch.md"), "utf8");
 assert(
