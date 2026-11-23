@@ -40,7 +40,7 @@ export function AffiliateLink({
         }
         target="_blank"
       >
-        {label}
+        <span className="partner-card-cta-label">{label}</span>
         <ExternalLink className="partner-card-icon" aria-hidden />
       </a>
       <p className="partner-card-disclosure">{affiliateDisclosure(disclosure)}</p>
