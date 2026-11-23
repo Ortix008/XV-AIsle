@@ -26,17 +26,31 @@ export function AffiliateSpot({
     <section className={`partner-spot partner-spot-${spot}`}>
       <h2 className="partner-spot-heading">{AFFILIATE_SPOT_HEADING[spot]}</h2>
       <ul className="partner-spot-list">
-        {shown.map((offer) => (
-          <li key={offer.id}>
-            <AffiliateLink
-              href={offer.href ? servedTrackingHref(offer.href, offer.id, traffic) : offer.href}
-              label={offer.label}
-              network={offer.network}
-              item={item}
-              disclosure={offer.disclosure}
-            />
-          </li>
-        ))}
+        {shown.flatMap((offer) => {
+          const cards = [
+            { key: offer.id, href: offer.href, id: offer.id, heading: undefined as string | undefined, blurb: undefined as string | undefined },
+            ...(offer.picks ?? []).map((pick) => ({
+              key: `${offer.id}-${pick.id}`,
+              href: pick.href,
+              id: pick.id,
+              heading: pick.name,
+              blurb: pick.why,
+            })),
+          ];
+          return cards.map((card) => (
+            <li key={card.key}>
+              <AffiliateLink
+                href={card.href ? servedTrackingHref(card.href, card.id, traffic) : card.href}
+                label={offer.label}
+                network={offer.network}
+                item={item}
+                disclosure={offer.disclosure}
+                heading={card.heading}
+                blurb={card.blurb}
+              />
+            </li>
+          ));
+        })}
       </ul>
     </section>
   );

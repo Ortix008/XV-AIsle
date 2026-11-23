@@ -1,3 +1,5 @@
+import { NEW_PICK_COPY } from "@/lib/new-pick-copy";
+
 export const AFFILIATE_DISCLOSURE =
   "We may earn a commission when you buy through these links, at no extra cost to you.";
 
@@ -25,6 +27,13 @@ export type AffiliateNetwork = "bookshop" | "viator" | "getyourguide" | "zazzle"
 
 export type AffiliateSpot = "books" | "experiences" | "gifts";
 
+export type AffiliatePick = {
+  id: string;
+  name: string;
+  why: string;
+  href: string;
+};
+
 export type AffiliateOffer = {
   id: string;
   network: AffiliateNetwork;
@@ -35,7 +44,36 @@ export type AffiliateOffer = {
   /** Public partner id. Not a secret, and not used to build href. */
   partnerId: string;
   disclosure: string;
+  /** Extra cards on the same partner, using that partner's label and disclosure. */
+  picks?: readonly AffiliatePick[];
 };
+
+export const BOOKSHOP_OFFER_HREF = "https://bookshop.org/a/131173";
+
+const BOOK_HREFS = {
+  salt: "https://bookshop.org/a/131173/9781476753836",
+  simple: "https://bookshop.org/a/131173/9781607749165",
+  habits: "https://bookshop.org/a/131173/9780735211292",
+  dog: "https://bookshop.org/a/131173/9780358414230",
+} as const;
+
+const TOUR_HREFS = {
+  kennedy: "https://www.getyourguide.com/orlando-l191/kennedy-space-center-tour-t11881/?partner_id=YEH3QKQ",
+  everglades:
+    "https://www.getyourguide.com/orlando-l191/orlando-everglades-airboat-ride-and-wildlife-park-ticket-t20590/?partner_id=YEH3QKQ",
+} as const;
+
+function picksFrom<Key extends string>(
+  copy: Record<Key, { name: string; why: string }>,
+  hrefs: Record<Key, string>,
+): AffiliatePick[] {
+  return (Object.keys(hrefs) as Key[]).map((id) => ({
+    id,
+    name: copy[id].name,
+    why: copy[id].why,
+    href: hrefs[id],
+  }));
+}
 
 export type AffiliateItem = {
   personalized?: boolean;
@@ -74,10 +112,11 @@ export const AFFILIATE_OFFERS: readonly AffiliateOffer[] = [
     id: "bookshop",
     network: "bookshop",
     spot: "books",
-    href: "",
+    href: BOOKSHOP_OFFER_HREF,
     label: AFFILIATE_COPY.bookshopLink,
-    partnerId: "",
+    partnerId: "131173",
     disclosure: AFFILIATE_DISCLOSURE_SHORT,
+    picks: picksFrom(NEW_PICK_COPY.books, BOOK_HREFS),
   },
   {
     id: "viator",
@@ -96,6 +135,7 @@ export const AFFILIATE_OFFERS: readonly AffiliateOffer[] = [
     label: AFFILIATE_COPY.getyourguideLink,
     partnerId: "YEH3QKQ",
     disclosure: AFFILIATE_DISCLOSURE_SHORT,
+    picks: picksFrom(NEW_PICK_COPY.tours, TOUR_HREFS),
   },
   {
     id: "zazzle",

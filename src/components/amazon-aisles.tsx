@@ -28,6 +28,8 @@ function JsonLd({ data }: { data: unknown }) {
   );
 }
 
+const TILE_SIZES = "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw";
+
 function Still({
   art,
   loading,
@@ -38,21 +40,22 @@ function Still({
   fetchPriority?: "high" | "low" | "auto";
 }) {
   if (!art.src.trim() || !art.alt.trim()) return null;
+  const priority = fetchPriority === "high" && Boolean(art.srcSet);
   return (
-    // Local stills only. next/image is not used, so a later hotlink is not proxied.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={art.src}
-      alt={art.alt}
-      width={800}
-      height={800}
-      loading={loading}
-      decoding="async"
-      fetchPriority={fetchPriority}
-      sizes={
-        fetchPriority === "high" ? "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw" : undefined
-      }
-    />
+    <picture>
+      {priority && art.avifSrcSet ? <source type="image/avif" srcSet={art.avifSrcSet} sizes={TILE_SIZES} /> : null}
+      <img
+        src={art.src}
+        alt={art.alt}
+        width={800}
+        height={800}
+        loading={loading}
+        decoding="async"
+        {...(priority
+          ? { fetchPriority: "high" as const, sizes: TILE_SIZES, srcSet: art.srcSet }
+          : {})}
+      />
+    </picture>
   );
 }
 
@@ -99,8 +102,8 @@ export function AisleIndex({
                 <span className="affiliate-tile-art">
                   <Still
                     art={extra.art}
-                    loading={index < 3 ? "eager" : "lazy"}
-                    fetchPriority={index < 3 ? "high" : undefined}
+                    loading={index === 0 ? "eager" : "lazy"}
+                    fetchPriority={index === 0 ? "high" : undefined}
                   />
                 </span>
               ) : null}
@@ -114,7 +117,7 @@ export function AisleIndex({
         {live.map((aisle, index) => {
           const art = aisle.art ?? aisleCardArt(aisle.slug);
           const position = extras.length + index;
-          const eager = position < 3;
+          const eager = position === 0;
           return (
             <li key={aisle.slug}>
               <Link href={`/aisles/${aisle.slug}`} className="affiliate-tile">

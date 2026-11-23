@@ -2,6 +2,34 @@
 # Pull a published store image and start it. Does not print environment values.
 set -eu
 
+# $1 good sha, $2 failed sha, $3 previous= recorded before the failed deploy.
+# previous must not become the failed sha.
+rollback_state_lines() {
+  good=$1
+  failed=$2
+  prior=${3:-}
+  if [ -z "$prior" ] || [ "$prior" = "$failed" ]; then
+    prior=$good
+  fi
+  printf 'current=%s\nprevious=%s\n' "$good" "$prior"
+}
+
+if [ "${1:-}" = "--self-test" ]; then
+  fail=0
+  expect() {
+    got=$(rollback_state_lines "$1" "$2" "$3")
+    want=$4
+    if [ "$got" != "$want" ]; then
+      echo "deploy-state self-test failed" >&2
+      fail=1
+    fi
+  }
+  expect aaa bbb zzz "$(printf 'current=aaa\nprevious=zzz\n')"
+  expect aaa bbb bbb "$(printf 'current=aaa\nprevious=aaa\n')"
+  expect aaa bbb "" "$(printf 'current=aaa\nprevious=aaa\n')"
+  exit "$fail"
+fi
+
 state=${XV_DEPLOY_STATE:-/root/xvaisle/.deploy-state}
 
 sha=${1:-}
@@ -67,6 +95,10 @@ wait_healthy() {
   return 1
 }
 
+before=""
+if [ -f "$state" ]; then
+  before=$(sed -n 's/^previous=//p' "$state" | head -n 1)
+fi
 old=$(running_sha || true)
 if [ -n "$old" ]; then
   write_state "$old" "$old"
@@ -93,6 +125,8 @@ fi
 
 echo "rolling back to $old" >&2
 if XV_PULL_ACTION=rollback "$0" "$old"; then
+  # The rollback records the failed image as previous. Put the last known good back.
+  rollback_state_lines "$old" "$sha" "$before" > "$state"
   echo "rolled back to $old after $sha failed" >&2
 else
   echo "rollback to $old did not become healthy" >&2
