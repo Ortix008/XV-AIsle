@@ -4,9 +4,7 @@ title = "xvaisle"
 useDefault = true
 
 [allowlist]
-description = "Exact files whose content hashes tripped the scanner"
+description = "Node's own header in the base image"
 paths = [
-  '''(?:^|/)\.next/prerender-manifest\.json$''',
-  '''(?:^|/)\.next/server/server-reference-manifest\.json$''',
   '''(?:^|/)usr/local/include/node/v8-internal\.h$''',
 ]

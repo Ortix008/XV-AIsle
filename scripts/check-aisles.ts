@@ -371,9 +371,25 @@ for (const aisle of live) {
   assert(attr(tileImg, "src") === aisle.art.src, `${aisle.slug} tile src`);
   assert(attr(tileImg, "alt") === aisle.art.alt && attr(tileImg, "alt").trim().length > 0, `${aisle.slug} tile alt`);
   assert(attr(tileImg, "width") === "800" && attr(tileImg, "height") === "800", `${aisle.slug} tile size`);
-  assert(attr(tileImg, "loading") === "lazy" && attr(tileImg, "decoding") === "async", `${aisle.slug} tile loading`);
+  assert(attr(tileImg, "decoding") === "async", `${aisle.slug} tile decoding`);
   assert(!tile.includes("srcset"), `${aisle.slug} tile has no srcset`);
 }
+const indexImgs = [...indexHtml.matchAll(/<img\b[^>]*>/g)].map((match) => match[0]);
+indexImgs.forEach((tag, index) => {
+  const eager = index < 3;
+  assert(attr(tag, "loading") === (eager ? "eager" : "lazy"), `index image ${index} loading`);
+  assert(attr(tag, "width") === "800" && attr(tag, "height") === "800", `index image ${index} size`);
+  assert(attr(tag, "decoding") === "async", `index image ${index} decoding`);
+  if (eager) {
+    assert(/fetchpriority="high"/i.test(tag), `index image ${index} fetch priority`);
+    assert(
+      attr(tag, "sizes") === "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw",
+      `index image ${index} sizes`,
+    );
+  } else {
+    assert(attr(tag, "fetchpriority") === "", `index image ${index} stays lazy`);
+  }
+});
 for (const name of hiddenNames) {
   assert(!indexText.includes(name), `${name} stays off the index`);
 }

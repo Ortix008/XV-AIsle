@@ -18,7 +18,7 @@ export default function ShopPrivacyPage() {
           </p>
           <p>
             {
-              "When you click a partner link, we note the time, the page, the partner, the pick, and whether a person or an AI shopping assistant clicked. We don't log your IP address or anything else that says who you are, and we keep only recent clicks."
+              "When we show a partner link on a page, we note the time, the page, the partner, the pick, and whether a person or an AI shopping assistant is browsing. We don't log your IP address or anything else that says who you are, and we keep only recent entries."
             }
           </p>
           <p>

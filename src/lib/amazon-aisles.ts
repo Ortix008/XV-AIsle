@@ -386,7 +386,7 @@ const AMAZON_AISLE_ROWS: readonly AmazonAisle[] = [
     slug: "games-and-hobbies",
     name: "Games & Hobbies",
     heading: "Time for some fun.",
-    intro: "Games and hobby picks for family nights and free afternoons.",
+    intro: "Games and hobby picks for family nights and slow weekends.",
     items: [
       pick(
         "B0DYK1ZH2D",

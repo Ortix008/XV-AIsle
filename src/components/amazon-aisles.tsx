@@ -28,7 +28,15 @@ function JsonLd({ data }: { data: unknown }) {
   );
 }
 
-function Still({ art, loading }: { art: AisleArt; loading: "eager" | "lazy" }) {
+function Still({
+  art,
+  loading,
+  fetchPriority,
+}: {
+  art: AisleArt;
+  loading: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
+}) {
   if (!art.src.trim() || !art.alt.trim()) return null;
   return (
     // Local stills only. next/image is not used, so a later hotlink is not proxied.
@@ -40,6 +48,10 @@ function Still({ art, loading }: { art: AisleArt; loading: "eager" | "lazy" }) {
       height={800}
       loading={loading}
       decoding="async"
+      fetchPriority={fetchPriority}
+      sizes={
+        fetchPriority === "high" ? "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw" : undefined
+      }
     />
   );
 }
@@ -80,12 +92,16 @@ export function AisleIndex({
       {AISLE_INDEX_COPY.intro ? <p className="affiliate-intro">{AISLE_INDEX_COPY.intro}</p> : null}
       <AiShoppersNote />
       <ul className="affiliate-index">
-        {extras.map((extra) => (
+        {extras.map((extra, index) => (
           <li key={extra.href}>
             <Link href={extra.href} className="affiliate-tile">
               {extra.art ? (
                 <span className="affiliate-tile-art">
-                  <Still art={extra.art} loading="lazy" />
+                  <Still
+                    art={extra.art}
+                    loading={index < 3 ? "eager" : "lazy"}
+                    fetchPriority={index < 3 ? "high" : undefined}
+                  />
                 </span>
               ) : null}
               <span className="affiliate-tile-copy">
@@ -95,14 +111,16 @@ export function AisleIndex({
             </Link>
           </li>
         ))}
-        {live.map((aisle) => {
+        {live.map((aisle, index) => {
           const art = aisle.art ?? aisleCardArt(aisle.slug);
+          const position = extras.length + index;
+          const eager = position < 3;
           return (
             <li key={aisle.slug}>
               <Link href={`/aisles/${aisle.slug}`} className="affiliate-tile">
                 {art ? (
                   <span className="affiliate-tile-art">
-                    <Still art={art} loading="lazy" />
+                    <Still art={art} loading={eager ? "eager" : "lazy"} fetchPriority={eager ? "high" : undefined} />
                   </span>
                 ) : null}
                 <span className="affiliate-tile-copy">

@@ -3697,4 +3697,27 @@ html.motion .home-aisles [data-reveal].is-in {
   transition-delay: calc(min(var(--reveal, 0), var(--motion-stagger-max)) * var(--motion-stagger));
 }
 
+.agents-contact-link {
+  color: var(--primary);
+  text-decoration-line: underline;
+  text-underline-offset: 0.2em;
+  transition: color 150ms ease;
+}
+
+.agents-contact-link:hover {
+  color: var(--heading);
+}
+
+.agents-contact-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agents-contact-link {
+    transition: none;
+  }
+}
+
 

@@ -46,7 +46,10 @@ export default function AgentsPage() {
           <h2 className="font-heading text-2xl">Building an assistant?</h2>
           <p>
             {"If you'd like our aisles inside it, let us know on our "}
-            <Link href="/shop/contact">contact page</Link>.
+            <Link className="agents-contact-link" href="/shop/contact">
+              contact page
+            </Link>
+            .
           </p>
         </div>
       </article>
