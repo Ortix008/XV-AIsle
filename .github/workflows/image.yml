@@ -1,0 +1,124 @@
+name: Image
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Full git sha to build and push
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+  actions: write
+
+jobs:
+  image:
+    name: image built in CI
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          provenance: false
+          sbom: false
+          tags: |
+            ghcr.io/ortix008/xv-aisle-store:${{ github.sha }}
+            ghcr.io/ortix008/xv-aisle-store:main
+          labels: |
+            org.opencontainers.image.source=https://github.com/Ortix008/XV-AIsle
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: |
+            DEPLOYED_COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Scan the image and git history
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          mkdir -p /tmp/xvaisle-image
+          cid=$(docker create "ghcr.io/ortix008/xv-aisle-store:${{ github.sha }}")
+          docker export "$cid" | tar -C /tmp/xvaisle-image -xf -
+          docker rm "$cid" >/dev/null
+          set +e
+          /tmp/gitleaks detect --no-git --source /tmp/xvaisle-image --config "${GITHUB_WORKSPACE}/.gitleaks.toml" --redact --no-banner --report-format json --report-path /tmp/gl-image.json
+          image_code=$?
+          /tmp/gitleaks detect --source "${GITHUB_WORKSPACE}" --config "${GITHUB_WORKSPACE}/.gitleaks.toml" --redact --no-banner --report-format json --report-path /tmp/gl-git.json
+          git_code=$?
+          set -e
+          node -e 'const fs=require("fs"); for (const name of ["image","git"]) { const p="/tmp/gl-"+name+".json"; const rows=fs.existsSync(p)?JSON.parse(fs.readFileSync(p,"utf8")||"[]"):[]; console.log(name+" findings: "+rows.length); if (rows.length) { for (const row of rows) console.log(String(row.RuleID)+" "+String(row.File)+":"+String(row.StartLine)); process.exit(1);} }'
+          test "$image_code" -eq 0
+          test "$git_code" -eq 0
+          pre=$(printf '%s%s' s k)
+          mid=$(printf '%s%s%s%s' l i v e)
+          body=$(printf '%s' notarealkeyvalue0123)
+          planted="${pre}_${mid}_${body}"
+          mkdir -p /tmp/xvaisle-image/app/.next/server/app
+          printf '%s\n' "$planted" > /tmp/xvaisle-image/app/.next/server/app/planted.json
+          printf '%s\n' "$planted" > /tmp/xvaisle-image/app/planted.txt
+          unset planted pre mid body
+          /tmp/gitleaks detect --no-git --source /tmp/xvaisle-image --config "${GITHUB_WORKSPACE}/.gitleaks.toml" --redact --no-banner --report-format json --report-path /tmp/gl-plant.json || true
+          node -e 'const fs=require("fs"); const rows=JSON.parse(fs.readFileSync("/tmp/gl-plant.json","utf8")||"[]"); const rules=[...new Set(rows.map((row)=>row.RuleID))]; const files=rows.map((row)=>String(row.File)); const json=files.some((file)=>file.endsWith("/app/.next/server/app/planted.json")||file.endsWith("app/.next/server/app/planted.json")); const txt=files.some((file)=>file.endsWith("/app/planted.txt")||file.endsWith("app/planted.txt")); console.log("self-test rules: "+rules.join(",")); if (!json || !txt || rules.length===0) process.exit(1);'
+      - name: Push the image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push "ghcr.io/ortix008/xv-aisle-store:${{ github.sha }}"
+          docker push ghcr.io/ortix008/xv-aisle-store:main
+  dispatch:
+    name: build a sha
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push the requested sha
+        run: |
+          set -euo pipefail
+          sha="${{ inputs.sha }}"
+          case "$sha" in
+            *[!0-9a-f]*)
+              echo "sha must be 40 hex characters" >&2
+              exit 2
+              ;;
+          esac
+          test "${#sha}" -eq 40
+          git worktree add /tmp/xvaisle-src "$sha"
+          docker buildx build \
+            --file /tmp/xvaisle-src/Dockerfile \
+            --build-arg "DEPLOYED_COMMIT=$sha" \
+            --label org.opencontainers.image.source=https://github.com/Ortix008/XV-AIsle \
+            --label "org.opencontainers.image.revision=$sha" \
+            --tag "ghcr.io/ortix008/xv-aisle-store:$sha" \
+            --provenance=false \
+            --sbom=false \
+            --load \
+            /tmp/xvaisle-src
+          docker push "ghcr.io/ortix008/xv-aisle-store:$sha"

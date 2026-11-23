@@ -146,7 +146,7 @@ export function FloorView() {
             Market
           </p>
           <h1 className="mt-1 max-w-xl text-balance text-[1.75rem] leading-tight font-semibold tracking-tight text-white sm:text-4xl">
-            {"A curated US market, with every item reviewed before it's listed."}
+            Every XV-AIsle aisle and pick, all in one place.
           </h1>
         </div>
       </div>

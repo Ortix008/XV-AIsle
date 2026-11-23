@@ -1,0 +1,10 @@
+title = "xvaisle"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Node's own header in the base image"
+paths = [
+  '''(?:^|/)usr/local/include/node/v8-internal\.h$''',
+]

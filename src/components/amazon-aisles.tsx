@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { runWithTraffic, type Traffic } from "@/lib/agent-traffic";
 import {
   AI_SHOPPERS_NOTE,
   AISLE_INDEX_COPY,
   AMAZON_ASSOCIATE_DISCLOSURE,
   AMAZON_PAID_LINK_LABEL,
   AMAZON_PICK_BUTTON_LABEL,
+  aisleCardArt,
   aisleIndexJsonLd,
   aisleProductJsonLd,
   amazonPickUrl,
@@ -26,7 +28,15 @@ function JsonLd({ data }: { data: unknown }) {
   );
 }
 
-function Still({ art, loading }: { art: AisleArt; loading: "eager" | "lazy" }) {
+function Still({
+  art,
+  loading,
+  fetchPriority,
+}: {
+  art: AisleArt;
+  loading: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
+}) {
   if (!art.src.trim() || !art.alt.trim()) return null;
   return (
     // Local stills only. next/image is not used, so a later hotlink is not proxied.
@@ -38,6 +48,10 @@ function Still({ art, loading }: { art: AisleArt; loading: "eager" | "lazy" }) {
       height={800}
       loading={loading}
       decoding="async"
+      fetchPriority={fetchPriority}
+      sizes={
+        fetchPriority === "high" ? "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw" : undefined
+      }
     />
   );
 }
@@ -66,7 +80,7 @@ export function AisleIndex({
 }: {
   aisles: readonly AmazonAisle[];
   includeTickets?: boolean;
-  extras?: readonly { href: string; name: string; intro: string }[];
+  extras?: readonly { href: string; name: string; intro: string; art?: AisleArt }[];
 }) {
   const live = [
     ...liveAisles(aisles),
@@ -78,9 +92,18 @@ export function AisleIndex({
       {AISLE_INDEX_COPY.intro ? <p className="affiliate-intro">{AISLE_INDEX_COPY.intro}</p> : null}
       <AiShoppersNote />
       <ul className="affiliate-index">
-        {extras.map((extra) => (
+        {extras.map((extra, index) => (
           <li key={extra.href}>
             <Link href={extra.href} className="affiliate-tile">
+              {extra.art ? (
+                <span className="affiliate-tile-art">
+                  <Still
+                    art={extra.art}
+                    loading={index < 3 ? "eager" : "lazy"}
+                    fetchPriority={index < 3 ? "high" : undefined}
+                  />
+                </span>
+              ) : null}
               <span className="affiliate-tile-copy">
                 <h2 className="affiliate-card-name">{extra.name}</h2>
                 {extra.intro ? <p className="affiliate-blurb affiliate-tile-intro">{extra.intro}</p> : null}
@@ -88,21 +111,26 @@ export function AisleIndex({
             </Link>
           </li>
         ))}
-        {live.map((aisle) => (
-          <li key={aisle.slug}>
-            <Link href={`/aisles/${aisle.slug}`} className="affiliate-tile">
-              {aisle.art ? (
-                <span className="affiliate-tile-art">
-                  <Still art={aisle.art} loading="lazy" />
+        {live.map((aisle, index) => {
+          const art = aisle.art ?? aisleCardArt(aisle.slug);
+          const position = extras.length + index;
+          const eager = position < 3;
+          return (
+            <li key={aisle.slug}>
+              <Link href={`/aisles/${aisle.slug}`} className="affiliate-tile">
+                {art ? (
+                  <span className="affiliate-tile-art">
+                    <Still art={art} loading={eager ? "eager" : "lazy"} fetchPriority={eager ? "high" : undefined} />
+                  </span>
+                ) : null}
+                <span className="affiliate-tile-copy">
+                  <h2 className="affiliate-card-name">{aisle.name}</h2>
+                  {aisle.intro ? <p className="affiliate-blurb affiliate-tile-intro">{aisle.intro}</p> : null}
                 </span>
-              ) : null}
-              <span className="affiliate-tile-copy">
-                <h2 className="affiliate-card-name">{aisle.name}</h2>
-                {aisle.intro ? <p className="affiliate-blurb affiliate-tile-intro">{aisle.intro}</p> : null}
-              </span>
-            </Link>
-          </li>
-        ))}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
       <JsonLd data={aisleIndexJsonLd(aisles)} />
     </article>
@@ -112,11 +140,13 @@ export function AisleIndex({
 export function AisleDetail({
   aisle,
   belowHero = null,
+  traffic = null,
 }: {
   aisle: AmazonAisle;
   belowHero?: ReactNode;
+  traffic?: Traffic | null;
 }) {
-  return (
+  return runWithTraffic(traffic, () => (
     <article className="affiliate-shell">
       <header className="affiliate-hero">
         <div className="affiliate-hero-copy">
@@ -159,5 +189,5 @@ export function AisleDetail({
       </ul>
       <JsonLd data={aisleProductJsonLd(aisle)} />
     </article>
-  );
+  ));
 }

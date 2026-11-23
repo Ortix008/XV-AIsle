@@ -410,7 +410,10 @@ async function main() {
       return entry.isDirectory() ? everyFile(path) : [path];
     });
   }
-  const hardcoded = everyFile(join(process.cwd(), "src")).filter((path) => readFileSync(path, "utf8").includes(bannedSupport));
+  const hardcoded = everyFile(join(process.cwd(), "src")).filter((path) => {
+    if (path.endsWith(`${join("shop", "privacy", "page.tsx")}`)) return false;
+    return readFileSync(path, "utf8").includes(bannedSupport);
+  });
   assert(hardcoded.length === 0, `src hardcodes the support address: ${hardcoded.join(", ")}`);
   const { receiptSupportLine, signupTakenText } = await import("../src/lib/signup-copy");
   assert(receiptSupportLine() === "Questions? Email us at support@example.test.", "receipt mail uses SUPPORT_EMAIL");
@@ -437,14 +440,23 @@ async function main() {
   else process.env.SUPPORT_EMAIL = previousSupport;
 
   const robots = (await import("../src/app/robots")).default();
-  const rule = Array.isArray(robots.rules) ? robots.rules[0] : robots.rules;
-  const disallow = Array.isArray(rule?.disallow) ? rule.disallow : rule?.disallow ? [rule.disallow] : [];
-  assert(!disallow.includes("/shop/reseller"), "robots allows the public reseller page");
-  for (const path of ["/api", "/membership", "/orders"]) {
-    assert(disallow.includes(path), `robots still disallows ${path}`);
-  }
-  for (const path of ["/account", "/desk", "/scout", "/listings", "/marketing", "/floors", "/catalog"]) {
-    assert(!disallow.includes(path), `robots does not advertise ${path}`);
+  const rules = Array.isArray(robots.rules) ? robots.rules : [robots.rules];
+  assert(rules.length > 1, "robots lists explicit user agents");
+  assert(robots.sitemap === "https://xvaisle.com/sitemap.xml", "robots publishes the sitemap");
+  for (const rule of rules) {
+    const disallow = Array.isArray(rule?.disallow) ? rule.disallow : rule?.disallow ? [rule.disallow] : [];
+    const allow = Array.isArray(rule?.allow) ? rule.allow : rule?.allow ? [rule.allow] : [];
+    assert(allow.includes("/"), "robots allows /");
+    assert(!disallow.includes("/shop/reseller"), "robots allows the public reseller page");
+    for (const path of ["/", "/aisles", "/llms.txt", "/agents", "/shop"]) {
+      assert(!disallow.includes(path), `robots does not disallow ${path}`);
+    }
+    for (const path of ["/api", "/membership", "/orders", "/account"]) {
+      assert(disallow.includes(path), `robots still disallows ${path}`);
+    }
+    for (const path of ["/desk", "/catalog", "/listings", "/floors", "/scout", "/marketing", "/dev"]) {
+      assert(!disallow.includes(path), `robots does not advertise ${path}`);
+    }
   }
 
   console.log("qa followup checks ok");

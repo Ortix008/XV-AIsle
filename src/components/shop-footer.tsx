@@ -33,6 +33,7 @@ const columns = [
       { href: "/shop/reseller/terms", label: "Reseller terms" },
       { href: "/shop/privacy", label: "Privacy" },
       { href: "/shop/terms", label: "Terms" },
+      { href: "/agents", label: "For AI shopping assistants" },
     ],
   },
 ];

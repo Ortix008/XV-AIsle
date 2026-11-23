@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ACCOUNT_CACHE_CONTROL } from "@/lib/account-cache";
+import { bindProxyTraffic } from "@/lib/agent-request";
 import { REFERRAL_COOKIE, referralId } from "@/lib/referral";
 import { accountFromToken } from "@/lib/server/accounts";
 import { entryRedirect } from "@/lib/server/entry-gate";
@@ -46,6 +47,7 @@ function signInRedirect(request: NextRequest, nextPath: string) {
 }
 
 export function proxy(request: NextRequest) {
+  bindProxyTraffic(request.headers.get("user-agent") ?? "", request.nextUrl.pathname);
   if (!postOriginAllowed(request)) {
     return withSecurity(NextResponse.json({}, { status: 403 }), request);
   }
