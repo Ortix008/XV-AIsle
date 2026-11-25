@@ -2233,6 +2233,10 @@ video.auth-plate-media {
   .up1-card:nth-child(2) { border-color: #2ee59d; }
 }
 
+.brand-keep {
+  white-space: nowrap;
+}
+
 .vm {
   position: relative;
   overflow: clip;
@@ -3557,9 +3561,16 @@ button.contact-submit {
   text-align: center;
 }
 
+.partner-card-cta-keep {
+  white-space: nowrap;
+}
+
 .partner-card-icon {
+  display: inline-block;
   width: calc(var(--spacing) * 4);
   height: calc(var(--spacing) * 4);
+  margin-left: calc(var(--spacing) * 2);
+  vertical-align: middle;
   flex: none;
 }
 
@@ -3595,16 +3606,10 @@ button.contact-submit {
 
   .partner-card-cta-label {
     flex: 0 1 auto;
-    width: fit-content;
-    max-width: calc(100% - calc(var(--spacing) * 4) - calc(var(--spacing) * 2));
+    width: auto;
+    max-width: 100%;
     line-height: 1.25;
     text-wrap: balance;
-  }
-
-  .partner-card-icon {
-    width: calc(var(--spacing) * 4);
-    height: calc(var(--spacing) * 4);
-    flex: none;
   }
 }
 

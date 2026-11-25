@@ -7,6 +7,21 @@ import {
   type AffiliateNetwork,
 } from "@/config/affiliates";
 
+function labelWithIcon(label: string) {
+  const words = label.trim().split(/\s+/);
+  const last = words.pop() ?? "";
+  const lead = words.join(" ");
+  return (
+    <>
+      {lead ? <>{lead} </> : null}
+      <span className="partner-card-cta-keep">
+        {last}
+        <ExternalLink className="partner-card-icon" aria-hidden />
+      </span>
+    </>
+  );
+}
+
 export function AffiliateLink({
   href,
   label,
@@ -32,6 +47,7 @@ export function AffiliateLink({
       {blurb ? <p className="affiliate-blurb">{blurb}</p> : null}
       <a
         className="partner-card-cta"
+        data-label={label}
         href={href}
         rel={
           network === "bookshop" || network === "getyourguide"
@@ -40,8 +56,7 @@ export function AffiliateLink({
         }
         target="_blank"
       >
-        <span className="partner-card-cta-label">{label}</span>
-        <ExternalLink className="partner-card-icon" aria-hidden />
+        <span className="partner-card-cta-label">{labelWithIcon(label)}</span>
       </a>
       <p className="partner-card-disclosure">{affiliateDisclosure(disclosure)}</p>
     </article>

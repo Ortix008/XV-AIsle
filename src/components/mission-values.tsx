@@ -9,6 +9,16 @@ const vision =
 /** Values cards stay out of the DOM. The heading stays in source for the existing check. */
 const valuesHeading = "What we stand for";
 
+function keepBrand(text: string) {
+  const parts = text.split("XV-AIsle");
+  return parts.map((part, index) => (
+    <span key={index}>
+      {index > 0 ? <span className="brand-keep">XV-AIsle</span> : null}
+      {part}
+    </span>
+  ));
+}
+
 export function MissionValues() {
   void valuesHeading;
   return (
@@ -21,11 +31,11 @@ export function MissionValues() {
       <div className="vm-in">
         <div className="vm-eye">Our mission</div>
         <h2 className="vm-title" id="mission">
-          {mission}
+          {keepBrand(mission)}
         </h2>
         <div className="vm-vision">
           <div className="vm-eye">Our vision</div>
-          <p>{vision}</p>
+          <p>{keepBrand(vision)}</p>
         </div>
       </div>
     </section>

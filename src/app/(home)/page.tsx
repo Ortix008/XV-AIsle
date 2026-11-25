@@ -12,7 +12,8 @@ import { viewerIsOperator } from "@/lib/server/require-operator";
 import { stripeTestMode } from "@/lib/server/stripe";
 
 const HERO_POSTER = "/brand/hero-aisle-pedestals.webp";
-const HERO_BAND_AVIF = "/brand/hero-band-640.avif 640w, /brand/hero-band-800.avif 800w";
+const HERO_BAND_AVIF = "/brand/hero-band-640.avif 640w, /brand/hero-band-780.avif 780w";
+const HERO_BAND_SIZES = "100vw";
 
 export default async function Page() {
   await connection();
@@ -26,7 +27,7 @@ export default async function Page() {
       <PreloadImage
         href="/brand/hero-band-640.avif"
         imageSrcSet={HERO_BAND_AVIF}
-        imageSizes="125vw"
+        imageSizes={HERO_BAND_SIZES}
         type="image/avif"
         media="(max-width: 767px)"
       />

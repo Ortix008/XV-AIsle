@@ -44,14 +44,14 @@ export function JoinScreen({
                 <source
                   media="(max-width: 767px)"
                   type="image/avif"
-                  srcSet="/brand/hero-band-640.avif 640w, /brand/hero-band-800.avif 800w"
-                  sizes="125vw"
+                  srcSet="/brand/hero-band-640.avif 640w, /brand/hero-band-780.avif 780w"
+                  sizes="100vw"
                 />
                 <source
                   media="(max-width: 767px)"
                   type="image/webp"
-                  srcSet="/brand/hero-band-640.webp 640w, /brand/hero-band-800.webp 800w"
-                  sizes="125vw"
+                  srcSet="/brand/hero-band-640.webp 640w, /brand/hero-band-780.webp 780w"
+                  sizes="100vw"
                 />
                 <img
                   src="/brand/hero-aisle-pedestals.webp"
