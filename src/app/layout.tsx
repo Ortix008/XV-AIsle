@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { shareCardMetadata } from "@/lib/share-card";
 import "./globals.css";
 
-const inter = localFont({
+const xvInter = localFont({
   src: [
     { path: "./fonts/inter-latin-400.woff2", weight: "400", style: "normal" },
     { path: "./fonts/inter-latin-500.woff2", weight: "500", style: "normal" },
@@ -15,9 +15,14 @@ const inter = localFont({
   display: "swap",
   preload: false,
   adjustFontFallback: "Arial",
+  declarations: [
+    { prop: "ascent-override", value: "96.88%" },
+    { prop: "descent-override", value: "24.12%" },
+    { prop: "line-gap-override", value: "0%" },
+  ],
 });
 
-const spaceGrotesk = localFont({
+const xvDisplay = localFont({
   src: [
     { path: "./fonts/space-grotesk-latin-500.woff2", weight: "500", style: "normal" },
     { path: "./fonts/space-grotesk-latin-600.woff2", weight: "600", style: "normal" },
@@ -27,9 +32,14 @@ const spaceGrotesk = localFont({
   display: "swap",
   preload: false,
   adjustFontFallback: "Arial",
+  declarations: [
+    { prop: "ascent-override", value: "98.40%" },
+    { prop: "descent-override", value: "29.20%" },
+    { prop: "line-gap-override", value: "0%" },
+  ],
 });
 
-const geistMono = localFont({
+const xvMono = localFont({
   src: "./fonts/geist-mono-latin-400.woff2",
   weight: "400",
   style: "normal",
@@ -37,6 +47,11 @@ const geistMono = localFont({
   display: "swap",
   preload: false,
   adjustFontFallback: "Arial",
+  declarations: [
+    { prop: "ascent-override", value: "100.50%" },
+    { prop: "descent-override", value: "29.50%" },
+    { prop: "line-gap-override", value: "0%" },
+  ],
 });
 
 const SITE_DESCRIPTION = "XV-AIsle gathers home, kitchen and everyday picks, each linking to the store where you buy it.";
@@ -58,7 +73,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className="h-full antialiased"
-      data-fonts={`${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable}`}
+      data-fonts={`${xvInter.variable} ${xvDisplay.variable} ${xvMono.variable}`}
     >
       <head>
         {/* @ts-expect-error Impact site verification reads value, which the Metadata API rewrites to content. */}

@@ -45,13 +45,13 @@ export function JoinScreen({
                   media="(max-width: 767px)"
                   type="image/avif"
                   srcSet="/brand/hero-band-640.avif 640w, /brand/hero-band-780.avif 780w"
-                  sizes="100vw"
+                  sizes="125vw"
                 />
                 <source
                   media="(max-width: 767px)"
                   type="image/webp"
                   srcSet="/brand/hero-band-640.webp 640w, /brand/hero-band-780.webp 780w"
-                  sizes="100vw"
+                  sizes="125vw"
                 />
                 <img
                   src="/brand/hero-aisle-pedestals.webp"

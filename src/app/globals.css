@@ -2233,6 +2233,33 @@ video.auth-plate-media {
   .up1-card:nth-child(2) { border-color: #2ee59d; }
 }
 
+/* Arial is the metric base. Liberation Sans and Arimo are the same metrics, so the
+   size-adjust still holds where Arial itself is not installed. */
+@font-face {
+  font-family: "xvInter Fallback";
+  src: local("Liberation Sans"), local("Arimo"), local("Arial");
+  ascent-override: 89.79%;
+  descent-override: 22.36%;
+  line-gap-override: 0%;
+  size-adjust: 107.89%;
+}
+@font-face {
+  font-family: "xvDisplay Fallback";
+  src: local("Liberation Sans"), local("Arimo"), local("Arial");
+  ascent-override: 88.74%;
+  descent-override: 26.33%;
+  line-gap-override: 0%;
+  size-adjust: 110.89%;
+}
+@font-face {
+  font-family: "xvMono Fallback";
+  src: local("Liberation Mono"), local("Cousine"), local("Arial");
+  ascent-override: 76.43%;
+  descent-override: 22.43%;
+  line-gap-override: 0%;
+  size-adjust: 131.49%;
+}
+
 .brand-keep {
   white-space: nowrap;
 }
@@ -2593,7 +2620,7 @@ button.auth-x:disabled {
 }
 
 .policy-card {
-  max-width: 68ch;
+  max-width: 43rem;
   margin-inline: auto;
   padding: 28px 24px 32px;
   border: 1px solid var(--card-line);
@@ -3214,6 +3241,12 @@ button.contact-submit {
 
 .affiliate-hero .page-title {
   margin-top: 0;
+}
+
+@media (max-width: 479px) {
+  .affiliate-hero .page-title {
+    min-height: 2.1em;
+  }
 }
 
 .affiliate-hero-frame,
