@@ -2233,8 +2233,17 @@ video.auth-plate-media {
   .up1-card:nth-child(2) { border-color: #2ee59d; }
 }
 
-/* Arial is the metric base. Liberation Sans and Arimo are the same metrics, so the
-   size-adjust still holds where Arial itself is not installed. */
+/* Arial is the metric base. Liberation Sans and Arimo share those metrics.
+   Roboto is a separate face so Android, which has Roboto and not Arial, still matches.
+   The later face wins when both families are installed. */
+@font-face {
+  font-family: "xvInter Fallback";
+  src: local("Roboto"), local("Roboto Regular");
+  ascent-override: 90.13%;
+  descent-override: 22.44%;
+  line-gap-override: 0%;
+  size-adjust: 107.49%;
+}
 @font-face {
   font-family: "xvInter Fallback";
   src: local("Liberation Sans"), local("Arimo"), local("Arial");
@@ -2242,6 +2251,14 @@ video.auth-plate-media {
   descent-override: 22.36%;
   line-gap-override: 0%;
   size-adjust: 107.89%;
+}
+@font-face {
+  font-family: "xvDisplay Fallback";
+  src: local("Roboto"), local("Roboto Regular");
+  ascent-override: 89.07%;
+  descent-override: 26.43%;
+  line-gap-override: 0%;
+  size-adjust: 110.47%;
 }
 @font-face {
   font-family: "xvDisplay Fallback";
@@ -2268,7 +2285,6 @@ video.auth-plate-media {
   position: relative;
   overflow: clip;
   isolation: isolate;
-  content-visibility: hidden;
   padding: 120px 0 110px;
   border-top: 1px solid #ffffff0d;
   background: #050807;
@@ -3241,12 +3257,6 @@ button.contact-submit {
 
 .affiliate-hero .page-title {
   margin-top: 0;
-}
-
-@media (max-width: 479px) {
-  .affiliate-hero .page-title {
-    min-height: 2.1em;
-  }
 }
 
 .affiliate-hero-frame,

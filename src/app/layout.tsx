@@ -12,7 +12,7 @@ const xvInter = localFont({
     { path: "./fonts/inter-latin-700.woff2", weight: "700", style: "normal" },
   ],
   variable: "--font-inter",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: "Arial",
   declarations: [
@@ -29,7 +29,7 @@ const xvDisplay = localFont({
     { path: "./fonts/space-grotesk-latin-700.woff2", weight: "700", style: "normal" },
   ],
   variable: "--font-display",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: "Arial",
   declarations: [
@@ -44,7 +44,7 @@ const xvMono = localFont({
   weight: "400",
   style: "normal",
   variable: "--font-geist-mono",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: "Arial",
   declarations: [
@@ -83,11 +83,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){var root=document.documentElement;var fonts=root.getAttribute('data-fonts')||'';function apply(){if(fonts)root.className+=' '+fonts;var n=document.querySelector('.vm');if(n)n.style.contentVisibility='visible';}if(location.pathname!=='/'){apply();return;}function arm(){var img=document.querySelector('.hero-aisle-photo');if(!img){apply();return;}function go(){var paint=function(){requestAnimationFrame(function(){requestAnimationFrame(apply);});};if(img.decode)img.decode().then(paint,paint);else paint();}if(img.complete&&img.naturalWidth)go();else{img.addEventListener('load',go,{once:true});img.addEventListener('error',apply,{once:true});}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm();})();",
+              "(function(){var root=document.documentElement;var fonts=root.getAttribute('data-fonts')||'';function apply(){if(fonts)root.className+=' '+fonts;}if(location.pathname!=='/'){apply();return;}function arm(){var img=document.querySelector('.hero-aisle-photo');if(!img){apply();return;}function go(){var paint=function(){requestAnimationFrame(function(){requestAnimationFrame(apply);});};if(img.decode)img.decode().then(paint,paint);else paint();}if(img.complete&&img.naturalWidth)go();else{img.addEventListener('load',go,{once:true});img.addEventListener('error',apply,{once:true});}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm();})();",
           }}
         />
         <noscript>
-          <style>{".page-enter,[data-reveal]{animation:none !important;opacity:1 !important;transform:none !important;}.vm{content-visibility:visible;}"}</style>
+          <style>{".page-enter,[data-reveal]{animation:none !important;opacity:1 !important;transform:none !important;}"}</style>
         </noscript>
         {children}
       </body>
