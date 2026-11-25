@@ -208,7 +208,7 @@
     line-height: 1.05;
   }
   h1 {
-    font-family: var(--font-display-hero), var(--font-heading);
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
     font-weight: 700;
   }
   a:focus-visible,
@@ -2237,6 +2237,7 @@ video.auth-plate-media {
   position: relative;
   overflow: clip;
   isolation: isolate;
+  content-visibility: hidden;
   padding: 120px 0 110px;
   border-top: 1px solid #ffffff0d;
   background: #050807;

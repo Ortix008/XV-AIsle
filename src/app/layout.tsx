@@ -29,17 +29,6 @@ const spaceGrotesk = localFont({
   adjustFontFallback: "Arial",
 });
 
-/** Hero h1 is Space Grotesk 700. This is the only preloaded face. */
-const spaceGroteskHero = localFont({
-  src: "./fonts/space-grotesk-latin-700.woff2",
-  weight: "700",
-  style: "normal",
-  variable: "--font-display-hero",
-  display: "swap",
-  preload: true,
-  adjustFontFallback: "Arial",
-});
-
 const geistMono = localFont({
   src: "./fonts/geist-mono-latin-400.woff2",
   weight: "400",
@@ -68,15 +57,22 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${spaceGrotesk.variable} ${spaceGroteskHero.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
+      data-fonts={`${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable}`}
     >
       <head>
         {/* @ts-expect-error Impact site verification reads value, which the Metadata API rewrites to content. */}
         <meta name="impact-site-verification" value="c47e4b0e-da1e-4c09-9425-6f14cfd7fc4e" />
       </head>
       <body className="min-h-full bg-background text-foreground">
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){var root=document.documentElement;var fonts=root.getAttribute('data-fonts')||'';function apply(){if(fonts)root.className+=' '+fonts;var n=document.querySelector('.vm');if(n)n.style.contentVisibility='visible';}if(location.pathname!=='/'){apply();return;}function arm(){var img=document.querySelector('.hero-aisle-photo');if(!img){apply();return;}function go(){var paint=function(){requestAnimationFrame(function(){requestAnimationFrame(apply);});};if(img.decode)img.decode().then(paint,paint);else paint();}if(img.complete&&img.naturalWidth)go();else{img.addEventListener('load',go,{once:true});img.addEventListener('error',apply,{once:true});}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm();})();",
+          }}
+        />
         <noscript>
-          <style>{".page-enter,[data-reveal]{animation:none !important;opacity:1 !important;transform:none !important;}"}</style>
+          <style>{".page-enter,[data-reveal]{animation:none !important;opacity:1 !important;transform:none !important;}.vm{content-visibility:visible;}"}</style>
         </noscript>
         {children}
       </body>
