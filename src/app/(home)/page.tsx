@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { JoinScreen } from "@/components/home-screen";
+import { MissionValues } from "@/components/mission-values";
 import { PreloadImage } from "@/components/preload-image";
 import type { ShopCard } from "@/components/shop-grid";
 import { checkoutOpenLine } from "@/lib/checkout-open";
@@ -38,7 +39,9 @@ export default async function Page() {
           showPrices={showShopPrices()}
           listings={listings}
           nightSlugs={nightsOn ? homepageNightSlugs(listings) : []}
-        />
+        >
+          <MissionValues />
+        </JoinScreen>
       </AccountProvider>
     </>
   );

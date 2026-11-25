@@ -1,24 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { Reveal } from "@/components/reveal";
-import { ShopFooter } from "@/components/shop-footer";
+import { HomeBelow } from "@/components/home-below";
 import { StoreHeader } from "@/components/store-header";
-import { NightStalls } from "@/components/night-stalls";
-import { homeStepTiles } from "@/lib/home-aisles";
 import type { NightWorldSlug } from "@/lib/night-worlds";
 import { AisleParallax, XvAisleFlow } from "@/components/xvaisle-flow";
-import { MarkTile } from "@/components/mark-tile";
-import { ShopGrid, type ShopCard } from "@/components/shop-grid";
-import { welcomeReach } from "@/lib/art";
+import type { ShopCard } from "@/components/shop-grid";
 import { HERO_EYEBROW } from "@/lib/hero-copy";
-import { RETURN_WINDOW_DAYS } from "@/lib/policies";
-
-/** Const lists have a fixed length type, so the empty check takes a number. */
-function hasCards(count: number) {
-  return count > 0;
-}
+import type { ReactNode } from "react";
 
 export function JoinScreen({
   checkoutLine,
@@ -27,6 +16,7 @@ export function JoinScreen({
   showBuying = false,
   listings,
   nightSlugs = [],
+  children,
 }: {
   checkoutLine: string;
   operator?: boolean;
@@ -35,6 +25,7 @@ export function JoinScreen({
   showBuying?: boolean;
   listings?: ShopCard[];
   nightSlugs?: readonly NightWorldSlug[];
+  children?: ReactNode;
 }) {
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -102,140 +93,18 @@ export function JoinScreen({
           </div>
         </section>
 
-        <section id="aisles" className="scroll-mt-24">
-          <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-10 sm:py-[72px] lg:py-[110px]">
-            {nightSlugs.length > 0 ? (
-              <>
-                <Reveal className="mb-10 flex items-end justify-between gap-5">
-                  <div>
-                    <p className="eyebrow">Aisles</p>
-                    <h2 className="mt-3 text-4xl sm:text-5xl lg:text-[52px]">Our aisles</h2>
-                    <p className="mt-4 max-w-xl text-pretty text-base text-muted-foreground">
-                      {"Each one has its own glow. Here's what you'll find inside."}
-                    </p>
-                  </div>
-                  <Link
-                    href={(listings?.length ?? 0) > 0 ? "/shop" : "/aisles"}
-                    className="link-slide shrink-0 text-sm text-muted-foreground hover:text-primary"
-                  >
-                    View all →
-                  </Link>
-                </Reveal>
-                <NightStalls slugs={nightSlugs} />
-              </>
-            ) : null}
-            <div className={nightSlugs.length > 0 ? "home-aisles mt-16" : "home-aisles"}>
-              <h2 className="home-aisles-head text-3xl sm:text-4xl">Step into an aisle.</h2>
-              <ul className="affiliate-index">
-                {homeStepTiles().map((tile, index) => (
-                  <Reveal as="li" key={tile.href} index={index} pace="shop">
-                    <Link href={tile.href} className="affiliate-tile">
-                      <span className="affiliate-tile-art">
-                        {/* Plain img so the 800px still ships as is. */}
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={tile.src} alt="" width={800} height={800} loading="lazy" decoding="async" />
-                      </span>
-                      <span className="affiliate-tile-copy">
-                        <h3 className="affiliate-card-name">{tile.name}</h3>
-                        <p className="affiliate-blurb affiliate-tile-intro">{tile.intro}</p>
-                      </span>
-                    </Link>
-                  </Reveal>
-                ))}
-              </ul>
-              <Link href="/aisles" className="pill pill-ghost home-aisles-more">
-                See all aisles
-                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                  <path
-                    d="M6 3.5 10.5 8 6 12.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </Link>
-            </div>
-          </div>
-        </section>
+        {children}
 
-        <ShopGrid
-          kicker="Featured"
-          title="In the store"
-          lede="Prices, shipping and returns are set by the store you buy from."
-          query=""
-          empty="Nothing's on the shelves yet. We're picking the first pieces now."
-          limit={4}
-          seeAllHref="/shop"
-          level="section"
-          hideWhenEmpty
-          band
-          photosOnly
+        <HomeBelow
+          checkoutLine={checkoutLine}
+          operator={operator}
           showPrices={showPrices}
-          initialListings={listings}
+          showBuying={showBuying}
+          listings={listings}
+          nightSlugs={nightSlugs}
+          lede="Prices, shipping and returns are set by the store you buy from."
         />
-
-        {showBuying ? (
-          <>
-            <section>
-              <div className="mx-auto grid max-w-[1280px] gap-5 px-5 py-16 sm:px-10 sm:py-[72px] lg:grid-cols-3 lg:py-[110px]">
-                <Reveal as="article" index={0} className="rounded-2xl border border-border bg-secondary p-7">
-                  <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
-                  <h2 className="text-lg">Open product info</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    Shipping details are added to each product once its supplier confirms them.
-                  </p>
-                </Reveal>
-                <Reveal as="article" index={1} className="rounded-2xl border border-border bg-secondary p-7">
-                  <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
-                  <h2 className="text-lg">{RETURN_WINDOW_DAYS}-day returns</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    Changed your mind? Start a return within {RETURN_WINDOW_DAYS} days of delivery.
-                  </p>
-                </Reveal>
-                <Reveal as="article" index={2} className="rounded-2xl border border-border bg-secondary p-7">
-                  <span className="mb-4 inline-block size-2 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" aria-hidden />
-                  <p className="text-sm leading-relaxed text-muted-foreground">{checkoutLine}</p>
-                </Reveal>
-              </div>
-            </section>
-
-            {hasCards(welcomeReach.length) ? (
-              <section className="border-t border-border">
-                <div className="relative isolate min-h-[360px] overflow-hidden">
-                  <Image
-                    src="/brand/hero-warehouse-flow-green.webp"
-                    alt=""
-                    fill
-                    sizes="100vw"
-                    className="object-cover object-center"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/82 via-black/55 to-black/30" />
-                  <Reveal className="relative z-10 mx-auto flex min-h-[360px] w-full max-w-[1280px] flex-col justify-end px-5 py-12 sm:px-10">
-                    <h2 className="text-4xl text-white sm:text-5xl">Who ships</h2>
-                    <p className="mt-3 max-w-xl text-base leading-relaxed text-white/90">
-                      Your order is sent straight to your door.
-                    </p>
-                  </Reveal>
-                </div>
-                <ul className="mx-auto grid max-w-[1280px] gap-5 px-5 py-8 sm:px-10 md:grid-cols-2">
-                  {welcomeReach.map((place, index) => (
-                    <Reveal key={place.title} as="li" index={index} className="product-card overflow-hidden rounded-2xl border border-border bg-card">
-                      <MarkTile src={place.src} alt="" sizes="(min-width: 768px) 50vw, 100vw" zoom />
-                      <div className="px-5 py-4">
-                        <p className="font-heading text-lg">{place.title}</p>
-                        <p className="mt-1 text-pretty text-sm text-muted-foreground">{place.line}</p>
-                      </div>
-                    </Reveal>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-          </>
-        ) : null}
       </main>
-      <ShopFooter showReseller={operator} />
-    </div>
+      </div>
   );
 }

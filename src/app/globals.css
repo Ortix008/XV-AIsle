@@ -207,6 +207,10 @@
     text-wrap: balance;
     line-height: 1.05;
   }
+  h1 {
+    font-family: var(--font-display-hero), var(--font-heading);
+    font-weight: 700;
+  }
   a:focus-visible,
   button:focus-visible,
   input:focus-visible,
@@ -3354,7 +3358,10 @@ button.contact-submit {
 
 .affiliate-card a[data-slot="button"] {
   width: auto;
-  min-height: var(--tap);
+  height: auto;
+  min-height: 48px;
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+  white-space: normal;
 }
 
 .affiliate-paid,
@@ -3531,8 +3538,9 @@ button.contact-submit {
   width: auto;
   min-width: 200px;
   max-width: 100%;
+  height: auto;
   min-height: 48px;
-  padding-inline: calc(var(--spacing) * 4);
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
   border-radius: var(--r-lg);
   background: var(--primary);
   color: var(--primary-foreground);
@@ -3585,6 +3593,9 @@ button.contact-submit {
   }
 
   .partner-card-cta-label {
+    flex: 0 1 auto;
+    width: fit-content;
+    max-width: calc(100% - calc(var(--spacing) * 4) - calc(var(--spacing) * 2));
     line-height: 1.25;
     text-wrap: balance;
   }
@@ -3592,7 +3603,7 @@ button.contact-submit {
   .partner-card-icon {
     width: calc(var(--spacing) * 4);
     height: calc(var(--spacing) * 4);
-    flex-shrink: 0;
+    flex: none;
   }
 }
 

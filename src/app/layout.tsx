@@ -1,26 +1,53 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import { connection } from "next/server";
 import { shareCardMetadata } from "@/lib/share-card";
 import "./globals.css";
 
-const inter = Inter({
+const inter = localFont({
+  src: [
+    { path: "./fonts/inter-latin-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/inter-latin-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/inter-latin-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/inter-latin-700.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-inter",
-  subsets: ["latin"],
   display: "swap",
+  preload: false,
+  adjustFontFallback: "Arial",
 });
 
-const spaceGrotesk = Space_Grotesk({
+const spaceGrotesk = localFont({
+  src: [
+    { path: "./fonts/space-grotesk-latin-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/space-grotesk-latin-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/space-grotesk-latin-700.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
   display: "swap",
+  preload: false,
+  adjustFontFallback: "Arial",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+/** Hero h1 is Space Grotesk 700. This is the only preloaded face. */
+const spaceGroteskHero = localFont({
+  src: "./fonts/space-grotesk-latin-700.woff2",
+  weight: "700",
+  style: "normal",
+  variable: "--font-display-hero",
   display: "swap",
+  preload: true,
+  adjustFontFallback: "Arial",
+});
+
+const geistMono = localFont({
+  src: "./fonts/geist-mono-latin-400.woff2",
+  weight: "400",
+  style: "normal",
+  variable: "--font-geist-mono",
+  display: "swap",
+  preload: false,
+  adjustFontFallback: "Arial",
 });
 
 const SITE_DESCRIPTION = "XV-AIsle gathers home, kitchen and everyday picks, each linking to the store where you buy it.";
@@ -41,7 +68,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${spaceGrotesk.variable} ${spaceGroteskHero.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
         {/* @ts-expect-error Impact site verification reads value, which the Metadata API rewrites to content. */}

@@ -96,6 +96,9 @@ export function ShopFooter({
         </div>
         <div className="mt-14 flex flex-col gap-3 border-t border-border pt-6 text-[13px] text-muted-foreground">
           {about.trim() ? <p className="footer-about">{about}</p> : null}
+          <p className="footer-about">
+            Opportunity shouldn&apos;t depend on where you start. XV-AIsle is building the aisle to prove it.
+          </p>
           {showAmazonDisclosure ? <p>{AMAZON_ASSOCIATE_DISCLOSURE}</p> : null}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
             <span>© {new Date().getFullYear()} XV-AIsle</span>
