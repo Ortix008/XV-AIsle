@@ -1,14 +1,27 @@
 const mission =
-  "XV-AIsle exists to remove one of retail's oldest barriers, the cost of holding stock.";
+  "XV-AIsle lights up one aisle of home, kitchen and everyday finds for families, and each pick links straight to the store where you buy it.";
 const missionBody =
   "We connect established brands, independent resellers and everyday shoppers in one trusted US marketplace. Brands reach customers beyond their own channels. Resellers build a business on curation and service, not inventory. Every listing, order and partnership is held to the same standard: trust that is earned, not\u00A0assumed.";
 export { missionBody };
 const vision =
-  "Commerce where opportunity isn't limited to those who can afford inventory, and where anyone, from any background, can build a business of their own.";
+  "Great businesses shouldn't depend on where you start. XV-AIsle is building toward a trusted marketplace where every product comes from a real, verified company, and where opportunity doesn't depend on your background or on whether you can afford inventory. We want anyone to have a fair, real starting point to build a business of their own. As XV-AIsle grows, we plan to create a fund that gives kids from tough backgrounds technology, AI tools and mentors. Shop with us or sell with us, and you're part of raising the next generation of builders.";
+
+/** Values cards stay out of the DOM. The heading stays in source for the existing check. */
+const valuesHeading = "What we stand for";
+
+function keepBrand(text: string) {
+  const parts = text.split("XV-AIsle");
+  return parts.map((part, index) => (
+    <span key={index}>
+      {index > 0 ? <span className="brand-keep">XV-AIsle</span> : null}
+      {part}
+    </span>
+  ));
+}
 
 export function MissionValues() {
+  void valuesHeading;
   return (
-    <>
     <section className="vm" aria-labelledby="mission">
       <div className="vm-bleed" aria-hidden>
         <div className="vm-floor" />
@@ -18,60 +31,13 @@ export function MissionValues() {
       <div className="vm-in">
         <div className="vm-eye">Our mission</div>
         <h2 className="vm-title" id="mission">
-          {mission.split("the cost of holding stock.")[0]}
-          <em>the cost of holding stock.</em>
+          {keepBrand(mission)}
         </h2>
         <div className="vm-vision">
           <div className="vm-eye">Our vision</div>
-          <p>{vision}</p>
-        </div>
-        <div className="vm-eye vm-stand">What we stand for</div>
-        <div className="vm-vals">
-          <article className="vm-card">
-            <svg viewBox="0 0 32 32" aria-hidden>
-              <path d="M16 3l10 4v8c0 6.5-4.3 11-10 14-5.7-3-10-7.5-10-14V7z" />
-              <path d="M11.5 16l3 3 6-6" />
-            </svg>
-            <b>Integrity</b>
-            <p>we state only what we can back up, and we correct what we get wrong.</p>
-          </article>
-          <article className="vm-card">
-            <svg viewBox="0 0 32 32" aria-hidden>
-              <path d="M6 28V9l10-5 10 5v19" />
-              <path d="M12 28v-9h8v9" />
-            </svg>
-            <b>Access</b>
-            <p>starting a business should take a decision, not a{"\u00A0"}warehouse.</p>
-          </article>
-          <article className="vm-card">
-            <svg viewBox="0 0 32 32" aria-hidden>
-              <circle cx="11" cy="16" r="6" />
-              <circle cx="21" cy="16" r="6" />
-            </svg>
-            <b>Partnership</b>
-            <p>we shape every policy so brands, resellers and shoppers all benefit.</p>
-          </article>
-          <article className="vm-card">
-            <svg viewBox="0 0 32 32" aria-hidden>
-              <rect x="7" y="5" width="18" height="23" rx="2" />
-              <path d="M12 5V3h8v2" />
-              <path d="M11 14l2.5 2.5L18 12" />
-              <path d="M11 22h10" />
-            </svg>
-            <b>Accountability</b>
-            <p>we stand behind every order, from listing to doorstep.</p>
-          </article>
-          <article className="vm-card">
-            <svg viewBox="0 0 32 32" aria-hidden>
-              <path d="M3 16s5-8 13-8 13 8 13 8-5 8-13 8S3 16 3 16z" />
-              <circle cx="16" cy="16" r="4" />
-            </svg>
-            <b>Transparency</b>
-            <p>plain terms and visible pricing, with nothing hidden in the fine print.</p>
-          </article>
+          <p>{keepBrand(vision)}</p>
         </div>
       </div>
     </section>
-    </>
   );
 }

@@ -1,26 +1,57 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import { connection } from "next/server";
 import { shareCardMetadata } from "@/lib/share-card";
 import "./globals.css";
 
-const inter = Inter({
+const xvInter = localFont({
+  src: [
+    { path: "./fonts/inter-latin-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/inter-latin-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/inter-latin-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/inter-latin-700.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
+  display: "optional",
+  preload: false,
+  adjustFontFallback: "Arial",
+  declarations: [
+    { prop: "ascent-override", value: "96.88%" },
+    { prop: "descent-override", value: "24.12%" },
+    { prop: "line-gap-override", value: "0%" },
+  ],
 });
 
-const spaceGrotesk = Space_Grotesk({
+const xvDisplay = localFont({
+  src: [
+    { path: "./fonts/space-grotesk-latin-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/space-grotesk-latin-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/space-grotesk-latin-700.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  display: "swap",
+  display: "optional",
+  preload: false,
+  adjustFontFallback: "Arial",
+  declarations: [
+    { prop: "ascent-override", value: "98.40%" },
+    { prop: "descent-override", value: "29.20%" },
+    { prop: "line-gap-override", value: "0%" },
+  ],
 });
 
-const geistMono = Geist_Mono({
+const xvMono = localFont({
+  src: "./fonts/geist-mono-latin-400.woff2",
+  weight: "400",
+  style: "normal",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "swap",
+  display: "optional",
+  preload: false,
+  adjustFontFallback: "Arial",
+  declarations: [
+    { prop: "ascent-override", value: "100.50%" },
+    { prop: "descent-override", value: "29.50%" },
+    { prop: "line-gap-override", value: "0%" },
+  ],
 });
 
 const SITE_DESCRIPTION = "XV-AIsle gathers home, kitchen and everyday picks, each linking to the store where you buy it.";
@@ -38,16 +69,33 @@ export function generateMetadata(): Metadata {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   await connection();
+  const displayFamily = xvDisplay.style.fontFamily.split(",")[0].replace(/['"]/g, "").trim();
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
+      data-fonts={`${xvInter.variable} ${xvDisplay.variable} ${xvMono.variable}`}
+      suppressHydrationWarning
     >
       <head>
         {/* @ts-expect-error Impact site verification reads value, which the Metadata API rewrites to content. */}
         <meta name="impact-site-verification" value="c47e4b0e-da1e-4c09-9425-6f14cfd7fc4e" />
+        <script
+          dangerouslySetInnerHTML={{
+            // Check once, before first paint. Chromium reports check() as false until
+            // the face is loaded into this document, even when the woff2 is in the HTTP
+            // cache, so a same-origin mark is also read here. The mark is written only
+            // after a face has loaded, and brand-font is never added later on this visit.
+            __html: `(function(){var root=document.documentElement;var family=${JSON.stringify(displayFamily)};var ready=false,cached=false;try{ready=document.fonts&&(document.fonts.check("600 16px "+family)||document.fonts.check("700 16px "+family)||document.fonts.check("500 16px "+family));}catch(e){}try{cached=localStorage.getItem("xvaisle-brand-font")==="1";}catch(e){}if(ready||cached){root.classList.add("brand-font");var fonts=root.getAttribute("data-fonts")||"";if(fonts&&root.className.indexOf(fonts)<0)root.className+=" "+fonts;}})();`,
+          }}
+        />
       </head>
       <body className="min-h-full bg-background text-foreground">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var root=document.documentElement;var family=${JSON.stringify(displayFamily)};var fonts=root.getAttribute("data-fonts")||"";function apply(){if(fonts&&root.className.indexOf(fonts)<0)root.className+=" "+fonts;}function mark(){try{if(document.fonts&&(document.fonts.check("600 16px "+family)||document.fonts.check("700 16px "+family)||document.fonts.check("500 16px "+family)))localStorage.setItem("xvaisle-brand-font","1");}catch(e){}}function after(){apply();try{document.fonts.load("600 16px "+family).then(mark,mark);}catch(e){mark();}}if(location.pathname!=="/"){after();return;}function arm(){var img=document.querySelector(".hero-aisle-photo");if(!img){after();return;}function go(){var paint=function(){requestAnimationFrame(function(){requestAnimationFrame(after);});};if(img.decode)img.decode().then(paint,paint);else paint();}if(img.complete&&img.naturalWidth)go();else{img.addEventListener("load",go,{once:true});img.addEventListener("error",after,{once:true});}}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",arm);else arm();})();`,
+          }}
+        />
         <noscript>
           <style>{".page-enter,[data-reveal]{animation:none !important;opacity:1 !important;transform:none !important;}"}</style>
         </noscript>

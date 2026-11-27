@@ -202,10 +202,14 @@
   h3 {
     font-family: var(--font-heading);
     font-weight: 600;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
     color: var(--heading);
     text-wrap: balance;
     line-height: 1.05;
+  }
+  h1 {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
   }
   a:focus-visible,
   button:focus-visible,
@@ -378,7 +382,7 @@
   margin-top: 1rem;
   font-size: 30px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   line-height: 1.05;
   color: var(--heading);
 }
@@ -1193,7 +1197,7 @@ html.motion .shop-catalog [data-reveal].is-settled {
   }
   .hero-glow,
   .page-enter,
-  .hero-band .hero-aisle-photo,
+  .hero-band .hero-aisle-photo-wrap,
   .stall-lamp,
   .shop-catalog .shop-band-art,
   .shop-catalog .shop-band.is-drifting .shop-band-art {
@@ -1345,7 +1349,7 @@ html.motion .shop-catalog [data-reveal].is-settled {
   font-family: var(--font-heading);
   font-size: clamp(2.35rem, 5vw, 3.15rem);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   line-height: 0.95;
 }
 
@@ -1677,6 +1681,12 @@ video.auth-plate-media {
   display: block;
 }
 
+.hero-aisle-photo-wrap {
+  position: absolute;
+  inset: 0;
+  filter: saturate(1.4) contrast(1.16) brightness(1.6);
+}
+
 .hero-aisle-photo {
   position: absolute;
   inset: 0;
@@ -1684,7 +1694,6 @@ video.auth-plate-media {
   height: 100%;
   object-fit: cover;
   object-position: center 58%;
-  filter: saturate(1.4) contrast(1.16) brightness(1.6);
 }
 
 .hero-aisle-grade,
@@ -1806,7 +1815,7 @@ video.auth-plate-media {
   background: #07080a;
 }
 
-.hero-band .hero-aisle-photo {
+.hero-band .hero-aisle-photo-wrap {
   animation: hero-photo-drift 28s ease-in-out infinite;
 }
 
@@ -1909,7 +1918,7 @@ video.auth-plate-media {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-band .hero-aisle-photo,
+  .hero-band .hero-aisle-photo-wrap,
   .stall-lamp {
     animation: none !important;
     transform: none !important;
@@ -2229,6 +2238,54 @@ video.auth-plate-media {
   .up1-card:nth-child(2) { border-color: #2ee59d; }
 }
 
+/* Arial is the metric base. Liberation Sans and Arimo share those metrics.
+   Roboto is a separate face so Android, which has Roboto and not Arial, still matches.
+   The later face wins when both families are installed. */
+@font-face {
+  font-family: "xvInter Fallback";
+  src: local("Roboto"), local("Roboto Regular");
+  ascent-override: 90.13%;
+  descent-override: 22.44%;
+  line-gap-override: 0%;
+  size-adjust: 107.49%;
+}
+@font-face {
+  font-family: "xvInter Fallback";
+  src: local("Liberation Sans"), local("Arimo"), local("Arial");
+  ascent-override: 89.79%;
+  descent-override: 22.36%;
+  line-gap-override: 0%;
+  size-adjust: 107.89%;
+}
+@font-face {
+  font-family: "xvDisplay Fallback";
+  src: local("Roboto"), local("Roboto Regular");
+  ascent-override: 89.07%;
+  descent-override: 26.43%;
+  line-gap-override: 0%;
+  size-adjust: 110.47%;
+}
+@font-face {
+  font-family: "xvDisplay Fallback";
+  src: local("Liberation Sans"), local("Arimo"), local("Arial");
+  ascent-override: 88.74%;
+  descent-override: 26.33%;
+  line-gap-override: 0%;
+  size-adjust: 110.89%;
+}
+@font-face {
+  font-family: "xvMono Fallback";
+  src: local("Liberation Mono"), local("Cousine"), local("Arial");
+  ascent-override: 76.43%;
+  descent-override: 22.43%;
+  line-gap-override: 0%;
+  size-adjust: 131.49%;
+}
+
+.brand-keep {
+  white-space: nowrap;
+}
+
 .vm {
   position: relative;
   overflow: clip;
@@ -2298,7 +2355,7 @@ video.auth-plate-media {
   font-size: 48px;
   font-weight: 700;
   line-height: 1.12;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   text-wrap: wrap;
 }
 .vm-title em { font-style: normal; color: #2ee59d; }
@@ -2376,6 +2433,7 @@ video.auth-plate-media {
 
 .hero-aisle h1 {
   color: var(--foreground);
+  letter-spacing: 0;
 }
 
 .brand-logo {
@@ -2584,7 +2642,7 @@ button.auth-x:disabled {
 }
 
 .policy-card {
-  max-width: 68ch;
+  max-width: 43rem;
   margin-inline: auto;
   padding: 28px 24px 32px;
   border: 1px solid var(--card-line);
@@ -3354,7 +3412,10 @@ button.contact-submit {
 
 .affiliate-card a[data-slot="button"] {
   width: auto;
-  min-height: var(--tap);
+  height: auto;
+  min-height: 48px;
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+  white-space: normal;
 }
 
 .affiliate-paid,
@@ -3531,8 +3592,9 @@ button.contact-submit {
   width: auto;
   min-width: 200px;
   max-width: 100%;
+  height: auto;
   min-height: 48px;
-  padding-inline: calc(var(--spacing) * 4);
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
   border-radius: var(--r-lg);
   background: var(--primary);
   color: var(--primary-foreground);
@@ -3548,9 +3610,16 @@ button.contact-submit {
   text-align: center;
 }
 
+.partner-card-cta-keep {
+  white-space: nowrap;
+}
+
 .partner-card-icon {
+  display: inline-block;
   width: calc(var(--spacing) * 4);
   height: calc(var(--spacing) * 4);
+  margin-left: calc(var(--spacing) * 2);
+  vertical-align: middle;
   flex: none;
 }
 
@@ -3585,14 +3654,11 @@ button.contact-submit {
   }
 
   .partner-card-cta-label {
+    flex: 0 1 auto;
+    width: auto;
+    max-width: 100%;
     line-height: 1.25;
     text-wrap: balance;
-  }
-
-  .partner-card-icon {
-    width: calc(var(--spacing) * 4);
-    height: calc(var(--spacing) * 4);
-    flex-shrink: 0;
   }
 }
 
@@ -3771,4 +3837,36 @@ html.motion .home-aisles [data-reveal].is-in {
   }
 }
 
+/* Brand webfonts only. Fallback headlines keep letter-spacing 0 so they do not look cramped.
+   :not(.brand-font) beats utility tracking classes such as tracking-[-0.045em]. */
+html:not(.brand-font) h1,
+html:not(.brand-font) h2,
+html:not(.brand-font) h3,
+html:not(.brand-font) .page-title,
+html:not(.brand-font) .product-title,
+html:not(.brand-font) .auth-title,
+html:not(.brand-font) .vm-title,
+html:not(.brand-font) .hero-aisle h1 {
+  letter-spacing: 0;
+}
 
+html.brand-font h1,
+html.brand-font h2,
+html.brand-font h3,
+html.brand-font .page-title,
+html.brand-font .product-title,
+html.brand-font .auth-title,
+html.brand-font .vm-title {
+  letter-spacing: -0.02em;
+}
+
+html.brand-font .hero-aisle h1 {
+  letter-spacing: -0.045em;
+}
+
+/* Cold fallback only: slightly smaller aisle titles so they stay on 1 line at 390. */
+@media (max-width: 767px) {
+  :root:not(.brand-font) .page-title {
+    font-size: 27px;
+  }
+}

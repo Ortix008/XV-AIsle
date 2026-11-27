@@ -19,14 +19,16 @@ export function AisleHero({
   return (
     <section className={cn("hero-band", className)}>
       <div className="hero-aisle-stage" aria-hidden>
-        <Image
-          src="/brand/hero-aisle-pedestals.webp"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="hero-aisle-photo"
-        />
+        <div className="hero-aisle-photo-wrap">
+          <Image
+            src="/brand/hero-aisle-pedestals.webp"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="hero-aisle-photo"
+          />
+        </div>
         <div className="hero-aisle-grade" />
         <div className="hero-aisle-scrim" />
       </div>
