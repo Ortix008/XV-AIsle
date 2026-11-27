@@ -3,6 +3,7 @@ import {
   AFFILIATE_OFFERS,
   AFFILIATE_SPOT_HEADING,
   visibleAffiliateOffers,
+  visibleAffiliatePicks,
   type AffiliateItem,
   type AffiliateOffer,
   type AffiliateSpot,
@@ -20,30 +21,38 @@ export function AffiliateSpot({
   offers?: readonly AffiliateOffer[];
   traffic?: Traffic | null;
 }) {
-  const shown = visibleAffiliateOffers(spot, item, offers);
+  const shown = visibleAffiliateOffers(spot, item, offers).filter((offer) => {
+    if (spot !== "experiences") return true;
+    return visibleAffiliatePicks(offer.picks).length > 0;
+  });
   if (shown.length === 0) return null;
   return (
     <section className={`partner-spot partner-spot-${spot}`}>
       <h2 className="partner-spot-heading">{AFFILIATE_SPOT_HEADING[spot]}</h2>
       <ul className="partner-spot-list">
         {shown.flatMap((offer) => {
+          const picks = visibleAffiliatePicks(offer.picks).map((pick) => ({
+            key: `${offer.id}-${pick.id}`,
+            href: pick.href,
+            id: pick.id,
+            heading: pick.name as string | undefined,
+            blurb: pick.why as string | undefined,
+            label: pick.label,
+          }));
           const cards = [
-            {
-              key: offer.id,
-              href: offer.href,
-              id: offer.id,
-              heading: undefined as string | undefined,
-              blurb: undefined as string | undefined,
-              label: offer.label,
-            },
-            ...(offer.picks ?? []).map((pick) => ({
-              key: `${offer.id}-${pick.id}`,
-              href: pick.href,
-              id: pick.id,
-              heading: pick.name,
-              blurb: pick.why,
-              label: pick.label,
-            })),
+            ...(spot === "experiences"
+              ? []
+              : [
+                  {
+                    key: offer.id,
+                    href: offer.href,
+                    id: offer.id,
+                    heading: undefined as string | undefined,
+                    blurb: undefined as string | undefined,
+                    label: offer.label,
+                  },
+                ]),
+            ...picks,
           ];
           return cards.map((card) => (
             <li key={card.key}>
@@ -64,7 +73,7 @@ export function AffiliateSpot({
   );
 }
 
-/** Bookshop and Zazzle sit side by side once either card has a link. */
+/** Bookshop stays on Home & Gifts. Zazzle gift cards live on the Holiday aisle. */
 export function HomeGiftSpots({
   offers = AFFILIATE_OFFERS,
   traffic = null,
@@ -72,7 +81,7 @@ export function HomeGiftSpots({
   offers?: readonly AffiliateOffer[];
   traffic?: Traffic | null;
 }) {
-  const spots = (["books", "gifts"] as const).filter((spot) => visibleAffiliateOffers(spot, null, offers).length > 0);
+  const spots = (["books"] as const).filter((spot) => visibleAffiliateOffers(spot, null, offers).length > 0);
   if (spots.length === 0) return null;
   return (
     <div className={spots.length === 1 ? "partner-spot-row partner-spot-solo" : "partner-spot-row"}>

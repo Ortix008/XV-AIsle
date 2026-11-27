@@ -93,7 +93,7 @@ Approved by Genie, Nov 16 2026. Disclosure wording after this default is still o
 | Tours and things to do | Experiences heading on Tickets & Events, same file |
 | See things to do on Viator | Viator link, same file |
 | See things to do on GetYourGuide | GetYourGuide link, same file |
-| Gift ideas | Gifts heading on Home & Gifts, same file |
+| Gift ideas | Gifts heading on the Holiday aisle, same file |
 | Browse gifts on Zazzle | Zazzle link, same file |
 
 These strings render only when that program's href is set.

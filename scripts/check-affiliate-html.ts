@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { createServer } from "node:net";
 import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,8 +8,30 @@ const viatorUrl = "https://www.viator.com/?pid=P00330828&mcid=42383&medium=link"
 const guideUrl = "https://www.getyourguide.com/?partner_id=YEH3QKQ";
 const zazzleUrl = "https://www.zazzle.com/?rf=238672294015858667";
 const disclosure = "We may earn a commission when you buy through these links.";
-const port = 4331;
-const base = `http://127.0.0.1:${port}`;
+const BLOCKED_PORTS = new Set([4470, 4471]);
+
+function portFree(port: number) {
+  return new Promise<boolean>((resolve) => {
+    const server = createServer();
+    server.unref();
+    server.once("error", () => resolve(false));
+    server.listen(port, "127.0.0.1", () => {
+      server.close(() => resolve(true));
+    });
+  });
+}
+
+async function pickPort() {
+  const requested = Number(process.env.CHECK_AFFILIATE_HTML_PORT ?? 4331);
+  const candidates = [requested, 4331, 4327, 4328, 4329, 4330, 4332, 4333, 4334, 4335];
+  const seen = new Set<number>();
+  for (const port of candidates) {
+    if (!Number.isInteger(port) || port < 1024 || BLOCKED_PORTS.has(port) || seen.has(port)) continue;
+    seen.add(port);
+    if (await portFree(port)) return port;
+  }
+  throw new Error("could not find a free port for the affiliate HTML check");
+}
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -67,7 +90,7 @@ function walk(dir: string, hit: (file: string, text: string) => void) {
   }
 }
 
-async function waitForServer() {
+async function waitForServer(base: string) {
   for (let attempt = 0; attempt < 40; attempt += 1) {
     try {
       const response = await fetch(base + "/");
@@ -126,6 +149,8 @@ async function main() {
   walk(join(process.cwd(), ".next"), (file) => hits.push(file));
   assert(hits.length === 0, `[WORDY remains in the build: ${hits.slice(0, 5).join(", ")}`);
 
+  const port = await pickPort();
+  const base = `http://127.0.0.1:${port}`;
   const db = join(mkdtempSync(join(tmpdir(), "xvaisle-html-")), "shop.sqlite");
   const child = spawn("npm", ["run", "start"], {
     cwd: process.cwd(),
@@ -149,7 +174,7 @@ async function main() {
   process.once("SIGINT", onSignal);
   process.once("SIGTERM", onSignal);
   try {
-    await waitForServer();
+    await waitForServer(base);
     const home = await fetch(base + "/", { redirect: "manual" });
     const homeBody = await home.text();
     assert(home.status === 200, `home returned ${home.status}`);
@@ -176,7 +201,9 @@ async function main() {
     const gifts = await fetch(base + "/shop?aisle=home-and-gifts", { redirect: "manual" });
     const giftsBody = await gifts.text();
     assert(gifts.status === 200, `Home & Gifts returned ${gifts.status}`);
-    assert(giftsBody.includes(zazzleUrl.replaceAll("&", "&amp;")), "Home & Gifts HTML renders the Zazzle URL");
+    assert(!giftsBody.includes(zazzleUrl.replaceAll("&", "&amp;")), "Home & Gifts no longer renders the Zazzle shop URL");
+    assert(!giftsBody.includes("175607631410889940") && !giftsBody.includes("168710004482190645") && !giftsBody.includes("256136298078136813"), "Home & Gifts no longer renders the Zazzle product cards");
+    assert(!giftsBody.includes("Gift ideas"), "Home & Gifts no longer shows the Gift ideas spot");
     assert(giftsBody.includes('rel="sponsored noopener noreferrer"'), "Home & Gifts partner links are sponsored");
     assert(giftsBody.includes(disclosure), "Home & Gifts shows the short disclosure");
     assert(giftsBody.includes("https://bookshop.org/a/131173/9781476753836"), "Home &amp; Gifts renders Salt, Fat, Acid, Heat");
@@ -187,8 +214,8 @@ async function main() {
     const tickets = await fetch(base + "/aisles/tickets-and-events", { redirect: "manual" });
     const ticketsBody = await tickets.text();
     assert(tickets.status === 200, `Tickets & Events returned ${tickets.status}`);
-    assert(ticketsBody.includes(viatorUrl.replaceAll("&", "&amp;")), "Tickets HTML renders the Viator URL");
-    assert(ticketsBody.includes(guideUrl), "Tickets HTML renders the GetYourGuide URL");
+    assert(!ticketsBody.includes(viatorUrl.replaceAll("&", "&amp;")), "Tickets HTML does not render the Viator homepage URL");
+    assert(!ticketsBody.includes(guideUrl), "Tickets HTML does not render the GetYourGuide homepage URL");
     assert(
       ticketsBody.includes(
         "https://www.getyourguide.com/orlando-l191/kennedy-space-center-tour-t11881/?partner_id=YEH3QKQ&mkt_cmp=true".replaceAll("&", "&amp;"),
@@ -196,15 +223,30 @@ async function main() {
       "Tickets HTML renders the Kennedy Space Center tour",
     );
     assert(
-      ticketsBody.includes(
+      !ticketsBody.includes(
         "https://www.getyourguide.com/orlando-l191/orlando-everglades-airboat-ride-and-wildlife-park-ticket-t20590/?partner_id=YEH3QKQ",
       ),
-      "Tickets HTML renders the Everglades tour",
+      "Tickets HTML no longer uses the GetYourGuide Everglades URL",
     );
+    assert(
+      ticketsBody.includes("5467OHEP") && ticketsBody.includes("pid=P00330828"),
+      "Tickets HTML renders the Everglades tour on Viator",
+    );
+    assert(ticketsBody.includes("173028P2") && ticketsBody.includes("179637P1"), "Tickets HTML renders the new Viator tours");
     assert(ticketsBody.includes('rel="sponsored noopener noreferrer"'), "Tickets partner links are sponsored");
     assert(ticketsBody.includes(disclosure) && !ticketsBody.includes("[WORDY"), "Tickets shows the short disclosure");
     assert(ticketsBody.includes("Tours and things to do for days out with family and friends."), "Tickets HTML uses the approved blurb");
     assert(!ticketsBody.includes("Tickets and events for nights out with family and friends."), "Tickets HTML drops the old blurb");
+
+    const holiday = await fetch(base + "/aisles/holiday", { redirect: "manual" });
+    const holidayBody = await holiday.text();
+    assert(holiday.status === 200, `Holiday returned ${holiday.status}`);
+    assert(holidayBody.includes(zazzleUrl.replaceAll("&", "&amp;")), "Holiday HTML renders the Zazzle shop URL");
+    assert(holidayBody.includes("175607631410889940") && holidayBody.includes("168710004482190645") && holidayBody.includes("256136298078136813"), "Holiday HTML renders the three Zazzle product cards");
+    assert(holidayBody.includes("Gift ideas") && holidayBody.includes("Browse gifts on Zazzle"), "Holiday HTML uses the approved Zazzle heading and link");
+    assert(holidayBody.includes('rel="sponsored noopener noreferrer"'), "Holiday partner links are sponsored");
+    assert(holidayBody.includes(disclosure), "Holiday shows the short disclosure");
+    assert(!holidayBody.includes("[WORDY"), "Holiday has no pending copy marker");
 
     const llms = await fetch(base + "/llms.txt");
     const llmsBody = await llms.text();

@@ -14,6 +14,7 @@ import {
   AISLE_INDEX_COPY,
   AISLE_CARD_ALT,
   AMAZON_AISLES,
+  HOME_AND_GIFTS_AMAZON_PICKS,
   AMAZON_ASSOCIATE_DISCLOSURE,
   AMAZON_PAID_LINK_LABEL,
   AMAZON_PICK_BUTTON_LABEL,
@@ -189,7 +190,15 @@ const live = liveAisles();
 const asins = live.flatMap((aisle) => aisle.items.map((item) => item.asin));
 assert(asins.length === 52, "the live aisles hold 52 picks");
 assert(new Set(asins).size === 52, "every ASIN is in exactly one aisle");
-assert(Object.keys(EXPECTED_BLURBS).length === 52, "the approved blurb list has 52 entries");
+assert(
+  Object.keys(EXPECTED_BLURBS).length === 52 + HOME_AND_GIFTS_AMAZON_PICKS.length,
+  "the approved blurb list covers the live aisles and Home & Gifts",
+);
+assert(HOME_AND_GIFTS_AMAZON_PICKS.length === 6, "Home & Gifts lists six Amazon picks");
+for (const item of HOME_AND_GIFTS_AMAZON_PICKS) {
+  assert(item.blurb === EXPECTED_BLURBS[item.asin], `${item.asin} blurb matches the approved copy`);
+  assert(!asins.includes(item.asin), `${item.asin} is not already on another aisle`);
+}
 
 for (const aisle of live) {
   for (const item of aisle.items) {
@@ -455,7 +464,7 @@ for (const aisle of live) {
     assert(tag, `${item.asin} anchor`);
     assert(attr(tag, "href") === amazonPickUrl(item.asin), `${item.asin} href`);
     assert(LINK.test(attr(tag, "href")), `${item.asin} href shape`);
-    assert(attr(tag, "rel") === "sponsored nofollow noopener", `${item.asin} rel`);
+    assert(attr(tag, "rel") === "sponsored noopener noreferrer", `${item.asin} rel`);
     assert(attr(tag, "target") === "_blank", `${item.asin} target`);
     assert(attr(tag, "aria-label") === `${AMAZON_PICK_BUTTON_LABEL} for ${item.name}, opens in a new tab`, `${item.asin} name`);
     assert(text.includes(item.blurb), `${item.asin} blurb renders`);
@@ -659,8 +668,8 @@ async function main() {
   const ticketsHtml = renderToStaticMarkup(ticketsPage);
   assert(ticketsHtml.includes("Tours and things to do for days out with family and friends."), "Tickets & Events uses the approved blurb");
   assert(!ticketsHtml.includes("Tickets and events for nights out with family and friends."), "Tickets & Events drops the old blurb");
-  assert(ticketsHtml.includes("https://www.viator.com/?pid=P00330828&amp;mcid=42383&amp;medium=link"), "Tickets & Events renders the Viator URL");
-  assert(ticketsHtml.includes("https://www.getyourguide.com/?partner_id=YEH3QKQ"), "Tickets & Events renders the GetYourGuide URL");
+  assert(!ticketsHtml.includes("https://www.viator.com/?pid=P00330828&amp;mcid=42383&amp;medium=link"), "Tickets & Events does not render the Viator homepage link");
+  assert(!ticketsHtml.includes("https://www.getyourguide.com/?partner_id=YEH3QKQ"), "Tickets & Events does not render the GetYourGuide homepage link");
   assert(ticketsHtml.includes('rel="sponsored noopener noreferrer"'), "Tickets & Events partner links are sponsored");
   assert(ticketsHtml.includes("We may earn a commission when you buy through these links."), "Tickets & Events shows the short disclosure");
   assert(!ticketsHtml.includes("New finds landing soon") && !ticketsHtml.includes("Our current picks live in the aisles."), "Tickets hides the empty-aisle panel");

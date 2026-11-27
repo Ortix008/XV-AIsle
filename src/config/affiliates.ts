@@ -61,8 +61,6 @@ const BOOK_HREFS = {
 
 const TOUR_HREFS = {
   kennedy: "https://www.getyourguide.com/orlando-l191/kennedy-space-center-tour-t11881/?partner_id=YEH3QKQ&mkt_cmp=true",
-  everglades:
-    "https://www.getyourguide.com/orlando-l191/orlando-everglades-airboat-ride-and-wildlife-park-ticket-t20590/?partner_id=YEH3QKQ",
 } as const;
 
 const BOOK_LABELS = {
@@ -74,7 +72,6 @@ const BOOK_LABELS = {
 
 const TOUR_LABELS = {
   kennedy: "See the Kennedy Space Center trip on GetYourGuide",
-  everglades: "See the Everglades airboat ride on GetYourGuide",
 } as const;
 
 function picksFrom<Key extends string>(
@@ -89,6 +86,91 @@ function picksFrom<Key extends string>(
     href: hrefs[id],
     label: labels[id],
   }));
+}
+
+const VIATOR_LINK_QUERY = "pid=P00330828&mcid=42383&medium=link";
+
+function viatorTourHref(path: string) {
+  const url = new URL(path);
+  url.search = VIATOR_LINK_QUERY;
+  return url.href;
+}
+
+/**
+ * Viator tour cards. The existing everglades name and why-line stay; the
+ * href now points at the approved 5467OHEP tour. Per-card link labels were
+ * not supplied, so cards use the approved “See things to do on Viator” line.
+ */
+export const VIATOR_TOUR_PICKS: readonly AffiliatePick[] = [
+  {
+    id: "everglades",
+    name: NEW_PICK_COPY.tours.everglades.name,
+    why: NEW_PICK_COPY.tours.everglades.why,
+    href: viatorTourHref(
+      "https://www.viator.com/tours/Orlando/Florida-Everglades-Airboat-Tour-and-Alligator-Encounter-with-Optional-Lunch/d663-5467OHEP",
+    ),
+    label: AFFILIATE_COPY.viatorLink,
+  },
+  {
+    id: "kayak",
+    name: NEW_PICK_COPY.tours.kayak.name,
+    why: NEW_PICK_COPY.tours.kayak.why,
+    href: viatorTourHref(
+      "https://www.viator.com/tours/Clearwater/Clear-Kayak-Tour-of-Tarpon-Springs-Manatee-Season/d22457-173028P2",
+    ),
+    label: AFFILIATE_COPY.viatorLink,
+  },
+  {
+    id: "toot",
+    name: NEW_PICK_COPY.tours.toot.name,
+    why: NEW_PICK_COPY.tours.toot.why,
+    href: viatorTourHref(
+      "https://www.viator.com/tours/Clearwater/Dolphin-Adventure-Tour/d22457-179637P1",
+    ),
+    label: AFFILIATE_COPY.viatorLink,
+  },
+];
+
+const ZAZZLE_RF = "238672294015858667";
+
+function zazzleProductHref(path: string) {
+  const url = new URL(path);
+  url.searchParams.set("rf", ZAZZLE_RF);
+  return url.href;
+}
+
+/**
+ * Zazzle product cards on the Holiday aisle “Gift ideas” spot. Per-card link
+ * labels use the approved “Browse gifts on Zazzle” line. The Ambassador id is
+ * already on the shop link and on each product href.
+ */
+export const ZAZZLE_GIFT_PICKS: readonly AffiliatePick[] = [
+  {
+    id: "ornament",
+    name: "Custom Photo Ornament",
+    why: "Add a favorite photo to a ceramic ornament for the tree this year.",
+    href: zazzleProductHref("https://www.zazzle.com/create_your_own_custom_ceramic_ornament-175607631410889940"),
+    label: AFFILIATE_COPY.zazzleLink,
+  },
+  {
+    id: "mug",
+    name: "Custom Coffee Mug",
+    why: "Put a name, photo or note on a mug, an easy gift for family.",
+    href: zazzleProductHref("https://www.zazzle.com/custom_coffee_mugs-168710004482190645"),
+    label: AFFILIATE_COPY.zazzleLink,
+  },
+  {
+    id: "throw",
+    name: "Custom Photo Fleece Throw",
+    why: "Turn a family photo into a cozy 30x40 fleece throw.",
+    href: zazzleProductHref("https://www.zazzle.com/fleece_blanket-256136298078136813"),
+    label: AFFILIATE_COPY.zazzleLink,
+  },
+];
+
+/** Cards with a pasted href. An empty href is left out. */
+export function visibleAffiliatePicks(picks: readonly AffiliatePick[] | undefined) {
+  return (picks ?? []).filter((pick) => pick.href.trim().length > 0);
 }
 
 export type AffiliateItem = {
@@ -116,7 +198,7 @@ export const AFFILIATE_PLACEMENTS = [
   },
   {
     spot: "gifts" as const,
-    route: "/shop?aisle=home-and-gifts",
+    route: "/aisles/holiday",
     section: "Gift ideas",
     component: "AffiliateSpot",
     partners: ["zazzle"] as const,
@@ -142,6 +224,7 @@ export const AFFILIATE_OFFERS: readonly AffiliateOffer[] = [
     label: AFFILIATE_COPY.viatorLink,
     partnerId: "P00330828",
     disclosure: AFFILIATE_DISCLOSURE_SHORT,
+    picks: VIATOR_TOUR_PICKS,
   },
   {
     id: "getyourguide",
@@ -151,7 +234,7 @@ export const AFFILIATE_OFFERS: readonly AffiliateOffer[] = [
     label: AFFILIATE_COPY.getyourguideLink,
     partnerId: "YEH3QKQ",
     disclosure: AFFILIATE_DISCLOSURE_SHORT,
-    picks: picksFrom(NEW_PICK_COPY.tours, TOUR_HREFS, TOUR_LABELS),
+    picks: picksFrom({ kennedy: NEW_PICK_COPY.tours.kennedy }, TOUR_HREFS, TOUR_LABELS),
   },
   {
     id: "zazzle",
@@ -161,6 +244,7 @@ export const AFFILIATE_OFFERS: readonly AffiliateOffer[] = [
     label: AFFILIATE_COPY.zazzleLink,
     partnerId: "238672294015858667",
     disclosure: AFFILIATE_DISCLOSURE_SHORT,
+    picks: ZAZZLE_GIFT_PICKS,
   },
 ];
 
@@ -175,7 +259,7 @@ export function experiencesSpotHasLinks(offers: readonly AffiliateOffer[] = AFFI
   return visibleAffiliateOffers("experiences", null, offers).length > 0;
 }
 
-/** True when Bookshop or Zazzle has a pasted href. */
+/** True when Bookshop or Zazzle has a pasted href. Home & Gifts visibility uses the Bookshop offer only. */
 export function giftSpotsHaveLinks(offers: readonly AffiliateOffer[] = AFFILIATE_OFFERS) {
   return (
     visibleAffiliateOffers("books", null, offers).length > 0 || visibleAffiliateOffers("gifts", null, offers).length > 0

@@ -18,6 +18,12 @@ const amazonHrefs = {
   B003PWNH4Q: "https://www.amazon.com/dp/B003PWNH4Q/?tag=xvaisle-20",
   B00EVY54IE: "https://www.amazon.com/dp/B00EVY54IE/?tag=xvaisle-20",
   B0010TEFFQ: "https://www.amazon.com/dp/B0010TEFFQ/?tag=xvaisle-20",
+  B0BPLVSB26: "https://www.amazon.com/dp/B0BPLVSB26/?tag=xvaisle-20",
+  B0CSNWJKW6: "https://www.amazon.com/dp/B0CSNWJKW6/?tag=xvaisle-20",
+  B0C4Z7RTLP: "https://www.amazon.com/dp/B0C4Z7RTLP/?tag=xvaisle-20",
+  B0BDDHGC2F: "https://www.amazon.com/dp/B0BDDHGC2F/?tag=xvaisle-20",
+  B0CC8DS2S5: "https://www.amazon.com/dp/B0CC8DS2S5/?tag=xvaisle-20",
+  B0CD59K7PX: "https://www.amazon.com/dp/B0CD59K7PX/?tag=xvaisle-20",
 } as const;
 
 for (const [asin, href] of Object.entries(amazonHrefs)) {
@@ -50,7 +56,6 @@ for (const href of [BOOKSHOP_OFFER_HREF, ...bookHrefs]) {
 const tours = AFFILIATE_OFFERS.find((offer) => offer.id === "getyourguide")?.picks ?? [];
 const tourHrefs = [
   "https://www.getyourguide.com/orlando-l191/kennedy-space-center-tour-t11881/?partner_id=YEH3QKQ&mkt_cmp=true",
-  "https://www.getyourguide.com/orlando-l191/orlando-everglades-airboat-ride-and-wildlife-park-ticket-t20590/?partner_id=YEH3QKQ",
 ];
 assert(tours.map((pick) => pick.href).join() === tourHrefs.join(), "GetYourGuide tour links");
 for (const href of tourHrefs) {
@@ -82,9 +87,9 @@ const books = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "books" 
 const experiences = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "experiences" }));
 assert(!/\$\s*\d/.test(books + experiences), "partner cards show no price");
 assert(!banned.test(books + experiences), "rendered partner cards pass the free scan");
-assert(books.includes('rel="sponsored nofollow noopener noreferrer"'), "book links are sponsored and nofollow");
-assert(experiences.includes('rel="sponsored nofollow noopener noreferrer"'), "GetYourGuide links are sponsored and nofollow");
-assert(experiences.includes('rel="sponsored noopener noreferrer"'), "Viator keeps its existing rel");
+assert(books.includes('rel="sponsored noopener noreferrer"'), "book links are sponsored");
+assert(experiences.includes('rel="sponsored noopener noreferrer"'), "GetYourGuide and Viator links are sponsored");
+assert(!experiences.includes("nofollow") && !books.includes("nofollow"), "partner links do not use nofollow");
 for (const text of [
   "See Salt, Fat, Acid, Heat on Bookshop.org",
   "See Ottolenghi Simple on Bookshop.org",
@@ -96,12 +101,19 @@ for (const text of [
 }
 for (const text of [
   "See the Kennedy Space Center trip on GetYourGuide",
-  "See the Everglades airboat ride on GetYourGuide",
-  "See things to do on GetYourGuide",
+  "See things to do on Viator",
 ]) {
   assert(experiences.includes(text), `tours render ${text}`);
 }
+assert(!experiences.includes("See things to do on GetYourGuide"), "the GetYourGuide homepage link is not rendered");
+assert(!experiences.includes("https://www.viator.com/?pid=P00330828"), "the Viator homepage link is not rendered");
+assert(!experiences.includes("https://www.getyourguide.com/?partner_id=YEH3QKQ"), "the GetYourGuide homepage URL is not rendered");
+assert(!experiences.includes("See the Everglades airboat ride on GetYourGuide"), "the Everglades card no longer uses the GetYourGuide label");
 assert(experiences.includes("Kennedy Space Center Trip from Orlando with Transport"), "Kennedy card uses the approved title");
+assert(experiences.includes("Everglades Airboat Ride and Wildlife Park"), "the Everglades name stays");
+assert(experiences.includes("Clear Kayak Tour, Tarpon Springs"), "the Tarpon Springs kayak card renders");
+assert(experiences.includes("Little Toot Dolphin Cruise, Clearwater"), "the Little Toot card renders");
+assert(experiences.includes("5467OHEP") && experiences.includes("173028P2") && experiences.includes("179637P1"), "Viator tour codes are on the cards");
 
 for (const aisle of AMAZON_AISLES) {
   for (const item of aisle.items) {

@@ -1,4 +1,4 @@
-import { giftSpotsHaveLinks, ticketsAisleListed, type AffiliateOffer } from "@/config/affiliates";
+import { ticketsAisleListed, visibleAffiliateOffers, type AffiliateOffer } from "@/config/affiliates";
 import { AMAZON_AISLES, aisleCardArt, liveAisleBySlug } from "@/lib/amazon-aisles";
 import { departmentHref, floorDepartments, type HomeAisleTile } from "@/lib/department-href";
 import { nightWorldBySlug, nightWorlds, type NightWorld, type NightWorldSlug } from "@/lib/night-worlds";
@@ -29,9 +29,9 @@ export function visibleItemCount(href: string, listings: readonly StallListing[]
   return listings.length;
 }
 
-/** Home & Gifts is open when it has shop items or a Bookshop/Zazzle link. */
+/** Home & Gifts is open when it has shop items or a Bookshop link. */
 export function homeGiftsListed(listings: readonly StallListing[], offers?: readonly AffiliateOffer[]) {
-  return stallProductCount(listings, "home-and-gifts") > 0 || giftSpotsHaveLinks(offers);
+  return stallProductCount(listings, "home-and-gifts") > 0 || visibleAffiliateOffers("books", null, offers).length > 0;
 }
 
 export function homepageNightSlugs(listings: readonly StallListing[], offers?: readonly AffiliateOffer[]): NightWorldSlug[] {

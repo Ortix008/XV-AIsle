@@ -1,5 +1,5 @@
 const mission =
-  "XV-AIsle lights up one aisle of home, kitchen and everyday finds for families, and each pick links straight to the store where you buy it.";
+  "We believe in the American dream: where you come from shouldn't decide how far you go. XV-AIsle is building toward a trusted marketplace of real, verified companies, where anyone will be able to sell great products without buying inventory.";
 const missionBody =
   "We connect established brands, independent resellers and everyday shoppers in one trusted US marketplace. Brands reach customers beyond their own channels. Resellers build a business on curation and service, not inventory. Every listing, order and partnership is held to the same standard: trust that is earned, not\u00A0assumed.";
 export { missionBody };

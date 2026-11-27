@@ -482,8 +482,27 @@ export const AMAZON_AISLES: readonly AmazonAisle[] = AMAZON_AISLE_ROWS.map((aisl
   return { ...aisle, art };
 });
 
+/**
+ * Amazon picks on /shop?aisle=home-and-gifts, using the same card pattern as
+ * the other aisles. An empty list renders nothing.
+ */
+export const HOME_AND_GIFTS_AMAZON_PICKS: readonly AmazonPick[] = [
+  addedPick("B0BPLVSB26"),
+  addedPick("B0CSNWJKW6"),
+  addedPick("B0C4Z7RTLP"),
+  addedPick("B0BDDHGC2F"),
+  addedPick("B0CC8DS2S5"),
+  addedPick("B0CD59K7PX"),
+];
+
+export function homeGiftsAmazonPicksVisible(
+  items: readonly AmazonPick[] = HOME_AND_GIFTS_AMAZON_PICKS,
+) {
+  return items.length > 0;
+}
+
 /** Product-card image only. Aisle stills stay on the index and the hero. An empty string counts as unset. */
-export function resolvePickImage(item: AmazonPick, aisle: AmazonAisle) {
+export function resolvePickImage(item: AmazonPick, aisle?: AmazonAisle) {
   void aisle;
   const pickSrc = item.imageUrl?.trim();
   if (pickSrc) return { src: pickSrc, alt: item.name };
@@ -596,7 +615,10 @@ export function llmsTxt(aisles: readonly AmazonAisle[] = AMAZON_AISLES) {
   return `${lines.join("\n")}\n`;
 }
 
-function validateAisles(aisles: readonly AmazonAisle[]) {
+function validateAisles(
+  aisles: readonly AmazonAisle[],
+  extraItems: readonly AmazonPick[] = HOME_AND_GIFTS_AMAZON_PICKS,
+) {
   const asins = new Set<string>();
   const slugs = new Set<string>();
   for (const aisle of aisles) {
@@ -610,6 +632,11 @@ function validateAisles(aisles: readonly AmazonAisle[]) {
       if (asins.has(item.asin)) throw new Error(`ASIN is in more than one aisle: ${item.asin}`);
       asins.add(item.asin);
     }
+  }
+  for (const item of extraItems) {
+    if (!ASIN_PATTERN.test(item.asin)) throw new Error(`Bad ASIN: ${item.asin}`);
+    if (asins.has(item.asin)) throw new Error(`ASIN is in more than one aisle: ${item.asin}`);
+    asins.add(item.asin);
   }
 }
 

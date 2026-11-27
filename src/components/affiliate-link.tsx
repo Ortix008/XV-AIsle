@@ -49,11 +49,7 @@ export function AffiliateLink({
         className="partner-card-cta"
         data-label={label}
         href={href}
-        rel={
-          network === "bookshop" || network === "getyourguide"
-            ? "sponsored nofollow noopener noreferrer"
-            : "sponsored noopener noreferrer"
-        }
+        rel="sponsored noopener noreferrer"
         target="_blank"
       >
         <span className="partner-card-cta-label">{labelWithIcon(label)}</span>

@@ -18,6 +18,7 @@ import {
   resolvePickImage,
   type AisleArt,
   type AmazonAisle,
+  type AmazonPick,
 } from "@/lib/amazon-aisles";
 
 function JsonLd({ data }: { data: unknown }) {
@@ -60,15 +61,62 @@ function Still({
   );
 }
 
-function PickArt({ item, aisle }: { item: AmazonAisle["items"][number]; aisle: AmazonAisle }) {
+function PickArt({ item, aisle }: { item: AmazonPick; aisle?: AmazonAisle }) {
   const image = resolvePickImage(item, aisle);
   if (!image) return null;
   return (
     <div className="affiliate-art">
       {/* Hotlink only. next/image would proxy and cache a remote file on this server. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={image.src} alt={image.alt} loading="lazy" decoding="async" />
+      <img src={image.src} alt={image.alt} width={800} height={800} loading="lazy" decoding="async" />
     </div>
+  );
+}
+
+function AmazonPickCard({ item, aisle }: { item: AmazonPick; aisle?: AmazonAisle }) {
+  return (
+    <article className="affiliate-card">
+      <PickArt item={item} aisle={aisle} />
+      <h2 className="affiliate-card-name">{item.name}</h2>
+      {item.blurb ? <p className="affiliate-blurb">{item.blurb}</p> : null}
+      {item.note ? <p className="affiliate-fine">{item.note}</p> : null}
+      <div className="affiliate-buy-row">
+        <Button asChild className="affiliate-buy">
+          <a
+            href={amazonPickUrl(item.asin)}
+            target="_blank"
+            rel="sponsored noopener noreferrer"
+            aria-label={pickLinkLabel(item.name)}
+          >
+            {AMAZON_PICK_BUTTON_LABEL}
+          </a>
+        </Button>
+        <span className="affiliate-paid">{AMAZON_PAID_LINK_LABEL}</span>
+      </div>
+    </article>
+  );
+}
+
+/** The same Amazon pick grid used on aisle pages. Renders nothing when the list is empty. */
+export function AmazonPickGrid({
+  items,
+  aisle,
+}: {
+  items: readonly AmazonPick[];
+  aisle?: AmazonAisle;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <section className="partner-spot">
+      <p className="affiliate-disclosure">{AMAZON_ASSOCIATE_DISCLOSURE}</p>
+      <ul className="affiliate-grid">
+        {items.map((item) => (
+          <li key={item.asin}>
+            <AmazonPickCard item={item} aisle={aisle} />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -169,25 +217,7 @@ export function AisleDetail({
       <ul className="affiliate-grid">
         {aisle.items.map((item) => (
           <li key={item.asin}>
-            <article className="affiliate-card">
-              <PickArt item={item} aisle={aisle} />
-              <h2 className="affiliate-card-name">{item.name}</h2>
-              {item.blurb ? <p className="affiliate-blurb">{item.blurb}</p> : null}
-              {item.note ? <p className="affiliate-fine">{item.note}</p> : null}
-              <div className="affiliate-buy-row">
-                <Button asChild className="affiliate-buy">
-                  <a
-                    href={amazonPickUrl(item.asin)}
-                    target="_blank"
-                    rel="sponsored nofollow noopener"
-                    aria-label={pickLinkLabel(item.name)}
-                  >
-                    {AMAZON_PICK_BUTTON_LABEL}
-                  </a>
-                </Button>
-                <span className="affiliate-paid">{AMAZON_PAID_LINK_LABEL}</span>
-              </div>
-            </article>
+            <AmazonPickCard item={item} aisle={aisle} />
           </li>
         ))}
       </ul>

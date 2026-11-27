@@ -46,7 +46,11 @@ export default async function AislePage({ params }: { params: Promise<{ slug: st
   if (!aisle) notFound();
   return (
     <ShopFrame showStorePayLine={false} showBrandBlock={false} showAmazonDisclosure={aisle.items.length > 0}>
-      <AisleDetail aisle={aisle} traffic={traffic} />
+      <AisleDetail
+        aisle={aisle}
+        traffic={traffic}
+        belowHero={slug === "holiday" ? <AffiliateSpot spot="gifts" traffic={traffic} /> : null}
+      />
     </ShopFrame>
   );
 }
