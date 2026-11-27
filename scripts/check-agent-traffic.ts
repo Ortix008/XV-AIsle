@@ -116,7 +116,8 @@ try {
       traffic: { userAgent: AGENT, path: "/aisles/tickets-and-events" },
     }),
   );
-  assert(spot.includes(VIATOR.replaceAll("&", "&amp;")) && spot.includes(GUIDE), "AffiliateSpot leaves Viator and GetYourGuide hrefs unchanged");
+  assert(!spot.includes(VIATOR.replaceAll("&", "&amp;")) && !spot.includes(GUIDE), "AffiliateSpot does not render the Viator or GetYourGuide homepage links");
+  assert(spot.includes("5467OHEP") && spot.includes("partner_id=YEH3QKQ"), "AffiliateSpot still renders the tour hrefs unchanged");
   assert(!spot.includes("subId1") && !spot.includes("clickref"), "AffiliateSpot does not add a sub-id to those hrefs");
 
   const page = decode(renderToStaticMarkup(createElement(AgentsPage)));

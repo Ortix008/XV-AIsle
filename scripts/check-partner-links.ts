@@ -101,11 +101,13 @@ for (const text of [
 }
 for (const text of [
   "See the Kennedy Space Center trip on GetYourGuide",
-  "See things to do on GetYourGuide",
   "See things to do on Viator",
 ]) {
   assert(experiences.includes(text), `tours render ${text}`);
 }
+assert(!experiences.includes("See things to do on GetYourGuide"), "the GetYourGuide homepage link is not rendered");
+assert(!experiences.includes("https://www.viator.com/?pid=P00330828"), "the Viator homepage link is not rendered");
+assert(!experiences.includes("https://www.getyourguide.com/?partner_id=YEH3QKQ"), "the GetYourGuide homepage URL is not rendered");
 assert(!experiences.includes("See the Everglades airboat ride on GetYourGuide"), "the Everglades card no longer uses the GetYourGuide label");
 assert(experiences.includes("Kennedy Space Center Trip from Orlando with Transport"), "Kennedy card uses the approved title");
 assert(experiences.includes("Everglades Airboat Ride and Wildlife Park"), "the Everglades name stays");

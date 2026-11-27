@@ -75,7 +75,7 @@ export const NEW_PICK_COPY = {
     },
     everglades: {
       name: "Everglades Airboat Ride and Wildlife Park",
-      why: "An airboat ride plus a wildlife park visit in Kissimmee, a real taste of Florida near Orlando.",
+      why: "An airboat ride plus a wildlife park visit at Wild Florida in Kenansville, a real taste of Florida.",
     },
     kayak: {
       name: "Clear Kayak Tour, Tarpon Springs",

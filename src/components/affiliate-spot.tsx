@@ -21,30 +21,38 @@ export function AffiliateSpot({
   offers?: readonly AffiliateOffer[];
   traffic?: Traffic | null;
 }) {
-  const shown = visibleAffiliateOffers(spot, item, offers);
+  const shown = visibleAffiliateOffers(spot, item, offers).filter((offer) => {
+    if (spot !== "experiences") return true;
+    return visibleAffiliatePicks(offer.picks).length > 0;
+  });
   if (shown.length === 0) return null;
   return (
     <section className={`partner-spot partner-spot-${spot}`}>
       <h2 className="partner-spot-heading">{AFFILIATE_SPOT_HEADING[spot]}</h2>
       <ul className="partner-spot-list">
         {shown.flatMap((offer) => {
+          const picks = visibleAffiliatePicks(offer.picks).map((pick) => ({
+            key: `${offer.id}-${pick.id}`,
+            href: pick.href,
+            id: pick.id,
+            heading: pick.name as string | undefined,
+            blurb: pick.why as string | undefined,
+            label: pick.label,
+          }));
           const cards = [
-            {
-              key: offer.id,
-              href: offer.href,
-              id: offer.id,
-              heading: undefined as string | undefined,
-              blurb: undefined as string | undefined,
-              label: offer.label,
-            },
-            ...visibleAffiliatePicks(offer.picks).map((pick) => ({
-              key: `${offer.id}-${pick.id}`,
-              href: pick.href,
-              id: pick.id,
-              heading: pick.name,
-              blurb: pick.why,
-              label: pick.label,
-            })),
+            ...(spot === "experiences"
+              ? []
+              : [
+                  {
+                    key: offer.id,
+                    href: offer.href,
+                    id: offer.id,
+                    heading: undefined as string | undefined,
+                    blurb: undefined as string | undefined,
+                    label: offer.label,
+                  },
+                ]),
+            ...picks,
           ];
           return cards.map((card) => (
             <li key={card.key}>

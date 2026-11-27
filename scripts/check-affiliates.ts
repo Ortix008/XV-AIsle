@@ -109,7 +109,7 @@ async function main() {
   assert(gifts.includes(affiliates.AFFILIATE_COPY.giftsHeading), "the gifts heading is the approved line");
   const liveExperiences = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "experiences" }));
   const liveHrefs = renderedHrefs(liveExperiences);
-  assert(liveHrefs.includes(approvedHrefs.viator) && liveHrefs.includes(approvedHrefs.getyourguide), "experiences renders the approved URLs exactly");
+  assert(!liveHrefs.includes(approvedHrefs.viator) && !liveHrefs.includes(approvedHrefs.getyourguide), "experiences does not render the partner homepage links");
   assert(liveExperiences.includes('rel="sponsored noopener noreferrer"') && liveExperiences.includes('target="_blank"'), "the committed experiences links are sponsored and open a new tab");
   assert(
     liveExperiences.includes(`>${affiliates.AFFILIATE_DISCLOSURE_SHORT}<`) &&
@@ -325,7 +325,8 @@ async function main() {
   assert(affiliates.visibleAffiliatePicks([{ id: "blank", name: "Blank", why: "Why", href: "  ", label: "Label" }]).length === 0, "a pick with a blank href is hidden");
   assert(affiliates.visibleAffiliatePicks(byId.get("bookshop")?.picks).length === 4, "Bookshop still lists four books");
   const liveViator = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "experiences" }));
-  assert(liveViator.includes(affiliates.AFFILIATE_COPY.viatorLink), "the Viator shop link stays on Experiences");
+  assert(liveViator.includes(affiliates.AFFILIATE_COPY.viatorLink), "Viator tour cards keep the approved CTA");
+  assert(!renderedHrefs(liveViator).includes(approvedHrefs.viator), "the Viator homepage link is not rendered on Experiences");
   const viatorLiveHrefs = renderedHrefs(liveViator);
   for (const pick of affiliates.VIATOR_TOUR_PICKS) {
     assert(decodeHtml(liveViator).includes(pick.name) && decodeHtml(liveViator).includes(pick.why) && viatorLiveHrefs.includes(pick.href), `Viator renders ${pick.id}`);

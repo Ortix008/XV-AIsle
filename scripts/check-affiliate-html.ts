@@ -214,8 +214,8 @@ async function main() {
     const tickets = await fetch(base + "/aisles/tickets-and-events", { redirect: "manual" });
     const ticketsBody = await tickets.text();
     assert(tickets.status === 200, `Tickets & Events returned ${tickets.status}`);
-    assert(ticketsBody.includes(viatorUrl.replaceAll("&", "&amp;")), "Tickets HTML renders the Viator URL");
-    assert(ticketsBody.includes(guideUrl), "Tickets HTML renders the GetYourGuide URL");
+    assert(!ticketsBody.includes(viatorUrl.replaceAll("&", "&amp;")), "Tickets HTML does not render the Viator homepage URL");
+    assert(!ticketsBody.includes(guideUrl), "Tickets HTML does not render the GetYourGuide homepage URL");
     assert(
       ticketsBody.includes(
         "https://www.getyourguide.com/orlando-l191/kennedy-space-center-tour-t11881/?partner_id=YEH3QKQ&mkt_cmp=true".replaceAll("&", "&amp;"),

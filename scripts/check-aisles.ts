@@ -668,8 +668,8 @@ async function main() {
   const ticketsHtml = renderToStaticMarkup(ticketsPage);
   assert(ticketsHtml.includes("Tours and things to do for days out with family and friends."), "Tickets & Events uses the approved blurb");
   assert(!ticketsHtml.includes("Tickets and events for nights out with family and friends."), "Tickets & Events drops the old blurb");
-  assert(ticketsHtml.includes("https://www.viator.com/?pid=P00330828&amp;mcid=42383&amp;medium=link"), "Tickets & Events renders the Viator URL");
-  assert(ticketsHtml.includes("https://www.getyourguide.com/?partner_id=YEH3QKQ"), "Tickets & Events renders the GetYourGuide URL");
+  assert(!ticketsHtml.includes("https://www.viator.com/?pid=P00330828&amp;mcid=42383&amp;medium=link"), "Tickets & Events does not render the Viator homepage link");
+  assert(!ticketsHtml.includes("https://www.getyourguide.com/?partner_id=YEH3QKQ"), "Tickets & Events does not render the GetYourGuide homepage link");
   assert(ticketsHtml.includes('rel="sponsored noopener noreferrer"'), "Tickets & Events partner links are sponsored");
   assert(ticketsHtml.includes("We may earn a commission when you buy through these links."), "Tickets & Events shows the short disclosure");
   assert(!ticketsHtml.includes("New finds landing soon") && !ticketsHtml.includes("Our current picks live in the aisles."), "Tickets hides the empty-aisle panel");

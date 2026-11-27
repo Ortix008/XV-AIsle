@@ -162,7 +162,7 @@ export const ZAZZLE_GIFT_PICKS: readonly AffiliatePick[] = [
   {
     id: "throw",
     name: "Custom Photo Fleece Throw",
-    why: "Turn a family photo into a cozy 50x60 fleece throw.",
+    why: "Turn a family photo into a cozy 30x40 fleece throw.",
     href: zazzleProductHref("https://www.zazzle.com/fleece_blanket-256136298078136813"),
     label: AFFILIATE_COPY.zazzleLink,
   },
