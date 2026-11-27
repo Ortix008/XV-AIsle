@@ -85,7 +85,7 @@ function AmazonPickCard({ item, aisle }: { item: AmazonPick; aisle?: AmazonAisle
           <a
             href={amazonPickUrl(item.asin)}
             target="_blank"
-            rel="sponsored nofollow noopener"
+            rel="sponsored noopener noreferrer"
             aria-label={pickLinkLabel(item.name)}
           >
             {AMAZON_PICK_BUTTON_LABEL}

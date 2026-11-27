@@ -365,7 +365,7 @@ async function main() {
   assert(filledAmazon.includes(amazonAisles.AMAZON_ASSOCIATE_DISCLOSURE), "a filled Amazon grid shows the Associates disclosure");
   assert(filledAmazon.includes(amazonAisles.AMAZON_PICK_BUTTON_LABEL) && filledAmazon.includes(amazonAisles.AMAZON_PAID_LINK_LABEL), "a filled Amazon grid uses the approved button and paid-link labels");
   assert(filledAmazon.includes(`https://www.amazon.com/dp/${sampleAmazon.asin}?tag=xvaisle-20`), "a filled Amazon grid uses tag xvaisle-20");
-  assert(filledAmazon.includes('rel="sponsored nofollow noopener"') && filledAmazon.includes('target="_blank"'), "Amazon pick links are sponsored and open a new tab");
+  assert(filledAmazon.includes('rel="sponsored noopener noreferrer"') && filledAmazon.includes('target="_blank"'), "Amazon pick links are sponsored and open a new tab");
   assert(filledAmazon.includes(sampleAmazon.name) && filledAmazon.includes(sampleAmazon.blurb), "a filled Amazon grid shows the sourced name and blurb");
   assert(!/best|discount|deal/i.test(filledAmazon), "Amazon pick cards make no deal, discount or best claims");
   const giftsWithAmazon = renderToStaticMarkup(

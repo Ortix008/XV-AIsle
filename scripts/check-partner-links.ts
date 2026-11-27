@@ -87,9 +87,9 @@ const books = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "books" 
 const experiences = renderToStaticMarkup(createElement(AffiliateSpot, { spot: "experiences" }));
 assert(!/\$\s*\d/.test(books + experiences), "partner cards show no price");
 assert(!banned.test(books + experiences), "rendered partner cards pass the free scan");
-assert(books.includes('rel="sponsored nofollow noopener noreferrer"'), "book links are sponsored and nofollow");
-assert(experiences.includes('rel="sponsored nofollow noopener noreferrer"'), "GetYourGuide links are sponsored and nofollow");
-assert(experiences.includes('rel="sponsored noopener noreferrer"'), "Viator keeps its existing rel");
+assert(books.includes('rel="sponsored noopener noreferrer"'), "book links are sponsored");
+assert(experiences.includes('rel="sponsored noopener noreferrer"'), "GetYourGuide and Viator links are sponsored");
+assert(!experiences.includes("nofollow") && !books.includes("nofollow"), "partner links do not use nofollow");
 for (const text of [
   "See Salt, Fat, Acid, Heat on Bookshop.org",
   "See Ottolenghi Simple on Bookshop.org",

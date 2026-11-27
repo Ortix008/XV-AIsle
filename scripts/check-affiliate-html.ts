@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { createServer } from "node:net";
 import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,8 +8,30 @@ const viatorUrl = "https://www.viator.com/?pid=P00330828&mcid=42383&medium=link"
 const guideUrl = "https://www.getyourguide.com/?partner_id=YEH3QKQ";
 const zazzleUrl = "https://www.zazzle.com/?rf=238672294015858667";
 const disclosure = "We may earn a commission when you buy through these links.";
-const port = 4331;
-const base = `http://127.0.0.1:${port}`;
+const BLOCKED_PORTS = new Set([4470, 4471]);
+
+function portFree(port: number) {
+  return new Promise<boolean>((resolve) => {
+    const server = createServer();
+    server.unref();
+    server.once("error", () => resolve(false));
+    server.listen(port, "127.0.0.1", () => {
+      server.close(() => resolve(true));
+    });
+  });
+}
+
+async function pickPort() {
+  const requested = Number(process.env.CHECK_AFFILIATE_HTML_PORT ?? 4331);
+  const candidates = [requested, 4331, 4327, 4328, 4329, 4330, 4332, 4333, 4334, 4335];
+  const seen = new Set<number>();
+  for (const port of candidates) {
+    if (!Number.isInteger(port) || port < 1024 || BLOCKED_PORTS.has(port) || seen.has(port)) continue;
+    seen.add(port);
+    if (await portFree(port)) return port;
+  }
+  throw new Error("could not find a free port for the affiliate HTML check");
+}
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -67,7 +90,7 @@ function walk(dir: string, hit: (file: string, text: string) => void) {
   }
 }
 
-async function waitForServer() {
+async function waitForServer(base: string) {
   for (let attempt = 0; attempt < 40; attempt += 1) {
     try {
       const response = await fetch(base + "/");
@@ -126,6 +149,8 @@ async function main() {
   walk(join(process.cwd(), ".next"), (file) => hits.push(file));
   assert(hits.length === 0, `[WORDY remains in the build: ${hits.slice(0, 5).join(", ")}`);
 
+  const port = await pickPort();
+  const base = `http://127.0.0.1:${port}`;
   const db = join(mkdtempSync(join(tmpdir(), "xvaisle-html-")), "shop.sqlite");
   const child = spawn("npm", ["run", "start"], {
     cwd: process.cwd(),
@@ -149,7 +174,7 @@ async function main() {
   process.once("SIGINT", onSignal);
   process.once("SIGTERM", onSignal);
   try {
-    await waitForServer();
+    await waitForServer(base);
     const home = await fetch(base + "/", { redirect: "manual" });
     const homeBody = await home.text();
     assert(home.status === 200, `home returned ${home.status}`);

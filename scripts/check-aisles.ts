@@ -464,7 +464,7 @@ for (const aisle of live) {
     assert(tag, `${item.asin} anchor`);
     assert(attr(tag, "href") === amazonPickUrl(item.asin), `${item.asin} href`);
     assert(LINK.test(attr(tag, "href")), `${item.asin} href shape`);
-    assert(attr(tag, "rel") === "sponsored nofollow noopener", `${item.asin} rel`);
+    assert(attr(tag, "rel") === "sponsored noopener noreferrer", `${item.asin} rel`);
     assert(attr(tag, "target") === "_blank", `${item.asin} target`);
     assert(attr(tag, "aria-label") === `${AMAZON_PICK_BUTTON_LABEL} for ${item.name}, opens in a new tab`, `${item.asin} name`);
     assert(text.includes(item.blurb), `${item.asin} blurb renders`);
