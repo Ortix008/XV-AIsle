@@ -2348,15 +2348,15 @@ video.auth-plate-media {
 }
 .vm-eye::before { content: ""; width: 22px; height: 1px; background: #2ee59d; }
 .vm-title {
-  max-width: 24ch;
+  max-width: 36ch;
   margin: 18px 0 28px;
   color: #f5f8f6;
   font-family: var(--font-sans);
-  font-size: 48px;
-  font-weight: 700;
-  line-height: 1.12;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.4;
   letter-spacing: 0;
-  text-wrap: wrap;
+  text-wrap: balance;
 }
 .vm-title em { font-style: normal; color: #2ee59d; }
 .vm-shelf-line {
@@ -2410,7 +2410,7 @@ video.auth-plate-media {
 @media (max-width: 640px) {
   .vm { padding: 72px 0 64px; }
   .vm-in { padding: 0 22px; }
-  .vm-title { margin: 14px 0 20px; font-size: 31px; }
+  .vm-title { margin: 14px 0 20px; font-size: 20px; }
   .vm-body { font-size: 16px; }
   .vm-vision { grid-template-columns: 1fr; gap: 12px; margin-top: 44px; padding-top: 26px; }
   .vm-vision p { font-size: 20px; }
