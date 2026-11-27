@@ -40,6 +40,7 @@ export function JoinScreen({
         <section className="hero-aisle">
           <div className="hero-aisle-stage" aria-hidden>
             <AisleParallax>
+              <div className="hero-aisle-photo-wrap">
               <picture>
                 <source
                   media="(max-width: 767px)"
@@ -63,6 +64,7 @@ export function JoinScreen({
                   className="hero-aisle-photo"
                 />
               </picture>
+              </div>
             </AisleParallax>
             <div className="hero-aisle-grade" />
             <XvAisleFlow />
