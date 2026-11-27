@@ -3265,6 +3265,11 @@ button.contact-submit {
   margin-top: 0;
 }
 
+.affiliate-hero .page-title,
+.affiliate-shell > h1.page-title {
+  text-wrap: balance;
+}
+
 .affiliate-hero-frame,
 .affiliate-tile-art {
   overflow: hidden;
@@ -3659,6 +3664,16 @@ button.contact-submit {
     max-width: 100%;
     line-height: 1.25;
     text-wrap: balance;
+  }
+
+  .partner-card-cta[data-label="Browse books on Bookshop.org"] {
+    white-space: nowrap;
+    font-size: 0.875rem;
+  }
+
+  .partner-card-cta[data-label="Browse books on Bookshop.org"] .partner-card-cta-label {
+    white-space: nowrap;
+    text-wrap: nowrap;
   }
 }
 

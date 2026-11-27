@@ -5,7 +5,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { MissionValues } from "@/components/mission-values";
 import { useOptionalAccount } from "@/lib/account-store";
 import { AMAZON_ASSOCIATE_DISCLOSURE } from "@/lib/amazon-aisles";
-import { giftSpotsHaveLinks } from "@/config/affiliates";
+import { visibleAffiliateOffers } from "@/config/affiliates";
 import { OPERATOR_ABOUT } from "@/config/operator-about";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 
@@ -59,7 +59,7 @@ export function ShopFooter({
     ...column,
     links: [
       ...(operator ? column.links : column.links.filter((link) => !RESELLER_LINKS.has(link.href))),
-      ...(column.title === "Shop" && giftSpotsHaveLinks()
+      ...(column.title === "Shop" && visibleAffiliateOffers("books").length > 0
         ? [{ href: "/shop?aisle=home-and-gifts", label: "Home & Gifts" }]
         : []),
     ],

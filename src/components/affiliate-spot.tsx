@@ -3,6 +3,7 @@ import {
   AFFILIATE_OFFERS,
   AFFILIATE_SPOT_HEADING,
   visibleAffiliateOffers,
+  visibleAffiliatePicks,
   type AffiliateItem,
   type AffiliateOffer,
   type AffiliateSpot,
@@ -36,7 +37,7 @@ export function AffiliateSpot({
               blurb: undefined as string | undefined,
               label: offer.label,
             },
-            ...(offer.picks ?? []).map((pick) => ({
+            ...visibleAffiliatePicks(offer.picks).map((pick) => ({
               key: `${offer.id}-${pick.id}`,
               href: pick.href,
               id: pick.id,
@@ -64,7 +65,7 @@ export function AffiliateSpot({
   );
 }
 
-/** Bookshop and Zazzle sit side by side once either card has a link. */
+/** Bookshop stays on Home & Gifts. Zazzle gift cards live on the Holiday aisle. */
 export function HomeGiftSpots({
   offers = AFFILIATE_OFFERS,
   traffic = null,
@@ -72,7 +73,7 @@ export function HomeGiftSpots({
   offers?: readonly AffiliateOffer[];
   traffic?: Traffic | null;
 }) {
-  const spots = (["books", "gifts"] as const).filter((spot) => visibleAffiliateOffers(spot, null, offers).length > 0);
+  const spots = (["books"] as const).filter((spot) => visibleAffiliateOffers(spot, null, offers).length > 0);
   if (spots.length === 0) return null;
   return (
     <div className={spots.length === 1 ? "partner-spot-row partner-spot-solo" : "partner-spot-row"}>

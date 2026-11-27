@@ -25,6 +25,30 @@ export const NEW_PICK_COPY = {
       name: "Buddha Board Water Painting Board",
       why: "Paint with just water for a calm, creative break, with no mess to clean up.",
     },
+    B0BPLVSB26: {
+      name: "Sherpa Fleece Throw",
+      why: "A reversible sherpa fleece throw for cozy nights on the couch.",
+    },
+    B0CSNWJKW6: {
+      name: "Porcelain Mugs, Set of 4",
+      why: "Four 16 oz porcelain mugs, a handy housewarming or host gift.",
+    },
+    B0C4Z7RTLP: {
+      name: "Acacia Board Set with Rack",
+      why: "Three acacia boards for prep in the kitchen and serving when friends come over.",
+    },
+    B0BDDHGC2F: {
+      name: "Five-Photo Collage Frame",
+      why: "A light wood frame that keeps five 4x6 family photos in one spot.",
+    },
+    B0CC8DS2S5: {
+      name: "Coffee Mug Warmer",
+      why: "A mug warmer with auto shut-off, a little gift for coffee and tea people.",
+    },
+    B0CD59K7PX: {
+      name: "Vases with Pampas Grass",
+      why: "Three white ceramic vases with dried pampas grass, ready for a shelf or table.",
+    },
   },
   books: {
     salt: {
@@ -52,6 +76,14 @@ export const NEW_PICK_COPY = {
     everglades: {
       name: "Everglades Airboat Ride and Wildlife Park",
       why: "An airboat ride plus a wildlife park visit in Kissimmee, a real taste of Florida near Orlando.",
+    },
+    kayak: {
+      name: "Clear Kayak Tour, Tarpon Springs",
+      why: "Paddle a clear kayak in manatee season, November to March. Sightings aren't guaranteed.",
+    },
+    toot: {
+      name: "Little Toot Dolphin Cruise, Clearwater",
+      why: "A 75-minute narrated tugboat cruise at Clearwater Beach to look for dolphins.",
     },
   },
 } as const;

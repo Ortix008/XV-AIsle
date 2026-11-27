@@ -176,7 +176,9 @@ async function main() {
     const gifts = await fetch(base + "/shop?aisle=home-and-gifts", { redirect: "manual" });
     const giftsBody = await gifts.text();
     assert(gifts.status === 200, `Home & Gifts returned ${gifts.status}`);
-    assert(giftsBody.includes(zazzleUrl.replaceAll("&", "&amp;")), "Home & Gifts HTML renders the Zazzle URL");
+    assert(!giftsBody.includes(zazzleUrl.replaceAll("&", "&amp;")), "Home & Gifts no longer renders the Zazzle shop URL");
+    assert(!giftsBody.includes("175607631410889940") && !giftsBody.includes("168710004482190645") && !giftsBody.includes("256136298078136813"), "Home & Gifts no longer renders the Zazzle product cards");
+    assert(!giftsBody.includes("Gift ideas"), "Home & Gifts no longer shows the Gift ideas spot");
     assert(giftsBody.includes('rel="sponsored noopener noreferrer"'), "Home & Gifts partner links are sponsored");
     assert(giftsBody.includes(disclosure), "Home & Gifts shows the short disclosure");
     assert(giftsBody.includes("https://bookshop.org/a/131173/9781476753836"), "Home &amp; Gifts renders Salt, Fat, Acid, Heat");
@@ -196,15 +198,30 @@ async function main() {
       "Tickets HTML renders the Kennedy Space Center tour",
     );
     assert(
-      ticketsBody.includes(
+      !ticketsBody.includes(
         "https://www.getyourguide.com/orlando-l191/orlando-everglades-airboat-ride-and-wildlife-park-ticket-t20590/?partner_id=YEH3QKQ",
       ),
-      "Tickets HTML renders the Everglades tour",
+      "Tickets HTML no longer uses the GetYourGuide Everglades URL",
     );
+    assert(
+      ticketsBody.includes("5467OHEP") && ticketsBody.includes("pid=P00330828"),
+      "Tickets HTML renders the Everglades tour on Viator",
+    );
+    assert(ticketsBody.includes("173028P2") && ticketsBody.includes("179637P1"), "Tickets HTML renders the new Viator tours");
     assert(ticketsBody.includes('rel="sponsored noopener noreferrer"'), "Tickets partner links are sponsored");
     assert(ticketsBody.includes(disclosure) && !ticketsBody.includes("[WORDY"), "Tickets shows the short disclosure");
     assert(ticketsBody.includes("Tours and things to do for days out with family and friends."), "Tickets HTML uses the approved blurb");
     assert(!ticketsBody.includes("Tickets and events for nights out with family and friends."), "Tickets HTML drops the old blurb");
+
+    const holiday = await fetch(base + "/aisles/holiday", { redirect: "manual" });
+    const holidayBody = await holiday.text();
+    assert(holiday.status === 200, `Holiday returned ${holiday.status}`);
+    assert(holidayBody.includes(zazzleUrl.replaceAll("&", "&amp;")), "Holiday HTML renders the Zazzle shop URL");
+    assert(holidayBody.includes("175607631410889940") && holidayBody.includes("168710004482190645") && holidayBody.includes("256136298078136813"), "Holiday HTML renders the three Zazzle product cards");
+    assert(holidayBody.includes("Gift ideas") && holidayBody.includes("Browse gifts on Zazzle"), "Holiday HTML uses the approved Zazzle heading and link");
+    assert(holidayBody.includes('rel="sponsored noopener noreferrer"'), "Holiday partner links are sponsored");
+    assert(holidayBody.includes(disclosure), "Holiday shows the short disclosure");
+    assert(!holidayBody.includes("[WORDY"), "Holiday has no pending copy marker");
 
     const llms = await fetch(base + "/llms.txt");
     const llmsBody = await llms.text();

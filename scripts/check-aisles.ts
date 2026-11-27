@@ -14,6 +14,7 @@ import {
   AISLE_INDEX_COPY,
   AISLE_CARD_ALT,
   AMAZON_AISLES,
+  HOME_AND_GIFTS_AMAZON_PICKS,
   AMAZON_ASSOCIATE_DISCLOSURE,
   AMAZON_PAID_LINK_LABEL,
   AMAZON_PICK_BUTTON_LABEL,
@@ -189,7 +190,15 @@ const live = liveAisles();
 const asins = live.flatMap((aisle) => aisle.items.map((item) => item.asin));
 assert(asins.length === 52, "the live aisles hold 52 picks");
 assert(new Set(asins).size === 52, "every ASIN is in exactly one aisle");
-assert(Object.keys(EXPECTED_BLURBS).length === 52, "the approved blurb list has 52 entries");
+assert(
+  Object.keys(EXPECTED_BLURBS).length === 52 + HOME_AND_GIFTS_AMAZON_PICKS.length,
+  "the approved blurb list covers the live aisles and Home & Gifts",
+);
+assert(HOME_AND_GIFTS_AMAZON_PICKS.length === 6, "Home & Gifts lists six Amazon picks");
+for (const item of HOME_AND_GIFTS_AMAZON_PICKS) {
+  assert(item.blurb === EXPECTED_BLURBS[item.asin], `${item.asin} blurb matches the approved copy`);
+  assert(!asins.includes(item.asin), `${item.asin} is not already on another aisle`);
+}
 
 for (const aisle of live) {
   for (const item of aisle.items) {
